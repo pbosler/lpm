@@ -1,5 +1,5 @@
-#ifndef LPM_AOS_TYPES_HPP
-#define LPM_AOS_TYPES_HPP
+#ifndef LPM_REAL_REALVEC_HPP
+#define LPM_REAL_REALVEC_HPP
 
 #include <cmath>
 #include <iostream>
@@ -7,32 +7,27 @@
 #include <exception>
 #include <array>
 #include "LpmConfig.h"
-#include "LpmTypeDefs.h"
-#include "LpmUtilities.h"
+#include "LpmTypeDefs.hpp"
+#include "LpmUtilities.hpp"
 
 namespace Lpm {
-namespace Aos {
-
-// scalar_type atan4(const scalar_type y, const scalar_type x);
-
-typedef std::vector<index_type> ind_vec;
 
 /*
-	Struct for handling vector computations in R^d, where typically d = 2,3.
+	Struct for handling RealVector computations in R^d, where typically d = 2,3.
 */
-template<int ndim=3> struct Vec {
-    scalar_type x[ndim];
+template<int ndim=3> struct RealVec {
+    Real x[ndim];
 
 	/// Constructor, initialize to 0.
-    Vec() {
+    RealVec() {
         for (int i=0; i<ndim; ++i)
             this->x[i] = 0.0;
     }
     
     /// Copy constructor
-    template <int ndim2> Vec(const Vec<ndim2>& other){
+    template <int ndim2> RealVec(const RealVec<ndim2>& other){
         if (ndim < ndim2) {
-            throw std::runtime_error("Vec<ndim>(Vec<ndim2>&) : cannot convert to smaller type.");
+            throw std::runtime_error("RealVec<ndim>(RealVec<ndim2>&) : cannot convert to smaller type.");
         }
         for (int i=0; i<std::min(ndim, ndim2); ++i) {
             this->x[i] = other.x[i];
@@ -43,19 +38,19 @@ template<int ndim=3> struct Vec {
     }
 
 	/// Copy constructor
-    Vec(const Vec<ndim>& other) {
+    RealVec(const RealVec<ndim>& other) {
         for (int i=0; i<ndim; ++i)
             this->x[i] = other.x[i];
     }
 
 	/// Constructor, initialize first two components
-    Vec(const scalar_type xx, const scalar_type yy) {
+    RealVec(const Real xx, const Real yy) {
         this->x[0] = xx;
         this->x[1] = yy;
     }
 
 	/// Constructor, initialize 3 components.
-    Vec(const scalar_type xx, const scalar_type yy, const scalar_type zz) {
+    RealVec(const Real xx, const Real yy, const Real zz) {
         if (ndim == 2) {
             this->x[0] = xx;
             this->x[1] = yy;
@@ -67,25 +62,25 @@ template<int ndim=3> struct Vec {
         }
     }
 
-	/// Constructor, initialize from std::array<scalar_type, ndim>
-    Vec(const std::array<scalar_type, ndim>& arr) {
+	/// Constructor, initialize from std::array<Real, ndim>
+    inline RealVec(const std::array<Real, ndim>& arr) {
         for (int i=0; i<ndim; ++i)
             this->x[i] = arr[i];
     }
     
-	/// Constructor, initialize from std::vector<scalar_type>
-    inline Vec(const std::vector<scalar_type>& xx) {
+	/// Constructor, initialize from std::vector<Real>
+    inline RealVec(const std::vector<Real>& xx) {
         for (int i=0; i<ndim; ++i)
             this->x[i] = xx[i];
     }
     
-	/// Constructor, intialize from scalar_type[]
-    inline Vec(const scalar_type* xx) {
+	/// Constructor, intialize from Real[]
+    inline RealVec(const Real* xx) {
         for (int i=0; i<ndim; ++i)
             this->x[i] = xx[i];
     }    
     /// Basic assignment operator.
-    Vec& operator= (const Vec<ndim>& other) {
+    inline RealVec& operator= (const RealVec<ndim>& other) {
         if (this != &other) {
             for (int i=0; i<ndim; ++i)
                 this->x[i] = other.x[i];
@@ -93,256 +88,260 @@ template<int ndim=3> struct Vec {
         return *this;
     }
 
-	/// Convert to std::array<scalar_type, ndim>
-    inline std::array<scalar_type, ndim> toArray() const {
-        std::array<scalar_type, ndim> result;
+	/// Convert to std::array<Real, ndim>
+    inline std::array<Real, ndim> toArray() const {
+        std::array<Real, ndim> result;
         for (int i=0; i<ndim; ++i)
             result[i] = this->x[i];
         return result;
     }
 
-	/// Convert to std::vector<scalar_type>
-    inline std::vector<scalar_type> toStdVec() const {
-        std::vector<scalar_type> result(ndim);
+	/// Convert to std::vector<Real>
+    inline std::vector<Real> toStdRealVec() const {
+        std::vector<Real> result(ndim);
         for (int i=0; i<ndim; ++i)
             result[i] = this->x[i];
         return result;
     }
     
     /// [] operator
-    inline const scalar_type& operator [] (const index_type ind) const {return this->x[ind];}
+    inline const Real& operator [] (const Index ind) const {return this->x[ind];}
     
-    inline scalar_type& operator [] (const index_type ind) {return this->x[ind];}
+    inline Real& operator [] (const Index ind) {return this->x[ind];}
 	
 	/// += operator (elemental)
-    inline Vec<ndim>& operator += (const Vec<ndim>& other) {
+    inline RealVec<ndim>& operator += (const RealVec<ndim>& other) {
         for (int i=0; i<ndim; ++i)
             this->x[i] += other.x[i];
         return *this;
     }
 
 	/// -= operator (elemental)
-    inline Vec<ndim>& operator -= (const Vec<ndim>& other) {
+    inline RealVec<ndim>& operator -= (const RealVec<ndim>& other) {
         for (int i=0; i<ndim; ++i)
             this->x[i] -= other.x[i];
         return *this;
     }
 
 	/// *= operator (elemental)
-   inline  Vec<ndim>& operator *= (const Vec<ndim>& other) {
+   inline RealVec<ndim>& operator *= (const RealVec<ndim>& other) {
         for (int i=0; i<ndim; ++i)
             this->x[i] *= other.x[i];
         return *this;
     }
 
 	/// /= operator (elemental)
-    inline Vec<ndim>& operator /= (const Vec<ndim>& other) {
+    inline RealVec<ndim>& operator /= (const RealVec<ndim>& other) {
         for (int i=0; i<ndim; ++i)
             this->x[i] /= other.x[i];
         return *this;
     }
 
 	/// + operator member function
-    inline const Vec<ndim> operator + (const Vec<ndim>& other) const {
-        return Vec<ndim>(*this) += other;
+    inline RealVec<ndim> operator + (const RealVec<ndim>& other) const {
+        return RealVec<ndim>(*this) += other;
     }
 
 	/// - operator member function
-    inline const Vec<ndim> operator - (const Vec<ndim>& other) const {
-        return Vec<ndim>(*this) -= other;
+    inline RealVec<ndim> operator - (const RealVec<ndim>& other) const {
+        return RealVec<ndim>(*this) -= other;
     }
 
 	/// * operator member function
-    inline const Vec<ndim> operator * (const Vec<ndim>& other) const {
-        return Vec<ndim>(*this) *= other;
+    inline RealVec<ndim> operator * (const RealVec<ndim>& other) const {
+        return RealVec<ndim>(*this) *= other;
     }
 
 	/// / operator member function
-    inline const Vec<ndim> operator / (const Vec<ndim>& other) const {
-        return Vec<ndim>(*this) /= other;
+    inline RealVec<ndim> operator / (const RealVec<ndim>& other) const {
+        return RealVec<ndim>(*this) /= other;
     }
 
-	/// compute & return the square of the vector's magnitude
-    inline scalar_type magSq() const {
-        scalar_type sumsq(0.0);
+	/// compute & return the square of the RealVector's magnitude
+    inline Real magSq() const {
+        Real sumsq(0.0);
         for (int i=0; i<ndim; ++i)
             sumsq += this->x[i]*this->x[i];
         return sumsq;
     }
 
-	/// compute and return the vector's magnitude
-    inline scalar_type mag() const {
+	/// compute and return the RealVector's magnitude
+    inline Real mag() const {
         return std::sqrt(this->magSq());
     }
 
-	/// vector dot product
-    inline scalar_type dotProd(const Vec<ndim>& other) const {
-        scalar_type dp(0.0);
+	/// RealVector dot product
+    inline Real dotProd(const RealVec<ndim>& other) const {
+        Real dp(0.0);
         for (int i=0; i<ndim; ++i)
             dp += this->x[i]*other.x[i];
         return dp;
     }
 
 	/// 2d cross product (returns the only nonzero component as a scalar)
-    inline scalar_type crossProdComp3(const Vec<2>& other) const {
+    inline Real crossProdComp3(const RealVec<2>& other) const {
         return this->x[0]*other.x[1] - this->x[1]*other.x[0];
     }
 
-	/// Vector cross product
-    inline const Vec<ndim> crossProd(const Vec<ndim>& other) const {
-        const scalar_type cp[3] = {this->x[1]*other.x[2] - this->x[2]*other.x[1],
+	/// RealVector cross product
+    inline RealVec<ndim> crossProd(const RealVec<ndim>& other) const {
+        const Real cp[3] = {this->x[1]*other.x[2] - this->x[2]*other.x[1],
                                    this->x[2]*other.x[0] - this->x[0]*other.x[2],
                                    this->x[0]*other.x[1] - this->x[1]*other.x[0]};
-        return Vec<ndim>(cp);
+        return RealVec<ndim>(cp);
     }
 
 	/// Scalar multiply without copy and no return 
-    inline void scaleInPlace(const scalar_type mult) {
+    inline void scaleInPlace(const Real mult) {
         for (int i=0; i<ndim; ++i)
             this->x[i] *= mult;
     }
 
-	/// Scalar multiply with copy, return new Vec
-    inline const Vec<ndim> scale(const scalar_type mult) const {
-        scalar_type sm[ndim];
+	/// Scalar multiply with copy, return new RealVec
+    inline RealVec<ndim> scale(const Real mult) const {
+        Real sm[ndim];
         for (int i=0; i<ndim; ++i)
             sm[i] = this->x[i]*mult;
-        return Vec<ndim>(sm);
+        return RealVec<ndim>(sm);
     }
 
-	/// Normalize vector without copy, no return
+	/// Normalize RealVector without copy, no return
     inline void normalizeInPlace() {
-        const scalar_type len = this->mag();
+        const Real len = this->mag();
         this->scaleInPlace(1.0/len);
     }
 
-	/// Normalize vector with copy, return new Vec
-    inline const Vec<ndim> normalize() const {
-        const scalar_type len = this->mag();
+	/// Normalize RealVector with copy, return new RealVec
+    inline RealVec<ndim> normalize() const {
+        const Real len = this->mag();
         return this->scale(1.0/len);
     }
 
-	/// Compute & return the longitude of a vector in R^3
-    inline scalar_type longitude() const {return atan4(this->x[1], this->x[0]);}
+	/// Compute & return the longitude of a RealVector in R^3
+    inline Real longitude() const {return atan4(this->x[1], this->x[0]);}
 
 
-	/// Compute and return the latitude of a vector in R^3
-    inline scalar_type latitude() const {
-        const scalar_type xy2 = this->x[0]*this->x[0] + this->x[1]*this->x[1];
+	/// Compute and return the latitude of a RealVector in R^3
+    inline Real latitude() const {
+        const Real xy2 = this->x[0]*this->x[0] + this->x[1]*this->x[1];
         return std::atan2(this->x[2] , std::sqrt(xy2));
     }
 
-	/// Compute the midpoint of *this and another Vec<ndim>
-    inline const Vec<ndim> midpoint(const Vec<ndim>& other) const {
-        Vec<ndim> result = *this + other;
+	/// Compute the midpoint of *this and another RealVec<ndim>
+    inline RealVec<ndim> midpoint(const RealVec<ndim>& other) const {
+        RealVec<ndim> result = *this + other;
         result.scaleInPlace(0.5);
         return result;
     }
 
-	/// Compute the great-circle midpoint of *this and another Vec<ndim>
-    inline const Vec<ndim> sphereMidpoint(const Vec<ndim>& other, const scalar_type radius = 1.0) const {
-        Vec<ndim> result = this->midpoint(other);
+	/// Compute the great-circle midpoint of *this and another RealVec<ndim>
+    inline RealVec<ndim> sphereMidpoint(const RealVec<ndim>& other, const Real radius = 1.0) const {
+        RealVec<ndim> result = this->midpoint(other);
         result.normalizeInPlace();
         result.scaleInPlace(radius);
         return result;
     }
 
-	/// Compute the Euclidean distance between *this and another Vec<ndim>
-    inline scalar_type dist(const Vec<ndim>& other) const {
+	/// Compute the Euclidean distance between *this and another RealVec<ndim>
+    inline Real dist(const RealVec<ndim>& other) const {
         return (*this - other).mag();
     }
 
-    inline scalar_type sphereDist(const Vec<ndim>& other, const scalar_type radius=1.0) const {
-        const Vec<ndim> cp = this->crossProd(other);
-        const scalar_type dp = this->dotProd(other);
+    inline Real sphereDist(const RealVec<ndim>& other, const Real radius=1.0) const {
+        const RealVec<ndim> cp = this->crossProd(other);
+        const Real dp = this->dotProd(other);
         return std::atan2(cp.mag(), dp) * radius;
     }
 
-	/// Compute the great-circle distance between *this and another Vec<ndim>
-    inline const bool operator == (const Vec<ndim>& other) const {
+	/// equivalence operator
+    inline bool operator == (const RealVec<ndim>& other) const {
         return this->dist(other) < ZERO_TOL;
+    }
+    
+    inline bool operator != (const RealVec<ndim>& other) const {
+        return !(*this == other);
     }
 };
 
-/// Return the Vec<ndim> along a chord between Vec<ndim> a and Vec<ndim> b.
+/// Return the RealVec<ndim> along a chord between RealVec<ndim> a and RealVec<ndim> b.
 /**	Chord is parameterized by s \in [-1,1]
 	
-	@param a origin of chord vector
-	@param b destination of chord vector
+	@param a origin of chord RealVector
+	@param b destination of chord RealVector
 	@param s parameterization variable
 **/
-template <int ndim> Vec<ndim> pointAlongChord(Vec<ndim> a, Vec<ndim> b, const scalar_type s) {
+template <int ndim> RealVec<ndim> pointAlongChord(RealVec<ndim> a, RealVec<ndim> b, const Real s) {
     a.scaleInPlace(1.0-s);
     b.scaleInPlace(1.0+s);
-    Vec<ndim> result = a + b;
+    RealVec<ndim> result = a + b;
     result.scaleInPlace(0.5);
     return result;
 }
 
-/// Return the Vec<ndim> along a great-circle arc (in R^3) between Vec<ndim> a and Vec<ndim> b.
+/// Return the RealVec<ndim> along a great-circle arc (in R^3) between RealVec<ndim> a and RealVec<ndim> b.
 /**	Chord is parameterized by s \in [-1,1]
 	
-	@param a origin of chord vector
-	@param b destination of chord vector
+	@param a origin of chord RealVector
+	@param b destination of chord RealVector
 	@param s parameterization variable
 **/
-template <int ndim> Vec<ndim> pointAlongCircle(const Vec<ndim>& a, const Vec<ndim>& b, const scalar_type s, 
-    const scalar_type radius=1.0) {
-    Vec<ndim> result = pointAlongChord(a,b,s);
+template <int ndim> RealVec<ndim> pointAlongCircle(const RealVec<ndim>& a, const RealVec<ndim>& b, const Real s, 
+    const Real radius=1.0) {
+    RealVec<ndim> result = pointAlongChord(a,b,s);
     result.normalizeInPlace();
     result.scaleInPlace(radius);
     return result;
 }
 
-/// Return the Euclidean barycenter of a collection of Vec<ndim>s
-template <int ndim> const Vec<ndim> baryCenter(const std::vector<Vec<ndim>>& vecs) {
-    Vec<ndim> result;
-    for (int i=0; i<vecs.size(); ++i)
-        result += vecs[i];
-    result.scaleInPlace(1.0/vecs.size());
+/// Return the Euclidean barycenter of a collection of RealVec<ndim>s
+template <int ndim> const RealVec<ndim> barycenter(const std::vector<RealVec<ndim>>& RealVecs) {
+    RealVec<ndim> result;
+    for (int i=0; i<RealVecs.size(); ++i)
+        result += RealVecs[i];
+    result.scaleInPlace(1.0/RealVecs.size());
     return result;
 }
 
-/// Return the barycenter on the spherical surface  of a collection of Vec<ndim>s (using radial projection)
-template <int ndim> const Vec<ndim> sphereBaryCenter(const std::vector<Vec<ndim>>& vecs, const scalar_type radius = 1.0) {
-    Vec<3> result;
-    for (int i=0; i<vecs.size(); ++i)
-        result += vecs[i];
-    result.scaleInPlace(1.0/vecs.size());
+/// Return the barycenter on the spherical surface  of a collection of RealVec<ndim>s (using radial projection)
+template <int ndim> const RealVec<ndim> sphereBarycenter(const std::vector<RealVec<ndim>>& RealVecs, const Real radius = 1.0) {
+    RealVec<3> result;
+    for (int i=0; i<RealVecs.size(); ++i)
+        result += RealVecs[i];
+    result.scaleInPlace(1.0/RealVecs.size());
     result.normalizeInPlace();
     result.scaleInPlace(radius);
     return result;
 }
 
 /// Return the area of a planar triangle defined by 3 vertices
-inline scalar_type triArea(const Vec<3>& vecA, const Vec<3>& vecB, const Vec<3>& vecC) {
-    const Vec<3> s1 = vecB - vecA;
-    const Vec<3> s2 = vecC - vecA;
+inline Real triArea(const RealVec<3>& RealVecA, const RealVec<3>& RealVecB, const RealVec<3>& RealVecC) {
+    const RealVec<3> s1 = RealVecB - RealVecA;
+    const RealVec<3> s2 = RealVecC - RealVecA;
     return 0.5*s1.crossProd(s2).mag();
 }
 
 /// Return the area of a planar triangle defined by 3 vertices
-inline scalar_type triArea(const Vec<2>& vecA, const Vec<2>& vecB, const Vec<2>& vecC) {
-    const Vec<2> s1 = vecB - vecA;
-    const Vec<2> s2 = vecC - vecA;
+inline Real triArea(const RealVec<2>& RealVecA, const RealVec<2>& RealVecB, const RealVec<2>& RealVecC) {
+    const RealVec<2> s1 = RealVecB - RealVecA;
+    const RealVec<2> s2 = RealVecC - RealVecA;
     return std::abs(0.5*s1.crossProdComp3(s2));
 }
 
 /// Return the area of a planar triangle defined by 3 vertices
-template <int ndim> scalar_type triArea(const std::vector<Vec<ndim>>& vecs) {
-    return triArea(vecs[0], vecs[1], vecs[2]);
+template <int ndim> Real triArea(const std::vector<RealVec<ndim>>& RealVecs) {
+    return triArea(RealVecs[0], RealVecs[1], RealVecs[2]);
 }
 
 /// Return the area of a spherical triangle defined by 3 vertices on the surface of a sphere
-scalar_type sphereTriArea(const Vec<3>& a, const Vec<3>& b, const Vec<3>& c, const scalar_type radius = 1.0);
+Real sphereTriArea(const RealVec<3>& a, const RealVec<3>& b, const RealVec<3>& c, const Real radius = 1.0);
 
 /// Return the area of a spherical triangle defined by 3 vertices on the surface of a sphere
-inline scalar_type sphereTriArea(const std::vector<Vec<3>>& vecs) {
-    return sphereTriArea(vecs[0], vecs[1], vecs[2]);
+inline Real sphereTriArea(const std::vector<RealVec<3>>& RealVecs) {
+    return sphereTriArea(RealVecs[0], RealVecs[1], RealVecs[2]);
 }
 
-template <int ndim> scalar_type polygonArea(const Vec<ndim>& ctr, const std::vector<Vec<ndim>>& ccwcorners){
-	scalar_type result = 0.0;
+template <int ndim> Real polygonArea(const RealVec<ndim>& ctr, const std::vector<RealVec<ndim>>& ccwcorners){
+	Real result = 0.0;
 	const int nverts = ccwcorners.size();
 	for (int i=0; i<nverts; ++i) {
 		result += triArea(ccwcorners[i], ctr, ccwcorners[(i+1)%nverts]);
@@ -350,9 +349,9 @@ template <int ndim> scalar_type polygonArea(const Vec<ndim>& ctr, const std::vec
 	return result;
 }
 
-template <int ndim> scalar_type spherePolygonArea(const Vec<ndim>& ctr, const std::vector<Vec<ndim>>& ccwcorners, 
-	const scalar_type radius) {
-	scalar_type result = 0.0;
+template <int ndim> Real spherePolygonArea(const RealVec<ndim>& ctr, const std::vector<RealVec<ndim>>& ccwcorners, 
+	const Real radius) {
+	Real result = 0.0;
 	const int nverts = ccwcorners.size();
 	for (int i=0; i<nverts; ++i) {
 		result += sphereTriArea(ccwcorners[i], ctr, ccwcorners[(i+1)%nverts], radius);
@@ -361,15 +360,14 @@ template <int ndim> scalar_type spherePolygonArea(const Vec<ndim>& ctr, const st
 }
 
 /// Inverse tangent with quadrant information, but with output range in [0, 2*pi) instead of (-pi, pi]
-scalar_type atan4(const scalar_type y, const scalar_type x);
+Real atan4(const Real y, const Real x);
 
 /// Basic output to console
-std::ostream& operator << (std::ostream& os, const Vec<1>& vec);
+std::ostream& operator << (std::ostream& os, const RealVec<1>& RealVec);
 /// Basic output to console
-std::ostream& operator << (std::ostream& os, const Vec<2>& vec);
+std::ostream& operator << (std::ostream& os, const RealVec<2>& RealVec);
 /// Basic output to console
-std::ostream& operator << (std::ostream& os, const Vec<3>& vec);
+std::ostream& operator << (std::ostream& os, const RealVec<3>& RealVec);
 
-}
 }
 #endif

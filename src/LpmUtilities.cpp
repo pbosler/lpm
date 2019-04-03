@@ -1,11 +1,11 @@
-#include "LpmUtilities.h"
+#include "LpmUtilities.hpp"
 #include <cmath>
 #include <limits>
 
 namespace Lpm {
 
-  scalar_type atan4 (const scalar_type y, const scalar_type x) {
-    scalar_type result = 0.0;
+  Real atan4 (const Real y, const Real x) {
+    Real result = 0.0;
 	if ( x == 0.0 )
 	{
 		if ( y > 0.0 )
@@ -24,7 +24,7 @@ namespace Lpm {
 	}
 	else
 	{
-		scalar_type theta = std::atan2( std::abs(y), std::abs(x) );
+		Real theta = std::atan2( std::abs(y), std::abs(x) );
 		if ( x > 0.0 && y > 0.0 )
 			result = theta;
 		else if ( x < 0.0 && y > 0.0 )
@@ -37,18 +37,18 @@ namespace Lpm {
 	return result;
   }
   
-  void quadraticRoots(scalar_type& r1, scalar_type& r2, const scalar_type a, const scalar_type b, const scalar_type c) {
-     const scalar_type apa = 2.0 * a;
-     scalar_type disc = b*b - 4.0*a*c;
+  void quadraticRoots(Real& r1, Real& r2, const Real a, const Real b, const Real c) {
+     const Real apa = 2.0 * a;
+     Real disc = b*b - 4.0*a*c;
      if (std::abs(disc) < ZERO_TOL) {
         disc = 0.0;
      }
      else if (disc < -ZERO_TOL) {
-        r1 = std::numeric_limits<scalar_type>::max();
-        r2 = std::numeric_limits<scalar_type>::max();
+        r1 = std::numeric_limits<Real>::max();
+        r2 = std::numeric_limits<Real>::max();
      }
      else {
-        const scalar_type rdisc = std::sqrt(disc);
+        const Real rdisc = std::sqrt(disc);
         r1 = (-b + rdisc)/apa;
         r2 = (-b - rdisc)/apa;
      }

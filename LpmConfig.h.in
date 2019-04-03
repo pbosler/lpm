@@ -2,11 +2,7 @@
 #define LPM_VERSION_MAJOR @LPM_VERSION_MAJOR@
 #define LPM_VERSION_MINOR @LPM_VERSION_MINOR@
 
-#cmakedefine USE_NANOFLANN
-#cmakedefine DEBUG_ALL
 #cmakedefine HAVE_VTK
 #cmakedefine HAVE_KOKKOS
-#cmakedefine USE_APPLE_CLANG
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/meshSeeds"
-#define LPM_PARTICLE_SET_DIR "@CMAKE_CURRENT_SOURCE_DIR@/particle_sets"
