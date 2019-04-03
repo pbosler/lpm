@@ -2,7 +2,7 @@
 
 rm -rf CMakeFiles/ CMakeCache.txt
 
-SRC_ROOT=$HOME/lpmCxx
+SRC_ROOT=$HOME/lpmkokkos
 EXTRA_ARGS=$1
 export KO=$HOME/kokkos-cuda/gcc-4.8.5
 export OMPI_CXX=$KO/bin/nvcc_wrapper

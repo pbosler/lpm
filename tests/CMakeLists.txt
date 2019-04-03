@@ -6,3 +6,8 @@ SET_TARGET_PROPERTIES(lpmRealVecTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" 
 TARGET_LINK_LIBRARIES(lpmRealVecTest lpmkokkos)
 add_test(lpmRealVectors lpmRealVecTest)
 
+ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
+SET_TARGET_PROPERTIES(lpmCoordsTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+TARGET_LINK_LIBRARIES(lpmCoordsTest lpmkokkos)
+ADD_TEST(lpmCoords lpmCoordsTest)
+

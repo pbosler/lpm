@@ -7,10 +7,14 @@
 #include "LpmTypeDefs.hpp"
 #include "LpmUtilities.hpp"
 #include "LpmRealVector.hpp"
+#include "Kokkos_Core.hpp"
+#include "Kokkos_View.hpp"
 
 using namespace Lpm;
 
 int main (int argc, char* argv[]) {
+    Kokkos::initialize(argc, argv);
+    {
     
     RealVec<3> v3def;
     std::cout << "default constructor: " <<  v3def << std::endl;
@@ -73,9 +77,29 @@ int main (int argc, char* argv[]) {
     std::cout << "barycenter = " << barycenter(vecs) << std::endl;
     std::cout << "triArea = " << triArea(vecs) << std::endl;
     
+    Kokkos::View<Real*[3]> vview("vec_view", vecs.size());
+    Kokkos::View<Real*[3]>::HostMirror hview = Kokkos::create_mirror_view(vview);
+    for (int i=0; i<vecs.size(); ++i) {
+        for (int j=0; j<3; ++j) {
+            hview(i,j) = vecs[i][j];
+        }
+    }
+    Kokkos::deep_copy(vview, hview);
+    const RealVec<3> bc_result = barycenter(vview);
+    Kokkos::View<Real[3]> result_view("device_result");
+    bc_result.toKokkosView(result_view);
+    Kokkos::View<Real[3]>::HostMirror host_result = Kokkos::create_mirror_view(result_view);
+    Kokkos::deep_copy(host_result, result_view);
+    const RealVec<3> bc_host_result(host_result);
+    std::cout << "barycenter from Kokkos::View : " << bc_host_result << std::endl;
+    
+    
+    
     for (int i=0; i<3; ++i) 
         vecs[i].normalizeInPlace();
     std::cout << "sphereBarycetner = " << sphereBarycenter(vecs) << std::endl;
-    std::cout << "sphereTriArea = " << sphereTriArea(vecs) << std::endl;
+    std::cout << "sphereTriArea = " << sphereTriArea(vecs[0], vecs[1], vecs[2]) << std::endl;
+    }
+    Kokkos::finalize();
 return 0;
 }

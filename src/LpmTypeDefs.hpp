@@ -15,6 +15,7 @@ typedef int Index;
 
 typedef Kokkos::View<Real*> RealArray;
 typedef Kokkos::View<Index*> IndexArray;
+typedef Kokkos::View<const Index*> ConstIndexArray;
 
 
 /// Pi

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 
 project (LPM)
 
@@ -30,29 +30,31 @@ if (Kokkos_ROOT)
     option(HAVE_KOKKOS "Located Kokkos library." ON)
     message("Kokkos found. Details:")
     include(${Kokkos_ROOT}/kokkos_generated_settings.cmake)
-    printvar(KOKKOS_CPP_FLAGS)
-    printvar(KOKKOS_CXX_FLAGS)
-    printvar(KOKKOS_LD_FLAGS)
-    printvar(KOKKOS_LIBS)
+    string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
+    
+    set(Kokkos_INCLUDE_DIRS ${Kokkos_ROOT}/include)
+    set(Kokkos_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
+    
+    if (${cuda_str_pos} GREATER -1)
+        set(CUDA_BUILD TRUE)
+        execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show" 
+	        RESULT_VARIABLE WRAPS_NVCC OUTPUT_VARIABLE WRAPS_NVCC_OUT)
+        string (FIND ${WRAPS_NVCC_OUT} "nvcc" pos)
+    endif()
 else()
     Message(FATAL_ERROR "Kokkos is required. Set CMake variable Kokkos_ROOT.")
 endif()
 
 list2str("${KOKKOS_CXX_FLAGS}" Kokkos_CXXFLAGS)
-list2str("${KOKKOS_LIBS}" Kokkos_LIBRARIES)
-string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
-if (${cuda_str_pos} GREATER -1)
-    set(CUDA_BUILD TRUE)
-    execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show" 
-	        RESULT_VARIABLE WRAPS_NVCC OUTPUT_VARIABLE WRAPS_NVCC_OUT)
-    string (FIND ${WRAPS_NVCC_OUT} "nvcc" pos)
-endif()
-
+list2str("${KOKKOS_LD_FLAGS}" Kokkos_LDFLAGS)
 set (LPM_CXXFLAGS "-g ${Kokkos_CXXFLAGS} ${CMAKE_CXX_FLAGS}")
 if (CUDA_BUILD)
     set( LPM_CXXFLAGS "${LPM_CXXFLAGS} --expt-relaxed-constexpr")
 endif()
-set (LPM_LDFLAGS "${KOKKOS_LD_FLAGS} ${Kokkos_LIBRARIES}")
+set(LPM_LDFLAGS "-L /lib64 -ldl")
+
+printvar(LPM_CXXFLAGS)
+printvar(LPM_LDFLAGS)
 
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (tests)

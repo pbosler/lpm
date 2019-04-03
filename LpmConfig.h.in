@@ -1,4 +1,6 @@
 // the configured options and settings for LPM
+#ifndef LPM_CONFIG_H
+#define LPM_CONFIG_H
 #define LPM_VERSION_MAJOR @LPM_VERSION_MAJOR@
 #define LPM_VERSION_MINOR @LPM_VERSION_MINOR@
 
@@ -6,3 +8,5 @@
 #cmakedefine HAVE_KOKKOS
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/meshSeeds"
+
+#endif
