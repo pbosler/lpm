@@ -2,12 +2,11 @@
 #define _LPM_UTILITIES_HPP
 
 #include "LpmConfig.h"
-#include "LpmTypeDefs.hpp"
+#include "LpmDefs.hpp"
 #include <string>
 
 #include "Kokkos_Core.hpp"
 #include <cmath>
-#include <algorithm>
 
 namespace Lpm {
 
@@ -62,29 +61,6 @@ namespace Lpm {
     /// cube a scalar
     KOKKOS_INLINE_FUNCTION 
     Real cube(const Real& x) {return x*x*x;}    
-    
-#ifdef KOKKOS_ENABLE_CUDA
-    template <typename T> KOKKOS_INLINE_FUNCTION 
-    const T& min (const T& a, const T& b) {return a < b ? a : b;}
-    
-    template <typename T> KOKKOS_INLINE_FUNCTION
-    const T& max (const T& a, const T& b) {return a > b ? a : b;}
-    
-    template <typename T> KOKKOS_INLINE_FUNCTION
-    const T* max_element(const T* const begin, const T* const end) {
-        const T* me = begin;
-        for (const T* it=begin +1; it < end; ++it) {
-            if (!(*it < *me)) me = it;
-        }
-        return me;
-    }
-    
-#else
-    using std::min;
-    using std::max;
-    using std::max_element;
-#endif
-
    
 }
 #endif

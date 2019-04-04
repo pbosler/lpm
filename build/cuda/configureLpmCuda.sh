@@ -9,8 +9,8 @@ export OMPI_CXX=$KO/bin/nvcc_wrapper
 
 cmake -Wno-dev \
 -D CMAKE_BUILD_TYPE:STRING="RelWithDebInfo" \
--D CMAKE_CXX_FLAGS="-g -fopenmp -std=c++11" \
+-D CMAKE_CXX_FLAGS="" \
 -D Kokkos_ROOT=$KO \
--D CMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
+-D CMAKE_VERBOSE_MAKEFILE:BOOL=ON \
 $EXTRA_ARGS \
 $SRC_ROOT

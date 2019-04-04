@@ -1,13 +1,18 @@
 include (CTest)
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}" "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include")
 
-ADD_EXECUTABLE(lpmRealVecTest LpmRealVecUnitTest.cpp)
-SET_TARGET_PROPERTIES(lpmRealVecTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
-TARGET_LINK_LIBRARIES(lpmRealVecTest lpmkokkos)
-add_test(lpmRealVectors lpmRealVecTest)
+#ADD_EXECUTABLE(lpmRealVecTest LpmRealVecUnitTest.cpp)
+#SET_TARGET_PROPERTIES(lpmRealVecTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+#TARGET_LINK_LIBRARIES(lpmRealVecTest lpmkokkos ${Kokkos_LIBRARIES})
+#add_test(lpmRealVectors lpmRealVecTest)
+#
+#ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
+#SET_TARGET_PROPERTIES(lpmCoordsTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+#TARGET_LINK_LIBRARIES(lpmCoordsTest lpmkokkos ${Kokkos_LIBRARIES})
+#ADD_TEST(lpmCoords lpmCoordsTest)
 
-ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
-SET_TARGET_PROPERTIES(lpmCoordsTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
-TARGET_LINK_LIBRARIES(lpmCoordsTest lpmkokkos)
-ADD_TEST(lpmCoords lpmCoordsTest)
+ADD_EXECUTABLE(lpmGeomTest LpmGeometryUnitTests.cpp)
+SET_TARGET_PROPERTIES(lpmGeomTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+TARGET_LINK_LIBRARIES(lpmGeomTest lpmkokkos ${Kokkos_LIBRARIES})
+ADD_TEST(lpmGeom lpmGeomTest)
 

@@ -30,12 +30,12 @@ if (Kokkos_ROOT)
     option(HAVE_KOKKOS "Located Kokkos library." ON)
     message("Kokkos found. Details:")
     include(${Kokkos_ROOT}/kokkos_generated_settings.cmake)
-    string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
-    
     set(Kokkos_INCLUDE_DIRS ${Kokkos_ROOT}/include)
     set(Kokkos_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
     
+    string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
     if (${cuda_str_pos} GREATER -1)
+        option(HAVE_CUDA "If true, indicates a Kokkos Cuda build." ON)
         set(CUDA_BUILD TRUE)
         execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show" 
 	        RESULT_VARIABLE WRAPS_NVCC OUTPUT_VARIABLE WRAPS_NVCC_OUT)
@@ -51,7 +51,7 @@ set (LPM_CXXFLAGS "-g ${Kokkos_CXXFLAGS} ${CMAKE_CXX_FLAGS}")
 if (CUDA_BUILD)
     set( LPM_CXXFLAGS "${LPM_CXXFLAGS} --expt-relaxed-constexpr")
 endif()
-set(LPM_LDFLAGS "-L /lib64 -ldl")
+set(LPM_LDFLAGS "-L/lib64 -ldl")
 
 printvar(LPM_CXXFLAGS)
 printvar(LPM_LDFLAGS)
