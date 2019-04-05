@@ -8,6 +8,8 @@
 namespace Lpm {
 
 struct PlaneGeometry {
+    static constexpr Int ndim = 2;
+
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
         v[0] = 0.0;
@@ -101,6 +103,8 @@ struct PlaneGeometry {
 };
 
 struct SphereGeometry {
+    static constexpr Int ndim = 3;
+
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
         v[0] = 0.0;

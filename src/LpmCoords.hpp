@@ -4,7 +4,7 @@
 #include "LpmConfig.h"
 #include "LpmTypeDefs.hpp"
 #include "LpmUtilities.hpp"
-#include "LpmRealVector.hpp"
+#include "LpmGeometry.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
@@ -18,13 +18,13 @@ typedef typename pool_type::generator_type generator_type;
 struct rand_crd_gen;
 struct rand_crd_gen_sphere;
 
-template <int ndim, GeometryType geom> class Coords {
+template <typename Geo> class Coords {
     public:
-        typedef Kokkos::View<Real*[ndim]> view_type;
+        typedef Kokkos::View<Real*[Geo::ndim]> crd_view_type;
     
-        Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n(0) {};
-        
-        inline GeometryType geometry() const {return geom;}
+        Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n(0) {
+            _host_crds = ko::create_mirror_view(_crds);
+        };
         
         KOKKOS_INLINE_FUNCTION
         Index nMax() const { return _crds.extent(0);} //return _nmax;}
@@ -32,58 +32,9 @@ template <int ndim, GeometryType geom> class Coords {
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n;}
         
-        KOKKOS_INLINE_FUNCTION
-        RealVec<ndim> getVec(const Index ind) const {
-            RealVec<ndim> result;
-            for (int j=0; j<ndim; ++j) {
-                result[j] = _crds(ind, j);
-            }
-            return result;
-        }
-        
-        void insert(const RealVec<ndim>& vec);
-        
-        KOKKOS_FUNCTION
-        Real distance(const Index inda, const Index indb) const {
-            const RealVec<ndim> veca = this->getVec(inda);
-            const RealVec<ndim> vecb = this->getVec(indb);
-            return veca.dist(vecb);
-        }
-        
-        KOKKOS_FUNCTION
-        RealVec<ndim> midpoint(const Index inda, const Index indb) const {
-            const RealVec<ndim> veca = this->getVec(inda);
-            const RealVec<ndim> vecb = this->getVec(indb);
-            return veca.midpoint(vecb);
-        }
-        
-        KOKKOS_FUNCTION
-        RealVec<ndim> barycenter(IndexArray inds) const {
-            view_type pts("bc_pts", inds.extent(0));
-            for (int i=0; i<inds.extent(0); ++i) {
-                for (int j=0; j<ndim; ++j) {
-                    pts(i,j) = _crds(inds(i), j);
-                }
-            }
-            return Lpm::barycenter<ndim>(pts);
-        }
-        
-        KOKKOS_FUNCTION
-        Real triArea(const Index inda, const Index indb, const Index indc) const {
-            const RealVec<ndim> veca = this->getVec(inda);
-            const RealVec<ndim> vecb = this->getVec(indb);
-            const RealVec<ndim> vecc = this->getVec(indc);
-            return Lpm::triArea(veca, vecb, vecc);
-        }
-        
-        KOKKOS_FUNCTION 
-        void initRandom(const Real max_range, const Int ss=0) {
-            Kokkos::parallel_for(this->_nmax, rand_crd_gen(_crds, max_range, ss));
-            _n = _nmax;
-        }
-        
     protected:
-        view_type _crds;
+        crd_view_type _crds;
+        typename crd_view_type::HostMirror _host_crds;
         Index _nmax;
         Index _n;
 };
@@ -93,7 +44,6 @@ struct rand_crd_gen {
     Real maxR;
     pool_type pool;
     
-    KOKKOS_FUNCTION
     rand_crd_gen(Kokkos::View<Real**> v, const Real max_range, const Int seed_start) : vals(v), maxR(max_range), pool(seed_start) {}
     
     KOKKOS_INLINE_FUNCTION
@@ -106,51 +56,11 @@ struct rand_crd_gen {
     }
 };
 
-
-/**
-    
-    Specializations for the sphere
-
-*/
-template <> KOKKOS_INLINE_FUNCTION
-Real Coords<3,SPHERICAL_SURFACE_GEOMETRY>::distance(const Index inda, const Index indb) const {
-    const RealVec<3> veca = this->getVec(inda);
-    const RealVec<3> vecb = this->getVec(indb);
-    return veca.sphereDist(vecb);
-}
-
-template <> KOKKOS_INLINE_FUNCTION
-RealVec<3> Coords<3,SPHERICAL_SURFACE_GEOMETRY>::midpoint(const Index inda, const Index indb) const {
-    const RealVec<3> veca = this->getVec(inda);
-    const RealVec<3> vecb = this->getVec(indb);
-    return veca.sphereMidpoint(vecb);
-}
-
-template <> KOKKOS_FUNCTION
-RealVec<3> Coords<3,SPHERICAL_SURFACE_GEOMETRY>::barycenter(IndexArray inds) const {
-    view_type pts("bc_pts", inds.extent(0));
-    for (int i=0; i<inds.extent(0); ++i) {
-        for (int j=0; j<3; ++j) {
-            pts(i,j) = _crds(inds(i), j);
-        }
-    }
-    return sphereBarycenter(pts);
-}
-
-template <> KOKKOS_FUNCTION
-Real Coords<3,SPHERICAL_SURFACE_GEOMETRY>::triArea(const Index inda, const Index indb, const Index indc) const {
-    const RealVec<3> veca = this->getVec(inda);
-    const RealVec<3> vecb = this->getVec(indb);
-    const RealVec<3> vecc = this->getVec(indc);
-    return sphereTriArea(veca, vecb, vecc);
-}
-
 struct rand_crd_gen_sphere {
     Kokkos::View<Real*[3]> vals;
     Real radius;
     pool_type pool;
     
-    KOKKOS_FUNCTION
     rand_crd_gen_sphere(Kokkos::View<Real*[3]> v, const Real r, const Int seed_start) : vals(v), radius(r), pool(seed_start) {}
     
     KOKKOS_INLINE_FUNCTION
@@ -168,14 +78,6 @@ struct rand_crd_gen_sphere {
         pool.free_state(rgen);
     }
 };
-
-
-template <> KOKKOS_FUNCTION
-void Coords<3, SPHERICAL_SURFACE_GEOMETRY>::initRandom(const Real r, const Int ss) {
-    Kokkos::parallel_for(this->_nmax, rand_crd_gen_sphere(this->_crds, r, ss));
-    this->_n = this->_nmax;
-}
-
 
 
 }
