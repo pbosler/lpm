@@ -2,7 +2,7 @@
 #define LPM_COORDS_HPP
 
 #include "LpmConfig.h"
-#include "LpmTypeDefs.hpp"
+#include "LpmDefs.hpp"
 #include "LpmUtilities.hpp"
 #include "LpmGeometry.hpp"
 
