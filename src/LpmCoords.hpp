@@ -21,6 +21,7 @@ struct rand_crd_gen_sphere;
 template <typename Geo> class Coords {
     public:
         typedef Kokkos::View<Real*[Geo::ndim]> crd_view_type;
+        typedef Kokkos::View<Real[Geo::ndim]> vec_type;
     
         Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n(0) {
             _host_crds = ko::create_mirror_view(_crds);
@@ -32,6 +33,38 @@ template <typename Geo> class Coords {
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n;}
         
+        KOKKOS_INLINE_FUNCTION
+        vec_type getVec(const Index ia) const {
+            vec_type result;
+            for (int j=0; j<Geo::ndim; ++j) 
+                result(j) = _crds(ia, j);
+            return result;
+        }
+        
+        KOKKOS_INLINE_FUNCTION
+        Real dist(const Index ia, const Index ib) const {
+            vec_type a = this->getVec(ia);
+            vec_type b = this->getVec(ib);
+            return Geo::distance(a, b);
+        }
+        
+        void updateDevice() {
+            ko::deep_copy(_crds, _host_crds);
+        }
+        
+        void updateHost() {
+            ko::deep_copy(_host_crds, _crds);
+        }
+        
+        template <typename CV>
+        void insertHost(const CV v) {
+        // never insert on device
+            for (int i=0; i<Geo::ndim; ++i) 
+                _host_crds(_n, i) = v[i];
+            _n += 1;
+        }
+        
+                
     protected:
         crd_view_type _crds;
         typename crd_view_type::HostMirror _host_crds;
