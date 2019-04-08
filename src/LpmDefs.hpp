@@ -130,7 +130,13 @@ static constexpr Real SIDEREAL_DAY_SEC = 24.0 * 3600.0;
 static constexpr Real EARTH_OMEGA_HZ = 2.0 * PI / SIDEREAL_DAY_SEC;
 
 /// Floating point zero
-static constexpr Real ZERO_TOL = 1.0e-13;
+static constexpr Real ZERO_TOL = 1.0e-14;
+
+/// Null index
+static constexpr Index NULL_IND = -1;
+
+/// Lock Index
+static constexpr Index LOCK_IND = -2;
 
 /// Supported geometries
 enum GeometryType {PLANAR_GEOMETRY, SPHERICAL_SURFACE_GEOMETRY};

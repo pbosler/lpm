@@ -165,9 +165,9 @@ struct SphereGeometry {
     static void barycenter(V v, const CV& cv, const Int n) {
         setzero(v);
         for (int i=0; i<n; ++i) {
-            v(0) += cv(i,0);
-            v(1) += cv(i,1);
-            v(2) += cv(i,2);
+            v[0] += cv(i,0);
+            v[1] += cv(i,1);
+            v[2] += cv(i,2);
         }
         scale(1.0/n, v);
         normalize(v);
@@ -175,9 +175,9 @@ struct SphereGeometry {
     
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void midpoint(V v, const CV& a, const CV2& b) {
-        v(0) = 0.5*(a[0] + b[0]);
-        v(1) = 0.5*(a[1] + b[1]);
-        v(2) = 0.5*(a[2] + b[2]);
+        v[0] = 0.5*(a[0] + b[0]);
+        v[1] = 0.5*(a[1] + b[1]);
+        v[2] = 0.5*(a[2] + b[2]);
         normalize(v);
     }
     

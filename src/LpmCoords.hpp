@@ -8,30 +8,40 @@
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
-#include "Kokkos_Random.hpp"
 
 namespace Lpm {
 
-typedef Kokkos::Random_XorShift64_Pool<> pool_type;
-typedef typename pool_type::generator_type generator_type;
-
-struct rand_crd_gen;
-struct rand_crd_gen_sphere;
-
+/**
+    All initialization is done on host.
+*/
 template <typename Geo> class Coords {
     public:
-        typedef Kokkos::View<Real*[Geo::ndim]> crd_view_type;
-        typedef Kokkos::View<Real[Geo::ndim]> vec_type;
+        typedef ko::View<Real*[Geo::ndim]> crd_view_type;
+        typedef ko::View<Real[Geo::ndim]> vec_type;
+#ifdef HAVE_CUDA
+        typedef ko::View<Real*, ko::LayoutStride,
+            typename crd_view_type::device_type, ko::MemoryTraits<ko::Unmanaged>> slice_type;
+        typedef ko::View<const Real*, ko::LayoutStride,
+            typename crd_view_type::device_type, ko::MemoryTraits<ko::Unmanaged>> const_slice_type;
+#else
+        typedef typename crd_view_type::value_type* slice_type;
+        typedef typename crd_view_type::const_value_type* const_slice_type;
+#endif        
     
-        Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n(0) {
+        Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n("n") {
             _host_crds = ko::create_mirror_view(_crds);
+            _nh = ko::create_mirror_view(_n);
+            _nh(0) = 0;
         };
         
-        KOKKOS_INLINE_FUNCTION
+        /// Host function
         Index nMax() const { return _crds.extent(0);} //return _nmax;}
         
         KOKKOS_INLINE_FUNCTION
-        Index n() const {return _n;}
+        Index n() const {return _n(0);}
+        
+        /// Host function
+        Index nh() const {return _nh(0);}
         
         KOKKOS_INLINE_FUNCTION
         vec_type getVec(const Index ia) const {
@@ -42,74 +52,41 @@ template <typename Geo> class Coords {
         }
         
         KOKKOS_INLINE_FUNCTION
-        Real dist(const Index ia, const Index ib) const {
-            vec_type a = this->getVec(ia);
-            vec_type b = this->getVec(ib);
-            return Geo::distance(a, b);
-        }
+        slice_type getSlice(const Index ia) {return slice(_crds, ia);}
         
+        KOKKOS_INLINE_FUNCTION
+        const_slice_type getConstSlice(const Index ia) const {return const_slice(_crds, ia);}
+
         void updateDevice() {
             ko::deep_copy(_crds, _host_crds);
+            ko::deep_copy(_n, _nh);
         }
         
         void updateHost() {
             ko::deep_copy(_host_crds, _crds);
+            ko::deep_copy(_nh, _n);
         }
         
-        template <typename CV>
-        void insertHost(const CV v) {
-        // never insert on device
-            for (int i=0; i<Geo::ndim; ++i) 
-                _host_crds(_n, i) = v[i];
-            _n += 1;
+        /// Host function
+        template <typename CV> void insertHost(const CV v) {
+            for (int i=0; i<Geo::ndim; ++i) {
+                _host_crds(_nh(0), i) = v[i];
+            }
+            _nh(0) += 1;
         }
         
+        /// Host function
+        void printcrds(const std::string& label) const;
+        
+        /// Host function
+        void initRandom(const Real max_range=1.0, const Int ss=0);
                 
     protected:
         crd_view_type _crds;
         typename crd_view_type::HostMirror _host_crds;
         Index _nmax;
-        Index _n;
-};
-
-struct rand_crd_gen { 
-    Kokkos::View<Real**> vals;
-    Real maxR;
-    pool_type pool;
-    
-    rand_crd_gen(Kokkos::View<Real**> v, const Real max_range, const Int seed_start) : vals(v), maxR(max_range), pool(seed_start) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator () (Index i) const {
-        generator_type rgen = pool.get_state();
-        for (int j=0; j<vals.extent(1); ++j) {
-            vals(i,j) = rgen.drand(maxR);
-        }
-        pool.free_state(rgen);
-    }
-};
-
-struct rand_crd_gen_sphere {
-    Kokkos::View<Real*[3]> vals;
-    Real radius;
-    pool_type pool;
-    
-    rand_crd_gen_sphere(Kokkos::View<Real*[3]> v, const Real r, const Int seed_start) : vals(v), radius(r), pool(seed_start) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (Index i) const {
-        generator_type rgen = pool.get_state();
-        Real u = rgen.drand(-1.0, 1.0);
-        Real v = rgen.drand(-1.0, 1.0);
-        while (u*u + v*v > 1.0) {
-            u = rgen.drand(-1.0, 1.0);
-            v = rgen.drand(-1.0, 1.0);
-        }
-        vals(i,0) = radius * (2.0 * u * std::sqrt(1 - u*u - v*v));
-        vals(i,1) = radius * (2.0 * v * std::sqrt(1 - u*u - v*v));
-        vals(i,2) = radius * (1.0 - 2.0*(u*u + v*v));
-        pool.free_state(rgen);
-    }
+        Kokkos::View<Index> _n;
+        Kokkos::View<Index>::HostMirror _nh;
 };
 
 
