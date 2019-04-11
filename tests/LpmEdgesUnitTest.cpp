@@ -50,11 +50,12 @@ ko::initialize(argc, argv);
     sc4.printcrds("sc4.divide(0)");
     edges.printedges("edges after divide");
 
-    std::cout << "edge 0 is divided = " << (edges.hasKids(0) ? "true" : "false") << std::endl;
-    LPM_THROW_IF(!edges.hasKids(0), "edge divide error.");
-    std::cout << "edge 1 is divided = " << (edges.hasKids(1) ? "true" : "false") << std::endl;
-    LPM_THROW_IF(edges.hasKids(1), "the impossible happened.");
-
+    std::cout << "edge 0 is divided = " << (edges.hasKidsHost(0) ? "true" : "false") << std::endl;
+    LPM_THROW_IF(!edges.hasKidsHost(0), "edge divide error.");
+    std::cout << "edge 1 is divided = " << (edges.hasKidsHost(1) ? "true" : "false") << std::endl;
+    LPM_THROW_IF(edges.hasKidsHost(1), "the impossible happened.");
+    std::cout << "edge 5 is divided = " << (edges.hasKidsHost(5) ? "true" : "false") << std::endl;
+    LPM_THROW_IF(edges.hasKidsHost(5), "the impossible happened.");
 
 
     edges.updateDevice();

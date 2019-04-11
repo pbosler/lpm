@@ -95,10 +95,10 @@ class Edges {
         bool onBoundary(const Index ind) const {return _lefts(ind) == NULL_IND || _rights(ind) == NULL_IND;}
         
         KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return _kids(ind, 0) >= 0;}
+        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
         
         inline bool onBoundaryHost(const Index ind) const {return _hl(ind) == NULL_IND || _hr(ind) == NULL_IND;}
-        inline bool hasKidsHost(const Index ind) const {return _hk(ind, 0) >= 0;}
+        inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hk(ind, 0) >= 0;}
     
     protected:
         edge_view_type _origs;
