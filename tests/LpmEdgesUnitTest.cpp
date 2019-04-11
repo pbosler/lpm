@@ -45,7 +45,11 @@ ko::initialize(argc, argv);
     std::cout << "Edges: edges.nh() = " << edges.nh() << ", edges.nmax() = " << edges.nmax() << std::endl;
     edges.printedges("edges init");
     
+    std::cout << "calling divide." << std::endl;
     edges.divide<SphereGeometry>(0, sc4, sc4lag);
+    edges.updateDevice();
+    sc4.updateDevice();
+    sc4lag.updateDevice();
     std::cout << "Edges: edges.nh() = " << edges.nh() << ", edges.nmax() = " << edges.nmax() << std::endl;
     sc4.printcrds("sc4.divide(0)");
     edges.printedges("edges after divide");
@@ -58,7 +62,7 @@ ko::initialize(argc, argv);
     LPM_THROW_IF(edges.hasKidsHost(5), "the impossible happened.");
 
 
-    edges.updateDevice();
+    
 }
 ko::finalize();
 return 0;

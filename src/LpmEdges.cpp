@@ -11,14 +11,14 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
     // determine edge midpoints
     Real midpt[Geo::ndim];
     Real lagmidpt[Geo::ndim];
-    Geo::midpoint(midpt, crds.getSlice(_ho(ind)), crds.getSlice(_hd(ind)));
-    Geo::midpoint(lagmidpt, lagcrds.getSlice(_ho(ind)), lagcrds.getSlice(_hd(ind)));
+    Geo::midpoint(midpt, crds.getSliceHost(_ho(ind)), crds.getSliceHost(_hd(ind)));
+    Geo::midpoint(lagmidpt, lagcrds.getSliceHost(_ho(ind)), lagcrds.getSliceHost(_hd(ind)));
     // insert new midpoint to Coords 
     crds.insertHost(midpt);
     lagcrds.insertHost(lagmidpt);
     // insert new child edges
-    insertHost(_ho(ind), crd_ins_pt, _lefts(ind), _rights(ind), ind);
-    insertHost(crd_ins_pt, _hd(ind), _lefts(ind), _rights(ind), ind);
+    insertHost(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
+    insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
     _hk(ind,0) = edge_ins_pt;
     _hk(ind,1) = edge_ins_pt+1;    
 }

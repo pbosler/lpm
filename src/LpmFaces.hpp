@@ -87,7 +87,7 @@ template <typename FaceKind> class Faces {
         
         /// Host function
         template <typename Geo>
-        void divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds, Edges& edges) {};
+        void divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds, Edges& edges) {}
         
         /// Host function
         inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hostkids(ind, 0) >= 0;}
