@@ -77,11 +77,19 @@ class Edges {
             _hr(ind) = newright;
         }
             
-        KOKKOS_INLINE_FUNCTION Index getOrig(const Index ind) const {return _ho(ind);}
-        KOKKOS_INLINE_FUNCTION Index getDest(const Index ind) const {return _hd(ind);}
-        KOKKOS_INLINE_FUNCTION Index getLeft(const Index ind) const {return _hl(ind);}
-        KOKKOS_INLINE_FUNCTION Index getRight(const Index ind) const {return _hr(ind);}
+        KOKKOS_INLINE_FUNCTION Index getOrig(const Index ind) const {return _origs(ind);}
+        KOKKOS_INLINE_FUNCTION Index getDest(const Index ind) const {return _dests(ind);}
+        KOKKOS_INLINE_FUNCTION Index getLeft(const Index ind) const {return _lefts(ind);}
+        KOKKOS_INLINE_FUNCTION Index getRight(const Index ind) const {return _rights(ind);}
+        KOKKOS_INLINE_FUNCTION
+        bool onBoundary(const Index ind) const {return _lefts(ind) == NULL_IND || 
+            _rights(ind) == NULL_IND;}
         
+        KOKKOS_INLINE_FUNCTION
+        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
+        
+        
+        /// Host function
         template <typename V>
         inline void getKidsHost(V& v, const Index ind) const {
             v[0] = _hk(ind,0);
@@ -91,13 +99,16 @@ class Edges {
         /// Host function
         void printedges(const std::string& label) const;
         
-        KOKKOS_INLINE_FUNCTION
-        bool onBoundary(const Index ind) const {return _lefts(ind) == NULL_IND || _rights(ind) == NULL_IND;}
+        /// Host functions
+        inline Index getOrigHost(const Index ind) const {return _ho(ind);}
+        inline Index getDestHost(const Index ind) const {return _hd(ind);}
+        inline Index getLeftHost(const Index ind) const {return _hl(ind);}
+        inline Index getRightHost(const Index ind) const {return _hr(ind);}
         
-        KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
-        
+        /// Host function
         inline bool onBoundaryHost(const Index ind) const {return _hl(ind) == NULL_IND || _hr(ind) == NULL_IND;}
+        
+        /// Host function
         inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hk(ind, 0) >= 0;}
     
     protected:

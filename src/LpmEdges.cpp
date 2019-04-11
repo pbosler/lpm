@@ -4,6 +4,8 @@
 namespace Lpm {
 
 template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds) {
+    LPM_THROW_IF(_nh(0) + 2 > _nmax, "Edges::divide error: not enough memory.");
+    LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
     // record beginning state
     const Index crd_ins_pt = crds.nh();
     const Index edge_ins_pt = _nh(0);

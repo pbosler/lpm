@@ -71,6 +71,7 @@ template <typename Geo> class Coords {
         
         /// Host function
         template <typename CV> void insertHost(const CV v) {
+            LPM_THROW_IF(_nmax < _nh(0) + 1, "Coords::insert error: not enough memory.");
             for (int i=0; i<Geo::ndim; ++i) {
                 _host_crds(_nh(0), i) = v[i];
             }

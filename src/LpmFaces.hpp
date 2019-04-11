@@ -21,7 +21,6 @@ struct QuadFace {
     static constexpr Int nverts = 4;
 };
 
-
 /** All initialization / changes occur on host.  Device arrays are const.
 
 */
@@ -39,9 +38,15 @@ template <typename FaceKind> class Faces {
             ko::MemoryTraits<ko::Unmanaged>> ind_slice;
         typedef ko::View<const Index*, ko::LayoutStride, typename vertex_view_type::device_type,
             ko::MemoryTraits<ko::Unmanaged>> const_ind_slice;
+        typedef ko::View<Index*, ko::LayoutStride, typename vertex_view_type::host_mirror_space,
+            ko::MemoryTraits<ko::Unmanaged>> host_ind_slice;
+        typedef ko::View<const Index*, ko::LayoutStride, typename vertex_view_type::host_mirror_space,
+            ko::MemoryTraits<ko::Unmanaged>> const_host_ind_slice;
 #else
         typedef typename vertex_view_type::value_type* ind_slice;
         typedef typename vertex_view_type::const_value_type* const_ind_slice;
+        typedef ind_slice host_ind_slice;
+        typedef const_ind_slice const_host_ind_slice;
 #endif 
 
         Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax),
@@ -73,27 +78,36 @@ template <typename FaceKind> class Faces {
         KOKKOS_INLINE_FUNCTION
         const_ind_slice getConstEdges(const Index ind) const {return const_slice(_edges, ind);}
         
-        /// Host function
-        inline Index nMax() const {return _verts.extent(0);}
-        
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n(0);}
+        
+        KOKKOS_INLINE_FUNCTION
+        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
+        
+        /// Host function
+        inline Index nMax() const {return _verts.extent(0);}
         
         /// Host function
         inline Index nh() const {return _nh(0);}
         
         /// Host function
         void insertHost(const ind_slice& vertinds, const ind_slice& edgeinds);
-        
-        /// Host function
-        template <typename Geo>
-        void divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds, Edges& edges) {}
-        
+
         /// Host function
         inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hostkids(ind, 0) >= 0;}
         
-        KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
+        /// Host function
+        host_ind_slice getVertsHost(const Index ind) {return slice(_hostverts, ind);}
+        const_host_ind_slice getConstVertsHost(const Index ind) const {return const_slice(_hostverts, ind);}
+
+        /// Host function
+        host_ind_slice getEdgesHost(const Index ind) {return slice(_hostedges, ind);}
+        const_host_ind_slice getConstEdgesHost(const Index ind) const {return const_slice(_hostedges, ind);}
+        
+        /// Host function
+        inline bool edgeHasPositiveOrientation(const Index faceInd, const Int relEdgeInd, const Edges& edges) const { 
+            return faceInd == edges.getLeftHost(_hostedges(faceInd, relEdgeInd));
+        }
         
     protected:
         vertex_view_type _verts;
@@ -111,6 +125,17 @@ template <typename FaceKind> class Faces {
         Index _nmax;
 };
 
+template <typename Geo, typename FaceKind> struct FaceDivider {
+    void divide(const Index faceInd, Faces<FaceKind>& faces, Edges& edges, Coords<Geo>& crds, Coords<Geo>& lagcrds) const {}
+};
+
+template <typename Geo> struct FaceDivider<Geo, TriFace> {
+    void divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, Coords<Geo>& crds, Coords<Geo>& lagcrds) const;
+};
+
+template <typename Geo> struct FaceDivider<Geo, QuadFace> {
+    void divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges, Coords<Geo>& crds, Coords<Geo>& lagcrds) const {}
+};
 
 }
 #endif
