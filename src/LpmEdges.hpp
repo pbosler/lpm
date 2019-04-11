@@ -88,6 +88,9 @@ class Edges {
             v[1] = _hk(ind,1);
         }
         
+        /// Host function
+        void printedges(const std::string& label) const;
+        
         KOKKOS_INLINE_FUNCTION
         bool onBoundary(const Index ind) const {return _lefts(ind) == NULL_IND || _rights(ind) == NULL_IND;}
         

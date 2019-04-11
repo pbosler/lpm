@@ -6,7 +6,7 @@ namespace Lpm {
 template <typename Geo> void Coords<Geo>::printcrds(const std::string& label) const {
     std::ostringstream oss;
     for (Index i=0; i<_nmax; ++i) {
-        oss << label << "(" << i << ") : ";
+        oss << label << ": (" << i << ") : ";
         std::cout << oss.str();
         for (Int j=0; j<Geo::ndim; ++j) 
             std::cout << _host_crds(i,j) << " ";
@@ -48,6 +48,8 @@ template <> void Coords<SphereGeometry>::initRandom(const Real max_range, const 
     updateDevice();
 }
 
+
+/// ETI
 template class Coords<PlaneGeometry>;
 template class Coords<SphereGeometry>;
 
