@@ -49,13 +49,16 @@ template <typename FaceKind> class Faces {
 #endif
 
         Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax),
-            _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax) {
+            _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax), _nActive("nActive") {
             _hostverts = ko::create_mirror_view(_verts);
             _hostedges = ko::create_mirror_view(_edges);
             _hostparent = ko::create_mirror_view(_parent);
             _hostkids = ko::create_mirror_view(_kids);
             _nh = ko::create_mirror_view(_n);
             _hostarea = ko::create_mirror_view(_area);
+            _hnActive = ko::create_mirror_view(_nActive);
+            _nh(0) = 0;
+            _hnActive(0) = 0;
         }
         
         void updateDevice() {
@@ -66,6 +69,7 @@ template <typename FaceKind> class Faces {
             ko::deep_copy(_kids, _hostkids);
             ko::deep_copy(_area, _hostarea);
             ko::deep_copy(_n, _nh);
+            ko::deep_copy(_nActive, _hnActive);
         }
         
         void updateHost() {
@@ -97,7 +101,7 @@ template <typename FaceKind> class Faces {
         inline Index nh() const {return _nh(0);}
         
         /// Host function
-        void insertHost(const Index ctr_ind, const Index* vertinds, const Index* edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
+        void insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
         
         /// Host function
         void setKids(const Index parent, const Index* kids);
@@ -130,6 +134,9 @@ template <typename FaceKind> class Faces {
         /// Host function
         inline void setAreaHost(const Index ind, const Real ar) {_hostarea(ind)= ar;}
         
+        /// Host function
+        inline void decrementNActive() {_hnActive(0) -= 1;}
+        
     protected:
         vertex_view_type _verts;  /// indices to Coords<Geo> on face edges
         edge_view_type _edges; /// indices to Edges
@@ -137,6 +144,7 @@ template <typename FaceKind> class Faces {
         index_view _parent; /// indices to Faces<FaceKind>
         face_tree_view _kids; /// indices to Faces<FaceKind>
         ko::View<Index> _n; /// number of Faces currently defined
+        ko::View<Index> _nActive; /// number of leaf Faces
         scalar_view _area; /// Areas of each face
         
         host_vertex_view _hostverts;
@@ -145,27 +153,28 @@ template <typename FaceKind> class Faces {
         host_index_view _hostparent;
         face_tree_host _hostkids;
         ko::View<Index>::HostMirror _nh;
+        ko::View<Index>::HostMirror _hnActive;
         host_scalar _hostarea;
         
         Index _nmax;
 };
 
 template <typename Geo, typename FaceKind> struct FaceDivider {
-    void divide(const Index faceInd, Faces<FaceKind>& faces, Edges& edges, 
+    static void divide(const Index faceInd, Faces<FaceKind>& faces, Edges& edges, 
         Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) const {}
+        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {}
 };
 
 template <typename Geo> struct FaceDivider<Geo, TriFace> {
-    void divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, 
+    static void divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, 
         Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) const;
+        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) ;
 };
 
 template <typename Geo> struct FaceDivider<Geo, QuadFace> {
-    void divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges, 
+    static void divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges, 
         Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) const {}
+        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {}
 };
 
 }

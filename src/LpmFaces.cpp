@@ -3,12 +3,12 @@
 namespace Lpm {
 
 template <typename FaceKind>
-void Faces<FaceKind>::insertHost(const Index ctr_ind, const Index* vertinds, const Index* edgeinds, const Index prt, const Real ar) {
+void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt, const Real ar) {
     LPM_THROW_IF(_nh(0)+1 > _nmax, "Faces::insert error: not enough memory.");
     const Index ins = _nh(0);
     for (int i=0; i<FaceKind::nverts; ++i) {
-        _hostverts(ins, i) = vertinds[i];
-        _hostedges(ins, i) = edgeinds[i];
+        _hostverts(ins, i) = vertinds(i);
+        _hostedges(ins, i) = edgeinds(i);
     }
     for (int i=0; i<4; ++i) {
         _hostkids(ins, i) = NULL_IND;
@@ -17,6 +17,7 @@ void Faces<FaceKind>::insertHost(const Index ctr_ind, const Index* vertinds, con
     _hostparent(ins) = prt;
     _hostarea(ins) = ar;
     _nh(0) += 1;
+    _hnActive(0) += 1;
 }
 
 template <typename FaceKind>
@@ -27,7 +28,7 @@ void Faces<FaceKind>::setKids(const Index parent, const Index* kids) {
 }
 
 template <typename Geo>
-void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) const {
+void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {
     LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
     LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
     
@@ -147,15 +148,17 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     for (int i=0; i<3; ++i) {
         intr_crds.insertHost(slice(faceCrds,i));
         intr_lagcrds.insertHost(slice(faceLagCrds,i));
-        faces.insertHost(crd_ins_pt+i, slice(newFaceVertInds,i), slice(newFaceEdgeInds, i), faceInd, faceArea(i));
+        faces.insertHost(crd_ins_pt+i, ko::subview(newFaceVertInds,i, ko::ALL()), ko::subview(newFaceEdgeInds, i, ko::ALL()), faceInd, faceArea(i));
     }
     /// special case for child 3: reuse center particle memory
     const Index ctr_ind = faces.getCenterIndHost(faceInd);
     intr_crds.relocateHost(ctr_ind, ko::subview(faceCrds,3, ko::ALL()));
     intr_lagcrds.relocateHost(ctr_ind, ko::subview(faceLagCrds,3, ko::ALL()));
-    faces.insertHost(ctr_ind, slice(newFaceVertInds, 3), slice(newFaceEdgeInds,3), faceInd, faceArea(3));
+    faces.insertHost(ctr_ind, ko::subview(newFaceVertInds, 3, ko::ALL()), ko::subview(newFaceEdgeInds,3,ko::ALL()), faceInd, faceArea(3));
     
     faces.setKidsHost(faceInd, newFaceKids);
+    faces.setAreaHost(faceInd, 0.0);
+    faces.decrementNActive();
 }
 
 
