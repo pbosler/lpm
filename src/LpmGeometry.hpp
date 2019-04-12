@@ -45,8 +45,8 @@ struct PlaneGeometry {
         return mag(bma);
     }
     
-    template <typename CV> KOKKOS_INLINE_FUNCTION
-    static Real triArea(const CV& va, const CV& vb, const CV& vc) {
+    template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+    static Real triArea(const CV& va, const CV2& vb, const CV2& vc) {
         Real bma[2], cma[2];
         bma[0] = vb[0] - va[0];
         bma[1] = vb[1] - va[1];

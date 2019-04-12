@@ -77,14 +77,6 @@ template <int ndim> using ConstVecArr = ko::View<const Real*[ndim], Layout>;
 typedef ko::View<Index*, Layout> Idxs;
 typedef ko::View<const Index*, Layout> ConstIdxs;
 
-/// choose host or device version of an array
-template <typename ViewType, typename ExeSpace> struct InExeSpace {
-    typedef ViewType type;
-};
-
-template <typename ViewType> struct InExeSpace<ViewType, ko::HostSpace> {
-    typedef typename ViewType::HostMirror type;
-};
 /// copy array contents
 template<typename ViewType, typename ConstViewType>
 KOKKOS_INLINE_FUNCTION
@@ -92,6 +84,18 @@ static void copy(ViewType dst, ConstViewType src, const Int n) {
     for (Int i=0; i<n; ++i)
         dst[i] = src[i];
 }
+
+/// Execution spaces
+typedef ko::DefaultExecutionSpace DevExe;
+typedef ko::HostSpace::execution_space HostExe;
+
+/// Memory spaces
+typedef ko::DefaultExecutionSpace::memory_space DevMem;
+typedef ko::HostSpace HostMem;
+
+/// Devices
+typedef ko::Device<DevExe, DevMem> Dev;
+typedef ko::Device<HostExe, HostMem> Host;
 
 #ifdef HAVE_CUDA
 /// 1d slice of an array

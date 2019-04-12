@@ -69,6 +69,11 @@ template <typename Geo> class Coords {
             ko::deep_copy(_nh, _n);
         }
         
+        KOKKOS_INLINE_FUNCTION
+        Real getCrdComponent(const Index ind, const Int dim) const {return _crds(ind, dim);}
+        
+        inline Real getCrdComponentHost(const Index ind, const Int dim) const {return _host_crds(ind, dim);}
+        
         /// Host function
         template <typename CV> void insertHost(const CV v) {
             LPM_THROW_IF(_nmax < _nh(0) + 1, "Coords::insert error: not enough memory.");
@@ -76,6 +81,12 @@ template <typename Geo> class Coords {
                 _host_crds(_nh(0), i) = v[i];
             }
             _nh(0) += 1;
+        }
+        
+        void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
+            for (int i=0; i<Geo::ndim; ++i) {
+                _host_crds(ind, i) = v(i);
+            }
         }
         
         /// Host function
