@@ -32,6 +32,8 @@ template <typename FaceKind> class Faces {
         typedef typename face_tree_view::HostMirror face_tree_host;
         typedef ko::View<Index*> index_view;
         typedef typename index_view::HostMirror host_index_view;
+        typedef ko::View<Real*> scalar_view;
+        typedef typename scalar_view::HostMirror host_scalar;
 
 #ifdef HAVE_CUDA
         typedef ko::View<Index*, ko::LayoutStride, typename vertex_view_type::device_type,
@@ -50,12 +52,13 @@ template <typename FaceKind> class Faces {
 #endif 
 
         Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax),
-            _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax) {
+            _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax) {
             _hostverts = ko::create_mirror_view(_verts);
             _hostedges = ko::create_mirror_view(_edges);
             _hostparent = ko::create_mirror_view(_parent);
             _hostkids = ko::create_mirror_view(_kids);
             _nh = ko::create_mirror_view(_n);
+            _hostarea = ko::create_mirror_view(_area);
         }
         
         void updateDevice() {
@@ -63,7 +66,12 @@ template <typename FaceKind> class Faces {
             ko::deep_copy(_edges, _hostedges);
             ko::deep_copy(_parent, _hostparent);
             ko::deep_copy(_kids, _hostkids);
+            ko::deep_copy(_area, _hostarea);
             ko::deep_copy(_n, _nh);
+        }
+        
+        void updateHost() {
+            ko::deep_copy(_hostarea, _area);
         }
         
         KOKKOS_INLINE_FUNCTION
@@ -84,6 +92,9 @@ template <typename FaceKind> class Faces {
         KOKKOS_INLINE_FUNCTION
         bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
         
+        KOKKOS_INLINE_FUNCTION
+        void setArea(const Index ind, const Real ar) {_area(ind) = ar;}
+        
         /// Host function
         inline Index nMax() const {return _verts.extent(0);}
         
@@ -91,7 +102,10 @@ template <typename FaceKind> class Faces {
         inline Index nh() const {return _nh(0);}
         
         /// Host function
-        void insertHost(const ind_slice& vertinds, const ind_slice& edgeinds);
+        void insertHost(const Index* vertinds, const Index* edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
+        
+        /// Host function
+        void setKids(const Index parent, const Index* kids);
 
         /// Host function
         inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hostkids(ind, 0) >= 0;}
@@ -109,18 +123,23 @@ template <typename FaceKind> class Faces {
             return faceInd == edges.getLeftHost(_hostedges(faceInd, relEdgeInd));
         }
         
+        /// Host function
+        inline void setAreaHost(const Index ind, const Real ar) {_hostarea(ind)= ar;}
+        
     protected:
         vertex_view_type _verts;
         vertex_view_type _edges;
         index_view _parent;
         face_tree_view _kids;
         ko::View<Index> _n;
+        scalar_view _area;
         
         host_vertex_view _hostverts;
         host_vertex_view _hostedges;
         host_index_view _hostparent;
         face_tree_host _hostkids;
         ko::View<Index>::HostMirror _nh;
+        host_scalar _hostarea;
         
         Index _nmax;
 };
