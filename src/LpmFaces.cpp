@@ -156,6 +156,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     intr_lagcrds.relocateHost(ctr_ind, ko::subview(faceLagCrds,3, ko::ALL()));
     faces.insertHost(ctr_ind, ko::subview(newFaceVertInds, 3, ko::ALL()), ko::subview(newFaceEdgeInds,3,ko::ALL()), faceInd, faceArea(3));
     
+    /// Remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
     faces.decrementNActive();
