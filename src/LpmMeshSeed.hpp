@@ -1,11 +1,9 @@
-#ifndef LPM_SEED_READER_HPP
-#define LPM_SEED_READER_HPP
+#ifndef LPM_MESH_SEED_HPP
+#define LPM_MESH_SEED_HPP
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmUtilities.hpp"
 #include "LpmGeometry.hpp"
-#include "LpmCoords.hpp"
-#include "LpmEdges.hpp"
 #include <string>
 
 #include "Kokkos_Core.hpp"
@@ -65,7 +63,7 @@ struct IcosTriSphereSeed {
     static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
 };
 
-template <typename SeedType> struct SeedReader {
+template <typename SeedType> struct MeshSeed {
     static constexpr Int ncrds = SeedType::nverts + SeedType::nfaces;
     
     ko::View<Real[ncrds][SeedType::geo::ndim],Host> scrds;
@@ -73,7 +71,7 @@ template <typename SeedType> struct SeedReader {
     ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceverts;
     ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceedges;
     
-    SeedReader() : scrds("seed coords"), sedges("seed edges"), sfaceverts("seed face vertices"), 
+    MeshSeed() : scrds("seed coords"), sedges("seed edges"), sfaceverts("seed face vertices"), 
         sfaceedges("seed face edges") {readfile();}
     
     static std::string idString() {return SeedType::idString();}
@@ -85,6 +83,8 @@ template <typename SeedType> struct SeedReader {
     void setMaxAllocations(Index& nboundary, Index& nedges, Index& nfaces, const Int lev) const;
     
     std::string infoString() const;
+    
+    Real faceArea(const Int ind) const;
 };
 
 }

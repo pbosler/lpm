@@ -7,6 +7,7 @@
 #include "LpmGeometry.hpp"
 #include "LpmCoords.hpp"
 #include "LpmEdges.hpp"
+#include "LpmMeshSeed.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
@@ -48,10 +49,11 @@ template <typename FaceKind> class Faces {
         typedef host_vert_inds host_edge_inds;
 #endif
 
-        Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax),
+        Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax), _centers("centers",nmax),
             _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax), _nActive("nActive") {
             _hostverts = ko::create_mirror_view(_verts);
             _hostedges = ko::create_mirror_view(_edges);
+            _hostcenters = ko::create_mirror_view(_centers);
             _hostparent = ko::create_mirror_view(_parent);
             _hostkids = ko::create_mirror_view(_kids);
             _nh = ko::create_mirror_view(_n);
@@ -118,10 +120,10 @@ template <typename FaceKind> class Faces {
         }
         
         /// Host function
-        host_vert_inds getVertsHost(const Index ind) const {return slice(_hostverts, ind);}
+        Index getVertHost(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
 
         /// Host function
-        host_edge_inds getEdgesHost(const Index ind) const {return slice(_hostedges, ind);}
+        Index getEdgeHost(const Index ind, const Int relInd) const {return _hostedges(ind, relInd);}
         
         /// Host function
         inline Index getCenterIndHost(const Index ind) const {return _hostcenters(ind);}
@@ -136,6 +138,21 @@ template <typename FaceKind> class Faces {
         
         /// Host function
         inline void decrementNActive() {_hnActive(0) -= 1;}
+        
+        /// Host function
+        std::string infoString(const std::string& label) const;
+        
+        /// Host function
+        template <typename SeedType>
+        void initFromSeed(const MeshSeed<SeedType>& seed);
+        
+        /// Host function
+        Real surfAreaHost() const;
+        
+        /// Host function
+        template <typename Geo>
+        void divide(const Index ind, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
+            Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds);
         
     protected:
         vertex_view_type _verts;  /// indices to Coords<Geo> on face edges
@@ -174,7 +191,7 @@ template <typename Geo> struct FaceDivider<Geo, TriFace> {
 template <typename Geo> struct FaceDivider<Geo, QuadFace> {
     static void divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges, 
         Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {}
+        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds);
 };
 
 }

@@ -4,7 +4,7 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
-#include "LpmSeedReader.hpp"
+#include "LpmMeshSeed.hpp"
 
 using namespace Lpm;
 
@@ -22,7 +22,7 @@ ko::initialize(argc, argv);
     Index nmax_faces;
     Index nmax_edges;
 
-    SeedReader<QuadRectSeed> qrseed;
+    MeshSeed<QuadRectSeed> qrseed;
     std::cout << qrseed.infoString();
     std::cout << qrseed.idString() << " memory requirements" << std::endl;
     std::cout << MEM_HEADER;
@@ -31,7 +31,7 @@ ko::initialize(argc, argv);
         std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
     }
     
-    SeedReader<TriHexSeed> thseed;
+    MeshSeed<TriHexSeed> thseed;
     std::cout << thseed.infoString();
     std::cout << thseed.idString() << " memory requirements" << std::endl;
     std::cout << MEM_HEADER;
@@ -41,7 +41,7 @@ ko::initialize(argc, argv);
     }
 
     
-    SeedReader<CubedSphereSeed> csseed;
+    MeshSeed<CubedSphereSeed> csseed;
     std::cout << csseed.infoString();
     std::cout << csseed.idString() << " memory requirements" << std::endl;
     std::cout << MEM_HEADER;
@@ -51,7 +51,7 @@ ko::initialize(argc, argv);
     }
 
     
-    SeedReader<IcosTriSphereSeed> icseed;
+    MeshSeed<IcosTriSphereSeed> icseed;
     std::cout << icseed.infoString();
     std::cout << icseed.idString() << " memory requirements" << std::endl;
     std::cout << MEM_HEADER;

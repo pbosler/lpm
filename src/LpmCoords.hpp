@@ -5,7 +5,7 @@
 #include "LpmDefs.hpp"
 #include "LpmUtilities.hpp"
 #include "LpmGeometry.hpp"
-
+#include "LpmMeshSeed.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 
@@ -90,10 +90,17 @@ template <typename Geo> class Coords {
         }
         
         /// Host function
-        void printcrds(const std::string& label) const;
+        std::string infoString(const std::string& label) const;
         
         /// Host function
         void initRandom(const Real max_range=1.0, const Int ss=0);
+        
+        /// Host function
+        template <typename SeedType>
+        void initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed);
+        
+        template <typename SeedType>
+        void initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed);
                 
     protected:
         crd_view_type _crds;

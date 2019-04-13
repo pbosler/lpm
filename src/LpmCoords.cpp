@@ -3,16 +3,18 @@
 
 namespace Lpm {
 
-template <typename Geo> void Coords<Geo>::printcrds(const std::string& label) const {
+template <typename Geo> 
+std::string Coords<Geo>::infoString(const std::string& label) const {
     std::ostringstream oss;
+    oss << "Coords " << label << " info: nh = (" << _nh(0) << ") of nmax = " << _nmax << " in memory" << std::endl; 
     for (Index i=0; i<_nmax; ++i) {
+        if (i==_nh(0)) oss << "---------------------------------" << std::endl;
         oss << label << ": (" << i << ") : ";
-        std::cout << oss.str();
         for (Int j=0; j<Geo::ndim; ++j) 
-            std::cout << _host_crds(i,j) << " ";
-        std::cout << std::endl;
-        oss.str("");
+            oss << _host_crds(i,j) << " ";
+        oss << std::endl;
     }
+    return oss.str();
 }
 
 template <typename Geo> void Coords<Geo>::initRandom(const Real max_range, const Int ss) {
@@ -48,9 +50,39 @@ template <> void Coords<SphereGeometry>::initRandom(const Real max_range, const 
     updateDevice();
 }
 
+template <typename Geo> template <typename SeedType>
+void Coords<Geo>::initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed) {
+    LPM_THROW_IF(_nmax < SeedType::nverts, "Coords::initBoundaryCrdsFromSeed error: not enough memory.");
+    for (int i=0; i<SeedType::nverts; ++i) {
+        for (int j=0; j<Geo::ndim; ++j) {
+            _host_crds(i,j) = seed.scrds(i,j);
+        }
+    }
+    _nh(0) = SeedType::nverts;
+}
+
+template <typename Geo> template <typename SeedType>
+void Coords<Geo>::initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed) {
+    LPM_THROW_IF(_nmax < SeedType::nfaces, "Coords::initInteriorCrdsFromSeed error: not enough memory.");
+    for (int i=0; i<SeedType::nfaces; ++i) {
+        for (int j=0; j<Geo::ndim; ++j) {
+            _host_crds(i,j) = seed.scrds(SeedType::nverts + i, j);
+        }
+    }
+    _nh(0) = SeedType::nfaces;
+}
 
 /// ETI
 template class Coords<PlaneGeometry>;
 template class Coords<SphereGeometry>;
+
+template void Coords<PlaneGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<TriHexSeed>& seed);
+template void Coords<PlaneGeometry>::initInteriorCrdsFromSeed(const MeshSeed<TriHexSeed>& seed);
+template void Coords<PlaneGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<QuadRectSeed>& seed);
+template void Coords<PlaneGeometry>::initInteriorCrdsFromSeed(const MeshSeed<QuadRectSeed>& seed);
+template void Coords<SphereGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<CubedSphereSeed>& seed);
+template void Coords<SphereGeometry>::initInteriorCrdsFromSeed(const MeshSeed<CubedSphereSeed>& seed);
+template void Coords<SphereGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Coords<SphereGeometry>::initInteriorCrdsFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
 
 }

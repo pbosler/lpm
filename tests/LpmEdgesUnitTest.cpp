@@ -24,7 +24,7 @@ ko::initialize(argc, argv);
     sc4.insertHost(p3);
     sc4.updateDevice();
     
-    sc4.printcrds("sc4 init");
+    std::cout << sc4.infoString("sc4 init");
     
     Coords<SphereGeometry> sc4lag(6);
     sc4lag.insertHost(p0);
@@ -43,7 +43,7 @@ ko::initialize(argc, argv);
     edges.insertHost(e1[0], e1[1], e1[2], e1[3]);
     edges.insertHost(e2[0], e2[1], e2[2], e2[3]);   
     std::cout << "Edges: edges.nh() = " << edges.nh() << ", edges.nmax() = " << edges.nmax() << std::endl;
-    edges.printedges("edges init");
+    std::cout << edges.infoString("edges init");
     
     std::cout << "calling divide." << std::endl;
     edges.divide<SphereGeometry>(0, sc4, sc4lag);
@@ -51,8 +51,8 @@ ko::initialize(argc, argv);
     sc4.updateDevice();
     sc4lag.updateDevice();
     std::cout << "Edges: edges.nh() = " << edges.nh() << ", edges.nmax() = " << edges.nmax() << std::endl;
-    sc4.printcrds("sc4.divide(0)");
-    edges.printedges("edges after divide");
+    std::cout << sc4.infoString("sc4.divide(0)");
+    std::cout << edges.infoString("edges after divide");
 
     std::cout << "edge 0 is divided = " << (edges.hasKidsHost(0) ? "true" : "false") << std::endl;
     LPM_THROW_IF(!edges.hasKidsHost(0), "edge divide error.");
@@ -61,7 +61,10 @@ ko::initialize(argc, argv);
     std::cout << "edge 5 is divided = " << (edges.hasKidsHost(5) ? "true" : "false") << std::endl;
     LPM_THROW_IF(edges.hasKidsHost(5), "the impossible happened.");
 
-
+    Edges sedges(14);
+    const MeshSeed<QuadRectSeed> seed;
+    sedges.initFromSeed(seed);
+    std::cout << sedges.infoString("QuadRectSeed");
     
 }
 ko::finalize();

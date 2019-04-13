@@ -5,6 +5,10 @@
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
 #include "LpmCoords.hpp"
+#include "LpmMeshSeed.hpp"
+
+#include "Kokkos_Core.hpp"
+#include "Kokkos_View.hpp"
 
 namespace Lpm {
 
@@ -20,7 +24,7 @@ class Edges {
         typedef ko::View<Index*[2]> edge_tree_view;
         typedef typename edge_tree_view::HostMirror edge_tree_host;
     
-        Edges(const Index nmax) : _origs("origs", nmax), _dests("dests", nmax), _lefts("lefts", nmax), _rights("rights", nmax), _parent("parent",nmax), _kids("kids", nmax), _n("n"), _nmax(nmax) {
+        Edges(const Index nmax) : _origs("origs", nmax), _dests("dests", nmax), _lefts("lefts", nmax), _rights("rights", nmax), _parent("parent",nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _nActive("nactive") {
             _nh = ko::create_mirror_view(_n);
             _ho = ko::create_mirror_view(_origs);
             _hd = ko::create_mirror_view(_dests);
@@ -28,7 +32,9 @@ class Edges {
             _hr = ko::create_mirror_view(_rights);
             _hp = ko::create_mirror_view(_parent);
             _hk = ko::create_mirror_view(_kids);
+            _hnActive = ko::create_mirror_view(_nActive);
             _nh(0) = 0;
+            _hnActive(0) = 0;
         }
         
         /// Host function 
@@ -48,20 +54,11 @@ class Edges {
             ko::deep_copy(_parent, _hp);
             ko::deep_copy(_kids, _hk);
             ko::deep_copy(_n, _nh);
+            ko::deep_copy(_nActive, _hnActive);
         }
         
         /// Host function
-        void insertHost(const Index o, const Index d, const Index l, const Index r, const Index prt=NULL_IND) {
-            const Index ins_pt = _nh(0);
-            _ho(ins_pt) = o;
-            _hd(ins_pt) = d;
-            _hl(ins_pt) = l;
-            _hr(ins_pt) = r;
-            _hp(ins_pt) = prt;
-            _hk(ins_pt, 0) = NULL_IND;
-            _hk(ins_pt, 1) = NULL_IND;
-            _nh(0) += 1;
-        }
+        void insertHost(const Index o, const Index d, const Index l, const Index r, const Index prt=NULL_IND);
         
         /// Host function
         template <typename Geo>
@@ -76,6 +73,10 @@ class Edges {
         inline void setRight(const Index ind, const Index newright) {
             _hr(ind) = newright;
         }
+        
+        /// Host function
+        template <typename SeedType>
+        void initFromSeed(const MeshSeed<SeedType>& seed);
             
         KOKKOS_INLINE_FUNCTION Index getOrig(const Index ind) const {return _origs(ind);}
         KOKKOS_INLINE_FUNCTION Index getDest(const Index ind) const {return _dests(ind);}
@@ -90,14 +91,10 @@ class Edges {
         
         
         /// Host function
-        template <typename V>
-        inline void getKidsHost(V& v, const Index ind) const {
-            v[0] = _hk(ind,0);
-            v[1] = _hk(ind,1);
-        }
+        inline Index getEdgeKidHost(const Index ind, const Int child) const {return _hk(ind, child);}
         
         /// Host function
-        void printedges(const std::string& label) const;
+        std::string infoString(const std::string& label) const;
         
         /// Host functions
         inline Index getOrigHost(const Index ind) const {return _ho(ind);}
@@ -119,6 +116,7 @@ class Edges {
         edge_view_type _parent;
         edge_tree_view _kids;
         ko::View<Index> _n;
+        ko::View<Index> _nActive;
         
         edge_host_type _ho;
         edge_host_type _hd;
@@ -126,7 +124,8 @@ class Edges {
         edge_host_type _hr;
         edge_host_type _hp;
         edge_tree_host _hk; 
-        ko::View<Index>::HostMirror _nh;        
+        ko::View<Index>::HostMirror _nh;    
+        ko::View<Index>::HostMirror _hnActive;    
         Index _nmax;
 };
 

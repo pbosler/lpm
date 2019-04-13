@@ -1,4 +1,4 @@
-#include "LpmSeedReader.hpp"
+#include "LpmMeshSeed.hpp"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -7,11 +7,11 @@
 namespace Lpm {
 
 template <typename SeedType>
-void SeedReader<SeedType>::readfile() {
+void MeshSeed<SeedType>::readfile() {
     std::ifstream file(fullFilename());
     std::ostringstream oss;
     if (!file.is_open()) {
-        oss << "SeedReader::readfile error: cannot open file " << fullFilename();   
+        oss << "MeshSeed::readfile error: cannot open file " << fullFilename();   
         LPM_THROW_IF(true, oss.str());
         oss.str("");
     }
@@ -62,7 +62,7 @@ void SeedReader<SeedType>::readfile() {
                 }
             }
             if (crdErr) {
-                oss << "SeedReader::readfile error: cannot read coordinate from line " << lineNumber
+                oss << "MeshSeed::readfile error: cannot read coordinate from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
                 oss.str("");
@@ -82,7 +82,7 @@ void SeedReader<SeedType>::readfile() {
             sedges(edgeCounter, 2) = left;
             sedges(edgeCounter++, 3) = right;
             if (edgeErr) {
-                oss << "SeedReader::readfile error: cannot read edge from line " << lineNumber
+                oss << "MeshSeed::readfile error: cannot read edge from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
                 oss.str("");
@@ -112,7 +112,7 @@ void SeedReader<SeedType>::readfile() {
                 }
             }
             if (faceErr) {
-                oss << "SeedReader::readfile error: cannot read face vertices from line " << lineNumber
+                oss << "MeshSeed::readfile error: cannot read face vertices from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
                 oss.str("");
@@ -142,7 +142,7 @@ void SeedReader<SeedType>::readfile() {
                 }
             }
             if (faceErr) {
-                oss << "SeedReader::readfile error: cannot read face edges from line " << lineNumber
+                oss << "MeshSeed::readfile error: cannot read face edges from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
                 oss.str("");
@@ -155,14 +155,14 @@ void SeedReader<SeedType>::readfile() {
 }
 
 template <typename SeedType>
-std::string SeedReader<SeedType>::fullFilename() const {
+std::string MeshSeed<SeedType>::fullFilename() const {
     std::string result(LPM_MESH_SEED_DIR);
     result += "/" + SeedType::filename();
     return result;
 }
 
 template <typename SeedType>
-std::string SeedReader<SeedType>::infoString() const {
+std::string MeshSeed<SeedType>::infoString() const {
     std::ostringstream ss;
     ss << "Mesh seed info: id = " << SeedType::idString() << std::endl;
     ss << "\tseed file = " << fullFilename() << std::endl;
@@ -202,7 +202,7 @@ std::string SeedReader<SeedType>::infoString() const {
 }
 
 template <typename SeedType>
-void SeedReader<SeedType>::setMaxAllocations(Index& nboundary, Index& nedges, Index& nfaces, const Int lev) const {
+void MeshSeed<SeedType>::setMaxAllocations(Index& nboundary, Index& nedges, Index& nfaces, const Int lev) const {
     nboundary = SeedType::nVerticesAtTreeLevel(lev);
     nedges = 0;
     nfaces = 0;
@@ -210,6 +210,21 @@ void SeedReader<SeedType>::setMaxAllocations(Index& nboundary, Index& nedges, In
         nfaces += SeedType::nFacesAtTreeLevel(i);
         nedges += SeedType::nEdgesAtTreeLevel(SeedType::nVerticesAtTreeLevel(i), SeedType::nFacesAtTreeLevel(i));
     }
+}
+
+template <typename SeedType>
+Real MeshSeed<SeedType>::faceArea(const Int ind) const {
+    ko::View<Real[SeedType::geo::ndim], Host> ctrcrds("ctrcrds");
+    ko::View<Real[SeedType::nfaceverts][SeedType::geo::ndim], Host> vertcrds("vertcrds");
+    for (int i=0; i<SeedType::geo::ndim; ++i) {
+        ctrcrds(i) = scrds(SeedType::nverts+ind, i);
+    }
+    for (int i=0; i<SeedType::nfaceverts; ++i) {
+        for (int j=0; j<SeedType::geo::ndim; ++j) {
+            vertcrds(i,j) = scrds(sfaceverts(ind,i), j);
+        }
+    }
+    return SeedType::geo::polygonArea(ctrcrds, vertcrds, SeedType::nfaceverts);
 }
 
 Index QuadRectSeed::nVerticesAtTreeLevel(const Int lev) {
@@ -272,9 +287,9 @@ Index IcosTriSphereSeed::nEdgesAtTreeLevel(const Index nv, const Index nf) {
 }
 
 /// ETI
-template struct SeedReader<QuadRectSeed>;
-template struct SeedReader<TriHexSeed>;
-template struct SeedReader<IcosTriSphereSeed>;
-template struct SeedReader<CubedSphereSeed>;
+template struct MeshSeed<QuadRectSeed>;
+template struct MeshSeed<TriHexSeed>;
+template struct MeshSeed<IcosTriSphereSeed>;
+template struct MeshSeed<CubedSphereSeed>;
 
 }

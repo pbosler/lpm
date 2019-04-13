@@ -21,7 +21,7 @@ SET_TARGET_PROPERTIES(lpmFacesTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LI
 TARGET_LINK_LIBRARIES(lpmFacesTest lpmkokkos ${Kokkos_LIBRARIES})
 ADD_TEST(lpmFaces lpmFacesTest)
 
-ADD_EXECUTABLE(lpmSeedReaderTest LpmSeedReaderUnitTest.cpp)
-SET_TARGET_PROPERTIES(lpmSeedReaderTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
-TARGET_LINK_LIBRARIES(lpmSeedReaderTest lpmkokkos ${Kokkos_LIBRARIES})
-ADD_TEST(lpmSeedReader lpmSeedReaderTest)
+ADD_EXECUTABLE(lpmMeshSeedTest LpmMeshSeedUnitTest.cpp)
+SET_TARGET_PROPERTIES(lpmMeshSeedTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+TARGET_LINK_LIBRARIES(lpmMeshSeedTest lpmkokkos ${Kokkos_LIBRARIES})
+ADD_TEST(lpmMeshSeed lpmMeshSeedTest)

@@ -20,6 +20,60 @@ void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vert
     _hnActive(0) += 1;
 }
 
+template <typename FaceKind> template<typename SeedType> 
+void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
+    LPM_THROW_IF(_nmax < SeedType::nfaces, "Faces::initFromSeed error: not enough memory.");
+    for (int i=0; i<SeedType::nfaces; ++i) {
+        for (int j=0; j<SeedType::nfaceverts; ++j) {
+            _hostverts(i,j) = seed.sfaceverts(i,j);
+            _hostedges(i,j) = seed.sfaceedges(i,j);
+        }
+        _hostcenters(i) = SeedType::nverts + i;
+        _hostarea(i) = seed.faceArea(i);
+        _hostparent(i) = NULL_IND;
+        for (int j=0; j<4; ++j) {
+            _hostkids(i, j) = NULL_IND;
+        }
+    }
+    _nh(0) = SeedType::nfaces;
+    _hnActive(0) = SeedType::nfaces;
+}
+
+template <typename FaceKind>
+Real Faces<FaceKind>::surfAreaHost() const {
+    Real result = 0;
+    for (Index i=0; i<_nh(0); ++i) {
+        result += _hostarea(i);
+    }
+    return result;
+}
+
+template <typename FaceKind>
+std::string Faces<FaceKind>::infoString(const std::string& label) const {
+    std::ostringstream oss;
+    oss << "Faces " << label << " info: nh = (" << _nh(0) << ") of nmax = " << _nmax << " in memory; " 
+        << _hnActive(0) << " leaves." << std::endl;
+    for (Index i=0; i<_nmax; ++i) {
+        if (i==_nh(0)) oss << "---------------------------------" << std::endl;
+        oss << ": (" << i << ") : ";
+        oss << "verts = (";
+        for (int j=0; j<FaceKind::nverts; ++j) {
+            oss << _hostverts(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
+        }
+        oss << "edges = (";
+        for (int j=0; j<FaceKind::nverts; ++j) {
+            oss << _hostedges(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
+        }
+        oss << "center = (" << _hostcenters(i) << ") ";
+        oss << "parent = (" << _hostparent(i) << ") ";
+        oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << ") ";
+        oss << "area = (" << _hostarea(i) << ")";
+        oss << std::endl;
+    }
+    oss << "\ttotal area = " << surfAreaHost() << std::endl;
+    return oss.str();
+}
+
 template <typename FaceKind>
 void Faces<FaceKind>::setKids(const Index parent, const Index* kids) {
     for (int i=0; i<4; ++i) {
@@ -42,7 +96,16 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
             newFaceEdgeInds(i,j) = NULL_IND;
         }
     }
+
+    /// pull data from parent face
+    ko::View<Index[3], Host> parentVertInds("parentVerts");
+    ko::View<Index[3], Host> parentEdgeInds("parentEdges");
+    for (int i=0; i<3; ++i) {
+        parentVertInds(i) = faces.getVertHost(faceInd, i);
+        parentEdgeInds(i) = faces.getEdgeHost(faceInd, i);
+    }
     
+    /// determine child face indices
     const Index face_insert_pt = faces.nh();
     ko::View<Index[4], Host> newFaceKids("newFaceKids");
     for (int i=0; i<4; ++i) {
@@ -50,18 +113,17 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     }
 
     /// connect parent vertices to child faces
-    ko::View<Index[3], Host> parentVertInds("parentVerts");
     for (int i=0; i<3; ++i) {
         newFaceVertInds(i,i) = parentVertInds(i);
     }
     
     /// loop over parent edges, replace with child edges
-    ko::View<Index[3], Host> parentEdgeInds("parentEdges");
     for (int i=0; i<3; ++i) {
         const Index parentEdge = parentEdgeInds(i);
-        ko::View<Index[2], Host> edge_kids;
+        ko::View<Index[2], Host> edge_kids("edge_kids");
         if (edges.hasKidsHost(parentEdge)) { // edge already divided
-            edges.getKidsHost(edge_kids, parentEdge);
+            edge_kids(0) = edges.getEdgeKidHost(parentEdge, 0);
+            edge_kids(1) = edges.getEdgeKidHost(parentEdge, 1);
         }
         else { // divide edge
             edge_kids(0) = edges.nh();
@@ -162,11 +224,41 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     faces.decrementNActive();
 }
 
-
+template <typename Geo>
+void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges,
+    Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
+    Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {
+    
+    LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
+    LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
+    
+    ko::View<Index[4][4], Host> newFaceEdgeInds("newFaceEdges");  // (child face index, edge index)
+    ko::View<Index[4][4], Host> newFaceVertInds("newFaceVerts");  // (child face index, vertex index)
+    
+    // for debugging, set to invalid value
+    for (int i=0; i<4; ++i) {
+        for (int j=0; j<4; ++j) {
+            newFaceVertInds(i,j) = NULL_IND;
+            newFaceEdgeInds(i,j) = NULL_IND;
+        }
+    }
+    
+    // determine child face indices
+    const Index face_insert_pt = faces.nh();
+    ko::View<Index[4], Host> newFaceKids("newFaceKids");
+    for (int i=0; i<4; ++i) {
+        newFaceKids(i) = face_insert_pt+i;
+    }
+}
 
 /// ETI
 template class Faces<TriFace>;
 template class Faces<QuadFace>;
+
+template void Faces<TriFace>::initFromSeed(const MeshSeed<TriHexSeed>& seed);
+template void Faces<TriFace>::initFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Faces<QuadFace>::initFromSeed(const MeshSeed<QuadRectSeed>& seed);
+template void Faces<QuadFace>::initFromSeed(const MeshSeed<CubedSphereSeed>& seed);
 
 template struct FaceDivider<PlaneGeometry, TriFace>;
 template struct FaceDivider<SphereGeometry, TriFace>;

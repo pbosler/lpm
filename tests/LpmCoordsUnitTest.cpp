@@ -1,8 +1,5 @@
 #include <iostream>
 #include <sstream>
-#include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmGeometry.hpp"
 #include "LpmCoords.hpp"
 
 using namespace Lpm;
@@ -24,11 +21,11 @@ int main(int argc, char* argv[]) {
     
     pc4.updateDevice();
     std::cout << "pc4.nMax() = " << pc4.nMax() << ", pc4.nh() = " << pc4.nh() << std::endl;
-    pc4.printcrds("pc4");
+    std::cout << pc4.infoString("pc4");
     
     Coords<PlaneGeometry> pcr(20);
     pcr.initRandom(3.0);
-    pcr.printcrds("pcr");
+    std::cout << pcr.infoString("pcr");
     
     
     Coords<SphereGeometry> sc4(4);
@@ -45,13 +42,21 @@ int main(int argc, char* argv[]) {
     std::cout << "updating sc4." << std::endl;
     sc4.updateDevice();
     std::cout << "sc4.nMax() = " << sc4.nMax() << ", sc4.nh() = " << sc4.nh() << std::endl;
-    sc4.printcrds("sc4");
+    std::cout << sc4.infoString("sc4");
     
     Coords<SphereGeometry> scr(20);
     scr.initRandom();
     std::cout<<"scr done." << std::endl;
-    scr.printcrds("scr");
+    std::cout << scr.infoString("scr");
     
+        
+    MeshSeed<QuadRectSeed> seed;
+    Coords<PlaneGeometry> qr(9);
+    qr.initBoundaryCrdsFromSeed(seed);
+    std::cout << qr.infoString(seed.idString());
+    Coords<PlaneGeometry> qri(6);
+    qri.initInteriorCrdsFromSeed(seed);
+    std::cout << qri.infoString(seed.idString()); 
     }
     std::cout << "tests pass." << std::endl;
     Kokkos::finalize();
