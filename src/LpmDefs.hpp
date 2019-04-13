@@ -129,9 +129,6 @@ static constexpr Index NULL_IND = -1;
 /// Lock Index
 static constexpr Index LOCK_IND = -2;
 
-/// Supported geometries
-enum GeometryType {PLANAR_GEOMETRY, SPHERICAL_SURFACE_GEOMETRY};
-
 #ifdef KOKKOS_ENABLE_CUDA
     /// GPU-friendly replacements for stdlib functions
     template <typename T> KOKKOS_INLINE_FUNCTION 
