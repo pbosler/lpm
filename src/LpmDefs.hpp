@@ -20,15 +20,7 @@
 
 namespace Lpm {
 namespace ko = Kokkos;
-/// print message
-#define pr(m) do {                              \
-    std::stringstream _ss_;                     \
-    _ss_ << m << std::endl;                     \
-    std::cerr << _ss_.str();                    \
-  } while (0)
-#define prc(m) pr(#m << " | " << (m))
-#define puf(m)"(" << #m << " " << (m) << ")"
-#define pu(m) << " " << puf(m)
+
 template<typename T>
 static void prarr (const std::string& name, const T* const v, const size_t n) {
   std::cerr << name << ": ";
@@ -44,11 +36,6 @@ static void prarr (const std::string& name, const T* const v, const size_t n) {
         "\nled to the exception\n" << message << "\n";                  \
       throw std::logic_error(_ss_.str());                               \
     }                                                                   \
-} while (0)
-
-#define LPM_STDERR_IF(condition, message) do { \
-  try { LPM_THROW_IF(condition, message); } \
-  catch (const std::logic_error& e) { std::cerr << e.what(); } \
 } while (0)
 
 KOKKOS_INLINE_FUNCTION static void error (const char* const msg)
