@@ -28,7 +28,7 @@ void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
             _hostverts(i,j) = seed.sfaceverts(i,j);
             _hostedges(i,j) = seed.sfaceedges(i,j);
         }
-        _hostcenters(i) = SeedType::nverts + i;
+        _hostcenters(i) = i;
         _hostarea(i) = seed.faceArea(i);
         _hostparent(i) = NULL_IND;
         for (int j=0; j<4; ++j) {
@@ -85,6 +85,7 @@ template <typename Geo>
 void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {
     LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
     LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
+
     
     ko::View<Index[4][3], Host> newFaceEdgeInds("newFaceEdges");  // (child face index, edge index)
     ko::View<Index[4][3], Host> newFaceVertInds("newFaceVerts");  // (child face index, vertex index)
@@ -96,7 +97,6 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
             newFaceEdgeInds(i,j) = NULL_IND;
         }
     }
-
     /// pull data from parent face
     ko::View<Index[3], Host> parentVertInds("parentVerts");
     ko::View<Index[3], Host> parentEdgeInds("parentEdges");
@@ -104,7 +104,6 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
         parentVertInds(i) = faces.getVertHost(faceInd, i);
         parentEdgeInds(i) = faces.getEdgeHost(faceInd, i);
     }
-    
     /// determine child face indices
     const Index face_insert_pt = faces.nh();
     ko::View<Index[4], Host> newFaceKids("newFaceKids");
@@ -148,7 +147,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
             edges.setRight(edge_kids(0), newFaceKids((i+1)%3));
         }
         
-        const Index c1dest = edges.getDestHost(edge_kids(1));
+        const Index c1dest = edges.getDestHost(edge_kids(0));
         if (i==0) {
             newFaceVertInds(0,1) = c1dest;
             newFaceVertInds(1,0) = c1dest;
@@ -168,7 +167,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     
     // debug: check vertex connectivity
     for (int i=0; i<4; ++i) {
-        for (int j=0; j<4; ++j) {
+        for (int j=0; j<3; ++j) {
             LPM_THROW_IF(newFaceVertInds(i,j) == NULL_IND, "TriFace::divide error: vertex connectivity");
         }
     }
@@ -186,15 +185,14 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
     edges.insertHost(newFaceVertInds(1,0), newFaceVertInds(1,2), newFaceKids(3), newFaceKids(1));
     
     /// create new center coordinates
-    ko::View<Real[3][Geo::ndim], Host> vertCrds;
-    ko::View<Real[3][Geo::ndim], Host> vertLagCrds;
-    ko::View<Real[4][Geo::ndim], Host> faceCrds;
-    ko::View<Real[4][Geo::ndim], Host> faceLagCrds;
-    ko::View<Real[4], Host> faceArea;
+    ko::View<Real[3][Geo::ndim], Host> vertCrds("vertCrds");
+    ko::View<Real[3][Geo::ndim], Host> vertLagCrds("vertLagCrds");
+    ko::View<Real[4][Geo::ndim], Host> faceCrds("faceCrds");
+    ko::View<Real[4][Geo::ndim], Host> faceLagCrds("faceLagCrds");
+    ko::View<Real[4], Host> faceArea("faceArea");
     for (int i=0; i<4; ++i) { // loop over child Faces
         auto ctr = ko::subview(faceCrds, i, ko::ALL());
         auto lagctr = ko::subview(faceLagCrds, i, ko::ALL());
-        faceArea(i) = 0.0;
         for (int j=0; j<3; ++j) { // loop over vertices
             for (int k=0; k<Geo::ndim; ++k) { // loop over components
                 vertCrds(j,k) = bndry_crds.getCrdComponentHost(newFaceVertInds(i,j),k);
@@ -204,7 +202,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
         Geo::barycenter(lagctr, vertLagCrds, 3);
         faceArea(i) = Geo::polygonArea(ctr, vertCrds, 3);
     }
-    
+
     /// create new child Faces
     const Index crd_ins_pt = intr_crds.nh();
     for (int i=0; i<3; ++i) {

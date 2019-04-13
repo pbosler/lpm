@@ -4,7 +4,7 @@
 namespace Lpm {
 
 void Edges::insertHost(const Index o, const Index d, const Index l, const Index r, const Index prt) {
-    LPM_THROW_IF(_nmax < _nh(0) + 1, "Edges::insertHost error: not enough memory.");
+    LPM_THROW_IF(_nmax < _nh(0) + 1, infoString("Edges::insertHost error: not enough memory."));
     const Index ins_pt = _nh(0);
     _ho(ins_pt) = o;
     _hd(ins_pt) = d;
@@ -42,10 +42,17 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
     const Index edge_ins_pt = _nh(0);
     
     // determine edge midpoints
-    Real midpt[Geo::ndim];
-    Real lagmidpt[Geo::ndim];
-    Geo::midpoint(midpt, crds.getSliceHost(_ho(ind)), crds.getSliceHost(_hd(ind)));
-    Geo::midpoint(lagmidpt, lagcrds.getSliceHost(_ho(ind)), lagcrds.getSliceHost(_hd(ind)));
+    ko::View<Real[Geo::ndim], Host> midpt("midpt"), lagmidpt("lagmidpt");
+    ko::View<Real[2][Geo::ndim], Host> endpts("endpts"), lagendpts("lagendpts");
+    for (int i=0; i<Geo::ndim; ++i) {
+        endpts(0,i) = crds.getCrdComponentHost(_ho(ind), i);
+        lagendpts(0,i) = lagcrds.getCrdComponentHost(_ho(ind), i);
+        endpts(1,i) = crds.getCrdComponentHost(_hd(ind), i);
+        lagendpts(1,i) = lagcrds.getCrdComponentHost(_hd(ind), i);
+    }
+    
+    Geo::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()), ko::subview(endpts, 1, ko::ALL()));
+    Geo::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()), ko::subview(lagendpts, 1, ko::ALL()));
     // insert new midpoint to Coords 
     crds.insertHost(midpt);
     lagcrds.insertHost(lagmidpt);

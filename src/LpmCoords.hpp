@@ -99,9 +99,12 @@ template <typename Geo> class Coords {
         template <typename SeedType>
         void initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed);
         
+        /// Host function
         template <typename SeedType>
         void initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed);
-                
+        
+        /// Host function
+        void writeMatlab(std::ostream& os, const std::string& name) const;
     protected:
         crd_view_type _crds;
         typename crd_view_type::HostMirror _host_crds;

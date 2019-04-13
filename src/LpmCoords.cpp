@@ -17,6 +17,17 @@ std::string Coords<Geo>::infoString(const std::string& label) const {
     return oss.str();
 }
 
+template <typename Geo>
+void Coords<Geo>::writeMatlab(std::ostream& os, const std::string& name) const {
+    os << name << " = [";
+    for (Index i=0; i<_nh(0); ++i) {
+        for (int j=0; j<Geo::ndim; ++j) {
+            os << _host_crds(i,j) << (j==Geo::ndim-1 ? (i==_nh(0)-1 ? "];" : ";") : ",");
+        }
+    }
+    os << std::endl;
+}
+
 template <typename Geo> void Coords<Geo>::initRandom(const Real max_range, const Int ss) {
     unsigned seed = 0 + ss;
     std::default_random_engine generator(seed);
