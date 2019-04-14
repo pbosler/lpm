@@ -18,7 +18,7 @@ ADD_TEST(lpmEdges lpmEdgesTest)
 
 ADD_EXECUTABLE(lpmFacesTest LpmFacesUnitTests.cpp)
 SET_TARGET_PROPERTIES(lpmFacesTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
-TARGET_LINK_LIBRARIES(lpmFacesTest lpmkokkos ${Kokkos_LIBRARIES})
+TARGET_LINK_LIBRARIES(lpmFacesTest lpmkokkos ${Kokkos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmFaces lpmFacesTest)
 
 ADD_EXECUTABLE(lpmMeshSeedTest LpmMeshSeedUnitTest.cpp)

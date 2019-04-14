@@ -49,6 +49,8 @@ template <typename FaceKind> class Faces {
         typedef host_vert_inds host_edge_inds;
 #endif
 
+        static constexpr Int nverts = FaceKind::nverts;
+        
         Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax), _centers("centers",nmax),
             _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax), _nActive("nActive") {
             _hostverts = ko::create_mirror_view(_verts);
@@ -97,7 +99,7 @@ template <typename FaceKind> class Faces {
         void setArea(const Index ind, const Real ar) {_area(ind) = ar;}
         
         /// Host function
-        inline Index nMax() const {return _verts.extent(0);}
+        inline Index nMax() const {return _nmax;}
         
         /// Host function
         inline Index nh() const {return _nh(0);}
@@ -153,6 +155,14 @@ template <typename FaceKind> class Faces {
         template <typename Geo>
         void divide(const Index ind, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
             Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds);
+        
+        /// Host function
+        void setCenterInd(const Index faceInd, const Index crdInd) {_hostcenters(faceInd) = crdInd;}
+        
+        /// Host function
+        ko::View<const Index[FaceKind::nverts], Host> getVertsHostConst(const Index ind) const {
+            return ko::subview(_hostverts, ind, ko::ALL());
+        }
         
     protected:
         vertex_view_type _verts;  /// indices to Coords<Geo> on face edges

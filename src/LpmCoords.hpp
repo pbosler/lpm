@@ -75,7 +75,8 @@ template <typename Geo> class Coords {
         inline Real getCrdComponentHost(const Index ind, const Int dim) const {return _host_crds(ind, dim);}
         
         /// Host function
-        template <typename CV> void insertHost(const CV v) {
+        template <typename CV> 
+        void insertHost(const CV v) {
             LPM_THROW_IF(_nmax < _nh(0) + 1, "Coords::insert error: not enough memory.");
             for (int i=0; i<Geo::ndim; ++i) {
                 _host_crds(_nh(0), i) = v[i];
@@ -105,6 +106,13 @@ template <typename Geo> class Coords {
         
         /// Host function
         void writeMatlab(std::ostream& os, const std::string& name) const;
+        
+        /// Host function
+        ko::View<Real[Geo::ndim],Host> crdVecHost(const Index ind) {return ko::subview(_host_crds, ind, ko::ALL());}
+        
+        ko::View<const Real[Geo::ndim],Host> crdVecHostConst(const Index ind) const {
+            return ko::subview(_host_crds, ind, ko::ALL());
+        }
     protected:
         crd_view_type _crds;
         typename crd_view_type::HostMirror _host_crds;

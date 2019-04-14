@@ -7,18 +7,15 @@
 #include "LpmEdges.hpp"
 #include "LpmFaces.hpp"
 #include "LpmMeshSeed.hpp"
+#include "LpmVtkIO.hpp"
 
 using namespace Lpm;
 
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv); 
 {
-    Faces<TriFace> planeTri(11);
-    Faces<TriFace> sphereTri(30);
-    //std::cout << planeTri.infoString("init");
-    
-    
     {
+    Faces<TriFace> planeTri(11);
     const MeshSeed<TriHexSeed> thseed;
     Index nmaxverts;
     Index nmaxfaces;
@@ -35,14 +32,14 @@ ko::initialize(argc, argv);
     thcb.initBoundaryCrdsFromSeed(thseed);
     thcbl.initBoundaryCrdsFromSeed(thseed);
     thcb.writeMatlab(std::cout, "bcrds1");
-    std::cout << thcb.infoString("bc init.");
+//     std::cout << thcb.infoString("bc init.");
     thci.initInteriorCrdsFromSeed(thseed);
-    std::cout << thci.infoString("ic init.");
+//     std::cout << thci.infoString("ic init.");
     thcil.initInteriorCrdsFromSeed(thseed);
     the.initFromSeed(thseed);
-    std::cout << the.infoString("the");
+//     std::cout << the.infoString("the");
     planeTri.initFromSeed(thseed);
-    std::cout << planeTri.infoString("seed");
+//     std::cout << planeTri.infoString("seed");
     
     typedef FaceDivider<PlaneGeometry,TriFace> thdiv;
     thdiv::divide(0, planeTri, the, thci, thcil, thcb, thcbl);
@@ -55,7 +52,82 @@ ko::initialize(argc, argv);
     thci.writeMatlab(std::cout, "icrds2");
     }
     
+    {
+        typedef MeshSeed<CubedSphereSeed> seed_type;
+        const seed_type seed;
+        typedef SphereGeometry geo;
+        typedef QuadFace face_type;
+        Index nmaxverts;
+        Index nmaxfaces;
+        Index nmaxedges;
+        const int maxlev = 6;
+        seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
+        std::cout << "allocating " << nmaxverts << " vertices, " << nmaxedges << " edges, and " << nmaxfaces << " faces for cubed sphere." <<std::endl;
+        Coords<geo> csverts(nmaxverts);
+        Coords<geo> cslagverts(nmaxverts);
+        Coords<geo> csfacecrds(nmaxfaces);
+        Coords<geo> cslagfacecrds(nmaxfaces);
+        Faces<QuadFace> csfaces(nmaxfaces);
+        Edges csedges(nmaxedges);
+        csverts.initBoundaryCrdsFromSeed(seed);
+        cslagverts.initBoundaryCrdsFromSeed(seed);
+        csfacecrds.initInteriorCrdsFromSeed(seed);
+        cslagfacecrds.initInteriorCrdsFromSeed(seed);
+        csfaces.initFromSeed(seed);
+        csedges.initFromSeed(seed);
+        typedef FaceDivider<geo,face_type> csdiv;
+        for (int i=0; i<maxlev; ++i) {
+            std::cout << "tree level " << i  << ": faces.nh = " << csfaces.nh() << ", edges.nh = " << csedges.nh() << ", verts.nh = " << csverts.nh() << "; faces.nmax = " << csfaces.nMax() << std::endl;
+            Index startInd = 0;
+            Index stopInd = csfaces.nh();
+            for (Index j=startInd; j<stopInd; ++j) {
+                if (!csfaces.hasKidsHost(j)) {
+                    csdiv::divide(j, csfaces, csedges, csfacecrds, cslagfacecrds, csverts, cslagverts);
+                }
+            }
+        }
+        std::cout << "Sphere surface area = " << csfaces.surfAreaHost() << std::endl;
+        
+        VtkInterface<SphereGeometry, Faces<QuadFace>> vtk;
+        vtk.toVtkPolyData(csfaces, csedges, csfacecrds, csverts);
+        std::cout << "vtk data conversion done." << std::endl;
+        vtk.writePolyData("cs_test.vtk");
+    }
     
+    {
+        const MeshSeed<IcosTriSphereSeed> seed;
+        Index nmaxverts;
+        Index nmaxfaces;
+        Index nmaxedges;
+        const int maxlev = 6;
+        seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
+        
+        Coords<SphereGeometry> icvertcrds(nmaxverts);
+        Coords<SphereGeometry> icvertlagcrds(nmaxverts);
+        Coords<SphereGeometry> icfacecrds(nmaxverts);
+        Coords<SphereGeometry> icfacelagcrds(nmaxverts);
+        Edges icedges(nmaxedges);
+        Faces<TriFace> icfaces(nmaxfaces);
+        icvertcrds.initBoundaryCrdsFromSeed(seed);
+        icvertlagcrds.initBoundaryCrdsFromSeed(seed);
+        icfacecrds.initInteriorCrdsFromSeed(seed);
+        icfacelagcrds.initInteriorCrdsFromSeed(seed);
+        icfaces.initFromSeed(seed);
+        icedges.initFromSeed(seed);
+        typedef FaceDivider<SphereGeometry,TriFace> icdiv;
+        for (int i=0; i<maxlev; ++i) {
+            const Index stopInd = icfaces.nh();
+            for (Index j=0; j<stopInd; ++j) {
+                if (!icfaces.hasKidsHost(i)) {
+                    icdiv::divide(j, icfaces, icedges, icfacecrds, icfacelagcrds, icvertcrds, icvertlagcrds);
+                }
+            }
+        }
+        std::cout << "ICT sphere surf area = " << icfaces.surfAreaHost() << std::endl;
+        VtkInterface<SphereGeometry, Faces<TriFace>> vtk;
+        vtk.toVtkPolyData(icfaces, icedges, icfacecrds, icvertcrds);
+        vtk.writePolyData("ic_test.vtk");
+    }
 }
 ko::finalize();
 return 0;

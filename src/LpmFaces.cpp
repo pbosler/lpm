@@ -1,5 +1,6 @@
 #include "LpmFaces.hpp"
 
+
 namespace Lpm {
 
 template <typename FaceKind>
@@ -66,7 +67,8 @@ std::string Faces<FaceKind>::infoString(const std::string& label) const {
         }
         oss << "center = (" << _hostcenters(i) << ") ";
         oss << "parent = (" << _hostparent(i) << ") ";
-        oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << ") ";
+        oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << "," 
+            << _hostkids(i,2) << "," << _hostkids(i,3) <<") ";
         oss << "area = (" << _hostarea(i) << ")";
         oss << std::endl;
     }
@@ -196,6 +198,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Faces<TriFace>& face
         for (int j=0; j<3; ++j) { // loop over vertices
             for (int k=0; k<Geo::ndim; ++k) { // loop over components
                 vertCrds(j,k) = bndry_crds.getCrdComponentHost(newFaceVertInds(i,j),k);
+                vertLagCrds(j,k) = bndry_lagcrds.getCrdComponentHost(newFaceVertInds(i,j),k);
             }
         }
         Geo::barycenter(ctr, vertCrds, 3);
@@ -240,13 +243,126 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Faces<QuadFace>& fac
             newFaceEdgeInds(i,j) = NULL_IND;
         }
     }
-    
+    /// pull data from parent
+    ko::View<Index[4],Host> parentVertInds("parentVertInds");
+    ko::View<Index[4],Host> parentEdgeInds("parentEdgeInds");
+    for (int i=0; i<4; ++i) {
+        parentVertInds(i) = faces.getVertHost(faceInd, i);
+        parentEdgeInds(i) = faces.getEdgeHost(faceInd, i);
+    }    
     // determine child face indices
     const Index face_insert_pt = faces.nh();
     ko::View<Index[4], Host> newFaceKids("newFaceKids");
     for (int i=0; i<4; ++i) {
         newFaceKids(i) = face_insert_pt+i;
     }
+    
+    /// connect parent vertices to child faces
+    for (int i=0; i<4; ++i) {
+        newFaceVertInds(i,i) = parentVertInds(i);
+    }
+    
+    /// loop over parent edges
+    for (int i=0; i<4; ++i) {
+        const Index parentEdge = parentEdgeInds(i);
+        ko::View<Index[2],Host> edge_kids("edge_kids");
+        if (edges.hasKidsHost(parentEdge)) { // edge already divided
+            edge_kids(0) = edges.getEdgeKidHost(parentEdge,0);
+            edge_kids(1) = edges.getEdgeKidHost(parentEdge,1);
+        }   
+        else { // divide edge
+            edge_kids(0) = edges.nh();
+            edge_kids(1) = edges.nh() + 1;
+            
+            edges.divide<Geo>(parentEdge, bndry_crds, bndry_lagcrds);
+        }
+        
+        /// connect child edges to child faces
+        if (faces.edgeIsPositive(faceInd, i, edges)) { /// edge has positive orientation
+            newFaceEdgeInds(i,i) = edge_kids(0);
+            edges.setLeft(edge_kids(0), newFaceKids(i));
+            
+            newFaceEdgeInds((i+1)%4,i) = edge_kids(1);
+            edges.setLeft(edge_kids(1), newFaceKids((i+1)%4));
+        }
+        else { /// edge has negative orientation
+            newFaceEdgeInds(i,i) = edge_kids(1);
+            edges.setRight(edge_kids(1), newFaceKids(i));
+            
+            newFaceEdgeInds((i+1)%4,i) = edge_kids(0);
+            edges.setRight(edge_kids(0), newFaceKids((i+1)%4));
+        }
+        const Index c1dest = edges.getDestHost(edge_kids(0));
+        newFaceVertInds(i,(i+1)%4) = c1dest;
+        newFaceVertInds((i+1)%4,i) = c1dest;
+    }
+    
+    /// special case for QuadFace: parent center becomes a vertex
+    const Index parent_center_ind = faces.getCenterIndHost(faceInd);
+    ko::View<Real[Geo::ndim],Host> newcrd("newcrd");
+    ko::View<Real[Geo::ndim],Host> newlagcrd("newlagcrd");
+    for (int i=0; i<Geo::ndim; ++i) {
+        newcrd(i) = intr_crds.getCrdComponentHost(parent_center_ind, i);
+        newlagcrd(i) = intr_lagcrds.getCrdComponentHost(parent_center_ind,i);
+    }
+    Index bndry_insert_pt = bndry_crds.nh();
+    bndry_crds.insertHost(newcrd);
+    bndry_lagcrds.insertHost(newlagcrd);
+    for (int i=0; i<4; ++i) {
+        newFaceVertInds(i,(i+2)%4) = bndry_insert_pt;
+    }
+    
+    /// create new interior edges
+    const Index edge_ins_pt = edges.nh();
+    edges.insertHost(newFaceVertInds(0,1), newFaceVertInds(0,2), newFaceKids(0), newFaceKids(1));
+    newFaceEdgeInds(0,1) = edge_ins_pt;
+    newFaceEdgeInds(1,3) = edge_ins_pt;
+    edges.insertHost(newFaceVertInds(2,0), newFaceVertInds(2,3), newFaceKids(3), newFaceKids(2));
+    newFaceEdgeInds(2,3) = edge_ins_pt+1;
+    newFaceEdgeInds(3,1) = edge_ins_pt+1;
+    edges.insertHost(newFaceVertInds(2,1), newFaceVertInds(2,0), newFaceKids(1), newFaceKids(2));
+    newFaceEdgeInds(1,2) = edge_ins_pt+2;
+    newFaceEdgeInds(2,0) = edge_ins_pt+2;
+    edges.insertHost(newFaceVertInds(3,1), newFaceVertInds(3,0), newFaceKids(0), newFaceKids(3));
+    newFaceEdgeInds(0,2) = edge_ins_pt+3;
+    newFaceEdgeInds(3,0) = edge_ins_pt+3;
+    
+    /// create new center coordinates
+    ko::View<Real[4][Geo::ndim],Host> vertCrds("vertCrds");
+    ko::View<Real[4][Geo::ndim],Host> vertLagCrds("vertLagCrds");
+    ko::View<Real[4][Geo::ndim],Host> faceCrds("faceCrds");
+    ko::View<Real[4][Geo::ndim],Host> faceLagCrds("faceLagCrds");
+    ko::View<Real[4]> faceArea("faceArea");
+    for (int i=0; i<4; ++i) { // loop over child faces
+        auto ctr = ko::subview(faceCrds,i,ko::ALL());
+        auto lagctr = ko::subview(faceLagCrds,i,ko::ALL());
+        for (int j=0; j<4; ++j) { // loop over vertices
+            for (int k=0; k<Geo::ndim; ++k) { // loop over components
+                vertCrds(j,k) = bndry_crds.getCrdComponentHost(newFaceVertInds(i,j),k);
+                vertLagCrds(j,k) = bndry_lagcrds.getCrdComponentHost(newFaceVertInds(i,j),k);
+            }
+        }
+        Geo::barycenter(ctr, vertCrds, 4);
+        Geo::barycenter(lagctr, vertLagCrds,4);
+        faceArea(i) = Geo::polygonArea(ctr, vertCrds, 4);
+    }
+    const Index face_crd_ins_pt = intr_crds.nh();
+    // re-use parent center memory for child 0
+    intr_crds.relocateHost(parent_center_ind, ko::subview(faceCrds,0,ko::ALL()));
+    intr_lagcrds.relocateHost(parent_center_ind, ko::subview(faceLagCrds,0,ko::ALL()));
+    faces.insertHost(parent_center_ind, ko::subview(newFaceVertInds,0, ko::ALL()),
+         ko::subview(newFaceEdgeInds,0,ko::ALL()), faceInd, faceArea(0));
+    for (int i=1; i<4; ++i) {
+        intr_crds.insertHost(slice(faceCrds,i));
+        intr_lagcrds.insertHost(slice(faceLagCrds,i));
+        faces.insertHost(face_crd_ins_pt+i-1, ko::subview(newFaceVertInds,i,ko::ALL()),
+            ko::subview(newFaceEdgeInds,i,ko::ALL()), faceInd, faceArea(i));
+    }
+    
+    /// remove parent from leaf computations
+    faces.setKidsHost(faceInd, newFaceKids);
+    faces.setAreaHost(faceInd, 0.0);
+    faces.decrementNActive();
 }
 
 /// ETI
