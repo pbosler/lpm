@@ -62,6 +62,7 @@ ko::initialize(argc, argv);
 
     
 }
+std::cout << "tests pass." << std::endl;
 ko::finalize();
 return 0;
 }
