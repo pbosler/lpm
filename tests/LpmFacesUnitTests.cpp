@@ -99,13 +99,13 @@ ko::initialize(argc, argv);
         Index nmaxverts;
         Index nmaxfaces;
         Index nmaxedges;
-        const int maxlev = 6;
+        const int maxlev = 5;
         seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
         
         Coords<SphereGeometry> icvertcrds(nmaxverts);
         Coords<SphereGeometry> icvertlagcrds(nmaxverts);
-        Coords<SphereGeometry> icfacecrds(nmaxverts);
-        Coords<SphereGeometry> icfacelagcrds(nmaxverts);
+        Coords<SphereGeometry> icfacecrds(nmaxfaces);
+        Coords<SphereGeometry> icfacelagcrds(nmaxfaces);
         Edges icedges(nmaxedges);
         Faces<TriFace> icfaces(nmaxfaces);
         icvertcrds.initBoundaryCrdsFromSeed(seed);
@@ -118,7 +118,7 @@ ko::initialize(argc, argv);
         for (int i=0; i<maxlev; ++i) {
             const Index stopInd = icfaces.nh();
             for (Index j=0; j<stopInd; ++j) {
-                if (!icfaces.hasKidsHost(i)) {
+                if (!icfaces.hasKidsHost(j)) {
                     icdiv::divide(j, icfaces, icedges, icfacecrds, icfacelagcrds, icvertcrds, icvertlagcrds);
                 }
             }
