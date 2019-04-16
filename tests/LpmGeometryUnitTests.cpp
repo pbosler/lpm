@@ -7,8 +7,6 @@
 
 using namespace Lpm;
 
-typedef ko::DefaultExecutionSpace ExeSpace;
-
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv); 
 {
@@ -20,48 +18,48 @@ ko::initialize(argc, argv);
     
     
     // allocate a Vec on the device
-    Vec<2, ExeSpace> r2device_a("a");
+    Vec<2, Dev> r2device_a("a");
     // allocate a mirror on host
-    Vec<2, ExeSpace>::HostMirror ha = ko::create_mirror_view(r2device_a);
+    Vec<2, Dev>::HostMirror ha = ko::create_mirror_view(r2device_a);
     // initialize on host
     ha[0] = r2a[0];
     ha[1] = r2a[1];
     // copy to device
     ko::deep_copy(r2device_a, ha);
     
-    Vec<2, ExeSpace> r2device_b("b");
-    Vec<2, ExeSpace>::HostMirror hb = ko::create_mirror_view(r2device_b);
+    Vec<2, Dev> r2device_b("b");
+    Vec<2, Dev>::HostMirror hb = ko::create_mirror_view(r2device_b);
     hb[0] = r2b[0];
     hb[1] = r2b[1];
     ko::deep_copy(r2device_b, hb);
     
-    Vec<2, ExeSpace> r2device_c("c");
-    Vec<2, ExeSpace>::HostMirror hc = ko::create_mirror_view(r2device_c);
+    Vec<2, Dev> r2device_c("c");
+    Vec<2, Dev>::HostMirror hc = ko::create_mirror_view(r2device_c);
     hc[0] = r2c[0];
     hc[1] = r2c[1];
     ko::deep_copy(r2device_c, hc);
     
-    Vec<2, ExeSpace> r2device_d("d");
-    Vec<2, ExeSpace>::HostMirror hd = ko::create_mirror_view(r2device_d);
+    Vec<2, Dev> r2device_d("d");
+    Vec<2, Dev>::HostMirror hd = ko::create_mirror_view(r2device_d);
     hd[0] = r2d[0];
     hd[1] = r2d[1];
     ko::deep_copy(r2device_d, hd);
     
     // allocate a scalar on the device and a host mirror
-    ko::View<Real,Layout,ExeSpace> scalar_result("res");
+    ko::View<Real,Layout,Dev> scalar_result("res");
     ko::View<Real>::HostMirror host_scalar = ko::create_mirror_view(scalar_result);
-    Vec<2, ExeSpace> result("res");
+    Vec<2, Dev> result("res");
     
     
-    Vec<2, ExeSpace>::HostMirror host_result = ko::create_mirror_view(result);
-    VecArr<2, ExeSpace> vecs("vecs", 4);
+    Vec<2, Dev>::HostMirror host_result = ko::create_mirror_view(result);
+    VecArr<2, Dev> vecs("vecs", 4);
     std::cout << "shape(vecs) = (" << vecs.extent(0) << ", " << vecs.extent(1) << ")" << std::endl;
     
     std::cout << typeid(vecs).name() << std::endl;
     
     // execute functions on device
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
-        scalar_result(0) = PlaneGeometry::triArea<Vec<2,ExeSpace>>(r2device_a, r2device_b, r2device_c);
+        scalar_result(0) = PlaneGeometry::triArea<Vec<2,Dev>>(r2device_a, r2device_b, r2device_c);
         if (scalar_result(0) != 4) error("triArea error");
         for (int j=0; j<2; ++j) {
             vecs(0,j) = r2device_a(j);
@@ -96,14 +94,14 @@ ko::initialize(argc, argv);
     const Real p2[3] = {0.57735026918962584,0.57735026918962584,-0.57735026918962584};
     const Real p3[3] = {0.57735026918962584,0.57735026918962584,0.57735026918962584};
     
-    Vec<3, ExeSpace> a("a");
-    Vec<3, ExeSpace>::HostMirror ha = ko::create_mirror_view(a);
-    Vec<3, ExeSpace> b("b");
-    Vec<3, ExeSpace>::HostMirror hb = ko::create_mirror_view(b);
-    Vec<3, ExeSpace> c("c");
-    Vec<3, ExeSpace>::HostMirror hc = ko::create_mirror_view(c);
-    Vec<3, ExeSpace> d("d");
-    Vec<3, ExeSpace>::HostMirror hd = ko::create_mirror_view(d);
+    Vec<3, Dev> a("a");
+    Vec<3, Dev>::HostMirror ha = ko::create_mirror_view(a);
+    Vec<3, Dev> b("b");
+    Vec<3, Dev>::HostMirror hb = ko::create_mirror_view(b);
+    Vec<3, Dev> c("c");
+    Vec<3, Dev>::HostMirror hc = ko::create_mirror_view(c);
+    Vec<3, Dev> d("d");
+    Vec<3, Dev>::HostMirror hd = ko::create_mirror_view(d);
     
     for (int i=0; i<3; ++i) {
         ha[i] = p0[i];
@@ -116,12 +114,12 @@ ko::initialize(argc, argv);
     ko::deep_copy(c, hc);
     ko::deep_copy(d, hd);
 
-    ko::View<Real, ExeSpace> res("res");
-    ko::View<Real, ExeSpace>::HostMirror hres = ko::create_mirror_view(res);
-    Vec<3, ExeSpace> vres("vres");
-    Vec<3, ExeSpace>::HostMirror hvres = ko::create_mirror_view(vres);
+    ko::View<Real, Dev> res("res");
+    ko::View<Real, Dev>::HostMirror hres = ko::create_mirror_view(res);
+    Vec<3, Dev> vres("vres");
+    Vec<3, Dev>::HostMirror hvres = ko::create_mirror_view(vres);
     
-    VecArr<3, ExeSpace> vecs("vecs", 4);
+    VecArr<3, Dev> vecs("vecs", 4);
     
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
         res(0) = SphereGeometry::triArea(a, b, c);

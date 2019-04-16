@@ -13,7 +13,6 @@ void MeshSeed<SeedType>::readfile() {
     if (!file.is_open()) {
         oss << "MeshSeed::readfile error: cannot open file " << fullFilename();   
         LPM_THROW_IF(true, oss.str());
-        oss.str("");
     }
     
     /// parse file
@@ -65,7 +64,6 @@ void MeshSeed<SeedType>::readfile() {
                 oss << "MeshSeed::readfile error: cannot read coordinate from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
-                oss.str("");
             }
         }
         else if (edgeHeaderLine > 0 && lineNumber > edgeHeaderLine 
@@ -85,7 +83,6 @@ void MeshSeed<SeedType>::readfile() {
                 oss << "MeshSeed::readfile error: cannot read edge from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
-                oss.str("");
             }
         }
         else if (faceVertHeaderLine > 0 && lineNumber > faceVertHeaderLine
@@ -115,7 +112,6 @@ void MeshSeed<SeedType>::readfile() {
                 oss << "MeshSeed::readfile error: cannot read face vertices from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
-                oss.str("");
             }
         }
         else if (faceEdgeHeaderLine > 0 && lineNumber > faceEdgeHeaderLine 
@@ -145,7 +141,6 @@ void MeshSeed<SeedType>::readfile() {
                 oss << "MeshSeed::readfile error: cannot read face edges from line " << lineNumber
                     << " of file " << fullFilename();
                 LPM_THROW_IF(true, oss.str());
-                oss.str("");
             }
         }
     }
