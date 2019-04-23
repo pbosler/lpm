@@ -69,8 +69,7 @@ template <typename FaceType, typename SeedType> class PolyMesh2d {
         struct FaceDivider {
         };
         
-        struct EdgeDivider {
-        };
+        
         
     protected:
         crd_view_type vertCrds;
