@@ -12,14 +12,6 @@
 
 namespace Lpm {
 
-struct TriFace {
-    static constexpr Int nverts = 3;
-};
-
-struct QuadFace {
-    static constexpr Int nverts = 4;
-};
-
 /**
     PolyMesh data structure, defined on device.
     
@@ -52,26 +44,19 @@ struct QuadFace {
         nFaces = number of faces currently in memory. indices >= nFaces are uninitialized
         nLeafFaces = number of undivided faces in tree
 */
-template <typename FaceType, typename SeedType> class PolyMesh2d {
+template <typename SeedType> class PolyMesh2d {
     public:
         typedef typename SeedType::geo geo;
-        typedef ko::View<Real*[geo::ndim],Dev> crd_view_type; // view(i,:) = position vector of particle i
-        typedef ko::View<Index,Dev> n_view_type;        // view(0) = n
+        typedef typename geo::crd_view_type crd_view_type; // view(i,:) = position vector of particle i
         typedef ko::View<Index*[4],Dev> edge_view_type; // view(i,:) = (orig, dest, left, right)
         typedef ko::View<Index*[3],Dev> edge_tree_type; // view(i,:) = (parent, kid0, kid1)
-        typedef ko::View<Index*[FaceType::nverts],Dev> face_view_type; // view(i,:) = verts of face i, (vert0, vert1, vert2...)
+        typedef ko::View<Index*[SeedType::nfaceverts],Dev> face_view_type; // view(i,:) = verts of face i, (vert0, vert1, vert2...)
         typedef ko::View<Index*[5],Dev> face_tree_type; // view(i,:) = (parent, kid0, kid1, kid2, kid3)
         
-        PolyMesh2d(const int initTreeDepth, const int maxTreeDepth);
+        PolyMesh2d(const int initTreeDepth, const int maxDepth);
         
         virtual ~PolyMesh2d() {}
-        
-        struct FaceDivider {
-        };
-        
-        
-        
-    protected:
+    
         crd_view_type vertCrds;
         crd_view_type lagVertCrds;
         n_view_type nVerts;
@@ -86,10 +71,17 @@ template <typename FaceType, typename SeedType> class PolyMesh2d {
         face_view_type faceVerts;
         face_view_type faceEdges;
         face_tree_type faceTree;
+        scalar_view_type faceArea;
         n_view_type nFaces;
         n_view_type nLeafFaces;
+
+        Int baseTreeDepth;
+        Int maxTreeDepth;
         
+    protected:
         void seedInit();
+        
+        void treeInit();
 };
 
 }

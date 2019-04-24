@@ -4,11 +4,14 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmUtilities.hpp"
+#include "Kokkos_Core.hpp"
+#include "Kokkos_View.hpp"
 
 namespace Lpm {
 
 struct PlaneGeometry {
     static constexpr Int ndim = 2;
+    typedef ko::View<Real*[ndim],Dev> crd_view_type;
 
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
@@ -104,6 +107,7 @@ struct PlaneGeometry {
 
 struct SphereGeometry {
     static constexpr Int ndim = 3;
+    typedef ko::View<Real*[ndim],Dev> crd_view_type;
 
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {

@@ -57,21 +57,6 @@ typedef ko::LayoutLeft Layout;
 typedef ko::LayoutRight Layout;
 #endif
 
-/// Lpm array types
-template <int ndim, typename ExeSpace> using Vec = ko::View<Real[ndim], Layout, ExeSpace>;
-template <int ndim, typename ExeSpace> using VecArr = ko::View<Real*[ndim], Layout, ExeSpace>;
-template <int ndim> using ConstVecArr = ko::View<const Real*[ndim], Layout>;
-typedef ko::View<Index*, Layout> Idxs;
-typedef ko::View<const Index*, Layout> ConstIdxs;
-
-/// copy array contents
-template<typename ViewType, typename ConstViewType>
-KOKKOS_INLINE_FUNCTION
-static void copy(ViewType dst, ConstViewType src, const Int n) {
-    for (Int i=0; i<n; ++i)
-        dst[i] = src[i];
-}
-
 /// Execution spaces
 typedef ko::DefaultExecutionSpace DevExe;
 typedef ko::HostSpace::execution_space HostExe;
@@ -128,6 +113,13 @@ static constexpr Index NULL_IND = -1;
 
 /// Lock Index
 static constexpr Index LOCK_IND = -2;
+
+/// View to a single integer
+typedef ko::View<Index,Dev> n_view_type; // view(0) = n
+/// View to a scalar array
+typedef ko::View<Real*,Dev> scalar_view_type;
+/// View to an index array
+typedef ko::View<Index*,Dev> index_view_type;
 
 #ifdef KOKKOS_ENABLE_CUDA
     /// GPU-friendly replacements for stdlib functions
