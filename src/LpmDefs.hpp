@@ -57,6 +57,13 @@ typedef ko::LayoutLeft Layout;
 typedef ko::LayoutRight Layout;
 #endif
 
+/// Lpm array types
+template <int ndim, typename ExeSpace> using Vec = ko::View<Real[ndim], Layout, ExeSpace>;
+template <int ndim, typename ExeSpace> using VecArr = ko::View<Real*[ndim], Layout, ExeSpace>;
+template <int ndim> using ConstVecArr = ko::View<const Real*[ndim], Layout>;
+typedef ko::View<Index*, Layout> Idxs;
+typedef ko::View<const Index*, Layout> ConstIdxs;
+
 /// Execution spaces
 typedef ko::DefaultExecutionSpace DevExe;
 typedef ko::HostSpace::execution_space HostExe;
