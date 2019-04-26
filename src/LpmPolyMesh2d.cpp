@@ -31,6 +31,7 @@ PolyMesh2d<SeedType>::PolyMesh2d(const int initTreeDepth, const int maxDepth )  
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::seedInit() {
+    MeshSeed<SeedType> seed;
     typedef typename crd_view_type::HostMirror host_crd_view;
     typedef typename edge_view_type::HostMirror host_edge_view;
     typedef typename edge_tree_type::HostMirror host_edge_tree;
@@ -124,7 +125,7 @@ void PolyMesh2d<SeedType>::seedInit() {
             
         ne_before = ne_after;
         ne_after = ne_before + SeedType::nfaceverts*ne_before;
-        const Index nf_after = nf_before + 4*nf_before;
+        nf_after = nf_before + 4*nf_before;
         ko::parallel_for(nf_before, UniformFaceDivider<SeedType>(vertCrds, lagVertCrds, nv_before, edges, edgeTree, 
             ne_before, faceCrds, lagFaceCrds, faceVerts, faceEdges, faceTree, nf_before, nf_after));
     }
