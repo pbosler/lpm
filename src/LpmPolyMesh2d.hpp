@@ -6,6 +6,9 @@
 #include "LpmUtilities.hpp"
 #include "LpmGeometry.hpp"
 #include "LpmMeshSeed.hpp"
+#include "LpmCoords.hpp"
+#include "LpmEdges.hpp"
+#include "LpmFaces.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
@@ -13,75 +16,39 @@
 namespace Lpm {
 
 /**
-    PolyMesh data structure, defined on device.
-    
-    Vertices:
-        vertCrds, lagVertCrds: coordinate vectors in physical and Lagrangian space, respectively.  
-            vertCrds(i,:) = coordinates of particle i.
-        nVerts = number of vertices currently in memory.  indices >= nVerts are uninitialized.
-    
-    Edges:
-        edges: edge data structure such that:
-            edges(i,0) = origin index (to vertCrds)
-            edges(i,1) = destination index (to vertCrds)
-            edges(i,2) = left face index (to faces)
-            edges(i,3) = right face index (to faces)
-        edgeTree: binary tree, indices to edges such that: 
-            edgeTree(i,0) = parent of edge i
-            edgeTree(i,1:2) = children of edge i
-        nEdges = number of edges currently in memory. indices >= nEdges are uninitialized
-        nLeafEdges = number of undivided edges in tree
-    
-    Faces:
-        faceVerts: indices to vertCrds, lagVertCrds such that:
-             faceVerts(i,:) = face i, vertices 0, 1, 2, ... nvertsperface-1
-        faceEdges: indices to edges such that:
-             faceEdges(i,:) = face i, edges 0, 1, 2, ... nvertsperface-1
-        faceTree: quadtree, indices to faces such that:
-             faceTree(i,0) = parent of face i, faceTree(i,1:4) = children of face i
-        faceCrds: coordinate vectors of faces' interior particles.  For standard face types, 
-            faceCrds(i,:) is the coordinate vector of the center particle assocated with face i.
-        nFaces = number of faces currently in memory. indices >= nFaces are uninitialized
-        nLeafFaces = number of undivided faces in tree
 */
-template <typename SeedType> class PolyMesh2d {
+template <typename Geo, typename FaceType> class PolyMesh2d {
     public:
-        typedef typename SeedType::geo geo;
-        typedef typename geo::crd_view_type crd_view_type; // view(i,:) = position vector of particle i
-        typedef ko::View<Index*[4],Dev> edge_view_type; // view(i,:) = (orig, dest, left, right)
-        typedef ko::View<Index*[3],Dev> edge_tree_type; // view(i,:) = (parent, kid0, kid1)
-        typedef ko::View<Index*[SeedType::nfaceverts],Dev> face_view_type; // view(i,:) = verts of face i, (vert0, vert1, vert2...)
-        typedef ko::View<Index*[5],Dev> face_tree_type; // view(i,:) = (parent, kid0, kid1, kid2, kid3)
-        
-        PolyMesh2d(const int initTreeDepth, const int maxDepth);
+        PolyMesh2d(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) : 
+            physVerts(nmaxverts), lagVerts(nmaxverts), edges(nmaxedges), faces(nmaxfaces), 
+            physFaces(nmaxfaces), lagFaces(nmaxfaces) {}
         
         virtual ~PolyMesh2d() {}
-    
-        crd_view_type vertCrds;
-        crd_view_type lagVertCrds;
-        n_view_type nVerts;
-        
-        edge_view_type edges;
-        edge_tree_type edgeTree;
-        n_view_type nEdges;
-        n_view_type nLeafEdges;
-        
-        crd_view_type faceCrds;
-        crd_view_type lagFaceCrds;
-        face_view_type faceVerts;
-        face_view_type faceEdges;
-        face_tree_type faceTree;
-        scalar_view_type faceArea;
-        n_view_type nFaces;
-        n_view_type nLeafFaces;
 
+        Coords<Geo> physVerts;
+        Coords<Geo> lagVerts;
+        
+        Edges edges;
+        
+        Faces<FaceType> faces;
+        Coords<Geo> physFaces;
+        Coords<Geo> lagFaces;
+        
         Int baseTreeDepth;
         Int maxTreeDepth;
         
-    protected:
-        void seedInit();
+        template <typename SeedType>
+        void treeInit(const Int initDepth, const MeshSeed<SeedType>& seed);
         
-        void treeInit();
+        virtual void outputVtk(const std::string& fname) const;
+        
+    protected:
+        typedef FaceDivider<Geo,FaceType> divider;
+    
+        template <typename SeedType>
+        void seedInit(const MeshSeed<SeedType>& seed);
+        
+        
 };
 
 }

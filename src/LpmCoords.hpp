@@ -18,6 +18,9 @@ template <typename Geo> class Coords {
     public:
         typedef ko::View<Real*[Geo::ndim]> crd_view_type;
         typedef ko::View<Real[Geo::ndim]> vec_type;
+        
+        template <typename G, typename F> friend class PolyMesh2d;
+        
 #ifdef HAVE_CUDA
         typedef ko::View<Real*, ko::LayoutStride,
             typename crd_view_type::device_type, ko::MemoryTraits<ko::Unmanaged>> slice_type;
@@ -113,11 +116,14 @@ template <typename Geo> class Coords {
         ko::View<const Real[Geo::ndim],Host> crdVecHostConst(const Index ind) const {
             return ko::subview(_host_crds, ind, ko::ALL());
         }
-    protected:
+    
         crd_view_type _crds;
+        Kokkos::View<Index> _n;
+        
+    protected:
         typename crd_view_type::HostMirror _host_crds;
         Index _nmax;
-        Kokkos::View<Index> _n;
+        
         Kokkos::View<Index>::HostMirror _nh;
 };
 

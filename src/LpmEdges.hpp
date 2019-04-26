@@ -23,6 +23,9 @@ class Edges {
         typedef typename edge_view_type::HostMirror edge_host_type;
         typedef ko::View<Index*[2]> edge_tree_view;
         typedef typename edge_tree_view::HostMirror edge_tree_host;
+        
+        template <typename Geo, typename FaceKind> 
+        friend class PolyMesh2d;
     
         Edges(const Index nmax) : _origs("origs", nmax), _dests("dests", nmax), _lefts("lefts", nmax), _rights("rights", nmax), _parent("parent",nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _nActive("nactive") {
             _nh = ko::create_mirror_view(_n);

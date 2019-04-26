@@ -48,7 +48,9 @@ template <typename FaceKind> class Faces {
         typedef Index* host_vert_inds;
         typedef host_vert_inds host_edge_inds;
 #endif
-
+        template <typename Geo, typename FaceType> 
+        friend class PolyMesh2d;
+        
         static constexpr Int nverts = FaceKind::nverts;
         
         Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax), _centers("centers",nmax),
