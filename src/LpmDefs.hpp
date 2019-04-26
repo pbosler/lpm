@@ -12,12 +12,6 @@
 #include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
 
-#ifdef HAVE_CUDA
-#define KOKKOS_CONSTANT __constant__ __device__
-#else
-#define KOKKOS_CONSTANT
-#endif
-
 namespace Lpm {
 namespace ko = Kokkos;
 
@@ -56,13 +50,6 @@ typedef ko::LayoutLeft Layout;
 #else
 typedef ko::LayoutRight Layout;
 #endif
-
-/// Lpm array types
-template <int ndim, typename ExeSpace> using Vec = ko::View<Real[ndim], Layout, ExeSpace>;
-template <int ndim, typename ExeSpace> using VecArr = ko::View<Real*[ndim], Layout, ExeSpace>;
-template <int ndim> using ConstVecArr = ko::View<const Real*[ndim], Layout>;
-typedef ko::View<Index*, Layout> Idxs;
-typedef ko::View<const Index*, Layout> ConstIdxs;
 
 /// Execution spaces
 typedef ko::DefaultExecutionSpace DevExe;
