@@ -9,6 +9,17 @@
 
 namespace Lpm {
 
+/**
+    Required members:
+        Int ndim : number of dimensions in Euclidean space
+        distance(a,b) : distance between two vectors in this space
+        triArea(a,b,c) : area of the triangle formed by vertices a, b, c
+        barycenter( vs, n) : barycenter of the n vectors in array vs
+        polygonArea(ctr, vs, n): area of the polygon with ctr interior coordinate and vertices vs
+        
+    Required typedefs:
+        crd_view_type : View type associated with vectors in Euclidean space
+*/
 struct PlaneGeometry {
     static constexpr Int ndim = 2;
     typedef ko::View<Real*[ndim],Dev> crd_view_type;
@@ -108,6 +119,16 @@ struct PlaneGeometry {
 struct SphereGeometry {
     static constexpr Int ndim = 3;
     typedef ko::View<Real*[ndim],Dev> crd_view_type;
+    
+    template <typename CV> KOKKOS_INLINE_FUNCTION
+    static Real latitude(const CV v) {
+        return std::atan2(v[2], std::sqrt(v[0]*v[0] + v[1]*v[1]));
+    }
+    
+    template <typename CV> KOKKOS_INLINE_FUNCTION
+    static Real longitude(const CV v) {
+        return atan4(v[1], v[0]);
+    }
 
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {

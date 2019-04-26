@@ -11,7 +11,7 @@ std::string Coords<Geo>::infoString(const std::string& label) const {
         if (i==_nh(0)) oss << "---------------------------------" << std::endl;
         oss << label << ": (" << i << ") : ";
         for (Int j=0; j<Geo::ndim; ++j) 
-            oss << _host_crds(i,j) << " ";
+            oss << _hostcrds(i,j) << " ";
         oss << std::endl;
     }
     return oss.str();
@@ -22,7 +22,7 @@ void Coords<Geo>::writeMatlab(std::ostream& os, const std::string& name) const {
     os << name << " = [";
     for (Index i=0; i<_nh(0); ++i) {
         for (int j=0; j<Geo::ndim; ++j) {
-            os << _host_crds(i,j) << (j==Geo::ndim-1 ? (i==_nh(0)-1 ? "];" : ";") : ",");
+            os << _hostcrds(i,j) << (j==Geo::ndim-1 ? (i==_nh(0)-1 ? "];" : ";") : ",");
         }
     }
     os << std::endl;
@@ -66,7 +66,7 @@ void Coords<Geo>::initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed) {
     LPM_THROW_IF(_nmax < SeedType::nverts, "Coords::initBoundaryCrdsFromSeed error: not enough memory.");
     for (int i=0; i<SeedType::nverts; ++i) {
         for (int j=0; j<Geo::ndim; ++j) {
-            _host_crds(i,j) = seed.scrds(i,j);
+            _hostcrds(i,j) = seed.scrds(i,j);
         }
     }
     _nh(0) = SeedType::nverts;
@@ -77,7 +77,7 @@ void Coords<Geo>::initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed) {
     LPM_THROW_IF(_nmax < SeedType::nfaces, "Coords::initInteriorCrdsFromSeed error: not enough memory.");
     for (int i=0; i<SeedType::nfaces; ++i) {
         for (int j=0; j<Geo::ndim; ++j) {
-            _host_crds(i,j) = seed.scrds(SeedType::nverts + i, j);
+            _hostcrds(i,j) = seed.scrds(SeedType::nverts + i, j);
         }
     }
     _nh(0) = SeedType::nfaces;

@@ -16,80 +16,59 @@ namespace Lpm {
 */
 template <typename Geo> class Coords {
     public:
-        typedef ko::View<Real*[Geo::ndim]> crd_view_type;
-        typedef ko::View<Real[Geo::ndim]> vec_type;
+        typedef typename Geo::crd_view_type crd_view_type;
         
-        template <typename G, typename F> friend class PolyMesh2d;
+        template <typename SeedType> friend class PolyMesh2d;
         
-#ifdef HAVE_CUDA
-        typedef ko::View<Real*, ko::LayoutStride,
-            typename crd_view_type::device_type, ko::MemoryTraits<ko::Unmanaged>> slice_type;
-        typedef ko::View<const Real*, ko::LayoutStride,
-            typename crd_view_type::device_type, ko::MemoryTraits<ko::Unmanaged>> const_slice_type;
-        typedef ko::View<Real*, ko::LayoutStride, typename crd_view_type::host_mirror_space, 
-            ko::MemoryTraits<ko::Unmanaged>> host_slice_type;
-        typedef ko::View<const Real*, ko::LayoutStride, typename crd_view_type::host_mirror_space,
-            ko::MemoryTraits<ko::Unmanaged>> const_host_slice;
-#else
-        typedef typename crd_view_type::value_type* slice_type;
-        typedef typename crd_view_type::const_value_type* const_slice_type;
-        typedef slice_type host_slice_type;
-        typedef const_slice_type const_host_slice;
-#endif        
-    
-        Coords(const Index nmax) : _crds("crds", nmax), _nmax(nmax), _n("n") {
-            _host_crds = ko::create_mirror_view(_crds);
+        crd_view_type crds;
+        
+        Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), _n("n") {
+            _hostcrds = ko::create_mirror_view(crds);
             _nh = ko::create_mirror_view(_n);
             _nh(0) = 0;
         };
         
         /// Host function
-        Index nMax() const { return _crds.extent(0);} //return _nmax;}
+        Index nMax() const { return crds.extent(0);} //return _nmax;}
         
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n(0);}
         
-        /// Host function
-        Index nh() const {return _nh(0);}
-        
-        KOKKOS_INLINE_FUNCTION
-        slice_type getSlice(const Index ia) {return slice(_crds, ia);}
-        
-        KOKKOS_INLINE_FUNCTION
-        const_slice_type getConstSlice(const Index ia) const {return const_slice(_crds, ia);}
-        
-        host_slice_type getSliceHost(const Index ia) {return slice(_host_crds, ia);}
-        
-        const_host_slice getConstSliceHost(const Index ia) const {return const_slice(_host_crds, ia);}
-
-        void updateDevice() {
-            ko::deep_copy(_crds, _host_crds);
+        void updateDevice() const {
+            ko::deep_copy(crds, _hostcrds);
             ko::deep_copy(_n, _nh);
         }
         
-        void updateHost() {
-            ko::deep_copy(_host_crds, _crds);
+        void updateHost() const {
+            ko::deep_copy(_hostcrds, crds);
             ko::deep_copy(_nh, _n);
         }
         
-        KOKKOS_INLINE_FUNCTION
-        Real getCrdComponent(const Index ind, const Int dim) const {return _crds(ind, dim);}
+/*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
+    
+        todo: make them protected, not public    
         
-        inline Real getCrdComponentHost(const Index ind, const Int dim) const {return _host_crds(ind, dim);}
+*/        
+        /// Host function
+        Index nh() const {return _nh(0);}
+        
+        inline Real getCrdComponentHost(const Index ind, const Int dim) const {return _hostcrds(ind, dim);}
         
         /// Host function
         template <typename CV> 
         void insertHost(const CV v) {
             LPM_THROW_IF(_nmax < _nh(0) + 1, "Coords::insert error: not enough memory.");
             for (int i=0; i<Geo::ndim; ++i) {
-                _host_crds(_nh(0), i) = v[i];
+                _hostcrds(_nh(0), i) = v[i];
             }
             _nh(0) += 1;
         }
-        
+
+        /// Host function
         void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
+            LPM_THROW_IF(ind >= _nh(0), "Coords::relocateHost error: index out of range.");
             for (int i=0; i<Geo::ndim; ++i) {
-                _host_crds(ind, i) = v(i);
+                _hostcrds(ind, i) = v(i);
             }
         }
         
@@ -111,20 +90,20 @@ template <typename Geo> class Coords {
         void writeMatlab(std::ostream& os, const std::string& name) const;
         
         /// Host function
-        ko::View<Real[Geo::ndim],Host> crdVecHost(const Index ind) {return ko::subview(_host_crds, ind, ko::ALL());}
+        ko::View<Real[Geo::ndim],Host> crdVecHost(const Index ind) {return ko::subview(_hostcrds, ind, ko::ALL());}
         
         ko::View<const Real[Geo::ndim],Host> crdVecHostConst(const Index ind) const {
-            return ko::subview(_host_crds, ind, ko::ALL());
+            return ko::subview(_hostcrds, ind, ko::ALL());
         }
     
-        crd_view_type _crds;
-        Kokkos::View<Index> _n;
+        
         
     protected:
-        typename crd_view_type::HostMirror _host_crds;
+        typename crd_view_type::HostMirror _hostcrds;
         Index _nmax;
+        n_view_type _n;
+        typename n_view_type::HostMirror _nh;
         
-        Kokkos::View<Index>::HostMirror _nh;
 };
 
 
