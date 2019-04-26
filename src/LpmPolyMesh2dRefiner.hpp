@@ -7,7 +7,7 @@
 
 namespace Lpm {
 
-template <typename SeedType> UniformEdgeDivider {
+template <typename SeedType> struct UniformEdgeDivider {
     typedef typename SeedType::geo geo;
     typedef typename geo::crd_view_type crd_view;
     typedef typename PolyMesh2d<SeedType>::edge_view_type edge_view;
@@ -16,19 +16,19 @@ template <typename SeedType> UniformEdgeDivider {
     crd_view lagCrds;
     edge_view edges;
     edge_tree edgeTree;
-    Index nBefore;
-    Index nAfter;
+    Index nEdgesBefore;
+    Index nEdgesAfter;
     Index nVertsBefore;
     
     UniformEdgeDivider(crd_view pc, crd_view lc, edge_view es, edge_tree et, 
         const Index nb, const Index na, const Index nv) : 
-        physCrds(pc), lagCrds(lc), edges(es), edgeTree(et), nVerts(nv), nEdges(ne), startInd(si) {}
+      physCrds(pc), lagCrds(lc), edges(es), edgeTree(et), nEdgesBefore(nb), nEdgesAfter(na), nVertsBefore(nv) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index i) const {
-        const Index parentIndex = nBefore + i
+        const Index parentIndex = nEdgesBefore + i;
         const Index midptInd = nVertsBefore + parentIndex;
-        const Index kid0Ind = nAfter + 2*i;
+        const Index kid0Ind = nEdgesAfter + 2*i;
         
         /// compute midpoint of parent edge
         auto orig = ko::subview(physCrds, edges(i,0), ko::ALL());
@@ -59,9 +59,8 @@ template <typename SeedType> UniformEdgeDivider {
     }
 };
 
-template <typename SeedType> UniformFaceDivider {
+template <typename SeedType> struct UniformFaceDivider {
     typedef typename SeedType::geo geo;
-    typedef typename PolyMesh2d<SeedType>::crd_view_type crd_view;
     typedef typename geo::crd_view_type crd_view;
     typedef typename PolyMesh2d<SeedType>::edge_view_type edge_view;
     typedef typename PolyMesh2d<SeedType>::edge_tree_type edge_tree;
@@ -81,13 +80,16 @@ template <typename SeedType> UniformFaceDivider {
     face_view faceVerts;
     face_view faceEdges;
     face_tree faceTree;
+    scalar_view_type faceArea;
     Index nFacesBefore;
     Index nFacesAfter;
     
     UniformFaceDivider(crd_view pv, crd_view lv, const Index nv, edge_view es, edge_tree et, const Index ne, 
-        crd_view pf, crd_view lf, face_view fv, face_view fe, face_tree ft, const Index nfb, const Index nfa) :
+                       crd_view pf, crd_view lf, face_view fv, face_view fe, face_tree ft, scalar_view_type fa, 
+                       const Index nfb, const Index nfa) :
             physVerts(pv), lagVerts(lv), nVertsBefore(nv), edges(es), edgeTree(et), nEdgesBefore(ne),
-            physFaces(pf), lagFaces(lf), faceVerts(fv), faceEdges(fe), faceTree(ft), nFacesBefore(nfb), nFacesAfter(nfa) {}
+            physFaces(pf), lagFaces(lf), faceVerts(fv), faceEdges(fe), faceTree(ft), faceArea(fa),
+            nFacesBefore(nfb), nFacesAfter(nfa) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index i) const {
@@ -137,7 +139,7 @@ template <typename SeedType> UniformFaceDivider {
                         edges(edgeKid1,3) = newFaceKids[j];
                         
                         newFaceEdges[(j+1)%3][j] = edgeKid0;
-                        edges(edgeKid0,3) = newFaceKids[(j+1)%3]
+                        edges(edgeKid0,3) = newFaceKids[(j+1)%3];
                     }
                     switch (j) {
                         case (0) : {
@@ -218,9 +220,9 @@ template <typename SeedType> UniformFaceDivider {
                     newFaceVerts[j][j] = parentVerts(j);
                     
                     const Index parentEdge = parentEdges[j];
-                    edgeKid0 = edgeTree(parentEdge,1);
-                    edgeKid1 = edgeTree(parentEdge,2);
-                    if (edgeIsPositive(parentIndex, j) {
+                    const Index edgeKid0 = edgeTree(parentEdge,1);
+                    const Index edgeKid1 = edgeTree(parentEdge,2);
+                    if (edgeIsPositive(parentIndex, j)) {
                         newFaceEdges[j][j] = edgeKid0;
                         edges(edgeKid0,2) = newFaceKids[j];
                         
@@ -243,8 +245,8 @@ template <typename SeedType> UniformFaceDivider {
                 /// special case for quads: parent center becomes a child vertex.
                 const Index vertexCenterInd = nVertsBefore + i;
                 for (int j=0; j<geo::ndim; ++j) {
-                    physCrds(vertexCenterInd,j) = physFaces(parentIndex,j);
-                    lagCrds(vertexCenterInd,j) = lagFaces(parentEdge,j);
+                    physVerts(vertexCenterInd,j) = physFaces(parentIndex,j);
+                    lagVerts(vertexCenterInd,j) = lagFaces(parentIndex,j);
                 }
                 for (int j=0; j<4; ++j) {
                     newFaceVerts[j][(j+2)%4] = vertexCenterInd;
