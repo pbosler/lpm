@@ -14,14 +14,6 @@
 
 namespace Lpm {
 
-struct TriFace {
-    static constexpr Int nverts = 3;
-};
-
-struct QuadFace {
-    static constexpr Int nverts = 4;
-};
-
 /** All initialization / changes occur on host.  Device arrays are const.
 
 */
@@ -29,77 +21,59 @@ template <typename FaceKind> class Faces {
     public:
         typedef ko::View<Index*[FaceKind::nverts]> vertex_view_type;
         typedef vertex_view_type edge_view_type;
-        typedef typename vertex_view_type::HostMirror host_vertex_view;
-        typedef host_vertex_view host_edge_view;
         typedef ko::View<Index*[4]> face_tree_view;
-        typedef typename face_tree_view::HostMirror face_tree_host;
-        typedef ko::View<Index*> index_view;
-        typedef typename index_view::HostMirror host_index_view;
-        typedef ko::View<Real*> scalar_view;
-        typedef typename scalar_view::HostMirror host_scalar;
-#ifdef HAVE_CUDA
-        typedef ko::View<Index[FaceKind::nverts], ko::LayoutStride, Dev, ko::MemoryTraits<ko::Unmanaged>> vert_ind_view;
-        typedef vert_ind_view edge_ind_view;
-        typedef ko::View<Index[FaceKind::nverts], ko::LayoutStride, Host, ko::MemoryTraits<ko::Unmanaged>> host_vert_inds;
-        typedef host_vert_inds host_edge_inds;
-#else
-        typedef Index* vert_ind_view;
-        typedef vert_ind_view edge_ind_view;
-        typedef Index* host_vert_inds;
-        typedef host_vert_inds host_edge_inds;
-#endif
-        template <typename Geo, typename FaceType> 
-        friend class PolyMesh2d;
+
+        template <typename Geo, typename FaceType> friend struct FaceDivider;
         
-        static constexpr Int nverts = FaceKind::nverts;
+        vertex_view_type verts;  /// indices to Coords<Geo> on face edges
+        edge_view_type edges; /// indices to Edges
+        index_view_type centers; /// indices to Coords<Geo> inside faces
+        index_view_type parent; /// indices to Faces<FaceKind>
+        face_tree_view kids; /// indices to Faces<FaceKind>
+        n_view_type _n; /// number of Faces currently defined
+        n_view_type _nLeaves; /// number of leaf Faces
+        scalar_view_type area; /// Areas of each face
         
-        Faces(const Index nmax) : _verts("face_verts", nmax), _edges("face_edges", nmax), _centers("centers",nmax),
-            _parent("parent", nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _area("area", nmax), _nActive("nActive") {
-            _hostverts = ko::create_mirror_view(_verts);
-            _hostedges = ko::create_mirror_view(_edges);
-            _hostcenters = ko::create_mirror_view(_centers);
-            _hostparent = ko::create_mirror_view(_parent);
-            _hostkids = ko::create_mirror_view(_kids);
-            _nh = ko::create_mirror_view(_n);
-            _hostarea = ko::create_mirror_view(_area);
-            _hnActive = ko::create_mirror_view(_nActive);
-            _nh(0) = 0;
-            _hnActive(0) = 0;
-        }
-        
-        void updateDevice() {
-            ko::deep_copy(_verts, _hostverts);
-            ko::deep_copy(_edges, _hostedges);
-            ko::deep_copy(_centers, _hostcenters);
-            ko::deep_copy(_parent, _hostparent);
-            ko::deep_copy(_kids, _hostkids);
-            ko::deep_copy(_area, _hostarea);
-            ko::deep_copy(_n, _nh);
-            ko::deep_copy(_nActive, _hnActive);
-        }
-        
-        void updateHost() {
-            ko::deep_copy(_hostarea, _area);
-        }
-        
-        KOKKOS_INLINE_FUNCTION
-        Index getCenterInd(const Index ind) const {return _centers(ind);}
-        
-        KOKKOS_INLINE_FUNCTION
-        vert_ind_view getVerts(const Index ind) {return slice(_verts, ind);}
-        
-        KOKKOS_INLINE_FUNCTION
-        edge_ind_view getEdges(const Index ind) {return slice(_edges, ind);}
-                
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n(0);}
         
         KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
+        Index nLeaves() const {return _nLeaves(0);}
         
-        KOKKOS_INLINE_FUNCTION
-        void setArea(const Index ind, const Real ar) {_area(ind) = ar;}
+        Faces(const Index nmax) : verts("faceverts", nmax), edges("faceedges", nmax), centers("centers",nmax),
+            parent("parent", nmax), kids("kids", nmax), _n("n"), _nmax(nmax), area("area", nmax), _nLeaves("nLeaves") {
+            _hostverts = ko::create_mirror_view(verts);
+            _hostedges = ko::create_mirror_view(edges);
+            _hostcenters = ko::create_mirror_view(centers);
+            _hostparent = ko::create_mirror_view(parent);
+            _hostkids = ko::create_mirror_view(kids);
+            _nh = ko::create_mirror_view(_n);
+            _hostarea = ko::create_mirror_view(area);
+            _hnLeaves = ko::create_mirror_view(_nLeaves);
+            _nh(0) = 0;
+            _hnLeaves(0) = 0;
+        }
         
+        void updateDevice() const {
+            ko::deep_copy(verts, _hostverts);
+            ko::deep_copy(edges, _hostedges);
+            ko::deep_copy(centers, _hostcenters);
+            ko::deep_copy(parent, _hostparent);
+            ko::deep_copy(kids, _hostkids);
+            ko::deep_copy(area, _hostarea);
+            ko::deep_copy(_n, _nh);
+            ko::deep_copy(_nLeaves, _hnLeaves);
+        }
+        
+        void updateHost() const {
+            ko::deep_copy(_hostarea, area);
+        }
+
+/*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
+    
+        todo: make them protected, not public    
+        
+*/       
         /// Host function
         inline Index nMax() const {return _nmax;}
         
@@ -141,7 +115,7 @@ template <typename FaceKind> class Faces {
         inline void setAreaHost(const Index ind, const Real ar) {_hostarea(ind)= ar;}
         
         /// Host function
-        inline void decrementNActive() {_hnActive(0) -= 1;}
+        inline void decrementnLeaves() {_hnLeaves(0) -= 1;}
         
         /// Host function
         std::string infoString(const std::string& label) const;
@@ -154,11 +128,6 @@ template <typename FaceKind> class Faces {
         Real surfAreaHost() const;
         
         /// Host function
-        template <typename Geo>
-        void divide(const Index ind, Edges& edges, Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-            Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds);
-        
-        /// Host function
         void setCenterInd(const Index faceInd, const Index crdInd) {_hostcenters(faceInd) = crdInd;}
         
         /// Host function
@@ -167,43 +136,36 @@ template <typename FaceKind> class Faces {
         }
         
     protected:
-        vertex_view_type _verts;  /// indices to Coords<Geo> on face edges
-        edge_view_type _edges; /// indices to Edges
-        index_view _centers; /// indices to Coords<Geo> inside faces
-        index_view _parent; /// indices to Faces<FaceKind>
-        face_tree_view _kids; /// indices to Faces<FaceKind>
-        ko::View<Index> _n; /// number of Faces currently defined
-        ko::View<Index> _nActive; /// number of leaf Faces
-        scalar_view _area; /// Areas of each face
-        
+        typedef typename face_tree_view::HostMirror face_tree_host;
+        typedef typename index_view_type::HostMirror host_index_view;
+        typedef typename vertex_view_type::HostMirror host_vertex_view;
+        typedef host_vertex_view host_edge_view;
+        typedef typename scalar_view_type::HostMirror host_scalar;
         host_vertex_view _hostverts;
         host_edge_view _hostedges;
         host_index_view _hostcenters;
         host_index_view _hostparent;
         face_tree_host _hostkids;
         ko::View<Index>::HostMirror _nh;
-        ko::View<Index>::HostMirror _hnActive;
+        ko::View<Index>::HostMirror _hnLeaves;
         host_scalar _hostarea;
         
         Index _nmax;
 };
 
-template <typename Geo, typename FaceKind> struct FaceDivider {
-    static void divide(const Index faceInd, Faces<FaceKind>& faces, Edges& edges, 
-        Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) {}
-};
+template <typename Geo, typename FaceType> struct FaceDivider {
+    static void divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts, 
+        Edges& edges, Faces<FaceType>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) {}
+};        
 
 template <typename Geo> struct FaceDivider<Geo, TriFace> {
-    static void divide(const Index faceInd, Faces<TriFace>& faces, Edges& edges, 
-        Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds) ;
+    static void divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts, 
+        Edges& edges, Faces<TriFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) ;
 };
 
 template <typename Geo> struct FaceDivider<Geo, QuadFace> {
-    static void divide(const Index faceInd, Faces<QuadFace>& faces, Edges& edges, 
-        Coords<Geo>& intr_crds, Coords<Geo>& intr_lagcrds, 
-        Coords<Geo>& bndry_crds, Coords<Geo>& bndry_lagcrds);
+    static void divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts, 
+        Edges& edges, Faces<QuadFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) ;
 };
 
 }

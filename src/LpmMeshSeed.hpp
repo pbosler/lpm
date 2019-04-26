@@ -11,6 +11,13 @@
 
 namespace Lpm {
 
+struct TriFace {
+    static constexpr Int nverts = 3;
+};
+struct QuadFace {
+    static constexpr Int nverts = 4;
+};
+
 /**
     Each type of seed below is a initializer for the tree-based meshes employed by LPM.
     
@@ -33,6 +40,7 @@ struct QuadRectSeed {
     static constexpr Int nfaces = 4;
     static constexpr Int nedges = 12;
     typedef PlaneGeometry geo;
+    typedef QuadFace faceKind;
     static constexpr Int nfaceverts = 4;
     static std::string filename() {return "quadRectSeed.dat";}
     static std::string idString() {return "QuadRectSeed";}
@@ -46,6 +54,7 @@ struct TriHexSeed {
     static constexpr Int nfaces = 6;
     static constexpr Int nedges = 12;
     typedef PlaneGeometry geo;
+    typedef TriFace faceKind;
     static constexpr Int nfaceverts = 3;
     static std::string filename() {return "triHexSeed.dat";}
     static std::string idString() {return "TriHexSeed";}
@@ -59,6 +68,7 @@ struct CubedSphereSeed {
     static constexpr Int nfaces = 6;
     static constexpr Int nedges = 12;
     typedef SphereGeometry geo;
+    typedef QuadFace faceKind;
     static constexpr Int nfaceverts = 4;
     static std::string filename() {return "cubedSphereSeed.dat";}
     static std::string idString() {return "CubedSphereSeed";}
@@ -72,6 +82,7 @@ struct IcosTriSphereSeed {
     static constexpr Int nfaces = 20;
     static constexpr Int nedges = 30;
     typedef SphereGeometry geo;
+    typedef TriFace faceKind;
     static constexpr Int nfaceverts = 3;
     static std::string filename() {return "icosTriSphereSeed.dat";}
     static std::string idString() {return "IcosTriSphereSeed";}
@@ -86,6 +97,8 @@ struct IcosTriSphereSeed {
     *** All of this class's methods execute on Host ***
     
     It provides run-time info based on the SeedType.
+    
+    MeshSeed is responsible for determining the memory required to construct a mesh.
 */
 template <typename SeedType> struct MeshSeed {
     /// Number of coordinates (both vertices and faces) in the seed file.

@@ -26,8 +26,6 @@ void MeshSeed<SeedType>::readfile() {
     Int faceVertCounter = 0;
     Int faceEdgeCounter = 0;
     
-    
-    
     while (std::getline(file, line)) {
         ++lineNumber;
         if (line.find("edgeO") != std::string::npos) {
