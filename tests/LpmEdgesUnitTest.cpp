@@ -67,6 +67,7 @@ ko::initialize(argc, argv);
     std::cout << sedges.infoString("QuadRectSeed");
     
 }
+std::cout << "tests pass." << std::endl;
 ko::finalize();
 return 0;
 }

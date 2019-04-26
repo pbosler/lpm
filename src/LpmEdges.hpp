@@ -24,41 +24,57 @@ class Edges {
         typedef ko::View<Index*[2]> edge_tree_view;
         typedef typename edge_tree_view::HostMirror edge_tree_host;
         
-        template <typename Geo, typename FaceKind> 
-        friend class PolyMesh2d;
+        edge_view_type origs;
+        edge_view_type dests;
+        edge_view_type lefts;
+        edge_view_type rights;
+        edge_view_type parent;
+        edge_tree_view kids;
     
-        Edges(const Index nmax) : _origs("origs", nmax), _dests("dests", nmax), _lefts("lefts", nmax), _rights("rights", nmax), _parent("parent",nmax), _kids("kids", nmax), _n("n"), _nmax(nmax), _nActive("nactive") {
+        Edges(const Index nmax) : origs("origs", nmax), dests("dests", nmax), lefts("lefts", nmax), rights("rights", nmax), parent("parent",nmax), kids("kids", nmax), _n("n"), _nmax(nmax), _nLeaves("nLeaves") {
             _nh = ko::create_mirror_view(_n);
-            _ho = ko::create_mirror_view(_origs);
-            _hd = ko::create_mirror_view(_dests);
-            _hl = ko::create_mirror_view(_lefts);
-            _hr = ko::create_mirror_view(_rights);
-            _hp = ko::create_mirror_view(_parent);
-            _hk = ko::create_mirror_view(_kids);
-            _hnActive = ko::create_mirror_view(_nActive);
+            _ho = ko::create_mirror_view(origs);
+            _hd = ko::create_mirror_view(dests);
+            _hl = ko::create_mirror_view(lefts);
+            _hr = ko::create_mirror_view(rights);
+            _hp = ko::create_mirror_view(parent);
+            _hk = ko::create_mirror_view(kids);
+            _hnLeaves = ko::create_mirror_view(_nLeaves);
             _nh(0) = 0;
-            _hnActive(0) = 0;
+            _hnLeaves(0) = 0;
         }
         
-        /// Host function 
-        inline Index nmax() const {return _nmax;}
+        void updateDevice() const {
+            ko::deep_copy(origs, _ho);
+            ko::deep_copy(dests, _hd);
+            ko::deep_copy(lefts, _hl);
+            ko::deep_copy(rights, _hr);
+            ko::deep_copy(parent, _hp);
+            ko::deep_copy(kids, _hk);
+            ko::deep_copy(_n, _nh);
+            ko::deep_copy(_nLeaves, _hnLeaves);
+        }
         
         KOKKOS_INLINE_FUNCTION
         Index n() const {return _n(0);}
         
+        KOKKOS_INLINE_FUNCTION
+        bool onBoundary(const Index ind) const {return lefts(ind) == NULL_IND || 
+            rights(ind) == NULL_IND;}
+        
+        KOKKOS_INLINE_FUNCTION
+        bool hasKids(const Index ind) const {return ind < _n(0) && kids(ind, 0) >= 0;}
+        
+/*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
+    
+        todo: make them protected, not public    
+        
+*/           
+        /// Host function 
+        inline Index nmax() const {return _nmax;}
+        
         /// Host function
         inline Index nh() const {return _nh(0);}
-        
-        void updateDevice() {
-            ko::deep_copy(_origs, _ho);
-            ko::deep_copy(_dests, _hd);
-            ko::deep_copy(_lefts, _hl);
-            ko::deep_copy(_rights, _hr);
-            ko::deep_copy(_parent, _hp);
-            ko::deep_copy(_kids, _hk);
-            ko::deep_copy(_n, _nh);
-            ko::deep_copy(_nActive, _hnActive);
-        }
         
         /// Host function
         void insertHost(const Index o, const Index d, const Index l, const Index r, const Index prt=NULL_IND);
@@ -80,18 +96,6 @@ class Edges {
         /// Host function
         template <typename SeedType>
         void initFromSeed(const MeshSeed<SeedType>& seed);
-            
-        KOKKOS_INLINE_FUNCTION Index getOrig(const Index ind) const {return _origs(ind);}
-        KOKKOS_INLINE_FUNCTION Index getDest(const Index ind) const {return _dests(ind);}
-        KOKKOS_INLINE_FUNCTION Index getLeft(const Index ind) const {return _lefts(ind);}
-        KOKKOS_INLINE_FUNCTION Index getRight(const Index ind) const {return _rights(ind);}
-        KOKKOS_INLINE_FUNCTION
-        bool onBoundary(const Index ind) const {return _lefts(ind) == NULL_IND || 
-            _rights(ind) == NULL_IND;}
-        
-        KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < _n(0) && _kids(ind, 0) >= 0;}
-        
         
         /// Host function
         inline Index getEdgeKidHost(const Index ind, const Int child) const {return _hk(ind, child);}
@@ -112,14 +116,9 @@ class Edges {
         inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hk(ind, 0) >= 0;}
     
     protected:
-        edge_view_type _origs;
-        edge_view_type _dests;
-        edge_view_type _lefts;
-        edge_view_type _rights;
-        edge_view_type _parent;
-        edge_tree_view _kids;
+        
         ko::View<Index> _n;
-        ko::View<Index> _nActive;
+        ko::View<Index> _nLeaves;
         
         edge_host_type _ho;
         edge_host_type _hd;
@@ -128,7 +127,7 @@ class Edges {
         edge_host_type _hp;
         edge_tree_host _hk; 
         ko::View<Index>::HostMirror _nh;    
-        ko::View<Index>::HostMirror _hnActive;    
+        ko::View<Index>::HostMirror _hnLeaves;    
         Index _nmax;
 };
 

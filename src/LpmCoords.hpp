@@ -17,9 +17,7 @@ namespace Lpm {
 template <typename Geo> class Coords {
     public:
         typedef typename Geo::crd_view_type crd_view_type;
-        
-        template <typename SeedType> friend class PolyMesh2d;
-        
+              
         crd_view_type crds;
         
         Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), _n("n") {

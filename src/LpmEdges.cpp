@@ -14,7 +14,7 @@ void Edges::insertHost(const Index o, const Index d, const Index l, const Index 
     _hk(ins_pt, 0) = NULL_IND;
     _hk(ins_pt, 1) = NULL_IND;
     _nh(0) += 1;
-    _hnActive(0) += 1;
+    _hnLeaves(0) += 1;
 }
 
 
@@ -31,7 +31,7 @@ void Edges::initFromSeed(const MeshSeed<SeedType>& seed) {
         _hk(i,1) = NULL_IND;
     }
     _nh(0) = SeedType::nedges;
-    _hnActive(0) = SeedType::nedges;
+    _hnLeaves(0) = SeedType::nedges;
 }
 
 template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds) {
@@ -61,13 +61,13 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
     insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
     _hk(ind,0) = edge_ins_pt;
     _hk(ind,1) = edge_ins_pt+1;    
-    _hnActive(0) -= 1;
+    _hnLeaves(0) -= 1;
 }
 
 std::string Edges::infoString(const std::string& label) const {
     std::ostringstream oss;
     oss << "Edges " << label << " info: nh = (" << _nh(0) << ") of nmax = " << _nmax << " in memory; "
-        << _hnActive(0) << " leaves." << std::endl;
+        << _hnLeaves(0) << " leaves." << std::endl;
     for (Index i=0; i<_nmax; ++i) {
         if (i==_nh(0)) oss << "---------------------------------" << std::endl;
         oss << label << ": (" << i << ") : ";
