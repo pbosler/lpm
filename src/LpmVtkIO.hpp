@@ -8,7 +8,7 @@
 #include "LpmCoords.hpp"
 #include "LpmEdges.hpp"
 #include "LpmFaces.hpp"
-
+#include "LpmMeshSeed.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 

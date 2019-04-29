@@ -100,12 +100,6 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
         }
     }
     /// pull data from parent face
-//     ko::View<Index[3], Host> parentVertInds("parentVerts");
-//     ko::View<Index[3], Host> parentEdgeInds("parentEdges");
-//     for (int i=0; i<3; ++i) {
-//         parentVertInds(i) = faces.getVertHost(faceInd, i);
-//         parentEdgeInds(i) = faces.getEdgeHost(faceInd, i);
-//     }
     auto parentVertInds = ko::subview(faces._hostverts, faceInd, ko::ALL());
     auto parentEdgeInds = ko::subview(faces._hostedges, faceInd, ko::ALL());
     
@@ -115,12 +109,10 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
     for (int i=0; i<4; ++i) {
         newFaceKids(i) = face_insert_pt+i;
     }
-
     /// connect parent vertices to child faces
     for (int i=0; i<3; ++i) {
         newFaceVertInds(i,i) = parentVertInds(i);
     }
-    
     /// loop over parent edges, replace with child edges
     for (int i=0; i<3; ++i) {
         const Index parentEdge = parentEdgeInds(i);

@@ -22,8 +22,8 @@ template <typename FaceKind> class Faces {
         typedef ko::View<Index*[FaceKind::nverts]> vertex_view_type;
         typedef vertex_view_type edge_view_type;
         typedef ko::View<Index*[4]> face_tree_view;
-
         template <typename Geo, typename FaceType> friend struct FaceDivider;
+        static constexpr Int nverts = FaceKind::nverts;
         
         vertex_view_type verts;  /// indices to Coords<Geo> on face edges
         edge_view_type edges; /// indices to Edges
