@@ -68,12 +68,18 @@ template <typename FaceKind> class Faces {
         void updateHost() const {
             ko::deep_copy(_hostarea, area);
         }
+        
+        KOKKOS_INLINE_FUNCTION
+        bool hasKids(const Index ind) const {return ind < _n(0) && kids(ind,0) >= 0;}
+        
 
 /*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
     
         todo: make them protected, not public    
         
-*/       
+*/      
+        typename scalar_view_type::HostMirror getAreaHost() const {return _hostarea;}
+         
         /// Host function
         inline Index nMax() const {return _nmax;}
         
@@ -123,6 +129,8 @@ template <typename FaceKind> class Faces {
         /// Host function
         template <typename SeedType>
         void initFromSeed(const MeshSeed<SeedType>& seed);
+        
+        Index nLeavesHost() const {return _hnLeaves(0);}
         
         /// Host function
         Real surfAreaHost() const;

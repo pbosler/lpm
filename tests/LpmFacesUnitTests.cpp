@@ -89,9 +89,9 @@ ko::initialize(argc, argv);
         std::cout << "Sphere surface area = " << csfaces.surfAreaHost() << std::endl;
         
         VtkInterface<SphereGeometry, Faces<QuadFace>> vtk;
-        vtk.toVtkPolyData(csfaces, csedges, csfacecrds, csverts);
+        vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(csfaces, csedges, csfacecrds, csverts);
         std::cout << "vtk data conversion done." << std::endl;
-        vtk.writePolyData("cs_test.vtk");
+        vtk.writePolyData("cs_test.vtk", pd);
     }
     
     {
@@ -126,9 +126,9 @@ ko::initialize(argc, argv);
         std::cout << "ICT sphere surf area = " << icfaces.surfAreaHost() << std::endl;
         VtkInterface<SphereGeometry, Faces<TriFace>> vtk;
         std::cout << "writing vtk output." << std::endl;
-        vtk.toVtkPolyData(icfaces, icedges, icfacecrds, icvertcrds);
+        vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(icfaces, icedges, icfacecrds, icvertcrds);
         std::cout << "conversion to vtk polydata complete." << std::endl;
-        vtk.writePolyData("ic_test.vtk");
+        vtk.writePolyData("ic_test.vtk", pd);
         std::cout << "tests pass." << std::endl;
     }
 }

@@ -31,8 +31,10 @@ void PolyMesh2d<Geo,FaceType>::treeInit(const Int initDepth, const MeshSeed<Seed
 template <typename Geo, typename FaceType> 
 void PolyMesh2d<Geo,FaceType>::outputVtk(const std::string& fname) const {
     VtkInterface<Geo,Faces<FaceType>> vtk;
-    vtk.toVtkPolyData(faces, edges, physFaces, physVerts);
-    vtk.writePolyData(fname);
+    auto cd = vtkSmartPointer<vtkCellData>::New();
+    vtk.addScalarToCellData(cd, faces.getAreaHost(), "area", faces);
+    vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(faces, edges, physFaces, physVerts, NULL, cd);
+    vtk.writePolyData(fname, pd);
 }
 
 template <typename Geo, typename FaceType> 

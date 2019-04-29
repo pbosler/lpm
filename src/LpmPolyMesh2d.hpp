@@ -37,6 +37,9 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         Int baseTreeDepth;
         Int maxTreeDepth;
         
+        KOKKOS_INLINE_FUNCTION
+        ko::View<Index*[4],Dev> getFaceTree() const {return faces.faceTree;}
+        
         template <typename SeedType>
         void treeInit(const Int initDepth, const MeshSeed<SeedType>& seed);
         
