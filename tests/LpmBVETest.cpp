@@ -64,9 +64,10 @@ ko::initialize(argc, argv);
     MeshSeed<CubedSphereSeed> quadseed;
     quadseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
     BVESphere<QuadFace> quadsphere(nmaxverts, nmaxedges, nmaxfaces);
-    quadsphere.updateDevice();
     quadsphere.treeInit(tree_depth, quadseed);
+    quadsphere.updateDevice();
     quadsphere.initProblem<InitSolidBody<QuadFace>>();
+    quadsphere.updateHost();
     quadsphere.outputVtk("solidBody_cubedsph.vtk");
 
 }
