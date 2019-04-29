@@ -42,6 +42,10 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         
         virtual void outputVtk(const std::string& fname) const;
         
+        virtual void updateDevice() const;
+        
+        virtual void updateHost() const;
+        
     protected:
         typedef FaceDivider<Geo,FaceType> divider;
     

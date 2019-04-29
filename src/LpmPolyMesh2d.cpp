@@ -22,7 +22,7 @@ void PolyMesh2d<Geo,FaceType>::treeInit(const Int initDepth, const MeshSeed<Seed
         Index stopInd = faces.nh();
         for (Index j=startInd; j<stopInd; ++j) {
             if (!faces.hasKidsHost(j)) {
-                divider::divide(j, faces, edges, physFaces, lagFaces, physVerts, lagVerts);
+                divider::divide(j, physVerts, lagVerts, edges, faces, physFaces, lagFaces);
             }
         }
     }
@@ -35,6 +35,25 @@ void PolyMesh2d<Geo,FaceType>::outputVtk(const std::string& fname) const {
     vtk.writePolyData(fname);
 }
 
+template <typename Geo, typename FaceType> 
+void PolyMesh2d<Geo,FaceType>::updateDevice() const {
+    physVerts.updateDevice();
+    lagVerts.updateDevice();
+    edges.updateDevice();
+    faces.updateDevice();
+    physFaces.updateDevice();
+    lagFaces.updateDevice();
+}
+
+template <typename Geo, typename FaceType> 
+void PolyMesh2d<Geo,FaceType>::updateHost() const {
+    physVerts.updateHost();
+    lagVerts.updateHost();
+    //edges.updateHost();
+    faces.updateHost();
+    physFaces.updateHost();
+    lagFaces.updateHost();
+}
 
 /// ETI
 template class PolyMesh2d<PlaneGeometry,TriFace>;

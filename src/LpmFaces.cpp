@@ -207,13 +207,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
         physFaces.insertHost(slice(faceCrds,i));
         lagFaces.insertHost(slice(faceLagCrds,i));
         faces.insertHost(crd_ins_pt+i, ko::subview(newFaceVertInds,i, ko::ALL()), ko::subview(newFaceEdgeInds, i, ko::ALL()), faceInd, faceArea(i));
-    }
-    /// special case for child 3: reuse center particle memory
-//     const Index ctr_ind = faces.getCenterIndHost(faceInd);
-//     physFaces.relocateHost(ctr_ind, ko::subview(faceCrds,3, ko::ALL()));
-//     lagFaces.relocateHost(ctr_ind, ko::subview(faceLagCrds,3, ko::ALL()));
-//     faces.insertHost(ctr_ind, ko::subview(newFaceVertInds, 3, ko::ALL()), ko::subview(newFaceEdgeInds,3,ko::ALL()), faceInd, faceArea(3));
-    
+    }    
     /// Remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
@@ -338,11 +332,6 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
     }
     const Index face_crd_ins_pt = physFaces.nh();
 
-//     re-use parent center memory for child 0
-//     physFaces.relocateHost(parent_center_ind, ko::subview(faceCrds,0,ko::ALL()));
-//     lagFaces.relocateHost(parent_center_ind, ko::subview(faceLagCrds,0,ko::ALL()));
-//     faces.insertHost(parent_center_ind, ko::subview(newFaceVertInds,0, ko::ALL()),
-//          ko::subview(newFaceEdgeInds,0,ko::ALL()), faceInd, faceArea(0));
     for (int i=0; i<4; ++i) {
         physFaces.insertHost(slice(faceCrds,i));
         lagFaces.insertHost(slice(faceLagCrds,i));
