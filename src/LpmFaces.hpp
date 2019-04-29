@@ -127,14 +127,14 @@ template <typename FaceKind> class Faces {
         /// Host function
         Real surfAreaHost() const;
         
-        /// Host function
-        void setCenterInd(const Index faceInd, const Index crdInd) {_hostcenters(faceInd) = crdInd;}
-        
-        /// Host function
-        ko::View<const Index[FaceKind::nverts], Host> getVertsHostConst(const Index ind) const {
-            return ko::subview(_hostverts, ind, ko::ALL());
-        }
-        
+//         / Host function
+//         void setCenterInd(const Index faceInd, const Index crdInd) {_hostcenters(faceInd) = crdInd;}
+//         
+//         / Host function
+//         ko::View<const Index[FaceKind::nverts], Host> getVertsHostConst(const Index ind) const {
+//             return ko::subview(_hostverts, ind, ko::ALL());
+//         }
+//         
     protected:
         typedef typename face_tree_view::HostMirror face_tree_host;
         typedef typename index_view_type::HostMirror host_index_view;

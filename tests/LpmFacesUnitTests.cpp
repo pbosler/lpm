@@ -52,47 +52,47 @@ ko::initialize(argc, argv);
     thci.writeMatlab(std::cout, "icrds2");
     }
     
-//     {
-//         typedef MeshSeed<CubedSphereSeed> seed_type;
-//         const seed_type seed;
-//         typedef SphereGeometry geo;
-//         typedef QuadFace face_type;
-//         Index nmaxverts;
-//         Index nmaxfaces;
-//         Index nmaxedges;
-//         const int maxlev = 6;
-//         seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
-//         std::cout << "allocating " << nmaxverts << " vertices, " << nmaxedges << " edges, and " << nmaxfaces << " faces for cubed sphere." <<std::endl;
-//         Coords<geo> csverts(nmaxverts);
-//         Coords<geo> cslagverts(nmaxverts);
-//         Coords<geo> csfacecrds(nmaxfaces);
-//         Coords<geo> cslagfacecrds(nmaxfaces);
-//         Faces<QuadFace> csfaces(nmaxfaces);
-//         Edges csedges(nmaxedges);
-//         csverts.initBoundaryCrdsFromSeed(seed);
-//         cslagverts.initBoundaryCrdsFromSeed(seed);
-//         csfacecrds.initInteriorCrdsFromSeed(seed);
-//         cslagfacecrds.initInteriorCrdsFromSeed(seed);
-//         csfaces.initFromSeed(seed);
-//         csedges.initFromSeed(seed);
-//         typedef FaceDivider<geo,face_type> csdiv;
-//         for (int i=0; i<maxlev; ++i) {
-//             std::cout << "tree level " << i  << ": faces.nh = " << csfaces.nh() << ", edges.nh = " << csedges.nh() << ", verts.nh = " << csverts.nh() << "; faces.nmax = " << csfaces.nMax() << std::endl;
-//             Index startInd = 0;
-//             Index stopInd = csfaces.nh();
-//             for (Index j=startInd; j<stopInd; ++j) {
-//                 if (!csfaces.hasKidsHost(j)) {
-//                     csdiv::divide(j, csfaces, csedges, csfacecrds, cslagfacecrds, csverts, cslagverts);
-//                 }
-//             }
-//         }
-//         std::cout << "Sphere surface area = " << csfaces.surfAreaHost() << std::endl;
-//         
-//         VtkInterface<SphereGeometry, Faces<QuadFace>> vtk;
-//         vtk.toVtkPolyData(csfaces, csedges, csfacecrds, csverts);
-//         std::cout << "vtk data conversion done." << std::endl;
-//         vtk.writePolyData("cs_test.vtk");
-//     }
+    {
+        typedef MeshSeed<CubedSphereSeed> seed_type;
+        const seed_type seed;
+        typedef SphereGeometry geo;
+        typedef QuadFace face_type;
+        Index nmaxverts;
+        Index nmaxfaces;
+        Index nmaxedges;
+        const int maxlev = 6;
+        seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
+        std::cout << "allocating " << nmaxverts << " vertices, " << nmaxedges << " edges, and " << nmaxfaces << " faces for cubed sphere." <<std::endl;
+        Coords<geo> csverts(nmaxverts);
+        Coords<geo> cslagverts(nmaxverts);
+        Coords<geo> csfacecrds(nmaxfaces);
+        Coords<geo> cslagfacecrds(nmaxfaces);
+        Faces<QuadFace> csfaces(nmaxfaces);
+        Edges csedges(nmaxedges);
+        csverts.initBoundaryCrdsFromSeed(seed);
+        cslagverts.initBoundaryCrdsFromSeed(seed);
+        csfacecrds.initInteriorCrdsFromSeed(seed);
+        cslagfacecrds.initInteriorCrdsFromSeed(seed);
+        csfaces.initFromSeed(seed);
+        csedges.initFromSeed(seed);
+        typedef FaceDivider<geo,face_type> csdiv;
+        for (int i=0; i<maxlev; ++i) {
+            std::cout << "tree level " << i  << ": faces.nh = " << csfaces.nh() << ", edges.nh = " << csedges.nh() << ", verts.nh = " << csverts.nh() << "; faces.nmax = " << csfaces.nMax() << std::endl;
+            Index startInd = 0;
+            Index stopInd = csfaces.nh();
+            for (Index j=startInd; j<stopInd; ++j) {
+                if (!csfaces.hasKidsHost(j)) {
+                    csdiv::divide(j, csverts, cslagverts, csedges, csfaces, csfacecrds, cslagfacecrds);
+                }
+            }
+        }
+        std::cout << "Sphere surface area = " << csfaces.surfAreaHost() << std::endl;
+        
+        VtkInterface<SphereGeometry, Faces<QuadFace>> vtk;
+        vtk.toVtkPolyData(csfaces, csedges, csfacecrds, csverts);
+        std::cout << "vtk data conversion done." << std::endl;
+        vtk.writePolyData("cs_test.vtk");
+    }
     
     {
         const MeshSeed<IcosTriSphereSeed> seed;
