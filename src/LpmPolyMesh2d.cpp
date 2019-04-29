@@ -17,6 +17,7 @@ void PolyMesh2d<Geo,FaceType>::seedInit(const MeshSeed<SeedType>& seed) {
 template <typename Geo, typename FaceType> template <typename SeedType>
 void PolyMesh2d<Geo,FaceType>::treeInit(const Int initDepth, const MeshSeed<SeedType>& seed) {
     seedInit<SeedType>(seed);
+    baseTreeDepth=initDepth;
     for (int i=0; i<initDepth; ++i) {
         Index startInd = 0;
         Index stopInd = faces.nh();

@@ -13,9 +13,9 @@ template <typename FaceKind> struct InitSolidBody {
     
     static constexpr Real OMEGA = 2*PI;
     
-    InitProblem(const BVESphere<FaceKind> sph) : sphere(sph) {}
+    InitSolidBody(const BVESphere<FaceKind> sph) : sphere(sph) {}
         
-    void init(const Index nverts, const Index faces) {
+    void init() const {
         ko::parallel_for(ko::RangePolicy<VertTag>(0, sphere.physVerts.nh()), *this);
         ko::parallel_for(ko::RangePolicy<FaceTag>(0, sphere.faces.nh()), *this);
     }
@@ -33,7 +33,12 @@ template <typename FaceKind> struct InitSolidBody {
     KOKKOS_INLINE_FUNCTION
     void operator() (const FaceTag&, const Index i) const {
         if (!sphere.faces.hasKids(i)) {
-            
+            sphere.relVortFaces(i) = 2*OMEGA*sphere.physFaces.crds(i,2);
+            sphere.absVortFaces(i) = 2*OMEGA*sphere.physFaces.crds(i,2);
+            sphere.streamFnFaces(i)=  -OMEGA*sphere.physFaces.crds(i,2);
+            sphere.velocityFaces(i,0) = -OMEGA*sphere.physFaces.crds(i,1);
+            sphere.velocityFaces(i,1) = OMEGA*sphere.physFaces.crds(i,0);
+            sphere.velocityFaces(i,2) = 0;
         }
     }
 };
@@ -46,14 +51,23 @@ ko::initialize(argc, argv);
     const Index tree_depth = 4;
 
     MeshSeed<IcosTriSphereSeed> triseed;
-    triseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces);
+    triseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
     BVESphere<TriFace> trisphere(nmaxverts, nmaxedges, nmaxfaces);
     trisphere.treeInit(tree_depth, triseed);
+    trisphere.updateDevice();
+    std::cout << "tree initialized.  starting problem initialization." << std::endl;
+    trisphere.initProblem<InitSolidBody<TriFace>>();
+    std::cout << "problem init." << std::endl;
+    trisphere.updateHost();
+    trisphere.outputVtk("solidBody_icostri.vtk");
     
     MeshSeed<CubedSphereSeed> quadseed;
-    quadseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces);
+    quadseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
     BVESphere<QuadFace> quadsphere(nmaxverts, nmaxedges, nmaxfaces);
+    quadsphere.updateDevice();
     quadsphere.treeInit(tree_depth, quadseed);
+    quadsphere.initProblem<InitSolidBody<QuadFace>>();
+    quadsphere.outputVtk("solidBody_cubedsph.vtk");
 
 }
 std::cout << "tests pass" << std::endl;

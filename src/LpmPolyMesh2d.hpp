@@ -24,7 +24,9 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
             physFaces(nmaxfaces), lagFaces(nmaxfaces) {}
         
         virtual ~PolyMesh2d() {}
-
+        
+        Int baseTreeDepth;
+        
         Coords<Geo> physVerts;
         Coords<Geo> lagVerts;
         
@@ -33,12 +35,6 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         Faces<FaceType> faces;
         Coords<Geo> physFaces;
         Coords<Geo> lagFaces;
-        
-        Int baseTreeDepth;
-        Int maxTreeDepth;
-        
-        KOKKOS_INLINE_FUNCTION
-        ko::View<Index*[4],Dev> getFaceTree() const {return faces.faceTree;}
         
         template <typename SeedType>
         void treeInit(const Int initDepth, const MeshSeed<SeedType>& seed);

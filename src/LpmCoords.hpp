@@ -18,6 +18,7 @@ template <typename Geo> class Coords {
     public:
         typedef typename Geo::crd_view_type crd_view_type;
         crd_view_type crds;
+        n_view_type _n;
         
         Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), _n("n") {
             _hostcrds = ko::create_mirror_view(crds);
@@ -86,19 +87,9 @@ template <typename Geo> class Coords {
         /// Host function
         void writeMatlab(std::ostream& os, const std::string& name) const;
         
-//         / Host function
-//         ko::View<Real[Geo::ndim],Host> crdVecHost(const Index ind) {return ko::subview(_hostcrds, ind, ko::ALL());}
-//         
-//         ko::View<const Real[Geo::ndim],Host> crdVecHostConst(const Index ind) const {
-//             return ko::subview(_hostcrds, ind, ko::ALL());
-//         }
-//     
-//         
-        
     protected:
         typename crd_view_type::HostMirror _hostcrds;
         Index _nmax;
-        n_view_type _n;
         typename n_view_type::HostMirror _nh;
         
 };

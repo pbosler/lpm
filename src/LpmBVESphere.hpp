@@ -29,10 +29,26 @@ template <typename FaceType> class BVESphere : public PolyMesh2d<SphereGeometry,
             relVortVerts("relVortVerts", nmaxverts), absVortVerts("absVortVerts",nmaxverts), 
             streamFnVerts("streamFnVerts", nmaxverts), velocityVerts("velocityVerts", nmaxverts),
             relVortFaces("relVortFaces", nmaxfaces), absVortFaces("absVortFaces", nmaxfaces), 
-            streamFnFaces("streamFnFaces", nmaxfaces), velocityFaces("velocityFaces", nmaxfaces) {}
+            streamFnFaces("streamFnFaces", nmaxfaces), velocityFaces("velocityFaces", nmaxfaces) {
+            _hostRelVortVerts = ko::create_mirror_view(relVortVerts);
+            _hostAbsVortVerts = ko::create_mirror_view(absVortVerts);
+            _hostStreamFnVerts = ko::create_mirror_view(streamFnVerts);
+            _hostVelocityVerts = ko::create_mirror_view(velocityVerts);
+            _hostRelVortFaces = ko::create_mirror_view(relVortFaces);
+            _hostAbsVortFaces = ko::create_mirror_view(absVortFaces);
+            _hostStreamFnFaces = ko::create_mirror_view(streamFnFaces);
+            _hostVelocityFaces = ko::create_mirror_view(velocityFaces);
+        }
         
         void outputVtk(const std::string& fname) const override;
-        
+
+        template <typename InitFunctor>
+        void initProblem() { 
+            InitFunctor setup(*this);
+            setup.init();
+            updateHost();
+        }
+
         void updateDevice() const override;
         void updateHost() const override;
             
