@@ -6,6 +6,7 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmGeometry.hpp"
 #include "Kokkos_Core.hpp"
+#include "LpmBVEKernels.hpp"
 
 namespace Lpm {
 
@@ -51,8 +52,7 @@ template <typename FaceType> class BVESphere : public PolyMesh2d<SphereGeometry,
 
         void updateDevice() const override;
         void updateHost() const override;
-            
-    
+        
     protected:
         typedef typename scalar_field::HostMirror scalar_host;
         typedef typename vector_field::HostMirror vector_host;

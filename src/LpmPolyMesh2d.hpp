@@ -19,6 +19,9 @@ namespace Lpm {
 */
 template <typename Geo, typename FaceType> class PolyMesh2d {
     public:
+        typedef Geo geo;
+        typedef FaceType facekind;
+    
         PolyMesh2d(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) : 
             physVerts(nmaxverts), lagVerts(nmaxverts), edges(nmaxedges), faces(nmaxfaces), 
             physFaces(nmaxfaces), lagFaces(nmaxfaces) {}
@@ -26,6 +29,12 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         virtual ~PolyMesh2d() {}
         
         Int baseTreeDepth;
+        
+        KOKKOS_INLINE_FUNCTION
+        Index nverts() const {return physVerts.n();}
+        
+        KOKKOS_INLINE_FUNCTION
+        Index nfaces() const {return faces.n();}
         
         Coords<Geo> physVerts;
         Coords<Geo> lagVerts;
