@@ -26,19 +26,15 @@ template <typename T, int ndim> struct Tuple {
         for (int i=0; i<ndim; ++i) 
             data[i] = n;
     }
-    KOKKOS_FORCEINLINE_FUNCTION Tuple operator += (const Tuple<T,ndim>& o) const {
-        Tuple<T,ndim> result;
-        for (int i=0; i<ndim; ++i) {
-            result.data[i] = data[i] + o.data[i];
-        }
-        return result;
+    KOKKOS_FORCEINLINE_FUNCTION Tuple operator += (const Tuple<T,ndim>& o) {
+        for (int i=0; i<ndim; ++i) 
+            data[i] += o.data[i];
+        return *this;
     }
-    KOKKOS_FORCEINLINE_FUNCTION Tuple operator *= (const Tuple<T,ndim>& o) const {
-        Tuple<T,ndim> result;
-        for (int i=0; i<ndim; ++i) {
-            result.data[i] = data[i] * o.data[i];
-        }
-        return result;
+    KOKKOS_FORCEINLINE_FUNCTION Tuple operator *= (const Tuple<T,ndim>& o) {
+        for (int i=0; i<ndim; ++i)
+            data[i] *= o.data[i];
+        return *this;
     }
     KOKKOS_FORCEINLINE_FUNCTION T& operator [] (const int i) {return data[i];}
     KOKKOS_FORCEINLINE_FUNCTION const T& operator [] (const int i) const {return data[i];}
