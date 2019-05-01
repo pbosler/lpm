@@ -8,6 +8,50 @@
 /**
 Kokkos-related utilities
 */
+namespace Kokkos {
+
+/** Tuple type for || reduction.
+
+    T is a plain old data type
+    ndim is the number of T's in the tuple.
+    
+*/
+template <typename T, int ndim> struct Tuple {
+    T data[ndim];
+    KOKKOS_FORCEINLINE_FUNCTION Tuple() {
+        for (int i=0; i<ndim; ++i) 
+            data[i] = 0;
+    }
+    KOKKOS_FORCEINLINE_FUNCTION Tuple(const T n) {
+        for (int i=0; i<ndim; ++i) 
+            data[i] = n;
+    }
+    KOKKOS_FORCEINLINE_FUNCTION Tuple operator += (const Tuple<T,ndim>& o) const {
+        Tuple<T,ndim> result;
+        for (int i=0; i<ndim; ++i) {
+            result.data[i] = data[i] + o.data[i];
+        }
+        return result;
+    }
+    KOKKOS_FORCEINLINE_FUNCTION Tuple operator *= (const Tuple<T,ndim>& o) const {
+        Tuple<T,ndim> result;
+        for (int i=0; i<ndim; ++i) {
+            result.data[i] = data[i] * o.data[i];
+        }
+        return result;
+    }
+    KOKKOS_FORCEINLINE_FUNCTION T& operator [] (const int i) {return data[i];}
+    KOKKOS_FORCEINLINE_FUNCTION const T& operator [] (const int i) const {return data[i];}
+};
+
+template <> template <typename T, int ndim>
+struct reduction_identity<Tuple<T,ndim>> {
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<T,ndim> sum() {return Tuple<T,ndim>();}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<T,ndim> prod() {return Tuple<T,ndim>(1);}
+};
+
+}
+
 namespace Lpm {
 /**
     ExeSpaceUtils is a TeamPolicy factory.  Defines thread layout : number of teams, threads per team.

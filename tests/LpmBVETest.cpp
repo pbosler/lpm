@@ -1,6 +1,7 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmBVESphere.hpp"
+#include "LpmBVEKernels.hpp"
 #include "Kokkos_Core.hpp"
 
 using namespace Lpm;
@@ -69,6 +70,12 @@ ko::initialize(argc, argv);
     quadsphere.initProblem<InitSolidBody<QuadFace>>();
     quadsphere.updateHost();
     quadsphere.outputVtk("solidBody_cubedsph.vtk");
+    
+    BVERK4 triSolver(trisphere.physVerts.crds, trisphere.relVortVerts, trisphere.velocityVerts, 
+        trisphere.physFaces.crds, trisphere.relVortFaces, trisphere.velocityFaces, trisphere.faces.area,
+        InitSolidBody<TriFace>::OMEGA);
+        
+        
 
 }
 std::cout << "tests pass" << std::endl;
