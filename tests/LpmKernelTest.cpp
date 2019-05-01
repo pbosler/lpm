@@ -4,7 +4,7 @@
 #include "LpmGeometry.hpp"
 #include <iostream>
 #include <sstream>
-
+#include <cstdio>
 using namespace Lpm;
 
 typedef ko::View<Real*[3],Dev> view_type;
@@ -27,8 +27,8 @@ namespace Kokkos {
         KOKKOS_FORCEINLINE_FUNCTION const Real& operator [] (const Int i) const {return v[i];}
     };
     
-    template <> template <int ndim> struct reduction_identity<RVec<ndim>> {
-        KOKKOS_FORCEINLINE_FUNCTION static RVec<ndim> sum() {return RVec<ndim>();}
+    template <> struct reduction_identity<RVec<3>> {
+        KOKKOS_FORCEINLINE_FUNCTION static RVec<3> sum() {return RVec<3>();}
     };
 }
 
@@ -41,7 +41,7 @@ struct VecReducer {
     Index i;
     
     KOKKOS_INLINE_FUNCTION
-    VecReducer(view_type srcx, view_type tgtx, const Index ii) : x(srcx), xx(tgtx), i(ii) {}
+    VecReducer(view_type srcx, view_type tgtx, const Index ii) : x(tgtx), xx(srcx), i(ii) {}
     
     KOKKOS_INLINE_FUNCTION
     void init(value_type& v) const {
@@ -59,12 +59,13 @@ struct VecReducer {
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index &j, value_type& v) const {
-        auto xs = ko::subview(x, i, ko::ALL());
-        auto xt = ko::subview(xx,j, ko::ALL());
+//         printf("\ti=%d, j=%d\n", i,j);
+        auto xs = ko::subview(xx, j, ko::ALL());
+        auto xt = ko::subview(x, i, ko::ALL());
         ko::RVec<3> cp;
         SphereGeometry::cross(cp.v, xs, xt);
         for (int k=0; k<3; ++k) {
-            v[k] += cp[k];
+            v.v[k] += cp.v[k];
         }
     }
 };
@@ -75,15 +76,16 @@ struct VecComputer {
     view_type u;
     Index src_size;
     
-    VecComputer(view_type srcx, view_type tgtx, view_type tgtv, const Index ns) : x(srcx), xx(tgtx), u(tgtv), src_size(ns) {}
+    VecComputer(view_type srcx, view_type tgtx, view_type tgtv, const Index ns) : xx(srcx), x(tgtx), u(tgtv), src_size(ns) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const member_type& mbr) const {
         ko::RVec<3> vec;
         const Index i = mbr.league_rank();
-        ko::parallel_reduce(ko::TeamThreadRange(mbr, src_size), VecReducer(x, xx, i), vec);
+//         printf("league_rank = %d, team_rank = %d, team_size = %d\n", mbr.league_rank(), mbr.team_rank(), mbr.team_size());
+        ko::parallel_reduce(ko::TeamThreadRange(mbr, src_size), VecReducer(xx, x, i), vec);
         for (int j=0; j<3; ++j) {
-            u(i,j) = vec[j];
+            u(i,j) = vec.v[j];
         }
     }
 };
@@ -92,17 +94,30 @@ struct VecComputer {
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
-    const Int nsrc = 10;
-    const Int ntgt = 8;
+    const Int nsrc = 30;
+    const Int ntgt = 42;
     view_type srclocs("src_x", nsrc);
     view_type tgtlocs("tgt_x", ntgt);
     view_type tgtvel("tgt_u", ntgt);
     
     init(srclocs, tgtlocs, tgtvel);
+    std::cout << "data initialized." << std::endl;
     
+    std::cout << "sums = (";
+    for (int i=0; i<ntgt; ++i) {
+        Real sum=0;
+        for (int j=0; j<nsrc; ++j) {
+            const Real cp = i*j;
+            sum += cp;
+        }
+        std::cout << sum << (i<ntgt-1 ? ", " : "");
+    }    
+    std::cout << ")" << std::endl;
     auto policy = ko::TeamPolicy<>(ntgt, ko::AUTO());
     
     ko::parallel_for(policy, VecComputer(srclocs, tgtlocs, tgtvel, nsrc));
+    
+    std::cout << "kernels returned." << std::endl;
     
     auto hvel = ko::create_mirror_view(tgtvel);
     ko::deep_copy(hvel, tgtvel);
@@ -120,18 +135,18 @@ void init(view_type v1, view_type v2, view_type v3) {
     auto h3 = ko::create_mirror_view(v3);
     
     for (int i=0; i<v1.extent(0); ++i) {
-        std::cout << "h1(i,:) = (";
+        std::cout << "h1(" << i << ",:) = (";
         for (int j=0; j<3; ++j) {
-            h1(i,j) = (i%2==0 ? 1 : -1)+i*j;
+            h1(i,j) = (j == 0 ? i : (j==1 ? -i : 0));
             std::cout << h1(i,j) << " ";
         }
         std::cout << ")" << std::endl;
     }
 
     for (int i=0; i<v2.extent(0); ++i) {
-        std::cout << "h2(i,:) = (";
+        std::cout << "h2(" << i << ",:) = (";
         for (int j=0; j<3; ++j) {
-            h2(i,j) = (i%2==0 ? 2 : -1) + i -j;
+            h2(i,j) = (j==1 ? i : 0);
             std::cout << h2(i,j) << " ";
         }
         std::cout << ")" << std::endl;

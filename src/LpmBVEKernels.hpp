@@ -146,7 +146,7 @@ struct BVEDirectSumSmooth {
     }
     
     KOKKOS_INLINE_FUNCTION
-    void init(value_type uu) {
+    void init(value_type& uu) {
         for (int j=0; j<3; ++j) {
             uu.data[j] = 0.0;
         }

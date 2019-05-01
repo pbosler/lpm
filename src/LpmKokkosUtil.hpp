@@ -44,10 +44,10 @@ template <typename T, int ndim> struct Tuple {
     KOKKOS_FORCEINLINE_FUNCTION const T& operator [] (const int i) const {return data[i];}
 };
 
-template <> template <typename T, int ndim>
-struct reduction_identity<Tuple<T,ndim>> {
-    KOKKOS_FORCEINLINE_FUNCTION static Tuple<T,ndim> sum() {return Tuple<T,ndim>();}
-    KOKKOS_FORCEINLINE_FUNCTION static Tuple<T,ndim> prod() {return Tuple<T,ndim>(1);}
+template <> 
+struct reduction_identity<Tuple<Lpm::Real,3>> {
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> sum() {return Tuple<Lpm::Real,3>();}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> prod() {return Tuple<Lpm::Real,3>(1);}
 };
 
 }
