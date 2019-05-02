@@ -6,6 +6,7 @@
 #include "LpmUtilities.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
+#include "LpmKokkosUtil.hpp"
 
 namespace Lpm {
 
@@ -154,6 +155,15 @@ struct SphereGeometry {
         c[0] = a[1]*b[2] - a[2]*b[1];
         c[1] = a[2]*b[0] - a[0]*b[2];
         c[2] = a[0]*b[1] - a[1]*b[0];
+    }
+    
+    template <typename CV> KOKKOS_INLINE_FUNCTION
+    static ko::Tuple<Real,3> cross(const CV a, const CV b) {
+        ko::Tuple<Real,3> c;
+        c.data[0] = a[1]*b[2] - a[2]*b[1];
+        c.data[1] = a[2]*b[0] - a[0]*b[2];
+        c.data[2] = a[0]*b[1] - a[1]*b[0];
+        return c;
     }
     
     template <typename CV> KOKKOS_INLINE_FUNCTION

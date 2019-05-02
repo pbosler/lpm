@@ -1,6 +1,16 @@
 # Prerequisites
 *.d
 
+# CMake
+*.cmake
+CMake*
+*.tcl
+Makefile
+LpmConfig.h
+
+# Test data produced
+*.vtk
+
 # Compiled Object files
 *.slo
 *.lo
