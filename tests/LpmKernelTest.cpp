@@ -35,7 +35,7 @@ struct VecReducer {
     KOKKOS_INLINE_FUNCTION
     void join(volatile value_type& dst, const volatile value_type& src) const {
         for (int j=0; j<3; ++j) {
-            dst.data[j] += src.data[j];
+            dst[j] += src[j];
         }
     }
     
@@ -45,7 +45,7 @@ struct VecReducer {
         auto xt = ko::subview(x, i, ko::ALL());
         const value_type cp = SphereGeometry::cross(xs, xt);
         for (int k=0; k<3; ++k) {
-            v.data[k] += cp.data[k];
+            v[k] += cp[k];
         }
     }
 };
@@ -64,7 +64,7 @@ struct VecComputer {
         const Index i = mbr.league_rank();
         ko::parallel_reduce(ko::TeamThreadRange(mbr, src_size), VecReducer(xx, x, i), vec);
         for (int j=0; j<3; ++j) {
-            u(i,j) = vec.data[j];
+            u(i,j) = vec[j];
         }
     }
 };

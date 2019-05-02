@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
+#include "Kokkos_Array.hpp"
 
 /**
 Kokkos-related utilities
@@ -15,35 +16,53 @@ namespace Kokkos {
     T is a plain old data type
     ndim is the number of T's in the tuple.
     
+    Basic functions handled by superclass, Kokkos::Array
+    This subclass adds the required operators for sum and product reductions.
 */
-template <typename T, int ndim> struct Tuple {
-    T data[ndim];
-    KOKKOS_FORCEINLINE_FUNCTION Tuple() {
+template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
+    KOKKOS_FORCEINLINE_FUNCTION
+    Tuple() : Array<T,ndim>() {
         for (int i=0; i<ndim; ++i) 
-            data[i] = 0;
+            this->m_internal_implementation_private_member_data[i] = 0;
     }
-    KOKKOS_FORCEINLINE_FUNCTION Tuple(const T n) {
+    
+    KOKKOS_FORCEINLINE_FUNCTION
+    Tuple(const T& val) : Array<T,ndim>() {
         for (int i=0; i<ndim; ++i) 
-            data[i] = n;
+            this->m_internal_implementation_private_member_data[i] = val;
     }
-    KOKKOS_FORCEINLINE_FUNCTION Tuple operator += (const Tuple<T,ndim>& o) {
+    KOKKOS_INLINE_FUNCTION
+    volatile T& operator[] (const int& i) volatile {return this->m_internal_implementation_private_member_data[i];}
+    
+    KOKKOS_INLINE_FUNCTION
+    volatile typename std::add_const<T>::type & operator[] (const int& i) const volatile {
+        return this->m_internal_implementation_private_member_data[i];
+    }
+    
+    KOKKOS_FORCEINLINE_FUNCTION 
+    Tuple operator += (const Tuple<T,ndim>& o) {
         for (int i=0; i<ndim; ++i) 
-            data[i] += o.data[i];
+            this->m_internal_implementation_private_member_data[i] += o[i];
         return *this;
     }
-    KOKKOS_FORCEINLINE_FUNCTION Tuple operator *= (const Tuple<T,ndim>& o) {
+    KOKKOS_FORCEINLINE_FUNCTION 
+    Tuple operator *= (const Tuple<T,ndim>& o) {
         for (int i=0; i<ndim; ++i)
-            data[i] *= o.data[i];
+            this->m_internal_implementation_private_member_data[i] *= o[i];
         return *this;
     }
-    KOKKOS_FORCEINLINE_FUNCTION T& operator [] (const int i) {return data[i];}
-    KOKKOS_FORCEINLINE_FUNCTION const T& operator [] (const int i) const {return data[i];}
 };
 
 template <> 
 struct reduction_identity<Tuple<Lpm::Real,3>> {
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> sum() {return Tuple<Lpm::Real,3>();}
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> prod() {return Tuple<Lpm::Real,3>(1);}
+};
+
+template <>
+struct reduction_identity<Tuple<Lpm::Real,2>> {
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> sum() {return Tuple<Lpm::Real,2>();}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> prod() {return Tuple<Lpm::Real,2>(1);}
 };
 
 }
