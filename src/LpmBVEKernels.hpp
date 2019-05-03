@@ -286,8 +286,8 @@ struct BVERK4 : public RK4<3,BVEVertexVelocity, BVEFaceVelocity> {
         ko::parallel_for(vertex_policy, BVEVertexVelocity(vertcrds, facecrds, facevort, facearea, vertstage1, nf));
         ko::parallel_for(face_policy, BVEFaceVelocity(facecrds, facevort, facearea, facestage1, nf));
         /// stage 1 vorticity
-        ko::parallel_for(nv, DZetaDt(vertstage1, vertvortstage1, Omega));
-        ko::parallel_for(nf, DZetaDt(facestage1, facevortstage1, Omega));
+        ko::parallel_for(nv, DZetaDt(vertvel, vertvortstage1, Omega));
+        ko::parallel_for(nf, DZetaDt(facevel, facevortstage1, Omega));
         
         /// stage2 setup
         ko::parallel_for(nv, StageSetup(vertcrds, vertinput, vertvort, vertvortin, vertstage1, vertvortstage1, 2, dt));

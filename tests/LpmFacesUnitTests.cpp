@@ -32,22 +32,28 @@ ko::initialize(argc, argv);
     thcb.initBoundaryCrdsFromSeed(thseed);
     thcbl.initBoundaryCrdsFromSeed(thseed);
     thcb.writeMatlab(std::cout, "bcrds1");
-//     std::cout << thcb.infoString("bc init.");
     thci.initInteriorCrdsFromSeed(thseed);
-//     std::cout << thci.infoString("ic init.");
     thcil.initInteriorCrdsFromSeed(thseed);
     the.initFromSeed(thseed);
-//     std::cout << the.infoString("the");
     planeTri.initFromSeed(thseed);
-//     std::cout << planeTri.infoString("seed");
+
     
     typedef FaceDivider<PlaneGeometry,TriFace> thdiv;
     thdiv::divide(0, thcb, thcbl, the, planeTri, thci, thcil);
     std::cout << planeTri.infoString("divide face 0: faces");
-//     std::cout << the.infoString("divide face 0: edges");
-//     std::cout << thcb.infoString("divide face 0: verts");
-//     std::cout << thci.infoString("divide face 0: facecrds");
 
+    planeTri.updateDevice();
+    std::cout << "face tree:" << std::endl;
+    ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
+        printf("------------Parallel region------------\n");
+        printf("face 0 has kids = %s\n", (planeTri.hasKids(0) ? "true" : "false"));
+        printf("face 0 has mask = %s\n", (planeTri.mask(0) ? "true" : "false"));
+        for (int j=0; j<planeTri.n(); ++j) {
+            printf("face %d has parent %d and kids = (%d,%d,%d,%d)\n", j, planeTri.parent(j), 
+                planeTri.kids(j,0), planeTri.kids(j,1), planeTri.kids(j,2), planeTri.kids(j,3));
+        }
+        printf("-----------end parallel region----------\n");
+    });
     thcb.writeMatlab(std::cout, "bcrds2");
     thci.writeMatlab(std::cout, "icrds2");
     }

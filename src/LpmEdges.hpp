@@ -62,7 +62,7 @@ class Edges {
             rights(ind) == NULL_IND;}
         
         KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < n() && kids(ind, 0) >= 0;}
+        bool hasKids(const Index ind) const {return ind < n() && kids(ind, 0) > 0;}
         
 /*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
     
@@ -112,7 +112,7 @@ class Edges {
         inline bool onBoundaryHost(const Index ind) const {return _hl(ind) == NULL_IND || _hr(ind) == NULL_IND;}
         
         /// Host function
-        inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hk(ind, 0) >= 0;}
+        inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hk(ind, 0) > 0;}
     
     protected:
         edge_host_type _ho;

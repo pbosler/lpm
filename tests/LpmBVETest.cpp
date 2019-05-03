@@ -49,7 +49,7 @@ int main (int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
     Index nmaxverts, nmaxedges, nmaxfaces;
-    const Index tree_depth = 4;
+    const Index tree_depth = 3;
 
     MeshSeed<IcosTriSphereSeed> triseed;
     triseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
@@ -60,7 +60,7 @@ ko::initialize(argc, argv);
     trisphere.initProblem<InitSolidBody<TriFace>>();
     std::cout << "problem init." << std::endl;
     trisphere.updateHost();
-    trisphere.outputVtk("solidBody_icostri.vtk");
+    trisphere.outputVtk("solidBody_icostri_0.vtk");
     
     MeshSeed<CubedSphereSeed> quadseed;
     quadseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
@@ -69,13 +69,28 @@ ko::initialize(argc, argv);
     quadsphere.updateDevice();
     quadsphere.initProblem<InitSolidBody<QuadFace>>();
     quadsphere.updateHost();
-    quadsphere.outputVtk("solidBody_cubedsph.vtk");
+    quadsphere.outputVtk("solidBody_cubedsph_0.vtk");
     
-    BVERK4 triSolver(trisphere.physVerts.crds, trisphere.relVortVerts, trisphere.velocityVerts, 
-        trisphere.physFaces.crds, trisphere.relVortFaces, trisphere.velocityFaces, trisphere.faces.area,
-        InitSolidBody<TriFace>::OMEGA);
-        
-        
+    static constexpr Real Coriolis = 0;
+    static constexpr Real dt = 0.01;
+    BVERK4 triSolver(trisphere.getVertCrds(), trisphere.relVortVerts, trisphere.velocityVerts, 
+        trisphere.getFaceCrds(), trisphere.relVortFaces, trisphere.velocityFaces,
+        trisphere.faces.area, Coriolis);
+    
+//     triSolver.timestep(dt);
+//     std::cout << "icos_tri timestep returned." << std::endl;
+// 
+//     trisphere.updateHost();
+//     trisphere.outputVtk("solidBody_icostri_1.vtk");
+    
+    BVERK4 quadSolver(quadsphere.getVertCrds(), quadsphere.relVortVerts, quadsphere.velocityVerts, quadsphere.getFaceCrds(),
+        quadsphere.relVortFaces, quadsphere.velocityFaces, quadsphere.faces.area, Coriolis);    
+ 
+//     quadSolver.timestep(dt);
+//     std::cout << "cubed_sphere timestep returned." << std::endl;
+// 
+//     quadsphere.updateHost();
+//     quadsphere.outputVtk("solidBody_cubedsph_1.vtk");
 
 }
 std::cout << "tests pass" << std::endl;

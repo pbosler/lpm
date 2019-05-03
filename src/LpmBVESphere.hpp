@@ -41,6 +41,18 @@ template <typename FaceType> class BVESphere : public PolyMesh2d<SphereGeometry,
             _hostVelocityFaces = ko::create_mirror_view(velocityFaces);
         }
         
+        KOKKOS_INLINE_FUNCTION
+        vector_field getVertexVelocity() const {return vector_field(velocityVerts, std::make_pair(0,this->nverts()), ko::ALL());}
+        
+        KOKKOS_INLINE_FUNCTION
+        scalar_field getVertexVorticity() const {return scalar_field(relVortVerts, std::make_pair(0,this->nverts()));}
+        
+        KOKKOS_INLINE_FUNCTION
+        vector_field getFaceVelocity() const {return vector_field(velocityFaces, std::make_pair(0,this->nfaces()), ko::ALL());}
+        
+        KOKKOS_INLINE_FUNCTION
+        scalar_field getFaceVorticity() const {return scalar_field(relVortFaces, std::make_pair(0,this->nfaces()));}
+        
         void outputVtk(const std::string& fname) const override;
 
         template <typename InitFunctor>

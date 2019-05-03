@@ -18,7 +18,7 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const F
         }
         pts->InsertNextPoint(crdvec[0], crdvec[1], (Geo::ndim == 3 ? crdvec[2] : 0.0));
     }
-    std::cout << "vtk points done." << std::endl;
+//     std::cout << "vtk points done." << std::endl;
     vtkSmartPointer<vtkCellArray> polys = vtkSmartPointer<vtkCellArray>::New();
     for (Index i=0; i<faces.nh(); ++i) {
         if (!faces.hasKidsHost(i)) {
@@ -28,7 +28,7 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const F
             }
         }
     }
-    std::cout << "vtk polys done." << std::endl;
+//     std::cout << "vtk polys done." << std::endl;
     result->SetPoints(pts);
     result->SetPolys(polys);
     if (ptdata) {
@@ -48,14 +48,14 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const F
 
 template <typename Geo, typename FacesType>
 void VtkInterface<Geo, FacesType>::writePolyData(const std::string& fname, const vtkSmartPointer<vtkPolyData> pd) {
-    std::cout << "starting to write." << std::endl;
+//     std::cout << "starting to write." << std::endl;
 //     if (!pdwriter.GetPointer()) {
         pdwriter = vtkSmartPointer<vtkPolyDataWriter>::New();
-        std::cout << "writer initialized." << std::endl;
+//         std::cout << "writer initialized." << std::endl;
 //     }
     pdwriter->SetInputData(pd);
     pdwriter->SetFileName(fname.c_str());
-    std::cout << "writing." << std::endl;
+//     std::cout << "writing." << std::endl;
     pdwriter->Write();
 }
 

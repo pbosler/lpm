@@ -30,11 +30,29 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         
         Int baseTreeDepth;
         
+
+        typename Coords<Geo>::crd_view_type getVertCrds() const { 
+            return typename Coords<Geo>::crd_view_type(physVerts.crds, std::make_pair(0,physVerts.nh()), ko::ALL());}
+        
+        typename Coords<Geo>::crd_view_type getFaceCrds() const {
+            return typename Coords<Geo>::crd_view_type(physFaces.crds, std::make_pair(0,faces.nh()), ko::ALL());}
+        
+//         void makeFacemask() const {faces.makeMask();}
+        
+        mask_view_type getFacemask() const {
+            return mask_view_type(faces.mask, std::make_pair(0,faces.nh()));}
+        
+        scalar_view_type getFaceArea() const {
+            return scalar_view_type(faces.area, std::make_pair(0,faces.nh()));}
+        
         KOKKOS_INLINE_FUNCTION
         Index nverts() const {return physVerts.n();}
         
         KOKKOS_INLINE_FUNCTION
         Index nfaces() const {return faces.n();}
+
+        Index nvertsHost() const {return physVerts.nh();}
+        Index nfacesHost() const {return faces.nh();}
         
         Coords<Geo> physVerts;
         Coords<Geo> lagVerts;

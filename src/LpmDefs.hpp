@@ -114,6 +114,9 @@ typedef ko::View<Index,Dev> n_view_type; // view(0) = n
 typedef ko::View<Real*,Dev> scalar_view_type;
 /// View to an index array
 typedef ko::View<Index*,Dev> index_view_type;
+/// View to a bool array
+typedef ko::View<bool*,Dev> mask_view_type;
+typedef ko::View<const bool*,Dev> const_mask_view_type;
 
 #ifdef KOKKOS_ENABLE_CUDA
     /// GPU-friendly replacements for stdlib functions

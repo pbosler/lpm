@@ -17,6 +17,8 @@ void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vert
     _hostcenters(ins) = ctr_ind;
     _hostparent(ins) = prt;
     _hostarea(ins) = ar;
+    _hlevel(ins) = _hlevel(prt)+1;
+    _hmask(ins) = false;
     _nh() += 1;
     _hnLeaves() += 1;
 }
@@ -35,6 +37,8 @@ void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
         for (int j=0; j<4; ++j) {
             _hostkids(i, j) = NULL_IND;
         }
+        _hlevel(i) = 0;
+        _hmask(i) = false;
     }
     _nh() = SeedType::nfaces;
     _hnLeaves() = SeedType::nfaces;
@@ -66,6 +70,7 @@ std::string Faces<FaceKind>::infoString(const std::string& label) const {
             oss << _hostedges(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
         }
         oss << "center = (" << _hostcenters(i) << ") ";
+        oss << "level = (" << _hlevel(i) << ") ";
         oss << "parent = (" << _hostparent(i) << ") ";
         oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << "," 
             << _hostkids(i,2) << "," << _hostkids(i,3) <<") ";
@@ -211,6 +216,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
     /// Remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
+    faces.setMask(faceInd, true);
     faces.decrementnLeaves();
 }
 
@@ -342,6 +348,7 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
     /// remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
+    faces.setMask(faceInd,true);
     faces.decrementnLeaves();
 }
 

@@ -25,9 +25,11 @@ template <typename FaceKind> class Faces {
         template <typename Geo, typename FaceType> friend struct FaceDivider;
         static constexpr Int nverts = FaceKind::nverts;
         
+        mask_view_type mask; /// non-leaf faces are masked
         vertex_view_type verts;  /// indices to Coords<Geo> on face edges
         edge_view_type edges; /// indices to Edges
         index_view_type centers; /// indices to Coords<Geo> inside faces
+        ko::View<Int*,Dev> level; /// level of faces in tree
         index_view_type parent; /// indices to Faces<FaceKind>
         face_tree_view kids; /// indices to Faces<FaceKind>
         n_view_type n; /// number of Faces currently defined
@@ -35,7 +37,8 @@ template <typename FaceKind> class Faces {
         scalar_view_type area; /// Areas of each face
         
         Faces(const Index nmax) : verts("faceverts", nmax), edges("faceedges", nmax), centers("centers",nmax),
-            parent("parent", nmax), kids("kids", nmax), n("n"), _nmax(nmax), area("area", nmax), nLeaves("nLeaves") {
+            parent("parent", nmax), kids("kids", nmax), n("n"), _nmax(nmax), area("area", nmax), nLeaves("nLeaves"),
+            mask("mask",nmax), level("level",nmax) {
             _hostverts = ko::create_mirror_view(verts);
             _hostedges = ko::create_mirror_view(edges);
             _hostcenters = ko::create_mirror_view(centers);
@@ -46,6 +49,8 @@ template <typename FaceKind> class Faces {
             _hnLeaves = ko::create_mirror_view(nLeaves);
             _nh() = 0;
             _hnLeaves() = 0;
+            _hmask = ko::create_mirror_view(mask);
+            _hlevel = ko::create_mirror_view(level);
         }
         
         void updateDevice() const {
@@ -57,6 +62,8 @@ template <typename FaceKind> class Faces {
             ko::deep_copy(area, _hostarea);
             ko::deep_copy(n, _nh);
             ko::deep_copy(nLeaves, _hnLeaves);
+            ko::deep_copy(mask, _hmask);
+            ko::deep_copy(level, _hlevel);
         }
         
         void updateHost() const {
@@ -64,8 +71,7 @@ template <typename FaceKind> class Faces {
         }
         
         KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < n() && kids(ind,0) >= 0;}
-        
+        bool hasKids(const Index ind) const {return ind < n() && kids(ind,0) > 0;}
 
 /*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
     
@@ -78,6 +84,9 @@ template <typename FaceKind> class Faces {
         inline Index nMax() const {return _nmax;}
         
         /// Host function
+        inline void setMask(const Index i, const bool val) {_hmask(i) = val;}
+        
+        /// Host function
         inline Index nh() const {return _nh();}
         
         /// Host function
@@ -87,7 +96,7 @@ template <typename FaceKind> class Faces {
         void setKids(const Index parent, const Index* kids);
 
         /// Host function
-        inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hostkids(ind, 0) >= 0;}
+        inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hostkids(ind, 0) > 0;}
         
         /// Host function
         template <typename CV>
@@ -150,6 +159,8 @@ template <typename FaceKind> class Faces {
         face_tree_host _hostkids;
         ko::View<Index>::HostMirror _nh;
         ko::View<Index>::HostMirror _hnLeaves;
+        typename mask_view_type::HostMirror _hmask;
+        typename ko::View<Int*,Dev>::HostMirror _hlevel;
         host_scalar _hostarea;
         
         Index _nmax;
