@@ -6,9 +6,9 @@ namespace Lpm {
 template <typename Geo> 
 std::string Coords<Geo>::infoString(const std::string& label) const {
     std::ostringstream oss;
-    oss << "Coords " << label << " info: nh = (" << _nh(0) << ") of nmax = " << _nmax << " in memory" << std::endl; 
+    oss << "Coords " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory" << std::endl; 
     for (Index i=0; i<_nmax; ++i) {
-        if (i==_nh(0)) oss << "---------------------------------" << std::endl;
+        if (i==_nh()) oss << "---------------------------------" << std::endl;
         oss << label << ": (" << i << ") : ";
         for (Int j=0; j<Geo::ndim; ++j) 
             oss << _hostcrds(i,j) << " ";
@@ -20,9 +20,9 @@ std::string Coords<Geo>::infoString(const std::string& label) const {
 template <typename Geo>
 void Coords<Geo>::writeMatlab(std::ostream& os, const std::string& name) const {
     os << name << " = [";
-    for (Index i=0; i<_nh(0); ++i) {
+    for (Index i=0; i<_nh(); ++i) {
         for (int j=0; j<Geo::ndim; ++j) {
-            os << _hostcrds(i,j) << (j==Geo::ndim-1 ? (i==_nh(0)-1 ? "];" : ";") : ",");
+            os << _hostcrds(i,j) << (j==Geo::ndim-1 ? (i==_nh()-1 ? "];" : ";") : ",");
         }
     }
     os << std::endl;
@@ -69,7 +69,7 @@ void Coords<Geo>::initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed) {
             _hostcrds(i,j) = seed.scrds(i,j);
         }
     }
-    _nh(0) = SeedType::nverts;
+    _nh() = SeedType::nverts;
 }
 
 template <typename Geo> template <typename SeedType>
@@ -80,7 +80,7 @@ void Coords<Geo>::initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed) {
             _hostcrds(i,j) = seed.scrds(SeedType::nverts + i, j);
         }
     }
-    _nh(0) = SeedType::nfaces;
+    _nh() = SeedType::nfaces;
 }
 
 /// ETI

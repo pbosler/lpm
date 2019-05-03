@@ -18,25 +18,22 @@ template <typename Geo> class Coords {
     public:
         typedef typename Geo::crd_view_type crd_view_type;
         crd_view_type crds;
-        n_view_type _n;
+        n_view_type n;
         
-        Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), _n("n") {
+        Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), n("n") {
             _hostcrds = ko::create_mirror_view(crds);
-            _nh = ko::create_mirror_view(_n);
-            _nh(0) = 0;
+            _nh = ko::create_mirror_view(n);
+            _nh() = 0;
         };
-        
-        KOKKOS_INLINE_FUNCTION
-        Index n() const {return _n(0);}
         
         void updateDevice() const {
             ko::deep_copy(crds, _hostcrds);
-            ko::deep_copy(_n, _nh);
+            ko::deep_copy(n, _nh);
         }
         
         void updateHost() const {
             ko::deep_copy(_hostcrds, crds);
-            ko::deep_copy(_nh, _n);
+            ko::deep_copy(_nh, n);
         }
         
 /*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
@@ -45,7 +42,7 @@ template <typename Geo> class Coords {
         
 */        
         /// Host function
-        Index nh() const {return _nh(0);}
+        Index nh() const {return _nh();}
         
         /// Host function
         Index nMax() const { return crds.extent(0);} //return _nmax;}
@@ -55,16 +52,16 @@ template <typename Geo> class Coords {
         /// Host function
         template <typename CV> 
         void insertHost(const CV v) {
-            LPM_THROW_IF(_nmax < _nh(0) + 1, "Coords::insert error: not enough memory.");
+            LPM_THROW_IF(_nmax < _nh() + 1, "Coords::insert error: not enough memory.");
             for (int i=0; i<Geo::ndim; ++i) {
-                _hostcrds(_nh(0), i) = v[i];
+                _hostcrds(_nh(), i) = v[i];
             }
-            _nh(0) += 1;
+            _nh() += 1;
         }
 
         /// Host function
         void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
-            LPM_THROW_IF(ind >= _nh(0), "Coords::relocateHost error: index out of range.");
+            LPM_THROW_IF(ind >= _nh(), "Coords::relocateHost error: index out of range.");
             for (int i=0; i<Geo::ndim; ++i) {
                 _hostcrds(ind, i) = v(i);
             }

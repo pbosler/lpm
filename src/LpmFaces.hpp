@@ -30,28 +30,22 @@ template <typename FaceKind> class Faces {
         index_view_type centers; /// indices to Coords<Geo> inside faces
         index_view_type parent; /// indices to Faces<FaceKind>
         face_tree_view kids; /// indices to Faces<FaceKind>
-        n_view_type _n; /// number of Faces currently defined
-        n_view_type _nLeaves; /// number of leaf Faces
+        n_view_type n; /// number of Faces currently defined
+        n_view_type nLeaves; /// number of leaf Faces
         scalar_view_type area; /// Areas of each face
         
-        KOKKOS_INLINE_FUNCTION
-        Index n() const {return _n(0);}
-        
-        KOKKOS_INLINE_FUNCTION
-        Index nLeaves() const {return _nLeaves(0);}
-        
         Faces(const Index nmax) : verts("faceverts", nmax), edges("faceedges", nmax), centers("centers",nmax),
-            parent("parent", nmax), kids("kids", nmax), _n("n"), _nmax(nmax), area("area", nmax), _nLeaves("nLeaves") {
+            parent("parent", nmax), kids("kids", nmax), n("n"), _nmax(nmax), area("area", nmax), nLeaves("nLeaves") {
             _hostverts = ko::create_mirror_view(verts);
             _hostedges = ko::create_mirror_view(edges);
             _hostcenters = ko::create_mirror_view(centers);
             _hostparent = ko::create_mirror_view(parent);
             _hostkids = ko::create_mirror_view(kids);
-            _nh = ko::create_mirror_view(_n);
+            _nh = ko::create_mirror_view(n);
             _hostarea = ko::create_mirror_view(area);
-            _hnLeaves = ko::create_mirror_view(_nLeaves);
-            _nh(0) = 0;
-            _hnLeaves(0) = 0;
+            _hnLeaves = ko::create_mirror_view(nLeaves);
+            _nh() = 0;
+            _hnLeaves() = 0;
         }
         
         void updateDevice() const {
@@ -61,8 +55,8 @@ template <typename FaceKind> class Faces {
             ko::deep_copy(parent, _hostparent);
             ko::deep_copy(kids, _hostkids);
             ko::deep_copy(area, _hostarea);
-            ko::deep_copy(_n, _nh);
-            ko::deep_copy(_nLeaves, _hnLeaves);
+            ko::deep_copy(n, _nh);
+            ko::deep_copy(nLeaves, _hnLeaves);
         }
         
         void updateHost() const {
@@ -70,7 +64,7 @@ template <typename FaceKind> class Faces {
         }
         
         KOKKOS_INLINE_FUNCTION
-        bool hasKids(const Index ind) const {return ind < _n(0) && kids(ind,0) >= 0;}
+        bool hasKids(const Index ind) const {return ind < n() && kids(ind,0) >= 0;}
         
 
 /*/////  HOST FUNCTIONS ONLY BELOW THIS LINE         
@@ -84,7 +78,7 @@ template <typename FaceKind> class Faces {
         inline Index nMax() const {return _nmax;}
         
         /// Host function
-        inline Index nh() const {return _nh(0);}
+        inline Index nh() const {return _nh();}
         
         /// Host function
         void insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
@@ -93,7 +87,7 @@ template <typename FaceKind> class Faces {
         void setKids(const Index parent, const Index* kids);
 
         /// Host function
-        inline bool hasKidsHost(const Index ind) const {return ind < _nh(0) && _hostkids(ind, 0) >= 0;}
+        inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hostkids(ind, 0) >= 0;}
         
         /// Host function
         template <typename CV>
@@ -121,7 +115,7 @@ template <typename FaceKind> class Faces {
         inline void setAreaHost(const Index ind, const Real ar) {_hostarea(ind)= ar;}
         
         /// Host function
-        inline void decrementnLeaves() {_hnLeaves(0) -= 1;}
+        inline void decrementnLeaves() {_hnLeaves() -= 1;}
         
         /// Host function
         std::string infoString(const std::string& label) const;
@@ -130,7 +124,7 @@ template <typename FaceKind> class Faces {
         template <typename SeedType>
         void initFromSeed(const MeshSeed<SeedType>& seed);
         
-        Index nLeavesHost() const {return _hnLeaves(0);}
+        Index nLeavesHost() const {return _hnLeaves();}
         
         /// Host function
         Real surfAreaHost() const;

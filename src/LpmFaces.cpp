@@ -5,8 +5,8 @@ namespace Lpm {
 
 template <typename FaceKind>
 void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt, const Real ar) {
-    LPM_THROW_IF(_nh(0)+1 > _nmax, "Faces::insert error: not enough memory.");
-    const Index ins = _nh(0);
+    LPM_THROW_IF(_nh()+1 > _nmax, "Faces::insert error: not enough memory.");
+    const Index ins = _nh();
     for (int i=0; i<FaceKind::nverts; ++i) {
         _hostverts(ins, i) = vertinds(i);
         _hostedges(ins, i) = edgeinds(i);
@@ -17,8 +17,8 @@ void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vert
     _hostcenters(ins) = ctr_ind;
     _hostparent(ins) = prt;
     _hostarea(ins) = ar;
-    _nh(0) += 1;
-    _hnLeaves(0) += 1;
+    _nh() += 1;
+    _hnLeaves() += 1;
 }
 
 template <typename FaceKind> template<typename SeedType> 
@@ -36,14 +36,14 @@ void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
             _hostkids(i, j) = NULL_IND;
         }
     }
-    _nh(0) = SeedType::nfaces;
-    _hnLeaves(0) = SeedType::nfaces;
+    _nh() = SeedType::nfaces;
+    _hnLeaves() = SeedType::nfaces;
 }
 
 template <typename FaceKind>
 Real Faces<FaceKind>::surfAreaHost() const {
     Real result = 0;
-    for (Index i=0; i<_nh(0); ++i) {
+    for (Index i=0; i<_nh(); ++i) {
         result += _hostarea(i);
     }
     return result;
@@ -52,10 +52,10 @@ Real Faces<FaceKind>::surfAreaHost() const {
 template <typename FaceKind>
 std::string Faces<FaceKind>::infoString(const std::string& label) const {
     std::ostringstream oss;
-    oss << "Faces " << label << " info: nh = (" << _nh(0) << ") of nmax = " << _nmax << " in memory; " 
-        << _hnLeaves(0) << " leaves." << std::endl;
+    oss << "Faces " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory; " 
+        << _hnLeaves() << " leaves." << std::endl;
     for (Index i=0; i<_nmax; ++i) {
-        if (i==_nh(0)) oss << "---------------------------------" << std::endl;
+        if (i==_nh()) oss << "---------------------------------" << std::endl;
         oss << ": (" << i << ") : ";
         oss << "verts = (";
         for (int j=0; j<FaceKind::nverts; ++j) {

@@ -59,8 +59,8 @@ ko::initialize(argc, argv);
     
     // execute functions on device
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
-        scalar_result(0) = PlaneGeometry::triArea<ko::View<Real[2],Dev>>(r2device_a, r2device_b, r2device_c);
-        if (scalar_result(0) != 4) error("triArea error");
+        scalar_result() = PlaneGeometry::triArea<ko::View<Real[2],Dev>>(r2device_a, r2device_b, r2device_c);
+        if (scalar_result() != 4) error("triArea error");
         for (int j=0; j<2; ++j) {
             vecs(0,j) = r2device_a(j);
             vecs(1,j) = r2device_b(j);
@@ -71,18 +71,18 @@ ko::initialize(argc, argv);
         if (result(0) != 1.5 || result(1) != 0.5) error("midpt error\n");
         PlaneGeometry::barycenter(result, vecs, 3);
         if (result(0) != 2.0/3.0 || result(1) != -3) error("barycenter error\n");
-        scalar_result(0) = PlaneGeometry::distance(slice(vecs, 0), slice(vecs,2));
-        if ( std::abs(scalar_result(0) - 2*std::sqrt(26.0)) > ZERO_TOL) error("distance error\n");
-        scalar_result(0) = PlaneGeometry::polygonArea(vecs, 4);
-        if (std::abs(scalar_result(0) - 10.5) > ZERO_TOL) error("polygonArea error.");
-        scalar_result(0) = PlaneGeometry::dot(r2device_a, r2device_b);
+        scalar_result() = PlaneGeometry::distance(slice(vecs, 0), slice(vecs,2));
+        if ( std::abs(scalar_result() - 2*std::sqrt(26.0)) > ZERO_TOL) error("distance error\n");
+        scalar_result() = PlaneGeometry::polygonArea(vecs, 4);
+        if (std::abs(scalar_result() - 10.5) > ZERO_TOL) error("polygonArea error.");
+        scalar_result() = PlaneGeometry::dot(r2device_a, r2device_b);
         }); 
     // copy results to host
     ko::deep_copy(host_result, result);
     prarr("barycenter", host_result.data(), 2);
     LPM_THROW_IF( (host_result(0) != 2.0/3.0 || host_result(1) != -3), "barycenter error\n");
     ko::deep_copy(host_scalar, scalar_result);
-    LPM_THROW_IF( host_scalar(0) != 2, "dot product error.\n");
+    LPM_THROW_IF( host_scalar() != 2, "dot product error.\n");
     PlaneGeometry::normalize(host_result);
     LPM_THROW_IF( PlaneGeometry::mag(host_result) != 1, "normalize error.");
     } // END PLANAR TESTS
@@ -122,8 +122,8 @@ ko::initialize(argc, argv);
     ko::View<Real*[3],Dev> vecs("vecs", 4);
     
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
-        res(0) = SphereGeometry::triArea(a, b, c);
-        if (std::abs(res(0) - PI/3.0) > ZERO_TOL) error("sphereTriArea error.");
+        res() = SphereGeometry::triArea(a, b, c);
+        if (std::abs(res() - PI/3.0) > ZERO_TOL) error("sphereTriArea error.");
         for (int j=0; j<3; ++j) {
             vecs(0, j) = a(j);
             vecs(1, j) = b(j);
@@ -137,12 +137,12 @@ ko::initialize(argc, argv);
         if (std::abs(vres(0)-2.0/3.0) > ZERO_TOL || 
             std::abs(vres(1)-2.0/3.0) > ZERO_TOL || 
             std::abs(vres(2)) > ZERO_TOL) error("cross product error.");
-        res(0) = SphereGeometry::distance(a,b);
-        printf("distance(a,b) = %f\n", res(0));
+        res() = SphereGeometry::distance(a,b);
+        printf("distance(a,b) = %f\n", res());
         SphereGeometry::barycenter(vres, vecs, 4);
         if (vres(0) != 1 || vres(1) != 0 || vres(2) != 0) error("sphere barycenter error.");
-        res(0) = SphereGeometry::polygonArea(vres, vecs, 4);
-        if (std::abs(res(0)-2*PI/3) > ZERO_TOL) error("sphere polygon error.");
+        res() = SphereGeometry::polygonArea(vres, vecs, 4);
+        if (std::abs(res()-2*PI/3) > ZERO_TOL) error("sphere polygon error.");
     });
     
     
