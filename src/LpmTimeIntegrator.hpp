@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
+#include "LpmKokkosUtil.hpp"
 
 namespace Lpm {
 
@@ -23,8 +24,8 @@ template <int ndim, typename VertVelFunctor, typename FaceVelFunctor> class RK4
 {
     public:
     typedef ko::View<Real*[ndim],Dev> vec_view_type;
-    ko::TeamPolicy<> vertex_policy;
-    ko::TeamPolicy<> face_policy;
+    ko::TeamPolicy<DevExe> vertex_policy;
+    ko::TeamPolicy<DevExe> face_policy;
     static constexpr Int nthreads_per_team = 1; /// currently unused.  See LpmKokkosUtil.hpp
     
     virtual ~RK4() {}
@@ -40,8 +41,8 @@ template <int ndim, typename VertVelFunctor, typename FaceVelFunctor> class RK4
         vertstage4("vertstage4", nv), faceinput("faceinput", nf),
         facestage1("facestage1", nf), facestage2("facestage2", nf),
         facestage3("facestage3", nf), facestage4("facestage4", nf),
-        vertex_policy(ExeSpaceUtils<>::get_default_team_policy(nv, nthreads_per_team)),
-        face_policy(ExeSpaceUtils<>::get_default_team_policy(nf, nthreads_per_team)) {}
+        vertex_policy(ExeSpaceUtils<DevExe>::get_default_team_policy(nv, nthreads_per_team)),
+        face_policy(ExeSpaceUtils<DevExe>::get_default_team_policy(nf, nthreads_per_team)) {}
     
     virtual void timestep(const Real dt) const = 0;
 

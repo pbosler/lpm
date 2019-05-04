@@ -9,6 +9,7 @@
 #include "Kokkos_Core.hpp"
 #include "LpmVtkIO.hpp"
 #include <cmath>
+#include <iomanip>
 
 namespace Lpm {
 
@@ -139,15 +140,37 @@ struct FaceSolve {
 };
 
 struct Error {
+    typedef Real value_type;
     scalar_view_type fcomputed;
     scalar_view_type fexact;
     scalar_view_type ferror;
+    mask_view_type mask;
     
-    Error(scalar_view_type e, scalar_view_type fc, scalar_view_type fe) : ferror(e), fcomputed(fc), fexact(fe) {}
+    struct VertTag{};
+    struct FaceTag{};
+    struct MaxTag{};
+    
+    Error(scalar_view_type e, scalar_view_type fc, scalar_view_type fe, mask_view_type m) : 
+        ferror(e), fcomputed(fc), fexact(fe), mask(m) {}
     
     KOKKOS_INLINE_FUNCTION
-    void operator () (const Index& i) const {
+    void operator () (const VertTag&, const Index& i) const {
         ferror(i) = abs(fcomputed(i) - fexact(i));
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator () (const FaceTag&, const Index& i) const {
+        if (mask(i)) {
+            ferror(i) = 0;
+        }
+        else {
+            ferror(i) = abs(fcomputed(i) - fexact(i));
+        }
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const MaxTag&, const Index& i, value_type& max) const {
+        if (ferror(i) > max) max=ferror(i);
     }
 };
 
@@ -164,29 +187,34 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
         scalar_view_type psiexactfaces;
         scalar_view_type everts;
         scalar_view_type efaces;
+        Real linf_verts;
+        Real linf_faces;
     
         SpherePoisson(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) : 
             PolyMesh2d<SphereGeometry,FaceKind>(nmaxverts, nmaxedges, nmaxfaces),
             fverts("f",nmaxverts), psiverts("psi",nmaxverts),
             ffaces("f",nmaxfaces), psifaces("psi",nmaxfaces),
             psiexactverts("psi_exact",nmaxverts), psiexactfaces("psi_exact",nmaxfaces),
-            everts("error", nmaxverts), efaces("error",nmaxfaces) {
-                _fverts = ko::create_mirror_view(fverts);
-                _psiverts = ko::create_mirror_view(psiverts);
-                _ffaces = ko::create_mirror_view(ffaces);
-                _psifaces = ko::create_mirror_view(psifaces);
-                _psiexactverts = ko::create_mirror_view(psiexactverts);
-                _psiexactfaces = ko::create_mirror_view(psiexactfaces);
-                _everts = ko::create_mirror_view(everts);
-                _efaces = ko::create_mirror_view(efaces);
+            everts("error", nmaxverts), efaces("error",nmaxfaces) 
+        {
+            _fverts = ko::create_mirror_view(fverts);
+            _psiverts = ko::create_mirror_view(psiverts);
+            _ffaces = ko::create_mirror_view(ffaces);
+            _psifaces = ko::create_mirror_view(psifaces);
+            _psiexactverts = ko::create_mirror_view(psiexactverts);
+            _psiexactfaces = ko::create_mirror_view(psiexactfaces);
+            _everts = ko::create_mirror_view(everts);
+            _efaces = ko::create_mirror_view(efaces);
         }
         
+        inline Real meshSize() const {return std::sqrt(4*PI / this->faces.nLeaves());}
+        
         void init() {
-            std::cout << "initializing problem data nhv = " << this->nvertsHost() <<std::endl;
+//             std::cout << "initializing problem data nhv = " << this->nvertsHost() <<std::endl;
             ko::parallel_for(this->nvertsHost(), Init(fverts, psiexactverts, this->getVertCrds()));
-            std::cout << "vertex problem data defined." << std::endl;
+//             std::cout << "vertex problem data defined." << std::endl;
             ko::parallel_for(this->nfacesHost(), Init(ffaces, psiexactfaces, this->getFaceCrds()));
-            std::cout << "face problem data defined." << std::endl;
+//             std::cout << "face problem data defined." << std::endl;
         }
         
         void solve() {
@@ -198,9 +226,17 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
                 this->getFacemask(), psifaces));
             
             /// compute error
-            ko::parallel_for(this->nvertsHost(), Error(everts, psiverts, psiexactverts));
+            ko::parallel_for(ko::RangePolicy<Error::VertTag>(0,this->nvertsHost()),
+                Error(everts, psiverts, psiexactverts, this->getFacemask()));
+            ko::parallel_for(ko::RangePolicy<Error::FaceTag>(0,this->nfacesHost()),
+                Error(efaces, psifaces, psiexactfaces, this->getFacemask()));
+            ko::parallel_reduce("MaxReduce", ko::RangePolicy<Error::MaxTag>(0,this->nvertsHost()),
+                Error(everts, psiverts, psiexactverts, this->getFacemask()), ko::Max<Real>(linf_verts));
+            ko::parallel_reduce("MaxReduce", ko::RangePolicy<Error::MaxTag>(0,this->nfacesHost()),
+                Error(efaces, psifaces, psiexactfaces, this->getFacemask()), ko::Max<Real>(linf_faces));
             
-            ko::parallel_for(this->nfacesHost(), Error(efaces, psifaces, psiexactfaces));
+            std::cout << meshSize()*RAD2DEG 
+                      << ": linf_verts = " << linf_verts << ", linf_faces = " << linf_faces << std::endl;
         }
 
         void updateHost() const override {
@@ -254,6 +290,9 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
         host_scalar_view _psiexactfaces;
         host_scalar_view _everts;
         host_scalar_view _efaces;
+        typedef typename ko::View<Real,Dev>::HostMirror host_linf_view;
+        host_linf_view _linf_verts;
+        host_linf_view _linf_faces;
 
 };
 

@@ -2,7 +2,7 @@
 
 rm -rf CMakeFiles/ CMakeCache.txt
 
-if [ "$HOSTNAME" = "s979562" ] || [ "$HOSTNAME" -eq "s979598" ] ; then
+if [ "$HOSTNAME" = "s979562" ] || [ "$HOSTNAME" = "s979598" ] ; then
     echo "hostname = $HOSTNAME"
     SRC_ROOT=$HOME/repos/lpmkokkos
     export VTK_ROOT=$HOME/installs/vtk-8.1.1
