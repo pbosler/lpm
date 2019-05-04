@@ -22,7 +22,7 @@ if __name__ == '__main__':
     for l in lines:
         if 'icostri' in l:
             ic.append(l)
-        elif: 'cubedsphere' in l:
+        elif 'cubedsphere' in l:
             cs.append(l)
     
     numtrials = len(ic)
@@ -36,17 +36,35 @@ if __name__ == '__main__':
     
     for i, l in enumerate(ic):
         ls = l.split()
-        icmeshsize[i] = float(ls[1])
-        iclinfverts[i] = float(ls[4])
+        icmeshsize[i] = float(ls[1][0:-1])
+        iclinfverts[i] = float(ls[4][0:-1])
         iclinffaces[i] = float(ls[7])
     
     for i, l in enumerate(cs):
         ls = l.split()
-        csmeshsize[i] = float(ls[1])
-        cslinfverts[i] = float(ls[4])
+        csmeshsize[i] = float(ls[1][0:-1])
+        cslinfverts[i] = float(ls[4][0:-1])
         cslinffaces[i] = float(ls[7])
     
+    icratesverts = (np.log(iclinfverts[1:])-np.log(iclinfverts[0:-1]))/(np.log(icmeshsize[1:])-np.log(icmeshsize[0:-1]))
+    csratesverts = (np.log(cslinfverts[2:])-np.log(cslinfverts[1:-1]))/(np.log(csmeshsize[2:])-np.log(csmeshsize[1:-1]))
+    icratesfaces = (np.log(iclinffaces[1:])-np.log(iclinffaces[0:-1]))/(np.log(icmeshsize[1:])-np.log(icmeshsize[0:-1]))
+    csratesfaces = (np.log(cslinffaces[2:])-np.log(cslinffaces[1:-1]))/(np.log(csmeshsize[2:])-np.log(csmeshsize[1:-1]))
     
+    print("icratesverts = ", icratesverts)
+    print("icratesfaces = ", icratesfaces)
+    print("csratesverts = ", csratesverts)
+    print("csratesfaces = ", csratesfaces)
+    
+    fig, ax = plt.subplots()
+    ax.loglog(icmeshsize, iclinfverts, '-s', label='icos. tri. verts.')
+    ax.loglog(icmeshsize, iclinffaces, '--d', label='icos. tri. faces')
+    ax.loglog(csmeshsize[1:], cslinfverts[1:], '-o', label='cubed sph. verts.')
+    ax.loglog(csmeshsize[1:], cslinffaces[1:], '--*', label='cubed sph. faces')
+    ax.legend()
+    
+    fig.savefig("sph_poisson_conv.pdf", bbox_inches='tight')
+    plt.close(fig)
     
     
 
