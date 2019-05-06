@@ -160,12 +160,7 @@ struct Error {
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const FaceTag&, const Index& i) const {
-        if (mask(i)) {
-            ferror(i) = 0;
-        }
-        else {
-            ferror(i) = abs(fcomputed(i) - fexact(i));
-        }
+        ferror(i) = (mask(i) ? 0 : abs(fcomputed(i) - fexact(i)));
     }
     
     KOKKOS_INLINE_FUNCTION
@@ -207,7 +202,7 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
             _efaces = ko::create_mirror_view(efaces);
         }
         
-        inline Real meshSize() const {return std::sqrt(4*PI / this->faces.nLeaves());}
+        inline Real meshSize() const {return std::sqrt(4*PI / this->faces.nLeavesHost());}
         
         void init() {
 //             std::cout << "initializing problem data nhv = " << this->nvertsHost() <<std::endl;
@@ -224,7 +219,6 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
                 this->getFaceArea(), this->getFacemask(), psiverts));
             ko::parallel_for(face_policy, FaceSolve(this->getFaceCrds(), ffaces, this->getFaceArea(), 
                 this->getFacemask(), psifaces));
-            
             /// compute error
             ko::parallel_for(ko::RangePolicy<Error::VertTag>(0,this->nvertsHost()),
                 Error(everts, psiverts, psiexactverts, this->getFacemask()));
