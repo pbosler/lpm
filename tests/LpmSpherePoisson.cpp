@@ -21,16 +21,16 @@ ko::initialize(argc, argv);
         SpherePoisson<TriFace> ic(nmaxverts, nmaxedges, nmaxfaces);
         ic.treeInit(tree_depth, triseed);
         ic.updateDevice();
-        std::cout << "ic mesh initialized." << std::endl;
+//         std::cout << "ic mesh initialized." << std::endl;
     
         ic.init();
-        std::cout << "problem data initialized." << std::endl;
+//         std::cout << "problem data initialized." << std::endl;
         std::cout << "icostri: ";
         ic.solve();
-        std::cout << "problem solved." << std::endl;
+//         std::cout << "problem solved." << std::endl;
     
         ic.updateHost();
-        std::cout << "host updated." << std::endl;
+//         std::cout << "host updated." << std::endl;
         ss << "poisson_ic_" << tree_depth << ".vtk";
         ic.outputVtk(ss.str());
         ss.str("");
