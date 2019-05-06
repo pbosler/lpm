@@ -10,3 +10,8 @@ Design principles
 To do
 ======================
 1. Do faces need to know center indices, or are they 1-1 with face indices?
+
+Status
+======================
+1. Verify/test faces
+
