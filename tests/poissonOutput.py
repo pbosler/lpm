@@ -45,6 +45,8 @@ if __name__ == '__main__':
         csmeshsize[i] = float(ls[1][0:-1])
         cslinfverts[i] = float(ls[4][0:-1])
         cslinffaces[i] = float(ls[7])
+        
+    o2ref = np.power(icmeshsize,2)
     
     icratesverts = (np.log(iclinfverts[1:])-np.log(iclinfverts[0:-1]))/(np.log(icmeshsize[1:])-np.log(icmeshsize[0:-1]))
     csratesverts = (np.log(cslinfverts[2:])-np.log(cslinfverts[1:-1]))/(np.log(csmeshsize[2:])-np.log(csmeshsize[1:-1]))
@@ -58,10 +60,16 @@ if __name__ == '__main__':
     
     fig, ax = plt.subplots()
     ax.loglog(icmeshsize, iclinfverts, '-s', label='icos. tri. verts.')
-    ax.loglog(icmeshsize, iclinffaces, '--d', label='icos. tri. faces')
     ax.loglog(csmeshsize[1:], cslinfverts[1:], '-o', label='cubed sph. verts.')
+    ax.loglog(icmeshsize, iclinffaces, '--d', label='icos. tri. faces')
     ax.loglog(csmeshsize[1:], cslinffaces[1:], '--*', label='cubed sph. faces')
+    ax.loglog(icmeshsize, 0.0005*o2ref, 'k-.', label='O($\Delta x^2$)')
+    ax.set_xticks(icmeshsize);
+    ax.set_xlabel('mesh size (degrees)')
+    ax.set_ylabel('max err')
+    ax.set_xticklabels(['{:3.2f}'.format(dl) for dl in icmeshsize])
     ax.legend()
+    ax.set_title("Spherical Poisson solve max error")
     
     fig.savefig("sph_poisson_conv.pdf", bbox_inches='tight')
     plt.close(fig)
