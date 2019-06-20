@@ -31,6 +31,20 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
         for (int i=0; i<ndim; ++i) 
             this->m_internal_implementation_private_member_data[i] = val;
     }
+    
+    KOKKOS_FORCEINLINE_FUNCTION
+    Tuple(const T& v0, const T& v1) : Array<T,ndim>() {
+        this->m_internal_implementation_private_member_data[0] = v0;
+        this->m_internal_implementation_private_member_data[1] = v1;
+    }
+    
+    KOKKOS_FORCEINLINE_FUNCTION
+    Tuple(const T& v0, const T& v1, const T& v2) : Array<T,ndim>() {
+        this->m_internal_implementation_private_member_data[0] = v0;
+        this->m_internal_implementation_private_member_data[1] = v1;
+        this->m_internal_implementation_private_member_data[2] = v2;
+    }
+    
     KOKKOS_INLINE_FUNCTION
     volatile T& operator[] (const int& i) volatile {return this->m_internal_implementation_private_member_data[i];}
     
