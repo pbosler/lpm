@@ -25,36 +25,61 @@ if (VTK_FOUND)
     printvar(VTK_LIBRARIES)
 endif()
 
-set(CUDA_BUILD FALSE)
+
 if (Kokkos_ROOT)
-    option(HAVE_KOKKOS "Located Kokkos library." ON)
-    message("Kokkos found. Details:")
-    include(${Kokkos_ROOT}/kokkos_generated_settings.cmake)
-    set(Kokkos_INCLUDE_DIRS ${Kokkos_ROOT}/include)
-    set(Kokkos_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
-    
-    string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
-    if (${cuda_str_pos} GREATER -1)
-        option(HAVE_CUDA "If true, indicates a Kokkos Cuda build." ON)
-        set(CUDA_BUILD TRUE)
-        execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show" 
-	        RESULT_VARIABLE WRAPS_NVCC OUTPUT_VARIABLE WRAPS_NVCC_OUT)
-        string (FIND ${WRAPS_NVCC_OUT} "nvcc" pos)
-    endif()
+   message(STATUS "Lpm will use the Kokkos library installed at ${Kokkos_ROOT}")
+   include(${Kokkos_ROOT}/kokkos_generated_settings.cmake)
+   set(KOKKOS_INCLUDE_DIRS ${Kokkos_ROOT}/include)
+   set(KOKKOS_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
+   set(KOKKOS_PREFIX ${Kokkos_ROOT})
+   
+   string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
+   if (${cuda_str_pos} GREATER -1)
+        Option(HAVE_CUDA "Kokkos/Cuda found." ON)    
+   endif()
+        
 else()
-    Message(FATAL_ERROR "Kokkos is required. Set CMake variable Kokkos_ROOT.")
+    set(KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_DEPRECATED_CODE=OFF -DKOKKOS_ENABLE_SERIAL=ON -DKOKKOS_ENABLE_PTHREAD=OFF
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/kokkos -DCMAKE_CXX_FLAGS="-fPIC")
+    if (ENABLE_OPENMP)
+        list(APPEND KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_OPENMP=ON)
+    else()
+        list(APPEND KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_OPENMP=OFF)
+    endif()
+
+    if (ENABLE_CUDA)
+       FIND_PACKAGE(CUDA QUIET)
+       if (${CUDA_FOUND})
+           execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show" RESULT_VARIABLE WRAPS_NVCC
+               OUTPUT_VARIABLE WRAPS_NVCC_OUT ERROR_QUIET)
+           if (${WRAPS_NVCC} EQUAL 0)
+               set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda")
+               OPTION(HAVE_CUDA "Kokkos will build with Cuda" ON)
+               list(APPEND KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_CUDA=ON -DKOKKOS_ENABLE_CUDA_LAMBDA -DKOKKOS_ARCH=${KOKKOS_ARCH_STR}) 
+           else ()
+               Message(WARNING "Cuda was found, but the C++ compiler is not nvcc_wrapper.  Building Kokkos without Cuda support.")
+               set(ENABLE_CUDA FALSE CACHE LOGICAL FORCE "")
+           endif()
+       else()
+          set(ENABLE_CUDA FALSE CACHE LOGICAL FORCE "")
+          Message(WARNING "ENABLE_CUDA=ON but Cuda package not found.")
+       endif()
+    endif()
+    include(kokkos.cmake)
 endif()
 
-list2str("${KOKKOS_CXX_FLAGS}" Kokkos_CXXFLAGS)
-list2str("${KOKKOS_LD_FLAGS}" Kokkos_LDFLAGS)
-set (LPM_CXXFLAGS "-g ${Kokkos_CXXFLAGS} ${CMAKE_CXX_FLAGS}")
-if (CUDA_BUILD)
-    set( LPM_CXXFLAGS "${LPM_CXXFLAGS} --expt-relaxed-constexpr")
-endif()
-set(LPM_LDFLAGS "-L/lib64 -ldl")
+#include(compadre.cmake)
+#install_compadre_if_needed()
 
-printvar(LPM_CXXFLAGS)
-printvar(LPM_LDFLAGS)
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" 
+                    "${PROJECT_BINARY_DIR}" 
+                    "${VTK_INCLUDE_DIRS}" 
+                    "${KOKKOS_INCLUDE_DIRS}"
+                    )
+
+get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
+set(CMAKE_CXX_COMPILE_FEATURES ${cxx_features})
+set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})                    
 
 ADD_SUBDIRECTORY (src)
 ADD_SUBDIRECTORY (tests)
