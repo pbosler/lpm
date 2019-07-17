@@ -39,8 +39,9 @@ if (Kokkos_ROOT)
    endif()
         
 else()
+    message(STATUS "Lpm will build Kokkos internally.  To use an external Kokkos installation, set the Kokkos_ROOT (case sensitive) CMake variable to its path.")
     set(KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_DEPRECATED_CODE=OFF -DKOKKOS_ENABLE_SERIAL=ON -DKOKKOS_ENABLE_PTHREAD=OFF
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/kokkos -DCMAKE_CXX_FLAGS="-fPIC")
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/kokkos -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_BUILD_TYPE=RelWithDebInfo)
     if (ENABLE_OPENMP)
         list(APPEND KOKKOS_CMAKE_ARGS -DKOKKOS_ENABLE_OPENMP=ON)
     else()
@@ -68,13 +69,32 @@ else()
     include(kokkos.cmake)
 endif()
 
-#include(compadre.cmake)
-#install_compadre_if_needed()
+printvar(KOKKOS_PREFIX)
+
+if (Compadre_ROOT)
+    message(STATUS "Lpm will use the Compadre GMLS toolkit installed at ${Compadre_ROOT}")
+    set(COMPADRE_INCLUDE_DIRS "${Compadre_ROOT}/include")
+    set(COMPADRE_LIBRARIES "${Compadre_ROOT}/lib/libcompadre.a")
+else()
+    message(STATUS "Lpm will build the Compadre GMLS toolkit internally. To use an external Kokkos installation, set the Compadre_ROOT (case sensitive) CMake variable to its path.")
+    set(COMPADRE_CMAKE_ARGS -DCompadre_USE_Pthread=OFF -DKokkosCore_PREFIX=${KOKKOS_PREFIX} -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/compadre -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_SHARED_LIBS=OFF)
+    if (ENABLE_OPENMP)
+        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=ON)
+    else()
+        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=OFF)
+    endif()
+    if (ENABLE_CUDA)
+        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_CUDA=ON)
+    endif()
+    include(compadre.cmake)
+endif()
 
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" 
                     "${PROJECT_BINARY_DIR}" 
                     "${VTK_INCLUDE_DIRS}" 
                     "${KOKKOS_INCLUDE_DIRS}"
+                    "${COMPADRE_INCLUDE_DIRS}"
                     )
 
 get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
