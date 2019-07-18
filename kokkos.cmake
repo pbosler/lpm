@@ -8,15 +8,14 @@ ExternalProject_Add(
     UPDATE_COMMAND ""
     PATCH_COMMAND ""
     
+    PREFIX=${CMAKE_BINARY_DIR}/tpl/kokkos
+    
+    BUILD_ALWAYS ON
+    
     SOURCE_DIR "${CMAKE_SOURCE_DIR}/tpl/kokkos"
     CMAKE_ARGS ${KOKKOS_CMAKE_ARGS}
     
     TEST_COMMAND ""
 )
-
-set(KOKKOS_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/tpl/kokkos/include")
-set(KOKKOS_LIBRARIES "${CMAKE_BINARY_DIR}/tpl/kokkos/lib/libkokkos.a")
-set(KOKKOS_PREFIX "${CMAKE_BINARY_DIR}/tpl/kokkos")
-#INCLUDE_DIRECTORIES(${KOKKOS_INCLUDE_DIRS})
 
 

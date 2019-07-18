@@ -29,8 +29,8 @@ endif()
 if (Kokkos_ROOT)
    message(STATUS "Lpm will use the Kokkos library installed at ${Kokkos_ROOT}")
    include(${Kokkos_ROOT}/kokkos_generated_settings.cmake)
-   set(KOKKOS_INCLUDE_DIRS ${Kokkos_ROOT}/include)
-   set(KOKKOS_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
+#   set(KOKKOS_INCLUDE_DIRS ${Kokkos_ROOT}/include)
+#   set(KOKKOS_LIBRARIES ${Kokkos_ROOT}/lib/libkokkos.a)
    set(KOKKOS_PREFIX ${Kokkos_ROOT})
    
    string(FIND "${KOKKOS_GMAKE_DEVICES}" "Cuda" cuda_str_pos)
@@ -67,34 +67,38 @@ else()
        endif()
     endif()
     include(kokkos.cmake)
+#    set(KOKKOS_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/tpl/kokkos/include")
+    set(KOKKOS_PREFIX "${CMAKE_BINARY_DIR}/tpl/kokkos")
 endif()
 
-printvar(KOKKOS_PREFIX)
+ADD_LIBRARY(kokkos STATIC IMPORTED)
+SET_TARGET_PROPERTIES(kokkos PROPERTIES IMPORTED_LOCATION ${KOKKOS_PREFIX}/lib/libkokkos.a)
+INCLUDE_DIRECTORIES(${KOKKOS_PREFIX}/include)
 
 if (Compadre_ROOT)
-    message(STATUS "Lpm will use the Compadre GMLS toolkit installed at ${Compadre_ROOT}")
-    set(COMPADRE_INCLUDE_DIRS "${Compadre_ROOT}/include")
-    set(COMPADRE_LIBRARIES "${Compadre_ROOT}/lib/libcompadre.a")
+   message(STATUS "Lpm will use the Compadre GMLS toolkit installed at ${Compadre_ROOT}")
+   set(COMPADRE_INCLUDE_DIRS "${Compadre_ROOT}/include")
+   set(COMPADRE_LIBRARIES "${Compadre_ROOT}/lib/libcompadre.a")
 else()
-    message(STATUS "Lpm will build the Compadre GMLS toolkit internally. To use an external Kokkos installation, set the Compadre_ROOT (case sensitive) CMake variable to its path.")
-    set(COMPADRE_CMAKE_ARGS -DCompadre_USE_Pthread=OFF -DKokkosCore_PREFIX=${KOKKOS_PREFIX} -DCMAKE_BUILD_TYPE=RelWithDebInfo
-        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/compadre -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_SHARED_LIBS=OFF)
-    if (ENABLE_OPENMP)
-        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=ON)
-    else()
-        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=OFF)
-    endif()
-    if (ENABLE_CUDA)
-        list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_CUDA=ON)
-    endif()
-    include(compadre.cmake)
+   message(STATUS "Lpm will build the Compadre GMLS toolkit internally. To use an external Compadre installation, set the Compadre_ROOT (case sensitive) CMake variable to its path.")
+   set(COMPADRE_CMAKE_ARGS -DCompadre_USE_Pthread=OFF -DKokkosCore_PREFIX=${KOKKOS_PREFIX} -DCMAKE_BUILD_TYPE=RelWithDebInfo
+       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tpl/compadre -DCMAKE_CXX_FLAGS=-fPIC -DBUILD_SHARED_LIBS=OFF)
+   if (ENABLE_OPENMP)
+       list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=ON)
+   else()
+       list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_OpenMP=OFF)
+   endif()
+   if (ENABLE_CUDA)
+       list(APPEND COMPADRE_CMAKE_ARGS -DCompadre_USE_CUDA=ON)
+   endif()
+   include(compadre.cmake)
 endif()
 
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" 
                     "${PROJECT_BINARY_DIR}" 
                     "${VTK_INCLUDE_DIRS}" 
-                    "${KOKKOS_INCLUDE_DIRS}"
-                    "${COMPADRE_INCLUDE_DIRS}"
+                    "${KOKKOS_PREFIX}/include"
+                    #"${COMPADRE_INCLUDE_DIRS}"
                     )
 
 get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
