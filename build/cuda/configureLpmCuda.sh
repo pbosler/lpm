@@ -2,15 +2,15 @@
 
 rm -rf CMakeFiles/ CMakeCache.txt
 
-SRC_ROOT=$HOME/lpmkokkos
+SRC_ROOT=$HOME/lpm
 EXTRA_ARGS=$1
-export KO=$HOME/kokkos-cuda/debug
-export OMPI_CXX=$KO/bin/nvcc_wrapper
+export KO=$HOME/kokkos-cuda/gcc-6.3.1
+export CP=$HOME/compadre/build/cuda
 
 cmake -Wno-dev \
 -D CMAKE_BUILD_TYPE:STRING="DEBUG" \
--D CMAKE_CXX_FLAGS="" \
 -D Kokkos_ROOT=$KO \
+-D Compadre_ROOT=$CP \
 -D CMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
 $EXTRA_ARGS \
 $SRC_ROOT

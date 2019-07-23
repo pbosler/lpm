@@ -68,7 +68,15 @@ ko::initialize(argc, argv);
             vecs(3,j) = r2device_d(j);
         }
         PlaneGeometry::midpoint(result, slice(vecs, 0), slice(vecs, 1));
-        if (result(0) != 1.5 || result(1) != 0.5) error("midpt error\n");
+        if (result(0) != 1.5 || result(1) != 0.5) {
+            printf("device midpoint error.\n");
+            printf("vecs(0,:) = (%f,%f)\n", vecs(0,0), vecs(0,1));
+            printf("vecs(1,:) = (%f,%f)\n", vecs(1,0), vecs(1,1));
+            auto slice0 = slice(vecs,0);
+            printf("slice(vecs,0) = (%f,%f)\n", slice0[0], slice0[1]);
+            printf("midpt result = (%f,%f)\n", result(0), result(1));
+            error("midpt error\n");
+        }
         PlaneGeometry::barycenter(result, vecs, 3);
         if (result(0) != 2.0/3.0 || result(1) != -3) error("barycenter error\n");
         scalar_result() = PlaneGeometry::distance(slice(vecs, 0), slice(vecs,2));
