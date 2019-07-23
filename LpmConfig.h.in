@@ -6,9 +6,8 @@
 #define LPM_VERSION_MINOR @LPM_VERSION_MINOR@
 
 #cmakedefine HAVE_VTK
-#cmakedefine HAVE_KOKKOS
 #cmakedefine HAVE_CUDA
-#cmakedefine MIMIC_GPU
+#cmakedefine HAVE_COMPADRE
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 

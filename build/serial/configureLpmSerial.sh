@@ -2,18 +2,24 @@
 
 rm -rf CMakeFiles/ CMakeCache.txt
 
-if [ "$HOSTNAME" = "s979562" ] || [ "$HOSTNAME" = "s979598" ] ; then
+if [ "$HOSTNAME" = "s979598" ] ; then
     echo "hostname = $HOSTNAME"
     SRC_ROOT=$HOME/repos/lpmkokkos
     export VTK_ROOT=$HOME/installs/vtk-8.1.1
+    export KO=$HOME/kokkos-serial
+elif [ "$HOSTNAME" = "s979562" ] ; then
+    echo "hostname = $HOSTNAME"
+    SRC_ROOT=$HOME/lpm
+    export VTK_ROOT=$HOME/installs/vtk-8.1.1
+    export KO=$HOME/kokkos-serial-debug
+    export CPTK=$HOME/compadre-serial-debug
 else
     SRC_ROOT=$HOME/lpmkokkos
     export VTK_ROOT=$HOME/VTK-8.1.1
+    export KO=$HOME/kokkos-serial
 fi
 
 EXTRA_ARGS=$1
-#export KO=$HOME/installs/kokkos-serial-debug
-export KO=$HOME/kokkos-serial
 export OMPI_CXX=g++
 # 
 
@@ -22,6 +28,7 @@ cmake -Wno-dev \
 -D CMAKE_BUILD_TYPE:STRING="DEBUG" \
 -D CMAKE_CXX_FLAGS="-g" \
 -D Kokkos_ROOT=$KO \
+-D Compadre_ROOT=$CPTK \
 -D CMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
 $EXTRA_ARGS \
 $SRC_ROOT
