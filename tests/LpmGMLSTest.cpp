@@ -59,6 +59,20 @@ struct Cart2LL {
     }
 };
 
+struct PackScalarForContourPlot {
+    ko::View<Real*> data;
+    ko::View<Real**> cdata;
+    int nlon;
+    int nlat;
+    
+    PackScalarForContourPlot(ko::View<Real**> cdataout, ko::View<Real*> datain, const int nlonin) data(datain), cdata(cdataout), nlon(nlonin), nlat(nlonin/2 + 1) {}
+    
+    void operator() (const int k) const {
+        i = k/nlon;
+        j = k%nlon;
+        cdata(i,j) = data(k);
+    }
+};
 
 int main(int argc, char* argv[]) {
 #ifdef HAVE_COMPADRE
@@ -207,7 +221,7 @@ ko::initialize(argc, argv);
 
     auto llvort_sol = eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(ic.ffaces, Compadre::ScalarPointEvaluation,
          Compadre::PointSample);
-    auto llpsi_sol = eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(ic.ffaces,
+    auto llpsi_sol = eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(ic.psifaces,
          Compadre::LaplacianOfScalarPointEvaluation,  Compadre::PointSample);
     auto llvel_interp = eval_vector.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMem>(ic.ufacesexact,
          Compadre::VectorPointEvaluation, Compadre::VectorPointSample);
@@ -238,6 +252,16 @@ ko::initialize(argc, argv);
         if (scalar_interp_error(i) > err) err = scalar_interp_error(i);
     }, scalar_interp_linf);
     std::cout << "scalar_interp_linf = " << scalar_interp_linf << '\n';
+    
+    Real scalar_lap_linf = 0.0;
+    ko::View<Real*> scalar_lap_error("scalar_lap_error", n_unif);
+    ko::parallel_for(n_unif, KOKKOS_LAMBDA (int i) {
+        scalar_lap_error(i) = abs(llpsi54(i) + llpsi_sol(i));
+    });
+    ko::parallel_reduce("MaxReduce", n_unif, KOKKOS_LAMBDA (int i, Real& err) {
+        if (scalar_lap_error(i) > err) err = scalar_lap_error(i);
+    }, scalar_lap_linf);
+    std::cout << "scalar_laplacian_linf = " << scalar_lap_linf << '\n';
     
     std::ofstream f(input.mfile_out);
     auto mask = ic.getFacemaskHost();
