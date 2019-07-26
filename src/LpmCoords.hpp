@@ -84,6 +84,7 @@ template <typename Geo> class Coords {
         /// Host function
         void writeMatlab(std::ostream& os, const std::string& name) const;
         
+        typename crd_view_type::HostMirror getHostCrdView() {return _hostcrds;}
     protected:
         typename crd_view_type::HostMirror _hostcrds;
         Index _nmax;

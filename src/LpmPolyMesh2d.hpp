@@ -42,6 +42,8 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         mask_view_type getFacemask() const {
             return mask_view_type(faces.mask, std::make_pair(0,faces.nh()));}
         
+        typename mask_view_type::HostMirror getFacemaskHost() const {return ko::create_mirror_view(faces.mask);}
+        
         scalar_view_type getFaceArea() const {
             return scalar_view_type(faces.area, std::make_pair(0,faces.nh()));}
         
@@ -62,6 +64,8 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         Faces<FaceType> faces;
         Coords<Geo> physFaces;
         Coords<Geo> lagFaces;
+        
+        typename Coords<Geo>::crd_view_type::HostMirror getFaceCrdsHost() {return physFaces.getHostCrdView();}
         
         template <typename SeedType>
         void treeInit(const Int initDepth, const MeshSeed<SeedType>& seed);

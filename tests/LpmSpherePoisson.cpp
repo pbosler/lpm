@@ -10,7 +10,7 @@ using namespace Lpm;
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
-    for (int i=0; i<6; ++i) {
+    for (int i=0; i<4; ++i) {
         int tree_depth = i;
         Index nmaxverts, nmaxedges, nmaxfaces;
         std::ostringstream ss;
