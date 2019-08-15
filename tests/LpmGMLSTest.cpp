@@ -65,11 +65,11 @@ struct PackScalarForContourPlot {
     int nlon;
     int nlat;
     
-    PackScalarForContourPlot(ko::View<Real**> cdataout, ko::View<Real*> datain, const int nlonin) data(datain), cdata(cdataout), nlon(nlonin), nlat(nlonin/2 + 1) {}
+    PackScalarForContourPlot(ko::View<Real**> cdataout, ko::View<Real*> datain, const int nlonin) : data(datain), cdata(cdataout), nlon(nlonin), nlat(nlonin/2 + 1) {}
     
     void operator() (const int k) const {
-        i = k/nlon;
-        j = k%nlon;
+        const int i = k/nlon;
+        const int j = k%nlon;
         cdata(i,j) = data(k);
     }
 };
@@ -183,7 +183,7 @@ ko::initialize(argc, argv);
 
     /// Define GMLS scalar operators
     const std::string gmls_solver_name = "MANIFOLD";
-    Compadre::GMLS gmls_scalar(gmls_order, gmls_solver_name.c_str(), gmls_order, manifold_order);
+    Compadre::GMLS gmls_scalar(gmls_order, gmls_solver_name.c_str(), gmls_order, 3);
     gmls_scalar.setProblemData(neighbor_lists, ic.getFaceCrds(), llmesh, neighborhood_radius);
     gmls_scalar.setReferenceOutwardNormalDirection(llmesh);
     
@@ -333,6 +333,8 @@ ko::initialize(argc, argv);
         f << llcurl_host(i) << ' ';
     }
     f << "];\n";
+    f << "tri_src = delaunay(src_lons, src_lats);\n";
+    f << "tri_tgt = delaunay(lons, lats);\n";
     f.close();
 }
 ko::finalize();
