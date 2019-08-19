@@ -21,4 +21,14 @@ namespace Lpm {
   }
 
 
+std::string weightName(const int ndim) {
+    std::string result;
+    switch(ndim) {
+        case (1) : {result = "length"; break;}
+        case (2) : {result = "area"; break;}
+        case (3) : {result = "volume"; break;}
+    }
+    return result;
+}
+
 }

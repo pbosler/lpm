@@ -1,8 +1,6 @@
 #ifndef LPM_COMPADRE_HPP
 #define LPM_COMPADRE_HPP
 
-#ifdef HAVE_COMPADRE
-
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
@@ -11,8 +9,7 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmKokkosUtil.hpp"
 #include <vector>
-
-
+// #ifdef HAVE_COMPADRE
 #include "Compadre_GMLS.hpp"
 #include "Compadre_Config.h"
 #include "Compadre_Operators.hpp"
@@ -31,22 +28,29 @@ struct CompadreParams {
     Int topo_dim;
     Int min_neighbors;
     
-    std::string infoString() const;
+    std::string infoString(const int tab_level=0) const;
     
     CompadreParams() : gmls_eps_mult(2), gmls_order(3), gmls_manifold_order(3), gmls_weight_pow(2), 
         gmls_manifold_weight_pow(2), ambient_dim(3), topo_dim(2), 
-        min_neighbors(Compadre::GMLS::getNP(gmls_order, topo_dim) {}
+        min_neighbors(Compadre::GMLS::getNP(gmls_order, topo_dim)) {}
 };
 
 struct CompadreNeighborhoods {
     ko::View<Index**> neighbor_lists;
     ko::View<Real*> neighborhood_radii;
     
+    ko::View<Index**,HostMem> host_neighbors;
+    ko::View<Real*, HostMem> host_radii;
+    
     CompadreNeighborhoods(ko::View<const Real*[3], HostMem> host_src_crds, 
         ko::View<const Real*[3], HostMem> host_tgt_crds, const CompadreParams& params) ;
     
     Real minRadius() const;
     Real maxRadius() const;
+    Int maxNeighbors() const;
+    Int minNeighbors() const;
+    
+    std::string infoString(const int tab_level=0) const;
 };
 
 Compadre::GMLS scalarGMLS(const ko::View<Real*[3],DevMem> src_crds, const ko::View<Real*[3],DevMem> tgt_crds,
@@ -58,5 +62,5 @@ Compadre::GMLS vectorGMLS(const ko::View<Real*[3],DevMem> src_crds, const ko::Vi
     const std::vector<Compadre::TargetOperation>& gmls_ops);
 
 }
-#endif
+// #endif
 #endif
