@@ -9,7 +9,7 @@
 
 namespace Lpm {
 
-std::string ComapdreParams::infoString(const int tab_level) const {
+std::string CompadreParams::infoString(const int tab_level) const {
     std::ostringstream ss;
     std::string tabstr;
     for (int i=0; i<tab_level; ++i) {
@@ -29,9 +29,11 @@ std::string ComapdreParams::infoString(const int tab_level) const {
 
 CompadreNeighborhoods::CompadreNeighborhoods(ko::View<const Real*[3], HostMem> host_src_crds, 
     ko::View<const Real*[3], HostMem> host_tgt_crds, const CompadreParams& params) {
-    auto Compadre::point_cloud_search(Compadre::CreatePointCloudSearch(src_crds));
+    Compadre::PointCloudSearch<ko::View<const Real*[3],HostMem>> point_cloud_search(host_src_crds); 
     const int est_upper_bound = point_cloud_search.getEstimatedNumberNeighborsUpperBound(params.min_neighbors,
         params.ambient_dim, params.gmls_eps_mult);
+    
+    std::cout << "CompadreNeighborhoods: est_max_neighbors = " << est_upper_bound << '\n';
     
     neighbor_lists = ko::View<Index**>("neighbor_lists", host_tgt_crds.extent(0), est_upper_bound);
     neighborhood_radii = ko::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
@@ -51,7 +53,7 @@ Real CompadreNeighborhoods::minRadius() const {
     Real result;
     ko::parallel_reduce("MinReduce", neighborhood_radii.extent(0), KOKKOS_LAMBDA (int i, Real& r) {
         if (neighborhood_radii(i) < r) r = neighborhood_radii(i);
-    }, result);
+    }, ko::Min<Real>(result));
     return result;
 }
 
@@ -59,7 +61,7 @@ Real CompadreNeighborhoods::maxRadius() const {
     Real result;
     ko::parallel_reduce("MaxReduce", neighborhood_radii.extent(0), KOKKOS_LAMBDA(int i, Real& r) {
         if (neighborhood_radii(i) > r) r = neighborhood_radii(i);
-    }, result);
+    }, ko::Max<Real>(result));
     return result;
 }
 
@@ -67,7 +69,7 @@ Int CompadreNeighborhoods::minNeighbors() const {
     Int result = -1;
     ko::parallel_reduce("MinReduce", neighbor_lists.extent(0), KOKKOS_LAMBDA (int i, Int& m) {
         if (neighbor_lists(i,0) < m) m = neighbor_lists(i,0);
-    }, result);
+    }, ko::Min<Int>(result));
     return result;
 }
 
@@ -75,7 +77,7 @@ Int CompadreNeighborhoods::maxNeighbors() const {
     Int result = -1;
     ko::parallel_reduce("MaxReduce", neighbor_lists.extent(0), KOKKOS_LAMBDA (int i, Int& m) {
         if (neighbor_lists(i,0) > m) m = neighbor_lists(i,0);
-    }, result);
+    }, ko::Max<Int>(result));
     return result;
 }
 
@@ -84,7 +86,7 @@ std::string CompadreNeighborhoods::infoString(const int tab_level) const {
     std::string tabstr;
     for (int i=0; i<tab_level; ++i) 
         tabstr += '\t';
-    ss << "CompadreNeighborhoods info: \n";
+    ss << tabstr << "CompadreNeighborhoods info: \n";
     ss << '\t' << tabstr << "minNeighbors = " << minNeighbors() << '\n';
     ss << '\t' << tabstr << "maxNeighbors = " << maxNeighbors() << '\n';
     ss << '\t' << tabstr << "minRadius = " << minRadius() << '\n';
