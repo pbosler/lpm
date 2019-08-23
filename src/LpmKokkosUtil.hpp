@@ -5,7 +5,8 @@
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Array.hpp"
-
+#include <limits>
+#include <cfloat>
 /**
 Kokkos-related utilities
 */
@@ -59,8 +60,22 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
             this->m_internal_implementation_private_member_data[i] += o[i];
         return *this;
     }
+    KOKKOS_INLINE_FUNCTION
+    Tuple operator += (const volatile Tuple<T,ndim>& o) volatile {
+        for (int i=0; i<ndim; ++i)
+            this->m_internal_implementation_private_member_data[i] += o[i];
+        return *this;
+    }
+    
     KOKKOS_FORCEINLINE_FUNCTION 
     Tuple operator *= (const Tuple<T,ndim>& o) {
+        for (int i=0; i<ndim; ++i)
+            this->m_internal_implementation_private_member_data[i] *= o[i];
+        return *this;
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    Tuple operator *= (const volatile Tuple<T,ndim>& o) volatile {
         for (int i=0; i<ndim; ++i)
             this->m_internal_implementation_private_member_data[i] *= o[i];
         return *this;
@@ -71,12 +86,16 @@ template <>
 struct reduction_identity<Tuple<Lpm::Real,3>> {
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> sum() {return Tuple<Lpm::Real,3>();}
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> prod() {return Tuple<Lpm::Real,3>(1);}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> max() {return Tuple<Lpm::Real,3>(-DBL_MAX);}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> min() {return Tuple<Lpm::Real,3>(DBL_MAX);}
 };
 
 template <>
 struct reduction_identity<Tuple<Lpm::Real,2>> {
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> sum() {return Tuple<Lpm::Real,2>();}
     KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> prod() {return Tuple<Lpm::Real,2>(1);}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> max() {return Tuple<Lpm::Real,2>(-DBL_MAX);}
+    KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> min() {return Tuple<Lpm::Real,2>(DBL_MIN);}
 };
 
 }

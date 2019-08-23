@@ -55,9 +55,13 @@ ADD_EXECUTABLE(lpmGMLS LpmGMLSTest.cpp)
 TARGET_LINK_LIBRARIES(lpmGMLS lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} )
 ADD_TEST(lpmGMLS lpmGMLS)
 
+ADD_EXECUTABLE(lpmLatLonMesh LpmLatLonMeshTests.cpp)
+TARGET_LINK_LIBRARIES(lpmLatLonMesh lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+ADD_TEST(lpmLatLonMeshTest lpmLatLonMesh)
+
 ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
 TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-ADD_TEST(lpmCompadre lpmCompadre)
+ADD_TEST(lpmCompadreTest lpmCompadre)
 
 #
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
