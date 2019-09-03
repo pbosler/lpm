@@ -17,6 +17,7 @@ else
     SRC_ROOT=$HOME/lpmkokkos
     export VTK_ROOT=$HOME/VTK-8.1.1
     export KO=$HOME/kokkos-serial
+    export CPTK=$HOME/compadre/build
 fi
 
 EXTRA_ARGS=$1
