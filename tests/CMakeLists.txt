@@ -63,6 +63,10 @@ ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
 TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 ADD_TEST(lpmCompadreTest lpmCompadre)
 
+ADD_EXECUTABLE(lpmGaussGrid LpmGaussGridTests.cpp)
+TARGET_LINK_LIBRARIES(lpmGaussGrid lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+ADD_TEST(lpmGaussGridTest lpmGaussGrid)
+
 #
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
 #SET_TARGET_PROPERTIES(lpmBVETest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
