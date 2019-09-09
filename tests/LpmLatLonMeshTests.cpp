@@ -11,6 +11,7 @@
 #include <string>
 #include <fstream>
 #include <cmath>
+#include <vector>
 
 using namespace Lpm;
 

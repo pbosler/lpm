@@ -54,6 +54,7 @@ typedef ko::LayoutRight Layout;
 /// Execution spaces
 typedef ko::DefaultExecutionSpace DevExe;
 typedef ko::HostSpace::execution_space HostExe;
+typedef typename DevExe::member_type member_type;
 
 /// Memory spaces
 typedef ko::DefaultExecutionSpace::memory_space DevMem;
