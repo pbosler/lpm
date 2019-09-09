@@ -10,6 +10,14 @@
 
 namespace Lpm {
 
+enum NodeFlag {LOCKED, EMPTY, LEAF, INTERNAL};
+
+typedef ko::View<Real*[6],Dev> bbox_view;
+typedef ko::View<Index*[9],Dev> tree_view;
+typedef ko::View<Index*,Dev> parent_view;        
+typedef ko::View<Index**,Dev> particle_index_view;
+typedef ko::View<NodeFlag*,Dev> flag_view;
+
 template <typename CVT3, typename CVT6> KOKKOS_INLINE_FUNCTION
 Int local_child_index(const CVT3 pos, const CVT6 box) {
     Int result = 0;
@@ -40,6 +48,28 @@ void divide_box(VT6 boxes, const Index parent_ind, const Index kid0) {
         boxes(kid0+j,5) = (j>>2 == 0 ? zmid : zmax); 
     }
 }
+
+
+struct BuildTreeKernel {
+    typename SphereGeometry::crd_view_type crds;
+    bbox_view boxes;
+    tree_view nodes;
+    parent_view parents;
+    particle_index_view inds;
+    flag_view flags;
+    n_view_type nnodes;
+    
+    Int max_inds_per_leaf;
+    
+    BuildTreeKernel(typename SphereGeometry::crd_view_type cc, bbox_view bb, tree_view tt, 
+        parent_view pp, particle_index_view ii, flag_view ff, n_view_type nn) : 
+        crds(cc), boxes(bb), nodes(tt), parents(pp), inds(ii), flags(ff), nnodes(nn),
+        max_inds_per_leaf(ii.extent(1)-1) {}
+    
+    void operator() (member_type member) const {
+        const Index tid = member.league_rank()*member.team_size() + member.team_rank();
+    }
+};
 
 
 struct OneIndPerLeaf {
@@ -133,57 +163,46 @@ struct OneIndPerLeaf {
                     }
                 }                
             }
+        }
     };
 };
-struct NIndsPerLeaf {};
 
-class Octree {
-    public:
-        typedef ko::View<Real*[6],Dev> bbox_type;
-        typedef ko::View<Index*[8],Dev> children_type;
-        typedef ko::View<Index*,Dev> parent_type;        
-        typedef ko::View<Index**,Dev> particle_index_type;
-
-        Octree(const OneIndPerLeaf&, const Coords<SphereGeometry>& crds);
-        
-    protected:
-        static constexpr Int PARTICLE_MEMORY_PAD = 10;
-        static constexpr Int MAX_DEPTH = 32;
-        static constexpr Int BLOCK_SIZE = 1024;
-        static constexpr Int WARP_SIZE = 32;
+struct NIndsPerLeaf {
     
-        bbox_type boxes_;
-        children_type kids_;
-        parent_type parent_;
-        particle_index_type inds_;
-        Index nNodes_;
-        Index nLeaves_;
+    struct BuildTree {
         
-        void initNull();
-        
-        Index est_particles_per_leaf(const Index n, const Int max_depth) const;        
-
-//         KOKKOS_INLINE_FUNCTION
-//         Index nNodes(const Int max_depth) const {
-//             Index result = 0;
-//             for (Int i=0; i<=max_depth) result += std::pow(8,i);
-//             return result;
-//         };
-//         
-//         KOKKOS_INLINE_FUNCTION
-//         Index nLeaves(const Int max_depth) const {
-//             return std::pow(8,max_depth);
-//         };
-//         
-//         KOKKOS_INLINE_FUNCTION
-//         Index nInternalNodes(const Int max_depth) const {
-//             return nNodes(max_depth) - nLeaves(max_depth);
-//         };
-        
-//         void initMaxIndsPerLeaf(const Int nmax);
-        
-//         void initOneIndPerLeaf();
+    };
 };
+
+
+// 
+// class Octree {
+//     public:
+//         
+//         
+//         Octree(const Index nn, const Int maxp) : boxes_("bb",nn), kids_("kids",nn), parents_("parents",nn),
+//             inds_("p_inds",nn,maxp), flags_("flags", nn), nNodes_(0), nLeaves_(0) {}
+//         
+//     protected:
+//         static constexpr Int PARTICLE_MEMORY_PAD = 10;
+//         static constexpr Int MAX_DEPTH = 32;
+//         static constexpr Int BLOCK_SIZE = 1024;
+//         static constexpr Int WARP_SIZE = 32;
+//     
+//         bbox_type boxes_;
+//         children_type kids_;
+//         parent_type parents_;
+//         particle_index_type inds_;
+//         flag_view_type flags_;
+//         Index nNodes_;
+//         Index nLeaves_;
+//         
+//         
+//         
+//         Index est_particles_per_leaf(const Index n, const Int max_depth) const;        
+// 
+// 
+// };
 
 
 }

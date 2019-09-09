@@ -128,7 +128,7 @@ ko::initialize(argc, argv);
                 Construct neighbor lists
             */
             CompadreNeighborhoods nn(src_host, ll.pts_host, gmlsParams);
-            //std::cout << nn.infoString(1);
+            std::cout << nn.infoString(1);
             
             /**
                 Setup gmls
