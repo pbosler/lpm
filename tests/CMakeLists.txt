@@ -67,7 +67,7 @@ ADD_EXECUTABLE(lpmGaussGrid LpmGaussGridTests.cpp)
 TARGET_LINK_LIBRARIES(lpmGaussGrid lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 ADD_TEST(lpmGaussGridTest lpmGaussGrid)
 
-ADD_EXECUTABLE(lpmBoxUnitTests lpmBox3DUnitTests.cpp)
+ADD_EXECUTABLE(lpmBoxUnitTests LpmBox3DUnitTests.cpp)
 TARGET_LINK_LIBRARIES(lpmBoxUnitTests lpm kokkos ${CMAKE_DL_LIBS})
 ADD_TEST(lpmBoxUnitTests lpmBoxUnitTests)
 #

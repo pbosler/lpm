@@ -1,6 +1,6 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
-#include "SPGaussGrid.hpp"
+#include "LpmGaussGrid.hpp"
 #include <iostream>
 #include "Kokkos_Core.hpp"
 

@@ -1,4 +1,6 @@
-#include "SPGaussGrid.hpp"
+#include "LpmGaussGrid.hpp"
+
+#ifdef HAVE_SPHEREPACK
 #include <sstream>
 #include <string>
 #include <iostream>
@@ -30,3 +32,5 @@ template void legendre_polynomial<ko::View<Real*>>(const Int& n, const Real& the
 template void fourier_coeff_legendre_poly<ko::View<Real*>>(const Int& n, Real& constcoeff, ko::View<Real*> coeffs, ko::View<Real*> dcoeffs);
 
 }
+
+#endif

@@ -2,6 +2,8 @@
 #define SPHERICAL_GAUSSIAN_GRID_HPP
 
 #include "LpmConfig.h"
+#ifdef HAVE_SPHEREPACK
+
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
 #include "LpmUtilities.hpp"
@@ -260,4 +262,5 @@ void legendre_polynomial(const Int& n, const Real& theta, const Real& constcoeff
 }
 
 }
+#endif
 #endif
