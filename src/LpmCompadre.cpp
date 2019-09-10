@@ -100,11 +100,13 @@ Compadre::GMLS scalarGMLS(const ko::View<Real*[3],DevMem> src_crds, const ko::Vi
     const std::string solver_name = "MANIFOLD";
     Compadre::GMLS result(params.gmls_order, solver_name.c_str(), params.gmls_manifold_order, params.ambient_dim);
     result.setProblemData(nn.neighbor_lists, src_crds, tgt_crds, nn.neighborhood_radii);
+    
     result.setReferenceOutwardNormalDirection(tgt_crds);
     result.setCurvatureWeightingType(Compadre::WeightingFunctionType::Power);
     result.setCurvatureWeightingPower(params.gmls_manifold_weight_pow);
     result.setWeightingType(Compadre::WeightingFunctionType::Power);
     result.setWeightingPower(params.gmls_weight_pow);
+    
     result.addTargets(gmls_ops);
     result.generateAlphas();
     return result;

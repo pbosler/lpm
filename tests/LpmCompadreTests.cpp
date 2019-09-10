@@ -79,7 +79,7 @@ ko::initialize(argc, argv);
 
     Input input(argc, argv);
 
-    CompadreParams gmlsParams;
+    CompadreParams gmlsParams(input.order);
     gmlsParams.gmls_eps_mult = input.eps;
     gmlsParams.gmls_order = input.order;
     gmlsParams.gmls_manifold_order = input.order;
@@ -128,7 +128,7 @@ ko::initialize(argc, argv);
                 Construct neighbor lists
             */
             CompadreNeighborhoods nn(src_host, ll.pts_host, gmlsParams);
-            //std::cout << nn.infoString(1);
+            std::cout << nn.infoString(1);
             
             /**
                 Setup gmls
@@ -137,10 +137,14 @@ ko::initialize(argc, argv);
             ko::View<Real*> tgt_zeta("zeta", nunif);
             ko::View<Real*> tgt_zeta_lap("zeta", nunif);
             
+
+            
             std::vector<Compadre::TargetOperation> s_ops = {Compadre::ScalarPointEvaluation,
                                                             Compadre::LaplacianOfScalarPointEvaluation};
+                                                         
             Compadre::GMLS sgmls = scalarGMLS(srcCrds, ll.pts, nn, gmlsParams, s_ops);
-
+            
+       
             /**
                 Compute solutions: lap(psi) = -zeta
             */

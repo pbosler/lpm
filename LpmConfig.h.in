@@ -8,6 +8,7 @@
 #cmakedefine HAVE_VTK
 #cmakedefine HAVE_CUDA
 #cmakedefine HAVE_COMPADRE
+#cmakedefine HAVE_SPHEREPACK
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 

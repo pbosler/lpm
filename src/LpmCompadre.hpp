@@ -30,9 +30,13 @@ struct CompadreParams {
     
     std::string infoString(const int tab_level=0) const;
     
-    CompadreParams() : gmls_eps_mult(2), gmls_order(3), gmls_manifold_order(3), gmls_weight_pow(2), 
+    CompadreParams() : gmls_eps_mult(2.0), gmls_order(3), gmls_manifold_order(3), gmls_weight_pow(2), 
         gmls_manifold_weight_pow(2), ambient_dim(3), topo_dim(2), 
         min_neighbors(Compadre::GMLS::getNP(gmls_order, topo_dim)) {}
+    
+    CompadreParams(const Int ord) : gmls_eps_mult((ord > 4 ? 3.0 : 2.0)), gmls_order(ord), gmls_manifold_order(ord),
+    gmls_weight_pow(2), gmls_manifold_weight_pow(2), ambient_dim(3), topo_dim(2),
+    min_neighbors(Compadre::GMLS::getNP(ord, topo_dim)) {}
 };
 
 struct CompadreNeighborhoods {
