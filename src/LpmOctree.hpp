@@ -10,13 +10,24 @@
 
 namespace Lpm {
 
-enum NodeFlag {LOCKED, EMPTY, LEAF, INTERNAL};
+struct NodeFlags {
+    static constexpr short EMPTY = -1;
+    static constexpr short LOCKED = -2;
+    static constexpr short INTERNAL = 0;
+    static constexpr short LEAF = 1;
+};
+
+struct ParticleFlags {
+    static constexpr short INTREE = 1;
+    static constexpr short UNINIT = 0;
+    static constexpr short LOCKED = -2;
+};
 
 typedef ko::View<Real*[6],Dev> bbox_view;
 typedef ko::View<Index*[9],Dev> tree_view;
 typedef ko::View<Index*,Dev> parent_view;        
 typedef ko::View<Index**,Dev> particle_index_view;
-typedef ko::View<NodeFlag*,Dev> flag_view;
+typedef ko::View<short*,Dev> flag_view;
 
 template <typename CVT3, typename CVT6> KOKKOS_INLINE_FUNCTION
 Int local_child_index(const CVT3 pos, const CVT6 box) {
@@ -60,14 +71,22 @@ struct BuildTreeKernel {
     n_view_type nnodes;
     
     Int max_inds_per_leaf;
+    Index n_particles;
     
     BuildTreeKernel(typename SphereGeometry::crd_view_type cc, bbox_view bb, tree_view tt, 
         parent_view pp, particle_index_view ii, flag_view ff, n_view_type nn) : 
         crds(cc), boxes(bb), nodes(tt), parents(pp), inds(ii), flags(ff), nnodes(nn),
-        max_inds_per_leaf(ii.extent(1)-1) {}
+        max_inds_per_leaf(ii.extent(1)-1), n_particles(crds.extent(0)) {
+    }
     
     void operator() (member_type member) const {
         const Index tid = member.league_rank()*member.team_size() + member.team_rank();
+        Index work_ind = tid;
+        Int inc = member.team_size();
+        
+        while (work_ind < n_particles) {
+            auto pos = ko::subview(crds, work_ind, ko::ALL());
+        }
     }
 };
 
