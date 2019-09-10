@@ -66,5 +66,6 @@ ko::initialize(argc, argv);
 
     
 }
+return 0;
 ko::finalize();    
 }
