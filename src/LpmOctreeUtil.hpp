@@ -74,13 +74,13 @@ key_type compute_key(const CPtType& pos, const int& level_depth) {
 }
 
 KOKKOS_INLINE_FUNCTION
-uint_fast64_t encode(const uint_fast32_t& key, const uint_fast32_t& id) {
+uint64_t encode(const uint64_t key, const uint32_t id) {
     return ((key<<32) + id);
 }
 
 KOKKOS_INLINE_FUNCTION
-uint_fast32_t decode_id(const uint_fast64_t& code) {
-    return (code>>32);
+uint32_t decode_id(const uint64_t& code) {
+    return uint32_t(code);
 }
 
 struct BBox {
