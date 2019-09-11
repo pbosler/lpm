@@ -23,27 +23,48 @@ LatLonMesh::LatLonMesh(const Int n_lat, const Int n_lon) : nlat(n_lat), nlon(n_l
     pts_host = ko::create_mirror_view(pts);
     wts = ko::View<Real*>("weights", npts);
     wts_host = ko::create_mirror_view(wts);
-    
-    ko::parallel_for(nlat, KOKKOS_LAMBDA (const Index i) {
-        const Index start_ind = i*nlon;
+
+    // build mesh on host
+    for (Int i=0; i<nlat; ++i) {
         const Real lat = -0.5*PI + i*dthe;
         const Real coslat = std::cos(lat);
         const Real z = std::sin(lat);
         const Real w = 2*dlam*std::sin(0.5*dthe)*coslat;
         for (Int j=0; j<nlon; ++j) {
-            const Index start_ind = i*nlon;
             const Real lon = j*dlam;
             const Real x = std::cos(lon)*coslat;
             const Real y = std::sin(lon)*coslat;
-            pts(start_ind+j,0) = x;
-            pts(start_ind+j,1) = y;
-            pts(start_ind+j,2) = z;
-            wts(start_ind+j) = w;
+            pts_host(i*nlon+j,0) = x;
+            pts_host(i*nlon+j,1) = y;
+            pts_host(i*nlon+j,2) = z;
+            wts_host(i*nlon+j) = w;
         }
-    });
+    }
     
-    ko::deep_copy(pts_host, pts);
-    ko::deep_copy(wts_host, wts);
+    // copy to device
+    ko::deep_copy(pts, pts_host);
+    ko::deep_copy(wts, wts_host);
+    
+//     ko::parallel_for(nlat, KOKKOS_LAMBDA (const Index i) {
+//         const Index start_ind = i*nlon;
+//         const Real lat = -0.5*PI + i*dthe;
+//         const Real coslat = std::cos(lat);
+//         const Real z = std::sin(lat);
+//         const Real w = 2*dlam*std::sin(0.5*dthe)*coslat;
+//         for (Int j=0; j<nlon; ++j) {
+//             const Index start_ind = i*nlon;
+//             const Real lon = j*dlam;
+//             const Real x = std::cos(lon)*coslat;
+//             const Real y = std::sin(lon)*coslat;
+//             pts(start_ind+j,0) = x;
+//             pts(start_ind+j,1) = y;
+//             pts(start_ind+j,2) = z;
+//             wts(start_ind+j) = w;
+//         }
+//     });
+//     
+//     ko::deep_copy(pts_host, pts);
+//     ko::deep_copy(wts_host, wts);
 }
 
 void LatLonMesh::writeLatLonMeshgrid(std::ostream& os, const std::string& name) const {

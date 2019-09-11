@@ -22,7 +22,7 @@ ko::initialize(argc, argv);
     }
     ko::deep_copy(pts, host_pts);
     
-    Octree::BBox box = Octree::get_bbox<Host>(pts);
+    Octree::BBox box = Octree::get_bbox(pts);
     
     for (int i=0; i<4; ++i) {
         std::cout << "pt(" << i << ") = (";
@@ -83,6 +83,6 @@ ko::initialize(argc, argv);
     }
     
 }
+ko::finalize(); 
 return 0;
-ko::finalize();    
 }

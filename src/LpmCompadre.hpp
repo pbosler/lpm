@@ -43,11 +43,11 @@ struct CompadreNeighborhoods {
     ko::View<Index**> neighbor_lists;
     ko::View<Real*> neighborhood_radii;
     
-    ko::View<Index**,HostMem> host_neighbors;
-    ko::View<Real*, HostMem> host_radii;
+//     ko::View<Index**,HostMem> host_neighbors;
+//     ko::View<Real*, HostMem> host_radii;
     
-    CompadreNeighborhoods(ko::View<const Real*[3], HostMem> host_src_crds, 
-        ko::View<const Real*[3], HostMem> host_tgt_crds, const CompadreParams& params) ;
+    CompadreNeighborhoods(typename ko::View<Real*[3]>::HostMirror host_src_crds, 
+        typename ko::View<Real*[3]>::HostMirror host_tgt_crds, const CompadreParams& params) ;
     
     Real minRadius() const;
     Real maxRadius() const;

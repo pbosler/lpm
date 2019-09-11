@@ -125,7 +125,7 @@ struct BBox {
     }
 };
 
-template <typename Space> 
+template <typename Space=Dev> 
 struct BBoxReducer {
     public:
     typedef BBoxReducer reducer;
@@ -177,8 +177,8 @@ struct BBoxReducer {
     bool references_scalar() const {return references_scalar_v;}
 };
 
-template <typename Space=DevExe> KOKKOS_FUNCTION
-BBox get_bbox(const ko::View<Real*[3],Space>& pts) {
+KOKKOS_FUNCTION
+BBox get_bbox(const ko::View<Real*[3]>& pts) {
     BBox result;
     ko::parallel_reduce(pts.extent(0), KOKKOS_LAMBDA (const Index& i, BBox& b) {
         if (pts(i,0) < b.bds[0]) b.bds[0] = pts(i,0);
@@ -187,7 +187,7 @@ BBox get_bbox(const ko::View<Real*[3],Space>& pts) {
         if (pts(i,1) > b.bds[3]) b.bds[3] = pts(i,1);
         if (pts(i,2) < b.bds[4]) b.bds[4] = pts(i,2);
         if (pts(i,2) > b.bds[5]) b.bds[5] = pts(i,2);
-    }, BBoxReducer<Space>(result));
+    }, BBoxReducer<>(result));
     return result;
 }
 

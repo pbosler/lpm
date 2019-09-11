@@ -27,9 +27,9 @@ std::string CompadreParams::infoString(const int tab_level) const {
     return ss.str();
 }
 
-CompadreNeighborhoods::CompadreNeighborhoods(ko::View<const Real*[3], HostMem> host_src_crds, 
-    ko::View<const Real*[3], HostMem> host_tgt_crds, const CompadreParams& params) {
-    Compadre::PointCloudSearch<ko::View<const Real*[3],HostMem>> point_cloud_search(host_src_crds); 
+CompadreNeighborhoods::CompadreNeighborhoods(typename ko::View<Real*[3]>::HostMirror host_src_crds, 
+    typename ko::View<Real*[3]>::HostMirror host_tgt_crds, const CompadreParams& params) {
+    Compadre::PointCloudSearch<typename ko::View<Real*[3]>::HostMirror> point_cloud_search(host_src_crds); 
     const int est_upper_bound = point_cloud_search.getEstimatedNumberNeighborsUpperBound(params.min_neighbors,
         params.ambient_dim, params.gmls_eps_mult);
     
@@ -39,8 +39,8 @@ CompadreNeighborhoods::CompadreNeighborhoods(ko::View<const Real*[3], HostMem> h
     neighborhood_radii = ko::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
     
     // neighborhoods built on host
-    host_neighbors = ko::create_mirror_view(neighbor_lists);
-    host_radii = ko::create_mirror_view(neighborhood_radii);
+    auto host_neighbors = ko::create_mirror_view(neighbor_lists);
+    auto host_radii = ko::create_mirror_view(neighborhood_radii);
     point_cloud_search.generateNeighborListsFromKNNSearch(host_tgt_crds, host_neighbors, host_radii,
         params.min_neighbors, params.ambient_dim, params.gmls_eps_mult);
     
