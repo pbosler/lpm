@@ -42,6 +42,8 @@ KOKKOS_INLINE_FUNCTION static void message (const char* const msg)
 typedef double Real;
 /// Integer type
 typedef int Int;
+/// Unsigned integer type
+typedef unsigned Uint;
 /// Memory index type
 typedef int Index;
 /// Memory layout
