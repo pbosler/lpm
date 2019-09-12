@@ -29,56 +29,25 @@ std::string CompadreParams::infoString(const int tab_level) const {
 
 CompadreNeighborhoods::CompadreNeighborhoods(typename ko::View<Real*[3]>::HostMirror host_src_crds, 
     typename ko::View<Real*[3]>::HostMirror host_tgt_crds, const CompadreParams& params) {
+    
     Compadre::PointCloudSearch<typename ko::View<Real*[3]>::HostMirror> point_cloud_search(host_src_crds); 
     const int est_upper_bound = point_cloud_search.getEstimatedNumberNeighborsUpperBound(params.min_neighbors,
         params.ambient_dim, params.gmls_eps_mult);
     
-    std::cout << "CompadreNeighborhoods: est_max_neighbors = " << est_upper_bound << '\n';
-    
-    neighbor_lists = ko::View<Index**>("neighbor_lists", host_tgt_crds.extent(0), est_upper_bound);
-    neighborhood_radii = ko::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
+    const Index ext = host_tgt_crds.extent(0);
+    neighbor_lists = ko::View<Index**>("neighbor_lists", ext, est_upper_bound);
+    neighborhood_radii = ko::View<Real*>("neighborhood_radii", ext);
     
     // neighborhoods built on host
     auto host_neighbors = ko::create_mirror_view(neighbor_lists);
     auto host_radii = ko::create_mirror_view(neighborhood_radii);
     point_cloud_search.generateNeighborListsFromKNNSearch(host_tgt_crds, host_neighbors, host_radii,
         params.min_neighbors, params.ambient_dim, params.gmls_eps_mult);
-    
     // copy to device
     ko::deep_copy(neighbor_lists, host_neighbors);
     ko::deep_copy(neighborhood_radii, host_radii);
-}
-
-Real CompadreNeighborhoods::minRadius() const {
-    Real result;
-    ko::parallel_reduce("MinReduce", neighborhood_radii.extent(0), KOKKOS_LAMBDA (int i, Real& r) {
-        if (neighborhood_radii(i) < r) r = neighborhood_radii(i);
-    }, ko::Min<Real>(result));
-    return result;
-}
-
-Real CompadreNeighborhoods::maxRadius() const {
-    Real result;
-    ko::parallel_reduce("MaxReduce", neighborhood_radii.extent(0), KOKKOS_LAMBDA(int i, Real& r) {
-        if (neighborhood_radii(i) > r) r = neighborhood_radii(i);
-    }, ko::Max<Real>(result));
-    return result;
-}
-
-Int CompadreNeighborhoods::minNeighbors() const {
-    Int result = -1;
-    ko::parallel_reduce("MinReduce", neighbor_lists.extent(0), KOKKOS_LAMBDA (int i, Int& m) {
-        if (neighbor_lists(i,0) < m) m = neighbor_lists(i,0);
-    }, ko::Min<Int>(result));
-    return result;
-}
-
-Int CompadreNeighborhoods::maxNeighbors() const {
-    Int result = -1;
-    ko::parallel_reduce("MaxReduce", neighbor_lists.extent(0), KOKKOS_LAMBDA (int i, Int& m) {
-        if (neighbor_lists(i,0) > m) m = neighbor_lists(i,0);
-    }, ko::Max<Int>(result));
-    return result;
+    
+    compute_bds();
 }
 
 std::string CompadreNeighborhoods::infoString(const int tab_level) const {
@@ -87,6 +56,7 @@ std::string CompadreNeighborhoods::infoString(const int tab_level) const {
     for (int i=0; i<tab_level; ++i) 
         tabstr += '\t';
     ss << tabstr << "CompadreNeighborhoods info: \n";
+    ss << '\t' << tabstr << "neighbor_lists.extent(1) = " << neighbor_lists.extent(1) << "\n";
     ss << '\t' << tabstr << "minNeighbors = " << minNeighbors() << '\n';
     ss << '\t' << tabstr << "maxNeighbors = " << maxNeighbors() << '\n';
     ss << '\t' << tabstr << "minRadius = " << minRadius() << '\n';

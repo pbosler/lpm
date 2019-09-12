@@ -33,7 +33,7 @@ struct ErrReducer {
             dest[i] += src[i];
         }
         for (int i=4; i<6; ++i) {
-            if (abs(src[i]) > dest[i]) dest[i] = abs(src[i]);
+            if (std::abs(src[i]) > dest[i]) dest[i] = std::abs(src[i]);
         }
     }
     
@@ -43,7 +43,7 @@ struct ErrReducer {
             dest[i] += src[i];
         }
         for (int i=4; i<6; ++i) {
-            if (abs(src[i]) > dest[i]) dest[i] = abs(src[i]);
+            if (std::abs(src[i]) > dest[i]) dest[i] = std::abs(src[i]);
         }
     }
     
@@ -89,8 +89,8 @@ struct ErrNorms {
             eup[1] += std::abs(ex(i))*wt(i);
             eup[2] += square(er(i))*wt(i);
             eup[3] += square(ex(i))*wt(i);
-            eup[4] = max(std::abs(er(i)), eup[4]);
-            eup[5] = max(std::abs(ex(i)), eup[5]);
+            if (std::abs(er(i)) > eup[4]) eup[4] = std::abs(er(i));
+            if (std::abs(ex(i)) > eup[5]) eup[5] = std::abs(ex(i));
         }, ErrReducer<Dev>(tview));
         auto host_tv = ko::create_mirror_view(tview);
         ko::deep_copy(host_tv, tview);

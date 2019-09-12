@@ -97,9 +97,10 @@ ko::initialize(argc, argv);
         PolyMesh2d<SphereGeometry,TriFace> trisphere(nmaxverts, nmaxedges, nmaxfaces);
         trisphere.treeInit(i, icseed);
         trisphere.updateDevice();
-        auto srcCrds = sourceCoords<SphereGeometry,TriFace>(trisphere);
-        typename ko::View<Real*[3]>::HostMirror src_host = ko::create_mirror_view(srcCrds);
+        ko::View<Real*[3]> srcCrds = sourceCoords<SphereGeometry,TriFace>(trisphere);
+        auto src_host = ko::create_mirror_view(srcCrds);
         ko::deep_copy(src_host, srcCrds);
+
         /** 
             Define source data
         */
@@ -111,7 +112,7 @@ ko::initialize(argc, argv);
             zeta(i) = zt;
             psi(i) = -zt/30.0;
         });
-
+        std::cout << "source data ready.\n";
         for (int j=0; j<input.nlons.size(); ++j) {
             /** 
                 Build target mesh
@@ -120,8 +121,7 @@ ko::initialize(argc, argv);
             const int nlat = input.nlats[j];
             const int nunif = nlon*nlat;
             LatLonMesh ll(nlat, nlon);
-            
-            
+
             std::cout << "nsrc = " << srcCrds.extent(0) << " ntgt = " << nunif << "\n";
             
             /**
@@ -136,12 +136,8 @@ ko::initialize(argc, argv);
             ko::View<Real*> tgt_psi("psi", nunif);
             ko::View<Real*> tgt_zeta("zeta", nunif);
             ko::View<Real*> tgt_zeta_lap("zeta", nunif);
-            
-
-            
             std::vector<Compadre::TargetOperation> s_ops = {Compadre::ScalarPointEvaluation,
-                                                            Compadre::LaplacianOfScalarPointEvaluation};
-                                                         
+                                                            Compadre::LaplacianOfScalarPointEvaluation};                                                         
             Compadre::GMLS sgmls = scalarGMLS(srcCrds, ll.pts, nn, gmlsParams, s_ops);
             
        
@@ -174,9 +170,9 @@ ko::initialize(argc, argv);
             ll.computeScalarError(psi_err, tgt_psi, psi_exact);
             ll.computeScalarError(zeta_err, tgt_zeta, zeta_exact);
             ll.computeScalarError(zeta_lap_err, tgt_zeta_lap, zeta_exact);
-            ErrNorms enrm_psi = ll.scalarErrorNorms(psi_err, psi_exact);
-            ErrNorms enrm_zeta = ll.scalarErrorNorms(zeta_err, zeta_exact);
-            ErrNorms enrm_zeta_lap = ll.scalarErrorNorms(zeta_lap_err, zeta_exact);
+            ErrNorms<> enrm_psi(psi_err, psi_exact, ll.wts);
+            ErrNorms<> enrm_zeta(zeta_err, zeta_exact, ll.wts);
+            ErrNorms<> enrm_zeta_lap(zeta_lap_err, zeta_exact, ll.wts);
             
             output.nsrc[i-2] = srcCrds.extent(0);
             output.interp_l1[i-2] = enrm_psi.l1;
@@ -187,9 +183,9 @@ ko::initialize(argc, argv);
             output.lap_l2[i-2] = enrm_zeta_lap.l2;
             output.lap_linf[i-2] = enrm_zeta_lap.linf;
 
-//             std::cout << enrm_psi.infoString("psi error:", 1);
-//             std::cout << enrm_zeta.infoString("zeta_error:", 1);
-//             std::cout << enrm_zeta_lap.infoString("zeta_lap_error",1);
+            std::cout << enrm_psi.infoString("psi error:", 1);
+            std::cout << enrm_zeta.infoString("zeta_error:", 1);
+            std::cout << enrm_zeta_lap.infoString("zeta_lap_error",1);
 
             auto psi_host = ko::create_mirror_view(tgt_psi);
             auto zeta_host = ko::create_mirror_view(tgt_zeta);
@@ -304,13 +300,17 @@ void Output::writeLapData() const {
 
 template <typename G, typename F>
 ko::View<Real*[3]> sourceCoords(const PolyMesh2d<G,F>& pm) {
-    const Index nv = pm.nverts();
-    ko::View<Real*[3]> result("source_coords", nv + pm.faces.nLeavesHost());
+    const Index nv = pm.nvertsHost();
+    const Index nl = pm.faces.nLeavesHost();
+    std::cout << "nv = " << nv << " nleaf_faces = " << nl << "\n";
+    ko::View<Real*[3]> result("source_coords", nv + nl);
+    std::cout << "srcCrds result allocated.\n";
     ko::parallel_for(nv, KOKKOS_LAMBDA (int i) {
         for (int j=0; j<3; ++j) {
             result(i,j) = pm.physVerts.crds(i,j);
         }
     });
+    std::cout << "vertices copied to srcCrds.\n";
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
         Int offset = nv;
         for (int j=0; j<pm.nfaces(); ++j) {

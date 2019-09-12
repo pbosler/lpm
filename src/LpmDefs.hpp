@@ -146,11 +146,11 @@ typedef ko::View<const bool*,Dev> const_mask_view_type;
     using std::max_element;
 #endif
 
-KOKKOS_INLINE_FUNCTION
-Real min(const Real& a, const volatile Real& b) {return Real(a < b ? a : b);}
-
-KOKKOS_INLINE_FUNCTION
-Real max(const Real& a, const volatile Real& b) {return Real(a > b ? a : b);}
+// KOKKOS_INLINE_FUNCTION
+// Real min(const Real& a, const volatile Real& b) {return Real(a < b ? a : b);}
+// 
+// KOKKOS_INLINE_FUNCTION
+// Real max(const Real& a, const volatile Real& b) {return Real(a > b ? a : b);}
 
 /// Timers 
 static timeval tic () {
