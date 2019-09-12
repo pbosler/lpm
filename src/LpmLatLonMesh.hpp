@@ -6,21 +6,12 @@
 #include "LpmGeometry.hpp"
 #include "LpmUtilities.hpp"
 #include "LpmKokkosUtil.hpp"
+#include "LpmErrorNorms.hpp"
 #include "Kokkos_Core.hpp"
 #include <iostream>
 #include <string>
 
 namespace Lpm {
-
-struct ErrNorms {
-    Real l1;
-    Real l2;
-    Real linf;
-    
-    ErrNorms(const Real l_1, const Real l_2, const Real l_i) : l1(l_1), l2(l_2), linf(l_i) {}
-    
-    std::string infoString(const std::string& label="", const int tab_level=0) const;
-};
 
 struct LatLonMesh {
     ko::View<Real*[3]> pts;
@@ -46,8 +37,8 @@ struct LatLonMesh {
         const ko::View<Real*,HostMem> vals_host) const;
     
     void computeScalarError(ko::View<Real*> error, const ko::View<const Real*> computed, const ko::View<const Real*> exact) const;
-    
-    ErrNorms scalarErrorNorms(const ko::View<const Real*> error, const ko::View<const Real*> exact) const;
+//     
+//     ErrNorms scalarErrorNorms(const ko::View<const Real*> error, const ko::View<const Real*> exact) const;
 
 };
 

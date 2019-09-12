@@ -6,6 +6,7 @@
 #include "Kokkos_Core.hpp"
 #include "LpmRossbyWaves.hpp"
 #include "LpmMatlabIO.hpp"
+#include "LpmErrorNorms.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -26,7 +27,7 @@ ko::initialize(argc, argv);
     
         LatLonMesh ll(nlat, nlon);
         const Index npts = nlat*nlon;
-    
+        std::cout << "Mesh ready.\n";
         Real surf_area;
         ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& a) {
             a += ll.wts(i);
@@ -49,8 +50,36 @@ ko::initialize(argc, argv);
             onesB(i) = 1.001;
         });
         
+        std::cout << "ones arrays ready.\n";
         ll.computeScalarError(onesError, onesA, onesB);
-        ErrNorms errs = ll.scalarErrorNorms(onesError, onesA);
+        std::cout << "errors ready.\n";
+        
+        Real l1, l1denom;
+        Real l2, l2denom;
+        Real linf, linfdenom;
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& er) {
+            er += abs(onesError(i))*ll.wts(i);
+        }, l1);
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& ex) {
+            ex += abs(onesA(i))*ll.wts(i);
+        }, l1denom);
+        l1 /= l1denom;
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& er) {
+            er += square(onesError(i))*ll.wts(i);
+        }, l2);
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& ex) {
+            ex += square(onesA(i))*ll.wts(i);
+        }, l2denom);
+        l2 = std::sqrt(l2/l2denom);
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& er) {
+            if (abs(onesError(i)) > er) er = abs(onesError(i));
+        }, ko::Max<Real>(linf));
+        ko::parallel_reduce(npts, KOKKOS_LAMBDA (const Index& i, Real& ex) {
+            if (abs(onesA(i)) > ex) ex = abs(onesA(i));
+        }, ko::Max<Real>(linfdenom));
+        
+        ErrNorms errs(l1,l2,linf);
+        //ErrNorms errs = ll.scalarErrorNorms(onesError, onesA);
         std::cout << errs.infoString("approx. 1 :: ");
     }
 }

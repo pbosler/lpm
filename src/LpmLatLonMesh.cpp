@@ -3,17 +3,9 @@
 #include "Kokkos_View.hpp"
 #include "LpmMatlabIO.hpp"
 #include <cmath>
-#include <sstream>
+
 
 namespace Lpm {
-
-std::string ErrNorms::infoString(const std::string& label, const int tab_level) const {
-    std::ostringstream ss;
-    std::string tabstr;
-    for (int i=0; i<tab_level; ++i) tabstr += "\t";
-    ss << tabstr << label << " ErrNorms: l1 = " << l1 << " l2 = " << l2 << " linf = " << linf << "\n";
-    return ss.str();
-}
 
 LatLonMesh::LatLonMesh(const Int n_lat, const Int n_lon) : nlat(n_lat), nlon(n_lon), 
     dlam(2*PI/n_lon), dthe(PI/(n_lat-1)) {
@@ -102,41 +94,42 @@ void LatLonMesh::computeScalarError(ko::View<Real*> error, const ko::View<const 
     });
 }
 
-ErrNorms LatLonMesh::scalarErrorNorms(const ko::View<const Real*> error, const ko::View<const Real*> exact) const {
-
-    Real l1num;
-    Real l1denom;
-    Real l2num;
-    Real l2denom;
-    Real linfnum;
-    Real linfdenom;
-
-    ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) {
-        e += error(i)*wts(i);
-    }, l1num);
-    
-    ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
-        v += std::abs(exact(i))*wts(i);
-    }, l1denom);
-    
-    ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) {
-        e += square(error(i))*wts(i);
-    }, l2num);
-    
-    ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
-        v += square(exact(i))*wts(i);
-    }, l2denom);    
-    
-    ko::parallel_reduce("MaxReduce", error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) { 
-        if (error(i) > e) e = error(i);
-    }, ko::Max<Real>(linfnum));
-
-    ko::parallel_reduce("MaxReduce", error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
-        if (exact(i) > v) v = exact(i);
-    }, ko::Max<Real>(linfdenom));
-
-    return ErrNorms(l1num/l1denom, std::sqrt(l2num/l2denom), linfnum/linfdenom);
-}
+// ErrNorms LatLonMesh::scalarErrorNorms(const ko::View<const Real*> error, const ko::View<const Real*> exact) const {
+// 
+//     Real l1num;
+//     Real l1denom;
+//     Real l2num;
+//     Real l2denom;
+//     Real linfnum;
+//     Real linfdenom;
+// 
+//     ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) {
+//         e += error(i)*this->wts(i);
+//     }, l1num);
+//     std::cout << "l1 ready.\n";
+//     
+//     ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
+//         v += abs(exact(i))*wts(i);
+//     }, l1denom);
+//     
+//     ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) {
+//         e += square(error(i))*wts(i);
+//     }, l2num);
+//     
+//     ko::parallel_reduce(error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
+//         v += square(exact(i))*wts(i);
+//     }, l2denom);    
+//     
+//     ko::parallel_reduce("MaxReduce", error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& e) { 
+//         if (error(i) > e) e = error(i);
+//     }, ko::Max<Real>(linfnum));
+// 
+//     ko::parallel_reduce("MaxReduce", error.extent(0), KOKKOS_LAMBDA (const Int& i, Real& v) {
+//         if (exact(i) > v) v = exact(i);
+//     }, ko::Max<Real>(linfdenom));
+// 
+//     return ErrNorms(l1num/l1denom, std::sqrt(l2num/l2denom), linfnum/linfdenom);
+// }
 
 
 
