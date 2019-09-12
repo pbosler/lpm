@@ -112,7 +112,7 @@ static constexpr Index NULL_IND = -1;
 static constexpr Index LOCK_IND = -2;
 
 /// View to a single integer
-typedef ko::View<Index,Dev> n_view_type; // view(0) = n
+typedef ko::View<Index,Dev> n_view_type; // view() = n
 /// View to a scalar array
 typedef ko::View<Real*,Dev> scalar_view_type;
 /// View to an index array
@@ -145,6 +145,12 @@ typedef ko::View<const bool*,Dev> const_mask_view_type;
     using std::max;
     using std::max_element;
 #endif
+
+KOKKOS_INLINE_FUNCTION
+Real min(const Real& a, const volatile Real& b) {return Real(a < b ? a : b);}
+
+KOKKOS_INLINE_FUNCTION
+Real max(const Real& a, const volatile Real& b) {return Real(a > b ? a : b);}
 
 /// Timers 
 static timeval tic () {
