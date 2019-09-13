@@ -88,10 +88,6 @@ struct ErrNorms {
 
     std::string infoString(const std::string& label="", const int tab_level=0) const;
     
-    ErrNorms(const ko::Tuple<Real,6>& tup) : l1(tup[0]/tup[1]), l2(tup[2]/tup[3]), linf(tup[4]/tup[5]) {}
-    
-    ErrNorms(const ko::View<Real[6],Space>& v) : l1(v[0]/v[1]), l2(v[2]/v[3]), linf(v[4]/v[5]) {}
-    
     ErrNorms(const scalar_view_type& er, const scalar_view_type& ex, const scalar_view_type& wt) : l1(0), l2(0), linf(0) {
         compute(er, ex, wt);
     }

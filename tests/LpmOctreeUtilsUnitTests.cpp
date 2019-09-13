@@ -2,11 +2,13 @@
 
 #include "LpmDefs.hpp"
 #include "LpmOctreeUtil.hpp"
+#include "LpmBox3d.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Sort.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <exception>
 
 using namespace Lpm;
 
@@ -22,8 +24,6 @@ ko::initialize(argc, argv);
     }
     ko::deep_copy(pts, host_pts);
     
-    Octree::BBox box = Octree::get_bbox(pts);
-    
     for (int i=0; i<4; ++i) {
         std::cout << "pt(" << i << ") = (";
         for (int j=0; j<3; ++j) {
@@ -31,9 +31,26 @@ ko::initialize(argc, argv);
         }
     }
     std::cout << "----------------------\n";
-    std::cout << "bbox = (";
-    for (int i=0; i<6; ++i) {
-        std::cout << std::setw(4) << box.bds[i] << (i<5 ? " " : ")\n");
+    
+    Octree::BBox box;
+    ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), box);
+    std::cout << "bbox = " << box;
+    Octree::BBox boxsol(-3,4,-1,3,-3,2);
+    if (box != boxsol) {
+        throw std::runtime_error("bbox computation failed.");
+    }
+    else {
+        std::cout << "BBox test passed.\n";
+    }
+    
+    ko::View<Octree::BBox[8]> boxkids("boxkids");
+    ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
+        bisectBoxAllDims(boxkids, Octree::BBox(-1,1,-1,1,-1,1));
+    });
+    auto host_kids = ko::create_mirror_view(boxkids);
+    ko::deep_copy(host_kids, boxkids);
+    for (int i=0; i<8; ++i) {
+        std::cout << "child[" << i << "] = " << *(host_kids.data()+i);
     }
     
     const int tree_lev = 3;
