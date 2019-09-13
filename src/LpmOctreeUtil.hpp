@@ -14,10 +14,8 @@ namespace Lpm {
 namespace Octree {
 
 typedef uint_fast32_t key_type;
-typedef uint_fast32_t id_type;
+typedef uint32_t id_type;
 typedef uint_fast64_t code_type;
-typedef ko::View<Real[6]> box_type;
-typedef ko::View<Real*[3]> points_view;
 
 /// 2 raised to a nonnegative integer power
 template <typename T, typename IntT2=int> KOKKOS_INLINE_FUNCTION
@@ -43,7 +41,7 @@ key_type compute_key(const CPtType& pos, const int& level_depth) {
     cx = 0;
     cy = 0;
     cz = 0;
-    uint_fast32_t key = 0;
+    key_type key = 0;
     for (int i=0; i<level_depth; ++i) {
         const int pl = 3*(level_depth-1);
         const bool xr = (pos(0) > cx);
@@ -76,16 +74,79 @@ key_type compute_key(const CPtType& pos, const int& level_depth) {
 }
 
 KOKKOS_INLINE_FUNCTION
-uint64_t encode(const uint64_t key, const uint32_t id) {
+code_type encode(const key_type key, const id_type id) {
     return ((key<<32) + id);
 }
 
 KOKKOS_INLINE_FUNCTION
-uint32_t decode_id(const uint64_t& code) {
-    return uint32_t(code);
+id_type decode_id(const code_type& code) {
+    return id_type(code);
 }
 
+struct PermuteKernel {
+    ko::View<Real*[3]> outpts;
+    ko::View<Real*[3]> inpts;
+    ko::View<uint_fast64_t*> codes;
+    
+    PermuteKernel(ko::View<Real*[3]>& op, const ko::View<Real*[3]>& ip, const ko::View<uint_fast64_t*>& c) :
+        outpts(op), inpts(ip), codes(c) {}
+        
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const id_type& i) const {
+        const id_type old_id = decode_id(codes(i));
+        for (int j=0; j<3; ++j) {
+            outpts(i,j) = inpts(old_id,j);
+        }
+    }
+};
 
+struct MarkDuplicates {
+    ko::View<Index*> flags;
+    ko::View<code_type*> codes;
+    
+    MarkDuplicates(ko::View<Index*> f, const ko::View<code_type*>& c) : flags(f), codes(c) {}
+    
+    struct MarkTag {};
+    struct ScanTag {};
+    struct CountTag {};
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator () (const MarkTag&, const Index& i) const {
+        if (i > 0) {
+            flags(i) = ((codes(i) != codes(i-1)) ? 1 : 0);
+        }
+        else {
+            flags(i) = 1;
+        }
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const ScanTag&, const Index& i, Index& ct, const bool& final_pass) const {
+        const Index old_val = flags(i);
+        ct += old_val;
+        if (final_pass) {
+            flags(i) += old_val;
+        }
+    }
+};
+
+struct CopyIfKernel {
+    ko::View<Index*> flags;
+    ko::View<code_type*> codes_in;
+    ko::View<code_type*> codes_out;
+    
+    CopyIfKernel(ko::View<code_type*>& oc, const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
+        flags(f), codes_in(ic), codes_out(oc) {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator () (const Index& i) const {
+        bool newval = true;
+        if (i > 0) newval = (flags(i) > flags(i-1));
+        if (newval) {
+            codes_out(flags(i)-1) = codes_in(i);
+        }
+    }
+};
 
 }
 }

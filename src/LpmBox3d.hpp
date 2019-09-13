@@ -6,6 +6,8 @@
 #include "LpmKokkosUtil.hpp"
 #include "Kokkos_Core.hpp"
 #include "LpmUtilities.hpp"
+#include <iostream>
+#include <iomanip>
 
 namespace Lpm {
 namespace Octree {
@@ -99,7 +101,8 @@ struct BoxFunctor {
 };
 
 std::ostream& operator << (std::ostream& os, const BBox& b) {
-    os << "(" << b.xmin << " " << b.xmax << " " << b.ymin << " " << b.ymax << " " << b.zmin << " " << b.zmax << ")\n";
+    os << "(" << std::setw(4) << b.xmin << " " << std::setw(4) << b.xmax << " " << std::setw(4) << b.ymin << " " 
+              << std::setw(4) << b.ymax << " " << std::setw(4) << b.zmin << " " << std::setw(4) << b.zmax << ")\n";
     return os;
 }
 
@@ -164,26 +167,26 @@ Real volume(const BBox& b) {
     return dx*dy*dz;
 }
 
-template <typename CPtType> KOKKOS_INLINE_FUNCTION
-Int child_index(const BBox& b, const CPtType& pos) {
-    Int result = 0;
-    if (boxContainsPoint(b, pos)) {
-        if (pos(2) > 0.5*(b.xmin+b.xmax)) result += 1;
-        if (pos(1) > 0.5*(b.ymin+b.ymax)) result += 2;
-        if (pos(0) > 0.5*(b.zmin+b.zmax)) result += 4;
-    }
-    else {
-        result = -1; // invalid value
-    }
-    return result;
-}
-
 KOKKOS_INLINE_FUNCTION
 bool boxContainsPoint(const BBox& b, const Real p[3]) {
     const bool inx = (b.xmin <= p[0] && p[0] <= b.xmax);
     const bool iny = (b.ymin <= p[1] && p[1] <= b.ymax);
     const bool inz = (b.zmin <= p[2] && p[2] <= b.zmax);
     return ((inx && iny) && inz);
+}
+
+KOKKOS_INLINE_FUNCTION
+Int child_index(const BBox& b, const Real pos[3]) {
+    Int result = 0;
+    if (boxContainsPoint(b, pos)) {
+        if (pos[2] > 0.5*(b.zmin+b.zmax)) result += 1;
+        if (pos[1] > 0.5*(b.ymin+b.ymax)) result += 2;
+        if (pos[0] > 0.5*(b.xmin+b.xmax)) result += 4;
+    }
+    else {
+        result = -1; // invalid value
+    }
+    return result;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -295,12 +298,12 @@ void bisectBoxAllDims(BoxView& kids, const BBox& parent) {
     const Real ymid = 0.5*(parent.ymin + parent.ymax);
     const Real zmid = 0.5*(parent.zmin + parent.zmax);
     for (Int j=0; j<8; ++j) {
-        kids(j).xmin = ((j%2 == 0) ? parent.xmin : xmid);
-        kids(j).xmax = ((j%2 == 0) ? xmid : parent.xmax);
+        kids(j).xmin = ((j>>2 == 0) ? parent.xmin : xmid);
+        kids(j).xmax = ((j>>2 == 0) ? xmid : parent.xmax);
         kids(j).ymin = (((j>>1)&1) == 0 ? parent.ymin : ymid);
         kids(j).ymax = (((j>>1)&1) == 0 ? ymid : parent.ymax);
-        kids(j).zmin = (j>>2 == 0 ? parent.zmin : zmid);
-        kids(j).zmax = (j>>2 == 0 ? zmid : parent.zmax);
+        kids(j).zmin = (j%2 == 0 ? parent.zmin : zmid);
+        kids(j).zmax = (j%2 == 0 ? zmid : parent.zmax);
     }
 }
 
