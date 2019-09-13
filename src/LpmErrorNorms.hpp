@@ -9,11 +9,30 @@
 
 namespace Lpm {
 
+struct ENormScalar {
+    Real l1num, l1denom;
+    Real l2num, l2denom;
+    Real linfnum, linfdenom;
+    
+    KOKKOS_INLINE_FUNCTION
+    ENormScalar() {init();}
+    
+    KOKKOS_INLINE_FUNCTION
+    void init() {
+        l1num = ko::reduction_identity<Real>::sum();
+        l1denom = ko::reduction_identity<Real>::sum();
+        l2num = ko::reduction_identity<Real>::sum();
+        l2denom = ko::reduction_identity<Real>::sum();
+        linfnum = ko::reduction_identity<Real>::max();
+        linfdenom = ko::reduction_identity<Real>::max();
+    }
+};
+
 template <typename Space=Dev>
 struct ErrReducer {
     public:
     typedef ErrReducer reducer;
-    typedef ko::Tuple<Real,6> value_type;
+    typedef ENormScalar value_type;
     typedef ko::View<value_type,Space> result_view_type;
     
     private:
@@ -29,32 +48,27 @@ struct ErrReducer {
     
     KOKKOS_INLINE_FUNCTION
     void join(value_type& dest, const value_type& src) const {
-        for (int i=0; i<4; ++i) {
-            dest[i] += src[i];
-        }
-        for (int i=4; i<6; ++i) {
-            if (std::abs(src[i]) > dest[i]) dest[i] = std::abs(src[i]);
-        }
+        dest.l1num += src.l1num;
+        dest.l1denom += src.l1denom;
+        dest.l2num += src.l2num;
+        dest.l2denom += src.l2denom;
+        if (src.linfnum > dest.linfnum) dest.linfnum = src.linfnum;
+        if (src.linfdenom > dest.linfdenom) dest.linfdenom = src.linfdenom;
     }
     
     KOKKOS_INLINE_FUNCTION
     void join(volatile value_type& dest, const volatile value_type& src) const {
-        for (int i=0; i<4; ++i) {
-            dest[i] += src[i];
-        }
-        for (int i=4; i<6; ++i) {
-            if (std::abs(src[i]) > dest[i]) dest[i] = std::abs(src[i]);
-        }
+        dest.l1num += src.l1num;
+        dest.l1denom += src.l1denom;
+        dest.l2num += src.l2num;
+        dest.l2denom += src.l2denom;
+        if (src.linfnum > dest.linfnum) dest.linfnum = src.linfnum;
+        if (src.linfdenom > dest.linfdenom) dest.linfdenom = src.linfdenom;
     }
     
     KOKKOS_INLINE_FUNCTION
     void init(value_type& val) const {
-        for (int i=0; i<4; ++i) {
-            val[i] = ko::reduction_identity<Real>::sum();
-        }
-        for (int i=4; i<6; ++i) {
-            val[i] = ko::reduction_identity<Real>::max();
-        }
+        val.init();
     }
     
     KOKKOS_INLINE_FUNCTION
@@ -83,21 +97,18 @@ struct ErrNorms {
     }
     
     void compute(const scalar_view_type& er, const scalar_view_type& ex, const scalar_view_type& wt) {
-        ko::View<ko::Tuple<Real,6>> tview("tuple_view");
-        ko::parallel_reduce(er.extent(0), KOKKOS_LAMBDA (const Index& i, ko::Tuple<Real,6>& eup) {
-            eup[0] += std::abs(er(i))*wt(i);
-            eup[1] += std::abs(ex(i))*wt(i);
-            eup[2] += square(er(i))*wt(i);
-            eup[3] += square(ex(i))*wt(i);
-            if (std::abs(er(i)) > eup[4]) eup[4] = std::abs(er(i));
-            if (std::abs(ex(i)) > eup[5]) eup[5] = std::abs(ex(i));
-        }, ErrReducer<Dev>(tview));
-        auto host_tv = ko::create_mirror_view(tview);
-        ko::deep_copy(host_tv, tview);
-        auto host_tup = *host_tv.data();
-        l1 = host_tup[0]/host_tup[1];
-        l2 = std::sqrt(host_tup[2]/host_tup[3]);
-        linf = host_tup[4]/host_tup[5];
+        ENormScalar rval;
+        ko::parallel_reduce(er.extent(0), KOKKOS_LAMBDA (const Index& i, ENormScalar& ll) {
+            ll.l1num += std::abs(er(i))*wt(i);
+            ll.l1denom += std::abs(ex(i))*wt(i);
+            ll.l2num += square(er(i))*wt(i);
+            ll.l2denom += square(ex(i))*wt(i);
+            if (std::abs(er(i)) > ll.linfnum) ll.linfnum = std::abs(er(i));
+            if (std::abs(ex(i)) > ll.linfdenom) ll.linfdenom = std::abs(ex(i));
+        }, ErrReducer<Space>(rval));
+        l1 = rval.l1num/rval.l1denom;
+        l2 = std::sqrt(rval.l2num/rval.l2denom);
+        linf = rval.linfnum/rval.linfdenom;
     }
     
 };
