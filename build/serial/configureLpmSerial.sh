@@ -19,7 +19,6 @@ else
     export VTK_ROOT=$HOME/VTK-8.1.1
     export KO=$HOME/kokkos-serial
     export CPTK=$HOME/compadre/build
-    export SP=$HOME/spherepack3.2
 fi
 
 EXTRA_ARGS=$1

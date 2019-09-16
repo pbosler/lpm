@@ -75,12 +75,20 @@ key_type compute_key(const CPtType& pos, const int& level_depth) {
 
 KOKKOS_INLINE_FUNCTION
 code_type encode(const key_type key, const id_type id) {
-    return ((key<<32) + id);
+    code_type result(key);
+    return ((result<<32) + id);
 }
 
 KOKKOS_INLINE_FUNCTION
 id_type decode_id(const code_type& code) {
     return id_type(code);
+}
+
+KOKKOS_INLINE_FUNCTION
+key_type decode_key(const code_type& code) {
+    //code_type result((code-decode_id(code)));
+//     code_type result(code);
+    return key_type((code>>32));
 }
 
 struct PermuteKernel {
@@ -113,7 +121,7 @@ struct MarkDuplicates {
     KOKKOS_INLINE_FUNCTION
     void operator () (const MarkTag&, const Index& i) const {
         if (i > 0) {
-            flags(i) = ((codes(i) != codes(i-1)) ? 1 : 0);
+            flags(i) = (decode_key(codes(i)) != decode_key(codes(i-1)));
         }
         else {
             flags(i) = 1;
@@ -125,7 +133,7 @@ struct MarkDuplicates {
         const Index old_val = flags(i);
         ct += old_val;
         if (final_pass) {
-            flags(i) += old_val;
+            flags(i) = ct;
         }
     }
 };

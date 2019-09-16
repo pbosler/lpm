@@ -74,8 +74,8 @@ ko::initialize(argc, argv);
     
     
     const int tree_lev = 3;
-    ko::View<uint_fast32_t*> keys("keys",npts);
-    ko::View<uint_fast64_t*> codes("codes",npts);
+    ko::View<Octree::key_type*> keys("keys",npts);
+    ko::View<Octree::code_type*> codes("codes",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
         auto pos = ko::subview(pts, i, ko::ALL());
         keys(i) = Octree::compute_key(pos, tree_lev);
@@ -108,16 +108,22 @@ ko::initialize(argc, argv);
         std::cout << host_codes(i) << (i<npts-1 ? " " : ")\n");
     }
     
-    ko::View<Octree::key_type*> decoded_keys("decoded_keys",npts);
+    ko::View<Octree::key_type*> decoded_ids("decoded_ids",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
-        decoded_keys(i) = Octree::decode_id(codes(i));
+        decoded_ids(i) = Octree::decode_id(codes(i));
     });
-    auto host_ids = ko::create_mirror_view(decoded_keys);
-    ko::deep_copy(host_ids, decoded_keys);
+    auto host_ids = ko::create_mirror_view(decoded_ids);
+    ko::deep_copy(host_ids, decoded_ids);
     std::cout << "decoded ids = (";
     for (int i=0; i<npts; ++i) {
         std::cout << host_ids(i) << (i<npts-1 ? " " : ")\n");
     }
+    
+    std::cout << "decoded keys = (";
+    for (int i=0; i<npts; ++i) {
+        std::cout << Octree::decode_key(host_codes(i)) << (i<npts-1 ? " " : ")\n");
+    }
+    
     
     {
         ko::View<Real*[3]> temp_pts("temp_pts",pts.extent(0));
@@ -137,8 +143,21 @@ ko::initialize(argc, argv);
         ko::View<Index*> flag_view("flags",npts);
         ko::parallel_for(ko::RangePolicy<Octree::MarkDuplicates::MarkTag>(0,npts),
              Octree::MarkDuplicates(flag_view, codes));
+        auto fhost = ko::create_mirror_view(flag_view);
+        ko::deep_copy(fhost, flag_view);
+        std::cout << "flags after marking: (";
+        for (int i=0; i<npts; ++i) {
+            std::cout << fhost(i) << (i<npts-1 ? " " : ")\n");
+        }
+        
         ko::parallel_scan(ko::RangePolicy<Octree::MarkDuplicates::ScanTag>(0,npts),
             Octree::MarkDuplicates(flag_view, codes));
+        ko::deep_copy(fhost, flag_view);
+        std::cout << "flags after scan = (";
+        for (int i=0; i<npts; ++i) {
+            std::cout << fhost(i) << (i<npts-1 ? " " : ")\n");
+        }
+        
         n_view_type count_view = ko::subview(flag_view, npts-1);
         auto host_ct = ko::create_mirror_view(count_view);
         ko::deep_copy(host_ct, count_view);
@@ -150,7 +169,7 @@ ko::initialize(argc, argv);
         
         std::cout << "unique codes = (";
         for (int i=0; i<ucodes.extent(0); ++i) {
-            std::cout << uhost(i) << (i<npts-1 ? " " : ")\n");
+            std::cout << uhost(i) << (i<ucodes.extent(0)-1 ? " " : ")\n");
         }
     }
     std::cout << std::endl;
