@@ -126,7 +126,6 @@ struct MarkDuplicates {
     
     struct MarkTag {};
     struct ScanTag {};
-    struct CountTag {};
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const MarkTag&, const Index& i) const {
@@ -148,20 +147,55 @@ struct MarkDuplicates {
     }
 };
 
+template <typename CVT> KOKKOS_INLINE_FUNCTION
+Index binarySearch(const key_type& key, const CVT& sorted_codes, const bool& get_first) {
+	Index low = 0;
+	Index high = sorted_codes.extent(0);
+	Index result = -1;
+	while (low <= high) {
+		Index mid = (low + high) / 2;
+		const key_type mid_key = decode_key(sorted_codes(mid));
+		if (key == mid_key) {
+			result = mid;
+			if (get_first) {
+				high = mid-1;
+			}
+			else {
+				low = mid+1;
+			}
+		}
+		else if (key < mid_key) {
+			high = mid-1;
+		}
+		else {
+			low = mid + 1;
+		}
+	}
+	return result;
+}
+
 struct CopyIfKernel {
     ko::View<Index*> flags;
     ko::View<code_type*> codes_in;
     ko::View<key_type*> keys_out;
+    ko::View<Index*[2]> inds_out;
     
-    CopyIfKernel(ko::View<key_type*>& oc, const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
-        flags(f), codes_in(ic), keys_out(oc) {}
+    CopyIfKernel(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
+    	const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
+        flags(f), codes_in(ic), keys_out(oc), inds_out(io) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const Index& i) const {
         bool newval = true;
         if (i > 0) newval = (flags(i) > flags(i-1));
         if (newval) {
-            keys_out(flags(i)-1) = decode_key(codes_in(i));
+        	const Index node_ind = flags(i)-1;
+        	const key_type newkey = decode_key(codes_in(i));
+            keys_out(node_ind) = newkey;
+            const Index first = binarySearch(newkey, codes_in, true);
+            const Index last = binarySearch(newkey, codes_in, false);
+            inds_out(node_ind,0) = first;
+            inds_out(node_ind,1) = last - first + 1;
         }
     }
 };
