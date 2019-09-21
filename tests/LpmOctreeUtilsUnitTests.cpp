@@ -9,13 +9,16 @@
 #include <iomanip>
 #include <string>
 #include <exception>
+#include <bitset>
 
 using namespace Lpm;
 
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv); 
 {
-    const int npts = 5;
+    const int npts = 6;
+    const int max_depth = 4;
+    const int tree_lev = 3;
     ko::View<Real*[3]> pts("pts",npts);
     typename ko::View<Real*[3]>::HostMirror host_pts = ko::create_mirror_view(pts);
     for (int i=0; i<4; ++i) {
@@ -26,12 +29,22 @@ ko::initialize(argc, argv);
     host_pts(4,0) = 0.01;
     host_pts(4,1) = 0.9;
     host_pts(4,2) = 0.01;
+    host_pts(5,0) = 0.011;
+    host_pts(5,1) = 0.91;
+    host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
     
     for (int i=0; i<npts; ++i) {
         std::cout << "pt(" << i << ") = (";
         for (int j=0; j<3; ++j) {
             std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
+        }
+        for (int j=0; j<=tree_lev; ++j) {
+        	const Octree::key_type k = Octree::compute_key(ko::subview(host_pts, i, ko::ALL()), j, max_depth);
+        	const Octree::key_type p = Octree::parent_key(k, j, max_depth);
+        	std::cout << "key at lev " << j << " = " << k << " : " <<
+        		std::bitset<12>(k) <<  " parent = " << p << " : " <<
+        		std::bitset<12>(p) << "\n";
         }
     }
     std::cout << "----------------------\n";
@@ -73,12 +86,11 @@ ko::initialize(argc, argv);
     }
     
     
-    const int tree_lev = 3;
     ko::View<Octree::key_type*> keys("keys",npts);
     ko::View<Octree::code_type*> codes("codes",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
         auto pos = ko::subview(pts, i, ko::ALL());
-        keys(i) = Octree::compute_key(pos, tree_lev);
+        keys(i) = Octree::compute_key(pos, tree_lev, max_depth);
         codes(i) = Octree::encode(keys(i), i);
     });
     auto host_keys = ko::create_mirror_view(keys);
@@ -161,15 +173,15 @@ ko::initialize(argc, argv);
         n_view_type count_view = ko::subview(flag_view, npts-1);
         auto host_ct = ko::create_mirror_view(count_view);
         ko::deep_copy(host_ct, count_view);
-        std::cout << "found " << host_ct() << " unique codes.\n";
-        ko::View<Octree::code_type*> ucodes("unique_codes", host_ct());
-        ko::parallel_for(npts, Octree::CopyIfKernel(ucodes, flag_view, codes));
-        auto uhost = ko::create_mirror_view(ucodes);
-        ko::deep_copy(uhost, ucodes);
+        std::cout << "found " << host_ct() << " unique keys.\n";
+        ko::View<Octree::key_type*> ukeys("unique_keys", host_ct());
+        ko::parallel_for(npts, Octree::CopyIfKernel(ukeys, flag_view, codes));
+        auto uhost = ko::create_mirror_view(ukeys);
+        ko::deep_copy(uhost, ukeys);
         
-        std::cout << "unique codes = (";
-        for (int i=0; i<ucodes.extent(0); ++i) {
-            std::cout << uhost(i) << (i<ucodes.extent(0)-1 ? " " : ")\n");
+        std::cout << "unique keys = (";
+        for (int i=0; i<ukeys.extent(0); ++i) {
+            std::cout << uhost(i) << (i<ukeys.extent(0)-1 ? " " : ")\n");
         }
     }
     std::cout << std::endl;

@@ -4,7 +4,11 @@ rm -rf CMakeFiles/ CMakeCache.txt
 
 SRC_ROOT=$HOME/lpm
 EXTRA_ARGS=$1
-export KO=$HOME/kokkos-openmp/gcc-6.3.1
+if [ "$HOSTNAME" = "s1046231" ]; then
+	export KO=$HOME/kokkos-openmp
+else
+	export KO=$HOME/kokkos-openmp/gcc-6.3.1
+fi
 export CP=$HOME/compadre/build/openmp
 export SP=$HOME/spherepack3.2
 export OMPI_CXX=g++

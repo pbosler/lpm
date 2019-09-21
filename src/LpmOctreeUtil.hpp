@@ -9,6 +9,7 @@
 #include "Kokkos_Core.hpp"
 #include <cstdint>
 #include <iostream>
+#include <cassert>
 
 namespace Lpm {
 namespace Octree {
@@ -34,7 +35,8 @@ T pintpow2(const IntT2& k) {
     node i's parent in the x,y,z direction
 */
 template <typename CPtType> KOKKOS_INLINE_FUNCTION
-key_type compute_key(const CPtType& pos, const int& level_depth) {
+key_type compute_key(const CPtType& pos, const int& level_depth, const int& max_depth) {
+	assert(max_depth>=0 && max_depth<=10);
     /// assume root box is [-1,1]^3
     Real cx, cy, cz; // crds of box centroid
     Real half_len = 1.0; // half-length of box edges
@@ -42,35 +44,43 @@ key_type compute_key(const CPtType& pos, const int& level_depth) {
     cy = 0;
     cz = 0;
     key_type key = 0;
-    for (int i=0; i<level_depth; ++i) {
-        const int pl = 3*(level_depth-1);
-        const bool xr = (pos(0) > cx);
-        const bool yr = (pos(1) > cy);
-        const bool zr = (pos(2) > cz);
-        if (xr) {
-            key += pintpow2<key_type>(pl-1);
-            cx += half_len;
-        }
-        else {
-            cx -= half_len;
-        }
-        if (yr) {
-            key += pintpow2<key_type>(pl-2);
-            cy += half_len;
-        }
-        else {
-            cy -= half_len;
-        }
-        if (zr) {
-            key += pintpow2<key_type>(pl-3);
-            cz += half_len;
-        }
-        else {
-            cz -= half_len;
-        }
-        half_len *= 0.5;
-    }
+    const Int nbits = 3*max_depth; // key length in bits
+    for (int i=1; i<=level_depth; ++i) {
+    	const int b = nbits - 3*i;
+    	if (pos(2) > cz) {
+    		key += std::pow(2,b);
+    		cz += half_len;
+    	}
+    	else {
+    		cz -= half_len;
+    	}
+    	if (pos(1) > cy) {
+    		key += std::pow(2,b+1);
+    		cy += half_len;
+    	}
+    	else {
+    		cy -= half_len;
+    	}
+    	if (pos(0) > cx) {
+    		key += std::pow(2,b+2);
+    		cx += half_len;
+    	}
+    	else {
+    		cx -= half_len;
+    	}
+    	half_len *= 0.5;
+	}	
     return key;
+}
+
+KOKKOS_INLINE_FUNCTION
+key_type parent_key(const key_type& k, const int& lev, const int& max_depth) {
+	const key_type nbits = 3*max_depth;
+	const key_type pb = nbits-3*(lev-1);// position of parent's z bit
+	key_type mask = 0;
+	for (int i=nbits; i>=pb; --i)
+		mask += std::pow(2,i); 
+	return key_type(k & mask);
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -141,17 +151,17 @@ struct MarkDuplicates {
 struct CopyIfKernel {
     ko::View<Index*> flags;
     ko::View<code_type*> codes_in;
-    ko::View<code_type*> codes_out;
+    ko::View<key_type*> keys_out;
     
-    CopyIfKernel(ko::View<code_type*>& oc, const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
-        flags(f), codes_in(ic), codes_out(oc) {}
+    CopyIfKernel(ko::View<key_type*>& oc, const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
+        flags(f), codes_in(ic), keys_out(oc) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const Index& i) const {
         bool newval = true;
         if (i > 0) newval = (flags(i) > flags(i-1));
         if (newval) {
-            codes_out(flags(i)-1) = codes_in(i);
+            keys_out(flags(i)-1) = decode_key(codes_in(i));
         }
     }
 };
