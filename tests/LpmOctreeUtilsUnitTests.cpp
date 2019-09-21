@@ -18,7 +18,7 @@ ko::initialize(argc, argv);
 {
     const int npts = 6;
     const int max_depth = 4;
-    const int tree_lev = 4;
+    const int tree_lev = 2;
     ko::View<Real*[3]> pts("pts",npts);
     typename ko::View<Real*[3]>::HostMirror host_pts = ko::create_mirror_view(pts);
     for (int i=0; i<4; ++i) {
@@ -176,7 +176,7 @@ ko::initialize(argc, argv);
         std::cout << "found " << host_ct() << " unique keys.\n";
         ko::View<Octree::key_type*> ukeys("unique_keys", host_ct());
         ko::View<Index*[2]> pt_inds("pt_inds",host_ct());
-        ko::parallel_for(npts, Octree::CopyIfKernel(ukeys, pt_inds, flag_view, codes));
+        ko::parallel_for(npts, Octree::UniqueNodeKernel(ukeys, pt_inds, flag_view, codes));
         auto uhost = ko::create_mirror_view(ukeys);
         ko::deep_copy(uhost, ukeys);
         auto ihost = ko::create_mirror_view(pt_inds);
@@ -191,6 +191,22 @@ ko::initialize(argc, argv);
         	std::cout << "key(" << uhost(i) << ") start = " << ihost(i,0) << " count = " 
         		<< ihost(i,1) << "\n";
         }
+        
+        ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
+        ko::View<Index*> node_address("node_address", ukeys.extent(0));
+        ko::parallel_for(ko::RangePolicy<Octree::NodeAddressKernel::MarkTag>(0, ukeys.extent(0)), 
+        	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_scan(ko::RangePolicy<Octree::NodeAddressKernel::ScanTag>(0, ukeys.extent(0)),
+        	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
+        auto host_nn = ko::create_mirror_view(node_nums);
+        auto host_na = ko::create_mirror_view(node_address);
+        ko::deep_copy(host_nn, node_nums); // TODO: I don't think node_nums and node_address need to be separate.
+        ko::deep_copy(host_na, node_address);
+        for (int i=0; i<ukeys.extent(0); ++i) {
+        	std::cout << "node_nums(" << i << ") = " << host_nn(i) 
+        			  << " node_address(" <<i << ") = " << host_na(i) << "\n";
+        }
+        
     }
     std::cout << std::endl;
 }

@@ -174,13 +174,13 @@ Index binarySearch(const key_type& key, const CVT& sorted_codes, const bool& get
 	return result;
 }
 
-struct CopyIfKernel {
+struct UniqueNodeKernel {
     ko::View<Index*> flags;
     ko::View<code_type*> codes_in;
     ko::View<key_type*> keys_out;
     ko::View<Index*[2]> inds_out;
     
-    CopyIfKernel(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
+    UniqueNodeKernel(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
     	const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
         flags(f), codes_in(ic), keys_out(oc), inds_out(io) {}
     
@@ -198,6 +198,45 @@ struct CopyIfKernel {
             inds_out(node_ind,1) = last - first + 1;
         }
     }
+};
+
+struct NodeAddressKernel {
+	ko::View<Index*> node_nums;
+	ko::View<Index*> node_address;
+	ko::View<key_type*> keys_in;
+	Int lev;
+	Int max_depth;
+	
+	NodeAddressKernel(ko::View<Index*>& nn, ko::View<Index*> na, 
+		const ko::View<key_type*>& kk, const Int& ll, const Int& md) :
+		node_nums(nn), node_address(na), keys_in(kk), lev(ll), max_depth(md) {}
+	
+	struct MarkTag {};
+	struct ScanTag {};
+	
+	KOKKOS_INLINE_FUNCTION
+	void operator () (const MarkTag&, const Index& i) const {
+		if (i>0) {
+			const key_type pt_i = parent_key(keys_in(i), lev, max_depth);
+			const key_type pt_im1 = parent_key(keys_in(i-1), lev, max_depth);
+			if (pt_i == pt_im1) {
+				node_nums(i) = 0;
+			}
+			else {
+				node_nums(i) = 8;
+			}
+		}
+	}
+	
+	KOKKOS_INLINE_FUNCTION
+	void operator() (const ScanTag&, const Index& i, Index& ct, const bool& final_pass) const {
+		const Index inc = node_nums(i);
+		ct += inc;
+		if (final_pass) {
+			node_address(i) = ct;
+		}
+		
+	}
 };
 
 }
