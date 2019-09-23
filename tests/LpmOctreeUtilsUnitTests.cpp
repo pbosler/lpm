@@ -34,24 +34,10 @@ ko::initialize(argc, argv);
     host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
     
-    for (int i=0; i<npts; ++i) {
-        std::cout << "pt(" << i << ") = (";
-        for (int j=0; j<3; ++j) {
-            std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
-        }
-        for (int j=0; j<=tree_lev; ++j) {
-        	const Octree::key_type k = Octree::compute_key(ko::subview(host_pts, i, ko::ALL()), j, max_depth);
-        	const Octree::key_type p = Octree::parent_key(k, j, max_depth);
-        	std::cout << "key at lev " << j << " = " << k << " : " <<
-        		std::bitset<12>(k) <<  " parent = " << p << " : " <<
-        		std::bitset<12>(p) << "\n";
-        }
-    }
-    std::cout << "----------------------\n";
-    
     Octree::BBox box;
-    ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), box);
+    ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), Octree::BBoxReducer<Host>(box));
     std::cout << "bbox = " << box;
+    std::cout << "\taspect ratio = " << boxAspectRatio(box) << "\n";
     Octree::BBox boxsol(-3,4,-1,3,-3,2);
     if (box != boxsol) {
         throw std::runtime_error("bbox computation failed.\n");
@@ -59,16 +45,37 @@ ko::initialize(argc, argv);
     else {
         std::cout << "BBox test passed.\n";
     }
+    box2cube(box);
+    std::cout << "after box2cube, bbox = " << box;
+    std::cout << "\taspect ratio = " << boxAspectRatio(box) << "\n";
+    for (int i=0; i<npts; ++i) {
+        std::cout << "pt(" << i << ") = (";
+        for (int j=0; j<3; ++j) {
+            std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
+        }
+        for (int j=0; j<=tree_lev; ++j) {
+        	const Octree::key_type k = Octree::compute_key(ko::subview(host_pts, i, ko::ALL()), j, max_depth, box);
+        	const Octree::key_type p = Octree::parent_key(k, j, max_depth);
+        	const Octree::key_type lk = Octree::local_key(k, j, max_depth);
+        	std::cout << std::setw(20) << "key at lev " << j << " = " << std::setw(6) << k << " : " <<  std::bitset<12>(k) 
+        		<<  " parent = " << std::setw(6) <<  p << " : " << std::bitset<12>(p) 
+        		<< " local = " << std::setw(4) << lk << " : " << std::bitset<12>(lk) << "\n";
+        }
+    }
+    std::cout << "----------------------\n";
+    
+    
     
     ko::View<Octree::BBox[8]> boxkids("boxkids");
     n_view_type inkid("inkid");
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
-        bisectBoxAllDims(boxkids, Octree::BBox(-1,1,-1,1,-1,1));
+        Octree::BBox b(-1,1,-1,1,-1,1);
+        bisectBoxAllDims(boxkids, b);
         Real qp[3];
         qp[0] = 0.5;
         qp[1] = 0.25;
         qp[2] = -0.75;
-        inkid() = child_index(Octree::BBox(-1,1,-1,1,-1,1),qp);
+        inkid() = child_index(b,qp);
         printf("(%f,%f,%f) is in kid = %d\n",qp[0],qp[1],qp[2],inkid());
     });
     auto host_kids = ko::create_mirror_view(boxkids);
@@ -85,12 +92,15 @@ ko::initialize(argc, argv);
         std::cout << "Local child id test passed.\n";
     }
     
-    
+    ko::View<Octree::BBox> boxview("box");
+    auto hb = ko::create_mirror_view(boxview);
+    hb() = box;
+    ko::deep_copy(boxview, hb);
     ko::View<Octree::key_type*> keys("keys",npts);
     ko::View<Octree::code_type*> codes("codes",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
         auto pos = ko::subview(pts, i, ko::ALL());
-        keys(i) = Octree::compute_key(pos, tree_lev, max_depth);
+        keys(i) = Octree::compute_key(pos, tree_lev, max_depth, boxview());
         codes(i) = Octree::encode(keys(i), i);
     });
     auto host_keys = ko::create_mirror_view(keys);
@@ -136,10 +146,10 @@ ko::initialize(argc, argv);
         std::cout << Octree::decode_key(host_codes(i)) << (i<npts-1 ? " " : ")\n");
     }
     
-    
+    ko::View<Index*> orig_id("original_pt_id", pts.extent(0));
     {
         ko::View<Real*[3]> temp_pts("temp_pts",pts.extent(0));
-        ko::parallel_for(pts.extent(0), Octree::PermuteKernel(temp_pts, pts, codes));
+        ko::parallel_for(pts.extent(0), Octree::PermuteKernel(temp_pts, orig_id, pts, codes));
         pts = temp_pts;
     }
     ko::deep_copy(host_pts, pts);
@@ -200,7 +210,7 @@ ko::initialize(argc, argv);
         	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
         auto host_nn = ko::create_mirror_view(node_nums);
         auto host_na = ko::create_mirror_view(node_address);
-        ko::deep_copy(host_nn, node_nums); // TODO: I don't think node_nums and node_address need to be separate.
+        ko::deep_copy(host_nn, node_nums); // TODO: node_nums and node_address need to be separate.
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
         	std::cout << "node_nums(" << i << ") = " << host_nn(i) 

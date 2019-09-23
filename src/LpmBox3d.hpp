@@ -8,6 +8,7 @@
 #include "LpmUtilities.hpp"
 #include <iostream>
 #include <iomanip>
+#include <cassert>
 
 namespace Lpm {
 namespace Octree {
@@ -270,6 +271,34 @@ void farthestPointInBox(Real fp[3], const BBox& b, const Real query[3]) {
     }
     for (Int i=0; i<3; ++i) {
         fp[i] = corners[c_ind][i];
+    }
+}
+
+KOKKOS_INLINE_FUNCTION
+void boxCentroid(Real& cx, Real& cy, Real& cz, const BBox& bb) {
+    cx = 0.5*(bb.xmin + bb.xmax);
+    cy = 0.5*(bb.ymin + bb.ymax);
+    cz = 0.5*(bb.zmin + bb.zmax);
+}
+
+KOKKOS_INLINE_FUNCTION
+Real boxEdgeLength(const BBox& bb) {
+    assert(std::abs(bb.boxAspectRatio(bb) - 1.0) < ZERO_TOL);
+    return bb.xmax - bb.xmin;
+}
+
+KOKKOS_INLINE_FUNCTION
+void box2cube(BBox& b) {
+    if (std::abs(boxAspectRatio(b) - 1.0) > ZERO_TOL) {
+        const Real half_len = 0.5*longestEdge(b);
+        Real cx, cy, cz;
+        boxCentroid(cx, cy, cz, b);
+        b.xmin = cx - half_len;
+        b.xmax = cx + half_len;
+        b.ymin = cy - half_len;
+        b.ymax = cy + half_len;
+        b.zmin = cz - half_len;
+        b.zmax = cz + half_len;
     }
 }
 
