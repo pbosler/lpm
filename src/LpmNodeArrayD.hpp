@@ -77,6 +77,7 @@ class NodeArrayD {
     Int level; /// depth of this node array in the octree (input).
     Int max_depth; /// maximum depth of octree.
     
+    ko::View<BBox> box; /// Bounding box
     ko::View<key_type*> node_keys; /// node_keys(i) = shuffled xyz key of node i
     ko::View<Index*> node_pt_idx; /// node_pt_idx(i) = index of first point contained in node i
     ko::View<Index*> node_pt_ct; /// node_pt_ct(i) = number of points contained in node i
@@ -86,14 +87,13 @@ class NodeArrayD {
     ko::View<Index*> orig_ids; /// original (presort) locations of points
         
     NodeArrayD(ko::View<Real*[3]>& p, const Int& d, const Int& md=MAX_OCTREE_DEPTH) : pts(p), level(d), max_depth(md), 
-        pt_in_node("pt_in_node", p.extent(0)), orig_ids("original_pt_locs", p.extent(0)) {init();}
+        pt_in_node("pt_in_node", p.extent(0)), orig_ids("original_pt_locs", p.extent(0)), box("bbox") {init();}
     
     /**
         Listing 1:  Initializer for lowest level of octree
     */
     void init() {
         /// step 1
-        ko::View<BBox> box("bbox"); /// Bounding box
         ko::parallel_reduce(pts.extent(0), BoxFunctor(pts), BBoxReducer<>(box()));
         
         /// step 2
@@ -149,7 +149,9 @@ class NodeArrayD {
         auto policy6b = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 128);
         ko::parallel_for(policy6b, NodeFillKernel(node_keys, node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
             node_address, pt_inds, level, max_depth));
-    };    
+    };
+    
+    std::string infoString() const;
 };
 
 

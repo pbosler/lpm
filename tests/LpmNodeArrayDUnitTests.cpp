@@ -30,6 +30,9 @@ ko::initialize(argc, argv);
     host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
     
+    NodeArrayD leaves(pts, tree_lev, max_depth);
+    
+    std::cout << leaves.infoString();
 }
 ko::finalize();
 return 0;

@@ -250,7 +250,7 @@ ko::initialize(argc, argv);
         ko::deep_copy(nd_pinn, nodeLevelDPointInNode);
         
         for (int i=0; i<nnodes; ++i) {
-            std::cout << "node(" << std::setw(2) << i << "): key = " << std::bitset<12>(nd_keys(i)) << " pt_start = " << nd_p_is(i) 
+            std::cout << "node(" << std::setw(2) << i << "): key = " << nd_keys(i) << " " << std::bitset<12>(nd_keys(i)) << " pt_start = " << nd_p_is(i) 
                       << " pt_ct = " << nd_p_ct(i) << "\n";
         }
         for (int i=0; i<npts; ++i) {
