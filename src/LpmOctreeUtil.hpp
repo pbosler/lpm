@@ -250,6 +250,12 @@ struct UniqueNodeKernelInternal {
     ko::View<key_type*> keys_in;
     ko::View<Index*> pt_start_from_lower;
     ko::View<Index*> pt_count_from_lower;
+    
+    UniqueNodeKernelInternal(ko::View<key_type*>& ko, ko::View<Index*[2]>& io,
+    	const ko::View<Index*>& f, const ko::View<key_type*>& ki, 
+    	const ko::View<Index*>& ps, const ko::View<Index*> pc) :
+    	keys_out(ko), inds_out(io), flags(f), keys_in(ki), pt_start_from_lower(ps),
+    	pt_count_from_lower(pc) {}
 
 
     /// todo: nested parallel reduce for count
@@ -267,6 +273,24 @@ struct UniqueNodeKernelInternal {
             }
             inds_out(node_ind,1) = count;
         }
+    }
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& mbr) const {
+    	const Index i = mbr.league_rank();
+    	bool newval = true;
+    	if (i>0) newval = (flags(i) > flags(i-1));
+    	if (newval) {
+    		const Index node_ind = flags(i) - 1;
+    		keys_out(node_ind) = keys_in(i);
+    		inds_out(node_ind,0) = pt_start_from_lower(i);
+    		Index count = 0;
+    		ko::parallel_reduce(ko::TeamThreadRange(mbr, i, i+8), 
+    			KOKKOS_LAMBDA (const Index& j, Index& c) {
+    				c += pt_count_from_lower(i);
+    			}, count);
+    		inds_out(node_ind,1) = count;
+    	}
     }
 };
 
@@ -334,7 +358,7 @@ struct NodeArrayKernel {
     Int level;
     Int max_depth;
     
-    NodeArrayKernel(ko::View<key_type*>& ko, ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type>& pn,
+    NodeArrayKernel(ko::View<key_type*>& ko, ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
         const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
         const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : keys_out(ko), pt_idx(ps), pt_ct(pc), pt_in_node(pn),
         keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
@@ -349,6 +373,19 @@ struct NodeArrayKernel {
             pt_in_node(j) = address;
         }        
     }
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& mbr) const {
+    	const Index i = mbr.league_rank();
+    	const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
+    	keys_out(address) = keys_in(i);
+    	pt_idx(address) = pt_inds(i,0);
+    	pt_ct(address) = pt_inds(i,1);
+    	ko::parallel_for(ko::TeamThreadRange(mbr, pt_inds(i,0), pt_inds(i,0)+pt_inds(i,1)),
+    		KOKKOS_LAMBDA (const Index& j) {
+    			pt_in_node(j) = address;
+    		});
+    }
 };
 
 struct InternalNodeArrayKernel {
@@ -360,17 +397,17 @@ struct InternalNodeArrayKernel {
     ko::View<key_type*[8]> kids_out;
     ko::View<key_type*> parents_from_lower;
     // input
-    ko::View<key_type*> keys_from_lower;
+    ko::View<key_type*> keys_in;
     ko::View<Index*> node_address;
-    ko::View<Index*> pt_start_from_lower;
-    ko::View<Index*> pt_count_from_lower;
+    ko::View<Index*[2]> pt_inds;
     Int level;
     Int max_depth;
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const member_type& mbr) const {
-        const Index first_kid = 8*mbr.league_rank();
-        const key_type my_key = parent_key(keys_from_lower(first_kid), level+1, max_depth);
+		const Index i = mbr.league_rank();
+		const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
+		keys_out(address) = keys_in(i);
     }
 };
 
