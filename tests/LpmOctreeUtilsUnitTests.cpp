@@ -224,17 +224,20 @@ ko::initialize(argc, argv);
         ko::View<Index*> nodeLevelDPointCnt("nld_pt_cnt", nnodes);
         ko::View<Octree::key_type*> nodeLevelDPointInNode("nld_pt_in_node", npts);
         
-        ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
-            if (i==0 || node_nums(i) > 0 ) {
-                const Octree::key_type pkey = Octree::parent_key(ukeys(i), tree_lev, max_depth);
-                for (int j=0; j<8; ++j) {
-                    nodeLevelDKeys(8*i+j) = Octree::node_key(pkey, j, tree_lev, max_depth);
-                }   
-            }
-        });
+//         ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
+//             if (i==0 || node_nums(i) > 0 ) {
+//                 const Octree::key_type pkey = Octree::parent_key(ukeys(i), tree_lev, max_depth);
+//                 for (int j=0; j<8; ++j) {
+//                     nodeLevelDKeys(8*i+j) = Octree::node_key(pkey, j, tree_lev, max_depth);
+//                 }   
+//             }
+//         });
+        
+        auto bp = ko::TeamPolicy<>(ukeys.extent(0), 8);
+        ko::parallel_for(bp, Octree::NodeSetupKernel(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
         
         auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
-        ko::parallel_for(policy, Octree::NodeArrayKernel(nodeLevelDKeys, nodeLevelDPointIdx, nodeLevelDPointCnt,
+        ko::parallel_for(policy, Octree::NodeFillKernel(nodeLevelDKeys, nodeLevelDPointIdx, nodeLevelDPointCnt,
             nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
         
         auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);

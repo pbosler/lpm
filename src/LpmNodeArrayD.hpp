@@ -1,5 +1,5 @@
-#ifndef LPM_OCTREE_HPP
-#define LPM_OCTREE_HPP
+#ifndef LPM_NODE_ARRAYD_HPP
+#define LPM_NODE_ARRAYD_HPP
 
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
@@ -9,15 +9,17 @@
 #include "LpmOctreeUtil.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "Kokkos_Core.hpp"
+#include "Kokkos_Sort.hpp"
 #include <cmath>
 
 namespace Lpm {
 namespace Octree {
 /** 
+    Implements Listing 1 from: 
+    
     K. Zhou, et. al., 2011. Data-parallel octrees for surface reconstruction, 
     IEEE Trans. Vis. Comput. Graphics 17(5): 669--681. DOI: 10.1109/TVCG.2010.75 
 */
-
 
 /**
     Node array at depth D
@@ -78,42 +80,14 @@ class NodeArrayD {
     ko::View<key_type*> node_keys; /// node_keys(i) = shuffled xyz key of node i
     ko::View<Index*> node_pt_idx; /// node_pt_idx(i) = index of first point contained in node i
     ko::View<Index*> node_pt_ct; /// node_pt_ct(i) = number of points contained in node i
-    ko::View<key_type*[8]> node_kids; /// 
-    ko::View<key_type*> node_parent; ///
-    ko::View<Index*> pt_in_node; /// pt_in_node(i) = index of the node that contains point i
+    ko::View<key_type*> node_parent; /// allocated here; set by level D-1
+    
+    ko::View<key_type*> pt_in_node; /// pt_in_node(i) = index of the node that contains point i
+    ko::View<Index*> orig_ids; /// original (presort) locations of points
         
     NodeArrayD(ko::View<Real*[3]>& p, const Int& d, const Int& md=MAX_OCTREE_DEPTH) : pts(p), level(d), max_depth(md), 
-        pt_in_node("pt_in_node", p.extent(0)) {init();}
+        pt_in_node("pt_in_node", p.extent(0)), orig_ids("original_pt_locs", p.extent(0)) {init();}
     
-    NodeArrayD(NodeArrayD& lower_level) : pts(lower_level.pts), level(lower_level.level-1),
-         max_depth(lower_level.max_depth), node_kids("node_kids", lower_level.node_keys.extent(0)/8) { 
-        initFromLower(lower_level); }
-    
-    protected:
-    
-    /** 
-    */
-    void initFromLower(NodeArrayD& ll) {
-        const Index nparents = ll.node_keys.extent(0)/8;
-        ko::View<key_type*> pkeys("parent_keys", nparents);
-        ko::parallel_for(nparents, KOKKOS_LAMBDA (const Index& i) {
-            pkeys(i) = parent_key(ll.node_keys(8*i), level, max_depth);
-        });
-        
-        ko::View<Index*> node_nums("node_nums",nparents);
-        ko::View<Index*> node_address("node_address", nparents);
-        ko::parallel_for(ko::RangePolicy<NodeAddressKernel::MarkTag>(0,nparents), 
-            NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
-        ko::parallel_scan(ko::RangePolicy<NodeAddressKernel::ScanTag>(0,nparents),
-            NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
-        
-        n_view_type node_count = ko::subview(node_address, nparents-1);
-        auto node_count_host = ko::create_mirror_view(node_count);
-        ko::deep_copy(node_count_host, node_count);
-    
-        
-    }
-
     /**
         Listing 1:  Initializer for lowest level of octree
     */
@@ -129,26 +103,28 @@ class NodeArrayD {
             const key_type key = compute_key(pos, level, max_depth, box());
             pt_codes(i) = encode(key, i);
         });
-        ko::sort(codes);
+        ko::sort(pt_codes);
         
         /// step 3
-        ko::View<Real*[3]> sort_pts("sorted_pts", pts.exgtent(0));
-        ko::parallel_for(pts.extent(0), PermuteKernel(sort_pts, pts, codes));
-        pts = sort_pts;
+        {
+            ko::View<Real*[3]> sort_pts("sorted_pts", pts.extent(0));
+            ko::parallel_for(pts.extent(0), PermuteKernel(sort_pts, orig_ids, pts, pt_codes));
+            pts = sort_pts;
+        }
         
         /// step 4
         ko::View<Index*> node_flags("node_flags",pts.extent(0));
         ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0,pts.extent(0)), 
-            MarkDuplicates(node_flags, codes));
+            MarkDuplicates(node_flags, pt_codes));
         ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,pts.extent(0)),
-            MarkDuplicates(node_flags, codes));
+            MarkDuplicates(node_flags, pt_codes));
         n_view_type node_count = ko::subview(node_flags, pts.extent(0)-1);
         auto node_count_host = ko::create_mirror_view(node_count);
         ko::deep_copy(node_count_host, node_count);
         
         ko::View<key_type*> ukeys("keys", node_count_host());
         ko::View<Index*[2]> pt_inds("pt_inds", node_count_host());
-        ko::parallel_for(pts.extent(0), UniqueNodeKernel(ukeys, pt_inds, node_flags, codes));
+        ko::parallel_for(pts.extent(0), UniqueNodeKernel(ukeys, pt_inds, node_flags, pt_codes));
         
         /// step 5
         ko::View<Index*> node_nums("node_nums", node_count_host());
@@ -161,11 +137,17 @@ class NodeArrayD {
         /// step 6
         node_count = ko::subview(node_address, node_count_host()-1);
         ko::deep_copy(node_count_host, node_count);
-        node_keys = ko::View<key_type*>("keys", node_count_host()+8);
-        node_pt_idx = ko::View<Index*>("pt_start_index", node_count_host()+8);
-        node_pt_ct = ko::View<Index*>("pt_count", node_count_host()+8);
-        node_parent = ko::View<key_type*>("node_parent", node_count_host()+8);
-        ko::parallel_for(ukeys.extent(0), NodeArrayKernel(node_keys, node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
+        const key_type nnodes = node_count_host() + 8;
+        node_keys = ko::View<key_type*>("keys", nnodes);
+        node_pt_idx = ko::View<Index*>("pt_start_index", nnodes);
+        node_pt_ct = ko::View<Index*>("pt_count", nnodes);
+        node_parent = ko::View<key_type*>("node_parent", nnodes);
+        
+        auto policy6a = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 8);
+        ko::parallel_for(policy6a, NodeSetupKernel(node_keys, node_address, ukeys, level, max_depth));
+        
+        auto policy6b = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 128);
+        ko::parallel_for(policy6b, NodeFillKernel(node_keys, node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
             node_address, pt_inds, level, max_depth));
     };    
 };

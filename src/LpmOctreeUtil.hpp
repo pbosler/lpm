@@ -354,7 +354,35 @@ struct NodeAddressKernel {
 	}
 };
 
-struct NodeArrayKernel {
+struct NodeSetupKernel {
+    ko::View<key_type*> keys_out;
+    ko::View<Index*> node_address;
+    ko::View<key_type*> keys_in;
+    Int level;
+    Int max_depth;
+    
+    NodeSetupKernel(ko::View<key_type*>& ko, const ko::View<Index*>& na, const ko::View<key_type*>& ki,
+         const Int& lev, const Int& md) :
+        keys_out(ko), node_address(na), keys_in(ki), level(lev), max_depth(md) {}
+
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& mbr) const {
+        const Index i=mbr.league_rank();
+        bool new_parent = true;
+        if (i>0) {
+            new_parent = node_address(i) > node_address(i-1);
+        }
+        if (new_parent) {
+            const key_type pkey = parent_key(keys_in(i), level, max_depth);
+            const key_type first_kid = 8*i;
+            ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Int& j) {
+                keys_out(first_kid+j) = node_key(pkey, j, level, max_depth);
+            });
+        }
+    }
+};
+
+struct NodeFillKernel {
     // output
     /**
         Node i has:
@@ -376,21 +404,10 @@ struct NodeArrayKernel {
     Int level;
     Int max_depth;
     
-    NodeArrayKernel(ko::View<key_type*>& ko, ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
+    NodeFillKernel(ko::View<key_type*>& ko, ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
         const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
         const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : keys_out(ko), pt_idx(ps), pt_ct(pc), pt_in_node(pn),
         keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index& i) const {
-        const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
-        keys_out(address) = keys_in(i);
-        pt_idx(address) = pt_inds(i,0);
-        pt_ct(address) = pt_inds(i,1);
-        for (Index j=pt_inds(i,0); j<pt_inds(i,0) + pt_inds(i,1); ++j) {
-            pt_in_node(j) = address;
-        }        
-    }
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const member_type& mbr) const {
@@ -406,45 +423,6 @@ struct NodeArrayKernel {
     }
 };
 
-struct InternalNodeArrayKernel {
-    // output
-    ko::View<key_type*> keys_out; 
-    ko::View<Index*> pt_idx;
-    ko::View<Index*> pt_ct;
-    ko::View<key_type*> pt_in_node;
-    ko::View<key_type*[8]> kids_out;
-    ko::View<key_type*> parents_from_lower;
-    // input
-    ko::View<key_type*> keys_in;
-    ko::View<Index*> node_address;
-    ko::View<Index*[2]> pt_inds;
-    Int level;
-    Int max_depth;
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-		const Index i = mbr.league_rank();
-		const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
-		keys_out(address) = keys_in(i);
-    }
-};
-
-struct MakeParentsFromLowerKernel {
-    // output
-    ko::View<key_type*> keys_out;
-    ko::View<key_type*> lower_parents;
-    // input
-    ko::View<key_type*> lower_keys_in;
-    Int plevel;
-    Int max_depth;
-    
-    void operator() (const Index& i) const {
-        const Index pindex = i;
-        const key_type pkey = parent_key(lower_keys_in(8*i), plevel, max_depth);
-        keys_out(pindex) = pkey;
-    }
-    
-};
 
 }
 }
