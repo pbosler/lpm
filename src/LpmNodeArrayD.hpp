@@ -94,33 +94,24 @@ class NodeArrayD {
     /** 
     */
     void initFromLower(NodeArrayD& ll) {
-    	/// Start with step 4 using data from lower level
-        ko::View<code_type*> parent_keys("parent_keys", ll.node_keys.extent(0));
-        ko::parallel_for(ll.node_keys.extent(0), KOKKOS_LAMBDA (const Index& i) {
-            parent_keys(i) = encode(parent_key(ll.node_keys(i), level, max_depth), 0);
+        const Index nparents = ll.node_keys.extent(0)/8;
+        ko::View<key_type*> pkeys("parent_keys", nparents);
+        ko::parallel_for(nparents, KOKKOS_LAMBDA (const Index& i) {
+            pkeys(i) = parent_key(ll.node_keys(8*i), level, max_depth);
         });
-        ko::View<Index*> node_flags("node_flags", ll.node_keys.extent(0));
-        ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0, ll.node_keys.extent(0)),
-            MarkDuplicates(node_flags, parent_keys));
-        ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0, ll.node_keys.extent(0)),
-            MarkDuplicates(node_flags, parent_keys));
-        n_view_type node_count = ko::subview(node_flags, ll.node_keys.extent(0)-1);
+        
+        ko::View<Index*> node_nums("node_nums",nparents);
+        ko::View<Index*> node_address("node_address", nparents);
+        ko::parallel_for(ko::RangePolicy<NodeAddressKernel::MarkTag>(0,nparents), 
+            NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
+        ko::parallel_scan(ko::RangePolicy<NodeAddressKernel::ScanTag>(0,nparents),
+            NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
+        
+        n_view_type node_count = ko::subview(node_address, nparents-1);
         auto node_count_host = ko::create_mirror_view(node_count);
         ko::deep_copy(node_count_host, node_count);
+    
         
-        ko::View<key_type*> pkeys("pkeys", node_count_host());
-        ko::View<Index*[2]> pt_inds("pt_inds", node_count_host());
-        auto policy = ExeSpaceUtils::get_default_team_policy(ll.node_keys.extent(0), 8);
-        ko::parallel_for(policy, UniqueNodeKernelInternal(pkeys, pt_inds, 
-        	node_flags, ll.node_keys, ll.node_pt_idx, ll.node_pt_ct));
-        
-        /// Step 5
-        ko::View<Index*> node_nums("node_nums", node_count_host());
-        ko::View<Index*> node_address("node_address", node_count_host());    
-        ko::parallel_for(ko::RangePolicy<NodeAddressKernel::MarkTag>(0,node_count_host()),
-        	NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
-        ko::parallel_scan(ko::RangePolicy<NodeAddressKernel::ScanTag>(0,node_count_host()),
-        	NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
     }
 
     /**
@@ -170,10 +161,10 @@ class NodeArrayD {
         /// step 6
         node_count = ko::subview(node_address, node_count_host()-1);
         ko::deep_copy(node_count_host, node_count);
-        node_keys = ko::View<key_type*>("keys", node_count_host());
-        node_pt_idx = ko::View<Index*>("pt_start_index", node_count_host());
-        node_pt_ct = ko::View<Index*>("pt_count", node_count_host());
-        node_parent = ko::View<Index*>("node_parent", node_count_host());
+        node_keys = ko::View<key_type*>("keys", node_count_host()+8);
+        node_pt_idx = ko::View<Index*>("pt_start_index", node_count_host()+8);
+        node_pt_ct = ko::View<Index*>("pt_count", node_count_host()+8);
+        node_parent = ko::View<key_type*>("node_parent", node_count_host()+8);
         ko::parallel_for(ukeys.extent(0), NodeArrayKernel(node_keys, node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
             node_address, pt_inds, level, max_depth));
     };    

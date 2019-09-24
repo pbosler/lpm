@@ -18,7 +18,7 @@ ko::initialize(argc, argv);
 {
     const int npts = 6;
     const int max_depth = 4;
-    const int tree_lev = 2;
+    const int tree_lev = 3;
     ko::View<Real*[3]> pts("pts",npts);
     typename ko::View<Real*[3]>::HostMirror host_pts = ko::create_mirror_view(pts);
     for (int i=0; i<4; ++i) {
@@ -210,11 +210,48 @@ ko::initialize(argc, argv);
         	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
         auto host_nn = ko::create_mirror_view(node_nums);
         auto host_na = ko::create_mirror_view(node_address);
-        ko::deep_copy(host_nn, node_nums); // TODO: node_nums and node_address need to be separate.
+        ko::deep_copy(host_nn, node_nums); // TODO: do node_nums and node_address need to be separate?
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
         	std::cout << "node_nums(" << i << ") = " << host_nn(i) 
-        			  << " node_address(" <<i << ") = " << host_na(i) << "\n";
+        			  << " node_address(" <<i << ") = " << host_na(i) 
+        			  << " local key = " << Octree::local_key(uhost(i), tree_lev, max_depth) << "\n";
+        }
+        
+        const Int nnodes = host_na(ukeys.extent(0)-1) + 8;
+        ko::View<Octree::key_type*> nodeLevelDKeys("nld_keys",nnodes);
+        ko::View<Index*> nodeLevelDPointIdx("nld_pt_idx", nnodes);
+        ko::View<Index*> nodeLevelDPointCnt("nld_pt_cnt", nnodes);
+        ko::View<Octree::key_type*> nodeLevelDPointInNode("nld_pt_in_node", npts);
+        
+        ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
+            if (i==0 || node_nums(i) > 0 ) {
+                const Octree::key_type pkey = Octree::parent_key(ukeys(i), tree_lev, max_depth);
+                for (int j=0; j<8; ++j) {
+                    nodeLevelDKeys(8*i+j) = Octree::node_key(pkey, j, tree_lev, max_depth);
+                }   
+            }
+        });
+        
+        auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
+        ko::parallel_for(policy, Octree::NodeArrayKernel(nodeLevelDKeys, nodeLevelDPointIdx, nodeLevelDPointCnt,
+            nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
+        
+        auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);
+        auto nd_p_is = ko::create_mirror_view(nodeLevelDPointIdx);
+        auto nd_p_ct = ko::create_mirror_view(nodeLevelDPointCnt);
+        auto nd_pinn = ko::create_mirror_view(nodeLevelDPointInNode);
+        ko::deep_copy(nd_keys, nodeLevelDKeys);
+        ko::deep_copy(nd_p_is, nodeLevelDPointIdx);
+        ko::deep_copy(nd_p_ct, nodeLevelDPointCnt);
+        ko::deep_copy(nd_pinn, nodeLevelDPointInNode);
+        
+        for (int i=0; i<nnodes; ++i) {
+            std::cout << "node(" << std::setw(2) << i << "): key = " << std::bitset<12>(nd_keys(i)) << " pt_start = " << nd_p_is(i) 
+                      << " pt_ct = " << nd_p_ct(i) << "\n";
+        }
+        for (int i=0; i<npts; ++i) {
+            std::cout << "point(" << i << ") is in node " << nd_pinn(i) << "\n";
         }
         
     }

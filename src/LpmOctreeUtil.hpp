@@ -33,6 +33,17 @@ T pintpow2(IntT2 k) {
     return result;
 }
 
+template <typename T=key_type, typename IntT2=int>
+KOKKOS_INLINE_FUNCTION
+T pintpow8(IntT2 k) {
+    T result = 1;
+    while (k>0) {
+        result *= 8;
+        --k;
+    }
+    return result;
+}
+
 /**
     key = x1y1z1x2y2z2...xdydzd
     
@@ -96,6 +107,13 @@ key_type local_key(const key_type& k, const int& lev, const Int& max_depth=MAX_O
     for (int i=pzb-3; i<pzb; ++i) // turn on 3 bits lower than pzb
         mask += pintpow2(i);
     return key_type((k & mask)>>(pzb-3));
+}
+
+KOKKOS_INLINE_FUNCTION
+key_type node_key(const key_type& pk, const key_type& lk, const int& lev, const int& max_depth) {
+    const key_type pzb = 3*max_depth - 3*(lev-1);
+    const key_type sloc = (lk << (pzb-3));
+    return pk + sloc;
 }
 
 KOKKOS_INLINE_FUNCTION
@@ -409,6 +427,23 @@ struct InternalNodeArrayKernel {
 		const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
 		keys_out(address) = keys_in(i);
     }
+};
+
+struct MakeParentsFromLowerKernel {
+    // output
+    ko::View<key_type*> keys_out;
+    ko::View<key_type*> lower_parents;
+    // input
+    ko::View<key_type*> lower_keys_in;
+    Int plevel;
+    Int max_depth;
+    
+    void operator() (const Index& i) const {
+        const Index pindex = i;
+        const key_type pkey = parent_key(lower_keys_in(8*i), plevel, max_depth);
+        keys_out(pindex) = pkey;
+    }
+    
 };
 
 }
