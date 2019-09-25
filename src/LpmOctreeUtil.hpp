@@ -203,7 +203,7 @@ struct MarkDuplicates {
 };
 
 template <typename CVT> KOKKOS_INLINE_FUNCTION
-Index binarySearch(const key_type& key, const CVT& sorted_codes, const bool& get_first) {
+Index binarySearchCodes(const key_type& key, const CVT& sorted_codes, const bool& get_first) {
 	Index low = 0;
 	Index high = sorted_codes.extent(0);
 	Index result = -1;
@@ -229,6 +229,27 @@ Index binarySearch(const key_type& key, const CVT& sorted_codes, const bool& get
 	return result;
 }
 
+template <typename CVT> KOKKOS_INLINE_FUNCTION
+Index binarySearchKeys(const key_type& key, const CVT& sorted_keys) {
+    Index low = 0;
+    Index high = sorted_keys.extent(0);
+    Index result = -1;
+    while (low <= high) {
+        Index mid = (low+high)/2;
+        const key_type mid_key = sorted_keys(mid);
+        if (key == mid_key) {
+            result = mid;
+        }
+        else if (key < mid_key) {
+            high = mid-1;
+        }
+        else {
+            low = mid+1;
+        }
+    }
+    return result;
+}
+
 struct UniqueNodeKernel {
     // output
     ko::View<key_type*> keys_out;
@@ -250,65 +271,11 @@ struct UniqueNodeKernel {
         	const Index node_ind = flags(i)-1;
         	const key_type newkey = decode_key(codes_in(i));
             keys_out(node_ind) = newkey;
-            const Index first = binarySearch(newkey, codes_in, true);
-            const Index last = binarySearch(newkey, codes_in, false);
+            const Index first = binarySearchCodes(newkey, codes_in, true);
+            const Index last = binarySearchCodes(newkey, codes_in, false);
             inds_out(node_ind,0) = first;
             inds_out(node_ind,1) = last - first + 1;
         }
-    }
-};
-
-struct UniqueNodeKernelInternal {
-    // output
-    ko::View<key_type*> keys_out;
-    ko::View<Index*[2]> inds_out;
-    
-    // input
-    ko::View<Index*> flags;
-    ko::View<key_type*> keys_in;
-    ko::View<Index*> pt_start_from_lower;
-    ko::View<Index*> pt_count_from_lower;
-    
-    UniqueNodeKernelInternal(ko::View<key_type*>& ko, ko::View<Index*[2]>& io,
-    	const ko::View<Index*>& f, const ko::View<key_type*>& ki, 
-    	const ko::View<Index*>& ps, const ko::View<Index*> pc) :
-    	keys_out(ko), inds_out(io), flags(f), keys_in(ki), pt_start_from_lower(ps),
-    	pt_count_from_lower(pc) {}
-
-
-    /// todo: nested parallel reduce for count
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index& i) const {
-        bool newval = true;
-        if (i>0) newval = (flags(i)>flags(i-1));
-        if (newval) {
-            const Index node_ind = flags(i)-1;
-            keys_out(node_ind) = keys_in(i);
-            inds_out(node_ind,0) = pt_start_from_lower(i);
-            Index count = 0;
-            for (int j=0; j<8; ++j) {
-                count += pt_count_from_lower(i+j);
-            }
-            inds_out(node_ind,1) = count;
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-    	const Index i = mbr.league_rank();
-    	bool newval = true;
-    	if (i>0) newval = (flags(i) > flags(i-1));
-    	if (newval) {
-    		const Index node_ind = flags(i) - 1;
-    		keys_out(node_ind) = keys_in(i);
-    		inds_out(node_ind,0) = pt_start_from_lower(i);
-    		Index count = 0;
-    		ko::parallel_reduce(ko::TeamThreadRange(mbr, i, i+8), 
-    			KOKKOS_LAMBDA (const Index& j, Index& c) {
-    				c += pt_count_from_lower(i);
-    			}, count);
-    		inds_out(node_ind,1) = count;
-    	}
     }
 };
 

@@ -11,6 +11,8 @@
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Sort.hpp"
 #include <cmath>
+#include <iostream>
+#include <sstream>
 
 namespace Lpm {
 namespace Octree {
@@ -81,7 +83,7 @@ class NodeArrayD {
     ko::View<key_type*> node_keys; /// node_keys(i) = shuffled xyz key of node i
     ko::View<Index*> node_pt_idx; /// node_pt_idx(i) = index of first point contained in node i
     ko::View<Index*> node_pt_ct; /// node_pt_ct(i) = number of points contained in node i
-    ko::View<key_type*> node_parent; /// allocated here; set by level D-1
+    ko::View<Index*> node_parent; /// allocated here; set by level D-1
     
     ko::View<key_type*> pt_in_node; /// pt_in_node(i) = index of the node that contains point i
     ko::View<Index*> orig_ids; /// original (presort) locations of points
@@ -138,10 +140,18 @@ class NodeArrayD {
         node_count = ko::subview(node_address, node_count_host()-1);
         ko::deep_copy(node_count_host, node_count);
         const key_type nnodes = node_count_host() + 8;
-        node_keys = ko::View<key_type*>("keys", nnodes);
-        node_pt_idx = ko::View<Index*>("pt_start_index", nnodes);
-        node_pt_ct = ko::View<Index*>("pt_count", nnodes);
-        node_parent = ko::View<key_type*>("node_parent", nnodes);
+        std::ostringstream ss;
+        ss << "node_keys" << level;
+        node_keys = ko::View<key_type*>(ss.str(), nnodes);
+        ss.str("");
+        ss << "pt_start_index" << level;
+        node_pt_idx = ko::View<Index*>(ss.str(), nnodes);
+        ss.str("");
+        ss << "pt_count" << level;
+        node_pt_ct = ko::View<Index*>(ss.str(), nnodes);
+        ss.str("");
+        ss << "node_parent" << level;
+        node_parent = ko::View<Index*>(ss.str(), nnodes);
         
         auto policy6a = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 8);
         ko::parallel_for(policy6a, NodeSetupKernel(node_keys, node_address, ukeys, level, max_depth));
