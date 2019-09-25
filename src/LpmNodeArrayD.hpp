@@ -156,8 +156,8 @@ class NodeArrayD {
         auto policy6a = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 8);
         ko::parallel_for(policy6a, NodeSetupKernel(node_keys, node_address, ukeys, level, max_depth));
         
-        auto policy6b = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 128);
-        ko::parallel_for(policy6b, NodeFillKernel(node_keys, node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
+        auto policy6b = ExeSpaceUtils<>::get_default_team_policy(node_keys.extent(0), 128);
+        ko::parallel_for(policy6b, NodeFillKernel(node_pt_idx, node_pt_ct, pt_in_node, node_keys, 
             node_address, pt_inds, level, max_depth));
     };
     

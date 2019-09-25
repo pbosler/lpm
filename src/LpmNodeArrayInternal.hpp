@@ -24,7 +24,7 @@ struct ParentNodeFunctor {
     Int max_depth;
     
     ParentNodeFunctor(ko::View<key_type*>& ko, const ko::View<key_type*>& kl, const Int& lev, const Int& md) :
-        keys_out(ko), keys_from_lower(kl), level(lev), lower_level(lev-1), max_depth(md) {}
+        keys_out(ko), keys_from_lower(kl), level(lev), lower_level(lev+1), max_depth(md) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& i) const {
@@ -36,13 +36,12 @@ struct ParentNodeFunctor {
 
 struct NodeFillInternal {
     // output
-    ko::View<key_type*> keys_out; // parent keys, with (possibly empty) siblings included
     ko::View<Index*> pt_idx; // start point indices for parent keys
     ko::View<Index*> pt_ct; // point counts for parent keys
     ko::View<Index*[8]> kids_out; // address of kids in next lower level
     ko::View<Index*> parents_from_lower; // address of parents in this level, viewed from lower level
     // input
-    ko::View<key_type*> keys_in; // parent keys, output from ParentNodeFunctor
+    ko::View<key_type*> keys_in; // all keys at this level
     ko::View<key_type*> keys_from_lower; // keys from lower level
     ko::View<Index*> pt_start_from_lower;
     ko::View<Index*> pt_count_from_lower;
@@ -50,11 +49,11 @@ struct NodeFillInternal {
     Int level;
     Int max_depth;
     
-    NodeFillInternal(ko::View<key_type*>& keyo, ko::View<Index*>& ptsi, ko::View<Index*>& ptsc, 
+    NodeFillInternal(ko::View<Index*>& ptsi, ko::View<Index*>& ptsc, 
         ko::View<Index*[8]>& kkids, ko::View<Index*>& plow, const ko::View<key_type*>& pkeys,
         const ko::View<key_type*>& klow, const ko::View<Index*>& ptsi_low, 
         const ko::View<Index*>& ptsc_low, const ko::View<Index*>& na, const Int& lev, const Int& md) :
-        keys_out(keyo), pt_idx(ptsi), pt_ct(ptsc), kids_out(kkids), parents_from_lower(plow),
+        pt_idx(ptsi), pt_ct(ptsc), kids_out(kkids), parents_from_lower(plow),
         keys_in(pkeys), keys_from_lower(klow), pt_start_from_lower(ptsi_low), pt_count_from_lower(ptsc_low),
         node_address(na), level(lev), max_depth(md) {}
     
@@ -63,7 +62,8 @@ struct NodeFillInternal {
         const Index i = mbr.league_rank();
         const Index address = node_address(i) + local_key(keys_in(i), level, max_depth);
         keys_out(address) = keys_in(i);
-        const key_type first_kid = binarySearchKeys(keys_in(i), keys_from_lower);
+        const Index first_kid = binarySearchKeys(keys_in(i), keys_from_lower);
+        printf("DEBUG: first_kid found at %l", first_kid);
         pt_idx(address) = pt_start_from_lower(first_kid);
         ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Index& j) {
             parents_from_lower(first_kid+j) = address;
@@ -80,12 +80,12 @@ class NodeArrayInternal {
         Int level;
         Int max_depth;
         
-        ko::View<key_type*> node_keys;
-        ko::View<Index*> node_pt_idx;
-        ko::View<Index*> node_pt_ct;
+        ko::View<key_type*> node_keys; // keys of nodes at this level
+        ko::View<Index*> node_pt_idx; // index of first point contained by nodes
+        ko::View<Index*> node_pt_ct; // number of points contained by each node at this level
         
-        ko::View<Index*> node_parent;
-        ko::View<Index*[8]> node_kids;
+        ko::View<Index*> node_parent; // address of parents of nodes at this level (into level-1 NodeArrayInternal)
+        ko::View<Index*[8]> node_kids; // address of children (in level+1 NodeArray)
         
         NodeArrayInternal(NodeArrayD& leaves, const Int& l, const Int& md) : level(leaves.level-1), 
             max_depth(leaves.max_depth) { initFromLeaves(leaves); }
@@ -100,6 +100,14 @@ class NodeArrayInternal {
             ko::View<key_type*> pkeys("parent_keys",nparents);
             ko::parallel_for(nparents, ParentNodeFunctor(pkeys, leaves.node_keys, level, max_depth));
             
+            // DEBUG
+            std::cout << "DEBUG: pkeys done.\n";
+            auto hpkeys = ko::create_mirror_view(pkeys);
+            ko::deep_copy(hpkeys, pkeys);
+            for (Index i=0; i<nparents; ++i) {
+                std::cout << "DEBUG: pkeys(" << i << ") = " << hpkeys(i) << "\n";
+            }
+            
             /// augment keys to make sure included nodes' siblings get added            
             ko::View<Index*> node_nums("node_nums", nparents);
             ko::View<Index*> node_address("node_address", nparents);
@@ -112,6 +120,18 @@ class NodeArrayInternal {
             auto la_host = ko::create_mirror_view(last_address);
             ko::deep_copy(la_host, last_address);
             const key_type nnodes = la_host() + 8;
+            
+            // DEBUG
+            auto host_nn = ko::create_mirror_view(node_nums);
+            auto host_na = ko::create_mirror_view(node_address);
+            ko::deep_copy(host_nn, node_nums); 
+            ko::deep_copy(host_na, node_address);
+            for (int i=0; i<hpkeys.extent(0); ++i) {
+                std::cout << "\tDEBUG: node_nums(" << i << ") = " << host_nn(i) 
+                          << " node_address(" <<i << ") = " << host_na(i) 
+                          << " local key = " << local_key(hpkeys(i), level, max_depth) << "\n";
+            }
+            std::cout << "DEBUG: nnodes = " << nnodes << "\n";
             
             std::ostringstream ss;
             ss << "node_keys" << level;
@@ -131,11 +151,18 @@ class NodeArrayInternal {
             ss << "node_kids" << level;
             node_kids = ko::View<Index*[8]>(ss.str(), nnodes);
             
+            // DEBUG
+            std::cout << "DEBUG: allocations done.\n";
+            
             auto setup_policy = ExeSpaceUtils<>::get_default_team_policy(nparents, 8);
             ko::parallel_for(setup_policy, NodeSetupKernel(node_keys, node_address, pkeys, level, max_depth));
             
-            ko::parallel_for(setup_policy, NodeFillInternal(node_keys, node_pt_idx, node_pt_ct, node_kids,
-                leaves.node_parent, pkeys, leaves.node_keys, leaves.node_pt_idx, leaves.node_pt_ct, node_address,
+            // DEBUG
+            std::cout << "DEBUG: node setup done.\n";
+            
+            auto fill_policy = ExeSpaceUtils<>::get_default_team_policy(nnodes, 8);
+            ko::parallel_for(fill_policy, NodeFillInternal(node_pt_idx, node_pt_ct, node_kids,
+                leaves.node_parent, node_keys, leaves.node_keys, leaves.node_pt_idx, leaves.node_pt_ct, node_address,
                 level, max_depth));
         }
         

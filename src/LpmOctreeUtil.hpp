@@ -359,28 +359,26 @@ struct NodeFillKernel {
         
         Point j has ptr to node that contains it.
     */
-    ko::View<key_type*> keys_out;
     ko::View<Index*> pt_idx;
     ko::View<Index*> pt_ct;
     ko::View<key_type*> pt_in_node;
     
     // input
-    ko::View<key_type*> keys_in;
+    ko::View<key_type*> keys_in;  // all keys (including empty siblings)
     ko::View<Index*> node_address;
     ko::View<Index*[2]> pt_inds;    
     Int level;
     Int max_depth;
     
-    NodeFillKernel(ko::View<key_type*>& ko, ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
+    NodeFillKernel(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
         const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
-        const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : keys_out(ko), pt_idx(ps), pt_ct(pc), pt_in_node(pn),
+        const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : pt_idx(ps), pt_ct(pc), pt_in_node(pn),
         keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator() (const member_type& mbr) const {
     	const Index i = mbr.league_rank();
     	const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
-    	keys_out(address) = keys_in(i);
     	pt_idx(address) = pt_inds(i,0);
     	pt_ct(address) = pt_inds(i,1);
     	ko::parallel_for(ko::TeamThreadRange(mbr, pt_inds(i,0), pt_inds(i,0)+pt_inds(i,1)),

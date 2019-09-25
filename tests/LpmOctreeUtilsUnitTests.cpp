@@ -237,8 +237,8 @@ ko::initialize(argc, argv);
         ko::parallel_for(bp, Octree::NodeSetupKernel(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
         
         auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
-        ko::parallel_for(policy, Octree::NodeFillKernel(nodeLevelDKeys, nodeLevelDPointIdx, nodeLevelDPointCnt,
-            nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
+        ko::parallel_for(policy, Octree::NodeFillKernel(nodeLevelDPointIdx, nodeLevelDPointCnt,
+            nodeLevelDPointInNode, nodeLevelDKeys, node_address, pt_inds, tree_lev, max_depth));
         
         auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);
         auto nd_p_is = ko::create_mirror_view(nodeLevelDPointIdx);

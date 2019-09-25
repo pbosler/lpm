@@ -29,9 +29,9 @@ std::string NodeArrayD::infoString() const {
     const Index nnodes = node_keys.extent(0);
     for (Index i=0; i<nnodes; ++i) {
         ss << "node(" << std::setw(8)<< i << "): key = " << std::setw(8) << keys(i) 
-           << " " << std::bitset<MAX_OCTREE_DEPTH>(keys(i))
+           << " " << std::bitset<3*MAX_OCTREE_DEPTH>(keys(i))
            << " pt_start = " << pt_start(i) << " pt_ct = " << pt_ct(i) 
-           << " parent = " << node_parent(i) << "\n";
+           << " parent = " << prts(i) << "\n";
     }
     
     auto pin = ko::create_mirror_view(pt_in_node);
