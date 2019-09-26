@@ -41,7 +41,7 @@ struct NodeFillInternal {
     ko::View<Index*[8]> kids_out; // address of kids in next lower level
     ko::View<Index*> parents_from_lower; // address of parents in this level, viewed from lower level
     // input
-    ko::View<key_type*> keys_in; // all keys at this level
+    ko::View<key_type*> keys_in; // only non-empty keys
     ko::View<key_type*> keys_from_lower; // keys from lower level
     ko::View<Index*> pt_start_from_lower;
     ko::View<Index*> pt_count_from_lower;
@@ -61,9 +61,7 @@ struct NodeFillInternal {
     void operator() (const member_type& mbr) const {
         const Index i = mbr.league_rank();
         const Index address = node_address(i) + local_key(keys_in(i), level, max_depth);
-        keys_out(address) = keys_in(i);
         const Index first_kid = binarySearchKeys(keys_in(i), keys_from_lower);
-        printf("DEBUG: first_kid found at %l", first_kid);
         pt_idx(address) = pt_start_from_lower(first_kid);
         ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Index& j) {
             parents_from_lower(first_kid+j) = address;
@@ -111,10 +109,10 @@ class NodeArrayInternal {
             /// augment keys to make sure included nodes' siblings get added            
             ko::View<Index*> node_nums("node_nums", nparents);
             ko::View<Index*> node_address("node_address", nparents);
-            ko::parallel_for(ko::RangePolicy<NodeAddressKernel::MarkTag>(0,nparents),
-                NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
-            ko::parallel_scan(ko::RangePolicy<NodeAddressKernel::ScanTag>(0,nparents),
-                NodeAddressKernel(node_nums, node_address, pkeys, level, max_depth));
+            ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0,nparents),
+                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+            ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0,nparents),
+                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
             
             n_view_type last_address = ko::subview(node_address, nparents-1);
             auto la_host = ko::create_mirror_view(last_address);
@@ -155,15 +153,23 @@ class NodeArrayInternal {
             std::cout << "DEBUG: allocations done.\n";
             
             auto setup_policy = ExeSpaceUtils<>::get_default_team_policy(nparents, 8);
-            ko::parallel_for(setup_policy, NodeSetupKernel(node_keys, node_address, pkeys, level, max_depth));
+            ko::parallel_for(setup_policy, NodeSetupFunctor(node_keys, node_address, pkeys, level, max_depth));
             
             // DEBUG
             std::cout << "DEBUG: node setup done.\n";
             
-            auto fill_policy = ExeSpaceUtils<>::get_default_team_policy(nnodes, 8);
+            auto fill_policy = ExeSpaceUtils<>::get_default_team_policy(nparents, 8);
             ko::parallel_for(fill_policy, NodeFillInternal(node_pt_idx, node_pt_ct, node_kids,
-                leaves.node_parent, node_keys, leaves.node_keys, leaves.node_pt_idx, leaves.node_pt_ct, node_address,
+                leaves.node_parent, pkeys, leaves.node_keys, leaves.node_pt_idx, leaves.node_pt_ct, node_address,
                 level, max_depth));
+            
+//             ko::parallel_for(nparents, KOKKOS_LAMBDA (const Index& i) {
+//                 const Index address = node_address(i) + local_key(pkeys(i), level, max_depth);
+//                 printf("address = %d\n", address);
+//                 const Index first_kid = binarySearchKeys(pkeys(i), leaves.node_keys);
+//                 printf("first_kid = %d\n", first_kid);
+//             });
+            
         }
         
 //         void initFromLower(NodeArrayInternal& lower) {

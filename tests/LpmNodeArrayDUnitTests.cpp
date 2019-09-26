@@ -33,9 +33,14 @@ ko::initialize(argc, argv);
     
     NodeArrayD leaves(pts, tree_lev, max_depth);
     
+    std::cout << "NodeArrayD:\n";
+    std::cout << leaves.infoString();
+    
     NodeArrayInternal nextlev(leaves, tree_lev-1, max_depth);
     std::cout << nextlev.infoString();
     std::cout << leaves.infoString();
+    
+    std::cout << "program complete." << std::endl;
 }
 ko::finalize();
 return 0;

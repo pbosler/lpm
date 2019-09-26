@@ -149,7 +149,7 @@ ko::initialize(argc, argv);
     ko::View<Index*> orig_id("original_pt_id", pts.extent(0));
     {
         ko::View<Real*[3]> temp_pts("temp_pts",pts.extent(0));
-        ko::parallel_for(pts.extent(0), Octree::PermuteKernel(temp_pts, orig_id, pts, codes));
+        ko::parallel_for(pts.extent(0), Octree::PermuteFunctor(temp_pts, orig_id, pts, codes));
         pts = temp_pts;
     }
     ko::deep_copy(host_pts, pts);
@@ -186,7 +186,7 @@ ko::initialize(argc, argv);
         std::cout << "found " << host_ct() << " unique keys.\n";
         ko::View<Octree::key_type*> ukeys("unique_keys", host_ct());
         ko::View<Index*[2]> pt_inds("pt_inds",host_ct());
-        ko::parallel_for(npts, Octree::UniqueNodeKernel(ukeys, pt_inds, flag_view, codes));
+        ko::parallel_for(npts, Octree::UniqueNodeFunctor(ukeys, pt_inds, flag_view, codes));
         auto uhost = ko::create_mirror_view(ukeys);
         ko::deep_copy(uhost, ukeys);
         auto ihost = ko::create_mirror_view(pt_inds);
@@ -204,10 +204,10 @@ ko::initialize(argc, argv);
         
         ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
         ko::View<Index*> node_address("node_address", ukeys.extent(0));
-        ko::parallel_for(ko::RangePolicy<Octree::NodeAddressKernel::MarkTag>(0, ukeys.extent(0)), 
-        	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
-        ko::parallel_scan(ko::RangePolicy<Octree::NodeAddressKernel::ScanTag>(0, ukeys.extent(0)),
-        	Octree::NodeAddressKernel(node_nums, node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_for(ko::RangePolicy<Octree::NodeAddressFunctor::MarkTag>(0, ukeys.extent(0)), 
+        	Octree::NodeAddressFunctor(node_nums, node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_scan(ko::RangePolicy<Octree::NodeAddressFunctor::ScanTag>(0, ukeys.extent(0)),
+        	Octree::NodeAddressFunctor(node_nums, node_address, ukeys, tree_lev, max_depth));
         auto host_nn = ko::create_mirror_view(node_nums);
         auto host_na = ko::create_mirror_view(node_address);
         ko::deep_copy(host_nn, node_nums); // TODO: do node_nums and node_address need to be separate?
@@ -234,11 +234,11 @@ ko::initialize(argc, argv);
 //         });
         
         auto bp = ko::TeamPolicy<>(ukeys.extent(0), 8);
-        ko::parallel_for(bp, Octree::NodeSetupKernel(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_for(bp, Octree::NodeSetupFunctor(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
         
         auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
-        ko::parallel_for(policy, Octree::NodeFillKernel(nodeLevelDPointIdx, nodeLevelDPointCnt,
-            nodeLevelDPointInNode, nodeLevelDKeys, node_address, pt_inds, tree_lev, max_depth));
+        ko::parallel_for(policy, Octree::NodeFillFunctor(nodeLevelDPointIdx, nodeLevelDPointCnt,
+            nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
         
         auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);
         auto nd_p_is = ko::create_mirror_view(nodeLevelDPointIdx);

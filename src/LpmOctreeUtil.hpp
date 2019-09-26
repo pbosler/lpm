@@ -132,7 +132,7 @@ key_type decode_key(const code_type& code) {
     return key_type((code>>32));
 }
 
-struct PermuteKernel {
+struct PermuteFunctor {
     // output
     ko::View<Real*[3]> outpts;
     ko::View<Index*> orig_inds;
@@ -140,7 +140,7 @@ struct PermuteKernel {
     ko::View<Real*[3]> inpts;
     ko::View<code_type*> codes;
     
-    PermuteKernel(ko::View<Real*[3]>& op, ko::View<Index*>& oi, const ko::View<Real*[3]>& ip, 
+    PermuteFunctor(ko::View<Real*[3]>& op, ko::View<Index*>& oi, const ko::View<Real*[3]>& ip, 
         const ko::View<code_type*>& c) :  outpts(op), orig_inds(oi), inpts(ip), codes(c) {}
         
     KOKKOS_INLINE_FUNCTION
@@ -153,14 +153,14 @@ struct PermuteKernel {
     }
 };
 
-struct UnpermuteKernel {
+struct UnpermuteFunctor {
     // output 
     ko::View<Real*[3]> outpts;
     // input
     ko::View<Real*[3]> inpts;
     ko::View<Index*> old_id;
     
-    UnpermuteKernel(ko::View<Real*[3]>& op, const ko::View<Real*[3]>& ip, const ko::View<Index*>& oi) :
+    UnpermuteFunctor(ko::View<Real*[3]>& op, const ko::View<Real*[3]>& ip, const ko::View<Index*>& oi) :
         outpts(op), inpts(ip), old_id(oi) {}
     
     KOKKOS_INLINE_FUNCTION
@@ -205,7 +205,7 @@ struct MarkDuplicates {
 template <typename CVT> KOKKOS_INLINE_FUNCTION
 Index binarySearchCodes(const key_type& key, const CVT& sorted_codes, const bool& get_first) {
 	Index low = 0;
-	Index high = sorted_codes.extent(0);
+	Index high = sorted_codes.extent(0)-1;
 	Index result = -1;
 	while (low <= high) {
 		Index mid = (low + high) / 2;
@@ -232,13 +232,14 @@ Index binarySearchCodes(const key_type& key, const CVT& sorted_codes, const bool
 template <typename CVT> KOKKOS_INLINE_FUNCTION
 Index binarySearchKeys(const key_type& key, const CVT& sorted_keys) {
     Index low = 0;
-    Index high = sorted_keys.extent(0);
+    Index high = sorted_keys.extent(0)-1;
     Index result = -1;
     while (low <= high) {
         Index mid = (low+high)/2;
         const key_type mid_key = sorted_keys(mid);
         if (key == mid_key) {
             result = mid;
+            high = mid-1;
         }
         else if (key < mid_key) {
             high = mid-1;
@@ -250,7 +251,7 @@ Index binarySearchKeys(const key_type& key, const CVT& sorted_keys) {
     return result;
 }
 
-struct UniqueNodeKernel {
+struct UniqueNodeFunctor {
     // output
     ko::View<key_type*> keys_out;
     ko::View<Index*[2]> inds_out;
@@ -259,7 +260,7 @@ struct UniqueNodeKernel {
     ko::View<Index*> flags;
     ko::View<code_type*> codes_in;
     
-    UniqueNodeKernel(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
+    UniqueNodeFunctor(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
     	const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
         flags(f), codes_in(ic), keys_out(oc), inds_out(io) {}
     
@@ -279,7 +280,7 @@ struct UniqueNodeKernel {
     }
 };
 
-struct NodeAddressKernel {
+struct NodeAddressFunctor {
     // output
 	ko::View<Index*> node_nums;
 	ko::View<Index*> node_address;
@@ -289,7 +290,7 @@ struct NodeAddressKernel {
 	Int lev;
 	Int max_depth;
 	
-	NodeAddressKernel(ko::View<Index*>& nn, ko::View<Index*> na, 
+	NodeAddressFunctor(ko::View<Index*>& nn, ko::View<Index*> na, 
 		const ko::View<key_type*>& kk, const Int& ll, const Int& md) :
 		node_nums(nn), node_address(na), keys_in(kk), lev(ll), max_depth(md) {}
 	
@@ -321,14 +322,14 @@ struct NodeAddressKernel {
 	}
 };
 
-struct NodeSetupKernel {
+struct NodeSetupFunctor {
     ko::View<key_type*> keys_out;
     ko::View<Index*> node_address;
     ko::View<key_type*> keys_in;
     Int level;
     Int max_depth;
     
-    NodeSetupKernel(ko::View<key_type*>& ko, const ko::View<Index*>& na, const ko::View<key_type*>& ki,
+    NodeSetupFunctor(ko::View<key_type*>& ko, const ko::View<Index*>& na, const ko::View<key_type*>& ki,
          const Int& lev, const Int& md) :
         keys_out(ko), node_address(na), keys_in(ki), level(lev), max_depth(md) {}
 
@@ -341,36 +342,28 @@ struct NodeSetupKernel {
         }
         if (new_parent) {
             const key_type pkey = parent_key(keys_in(i), level, max_depth);
-            const key_type first_kid = 8*i;
+            //const key_type first_kid = 8*i; // bug here
             ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Int& j) {
-                keys_out(first_kid+j) = node_key(pkey, j, level, max_depth);
+                keys_out(node_address(i)+j) = node_key(pkey, j, level, max_depth);
             });
         }
     }
 };
 
-struct NodeFillKernel {
+struct NodeFillFunctor {
     // output
-    /**
-        Node i has:
-            key
-            pt_start_ind
-            pt_count
-        
-        Point j has ptr to node that contains it.
-    */
     ko::View<Index*> pt_idx;
     ko::View<Index*> pt_ct;
     ko::View<key_type*> pt_in_node;
     
     // input
-    ko::View<key_type*> keys_in;  // all keys (including empty siblings)
+    ko::View<key_type*> keys_in;  // only non-empty keys
     ko::View<Index*> node_address;
     ko::View<Index*[2]> pt_inds;    
     Int level;
     Int max_depth;
     
-    NodeFillKernel(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
+    NodeFillFunctor(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
         const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
         const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : pt_idx(ps), pt_ct(pc), pt_in_node(pn),
         keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
