@@ -15,7 +15,7 @@ std::string NodeArrayD::infoString() const {
     ko::deep_copy(bv, box);
     ss << "NodeArrayD info:\n";
     ss << "\tbounding box: " << bv();
-    ss << "\tlevel = " << level << " of " << max_depth << " allowed.\n";
+    ss << "\tlowest level = " << level << " (<= " << max_depth << " allowed)\n";
     
     auto keys = ko::create_mirror_view(node_keys);
     auto pt_start = ko::create_mirror_view(node_pt_idx);

@@ -132,6 +132,27 @@ key_type decode_key(const code_type& code) {
     return key_type((code>>32));
 }
 
+struct EncodeFunctor {
+    // output
+    ko::View<code_type*> codes;
+    // input
+    ko::View<Real*[3]> pts;
+    ko::View<BBox> box;
+    Int level;
+    Int max_depth;
+    
+    EncodeFunctor(ko::View<code_type*>& co, const ko::View<Real*[3]>& p, const ko::View<BBox>& b,
+        const Int& lev, const Int& md) :
+        codes(co), pts(p), box(b), level(lev), max_depth(md) {}
+        
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const Index& i) const {
+        auto pos = ko::subview(pts, i, ko::ALL());
+        const key_type key = compute_key(pos, level, max_depth, box());
+        codes(i) = encode(key, i);
+    }
+};
+
 struct PermuteFunctor {
     // output
     ko::View<Real*[3]> outpts;
