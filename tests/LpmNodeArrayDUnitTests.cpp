@@ -36,10 +36,12 @@ ko::initialize(argc, argv);
     std::cout << "NodeArrayD:\n";
     std::cout << leaves.infoString();
     
-    NodeArrayInternal nextlev(leaves, tree_lev-1, max_depth);
+    NodeArrayInternal nextlev(leaves);
+    
+    NodeArrayInternal topLevel(nextlev);
+    std::cout << topLevel.infoString();
     std::cout << nextlev.infoString();
     std::cout << leaves.infoString();
-    
     std::cout << "program complete." << std::endl;
 }
 ko::finalize();
