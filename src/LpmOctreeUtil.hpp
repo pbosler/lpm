@@ -375,7 +375,7 @@ struct NodeFillFunctor {
     // output
     ko::View<Index*> pt_idx;
     ko::View<Index*> pt_ct;
-    ko::View<key_type*> pt_in_node;
+    ko::View<Index*> pt_in_node;
     
     // input
     ko::View<key_type*> keys_in;  // only non-empty keys

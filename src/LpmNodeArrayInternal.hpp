@@ -85,6 +85,8 @@ class NodeArrayInternal {
         ko::View<Index*> node_parent; // address of parents of nodes at this level (into level-1 NodeArrayInternal)
         ko::View<Index*[8]> node_kids; // address of children (in level+1 NodeArray)
         
+        NodeArrayInternal() {}
+        
         NodeArrayInternal(NodeArrayD& leaves) : level(leaves.level-1), 
             max_depth(leaves.max_depth) { initFromLeaves(leaves); }
         
