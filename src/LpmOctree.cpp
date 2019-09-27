@@ -40,7 +40,7 @@ void Octree::init() {
     node_neighbors = ko::View<Index*[27]>("node_neighbors", nnodes_total);
     node_vertices = ko::View<Index*[8]>("node_vertices", nnodes_total);
     node_edges = ko::View<Index*[12]>("node_edges", nnodes_total);
-    node_faces = ko::View<Index*[6]>("node_faces", nnodes_total);
+    node_faces = ko::View<Index*[6]>("node_faces", nnodes_total);    
     
     /// fill tree
     std::pair<size_t,size_t> view_range(hbase(max_depth), nnodes_total);
