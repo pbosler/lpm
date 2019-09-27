@@ -85,7 +85,7 @@ class NodeArrayD {
     ko::View<Index*> node_pt_ct; /// node_pt_ct(i) = number of points contained in node i
     ko::View<Index*> node_parent; /// allocated here; set by level D-1
     
-    ko::View<key_type*> pt_in_node; /// pt_in_node(i) = index of the node that contains point i
+    ko::View<Index*> pt_in_node; /// pt_in_node(i) = index of the node that contains point i
     ko::View<Index*> orig_ids; /// original (presort) locations of points
         
     NodeArrayD(ko::View<Real*[3]>& p, const Int& d, const Int& md=MAX_OCTREE_DEPTH) : pts(p), level(d), max_depth(md), 
