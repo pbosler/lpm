@@ -1,12 +1,64 @@
 #ifndef LPM_OCTREE_LUT_HPP
 #define LPM_OCTREE_LUT_HPP
 
-#include "LpmConfigh.h"
+#include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
 
 namespace Lpm {
 namespace Octree {
+
+/**
+    These two lookup tables encode the neighbor/child relationships defined by the following orderings:
+    
+    Parent:        Children:
+        
+         ---------         --------- 
+       /         /|       /|1 / 3 /|
+      /         / |      ---------
+     /         /  |     /| 5 / 7/| 
+     ---------    |    ---------
+    |         |   |    |       |
+    |         |   /
+    |         |  /
+    |         | /
+    |_________|/          |-------|
+                         / 0 / 2 /
+                       |--------| 
+                     |/ 4 / 6 |/
+                     ---------
+     
+     
+    Neighbors:  self = 13 
+     
+    
+          ---------------
+         / 2 /  5  / 8  /|
+        ---------------
+       / 11 / 14 / 17 /| 
+      ---------------
+     / 20 / 23 / 26 / | 
+    ----------------
+    |    |    |    |
+    
+          |    |    |    |
+          |----|----|----|
+        |/ 1 |/  4|/  7|/|
+        |----|----|----|
+      |/ 10|/ 13|/ 16|/| 
+      |----|----|----|
+    |/ 19|/ 22|/ 25|/|
+    |----|----|----|
+    |    |    |    |
+
+          |___|____|_____|
+         / 0 / 3  / 6   /
+        |___|/___|/____|
+       / 9 / 12 / 15  / 
+      |___|____|_____|
+     / 18 / 21 / 24 / 
+    |____|____|____|
+*/
 
 /**
     For octree node t at level l whose parent is p, i.e., 
@@ -25,22 +77,22 @@ namespace Octree {
     
     i = local_key of node t, relative to its parent 
     j = neighbor of node t, in neighbor ordering [0,27]
-    *** the parent of my jth neighbor is the tableth neighbor of my parent
+    *** the parent of my jth neighbor is the tableth neighbor of my parent ***
     
 */
 struct ParentLUT {
     static constexpr Int entries[216] = {
         0,1,1,3,4,4,3,4,4,9,10,10,12,13,13,12,13,13,9,10,10,12,13,13,12,13,13,
         1,1,2,4,4,5,4,4,5,10,10,11,13,13,14,13,13,14,10,10,11,13,13,14,13,13,14,
-        3,4,4,13,4,4,6,7,7,12,13,13,12,13,13,15,16,16,12,13,13,12,13,13,15,16,16,
-        4,4,5,13,4,5,7,7,8,13,13,14,13,13,14,16,16,17,13,13,14,13,13,14,16,16,17,
+        3,4,4,3,4,4,6,7,7,12,13,13,12,13,13,15,16,16,12,13,13,12,13,13,15,16,16,
+        4,4,5,4,4,5,7,7,8,13,13,14,13,13,14,16,16,17,13,13,14,13,13,14,16,16,17,
         9,10,10,12,13,13,12,13,13,9,10,10,12,13,13,12,13,13,18,19,19,21,22,22,21,22,22,
         10,10,11,13,13,14,13,13,14,10,10,11,13,13,14,13,13,14,19,19,20,22,22,23,22,22,23,
         12,13,13,12,13,13,15,16,16,12,13,13,12,13,13,15,16,16,21,22,22,21,22,22,24,25,25,
         13,13,14,13,13,14,16,16,17,13,13,14,13,13,14,16,16,17,22,22,23,22,22,23,25,25,26};
-    
+        
     KOKKOS_INLINE_FUNCTION
-    val(const Int& i, const Int& j) const {return entries[27*i+j];}
+    static Int val(const Int& i, const Int& j) {return entries[27*i+j];}
 };
 
 
@@ -61,20 +113,22 @@ struct ParentLUT {
     
     i = local_key of node t, relative to its parent 
     j = neighbor of node t, in neighbor ordering [0,27]
-    *** my jth neighbor is the tableth child of its parent
+    *** my jth neighbor is the tableth child of its parent ***
 */
 struct ChildLUT {
-    static constexpr Int entries[216] = {7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,7,6,7,5,4,5,7,6,7,
+    static constexpr Int entries[216] = {7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,3,2,3,5,4,5,1,0,1,
                                          6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,
                                          5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,
                                          4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,
                                          3,2,3,1,0,1,3,2,3,7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,
                                          2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,
-                                         1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,0,1,0,
+                                         1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,
                                          0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0};
+                                         
+                                         
     
     KOKKOS_INLINE_FUNCTION
-    val(const Int& i, const Int& j) const {return entries[27*i+j];}
+    static Int val(const Int& i, const Int& j) {return entries[27*i+j];}
 };
 
 }}

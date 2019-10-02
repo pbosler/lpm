@@ -2,6 +2,7 @@
 
 #include "LpmDefs.hpp"
 #include "LpmOctreeUtil.hpp"
+#include "LpmOctreeLUT.hpp"
 #include "LpmBox3d.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Sort.hpp"
@@ -33,6 +34,9 @@ ko::initialize(argc, argv);
     host_pts(5,1) = 0.91;
     host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
+    
+    std::cout << "parentLUT(4,5) = " << Octree::ParentLUT::val(4,5) << "\n";
+    std::cout << "childLUT(4,5) = " << Octree::ChildLUT::val(4,5) << "\n";
     
     Octree::BBox box;
     ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), Octree::BBoxReducer<Host>(box));
@@ -222,7 +226,7 @@ ko::initialize(argc, argv);
         ko::View<Octree::key_type*> nodeLevelDKeys("nld_keys",nnodes);
         ko::View<Index*> nodeLevelDPointIdx("nld_pt_idx", nnodes);
         ko::View<Index*> nodeLevelDPointCnt("nld_pt_cnt", nnodes);
-        ko::View<Octree::key_type*> nodeLevelDPointInNode("nld_pt_in_node", npts);
+        ko::View<Index*> nodeLevelDPointInNode("nld_pt_in_node", npts);
         
 //         ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
 //             if (i==0 || node_nums(i) > 0 ) {

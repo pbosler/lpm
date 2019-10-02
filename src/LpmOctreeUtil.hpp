@@ -384,7 +384,7 @@ struct NodeFillFunctor {
     Int level;
     Int max_depth;
     
-    NodeFillFunctor(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<key_type*>& pn,
+    NodeFillFunctor(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<Index*>& pn,
         const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
         const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : pt_idx(ps), pt_ct(pc), pt_in_node(pn),
         keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
