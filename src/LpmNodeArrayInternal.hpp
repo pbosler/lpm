@@ -148,17 +148,24 @@ class NodeArrayInternal {
             ko::View<key_type*> pkeys("parent_keys", nparents);
             ko::parallel_for(nparents, ParentNodeFunctor(pkeys, lower.node_keys, level, max_depth));
             
-            /// augment keys to make sure included nodes' siblings are also included
+            key_type nnodes;
             ko::View<Index*> node_nums("node_nums", nparents);
             ko::View<Index*> node_address("node_address", nparents);
-            ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0,nparents),
-                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
-            ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0,nparents),
-                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
-            n_view_type last_address = ko::subview(node_address, nparents-1);
-            auto la_host = ko::create_mirror_view(last_address);
-            ko::deep_copy(la_host, last_address);
-            const key_type nnodes = la_host() + 8;
+            if (level > 0) {
+                /// augment keys to make sure included nodes' siblings are also included   
+                ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0,nparents),
+                    NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0,nparents),
+                    NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                n_view_type last_address = ko::subview(node_address, nparents-1);
+                auto la_host = ko::create_mirror_view(last_address);
+                ko::deep_copy(la_host, last_address);
+                nnodes = la_host() + 8;
+            }
+            else {
+                nnodes = 1;
+            }
+            
             
             std::ostringstream ss;
             ss << "node_keys" << level;
@@ -172,7 +179,7 @@ class NodeArrayInternal {
             ss << "node_pt_ct" << level;
             node_pt_ct = ko::View<Index*>(ss.str(), nnodes);
             ss.str("");
-            if (level>1) {
+            if (level>0) {
                 ss << "node_parent" << level;
                 node_parent = ko::View<Index*>(ss.str(), nnodes);
                 ss.str("");
@@ -182,6 +189,7 @@ class NodeArrayInternal {
             
             auto setup_policy = ExeSpaceUtils<>::get_default_team_policy(nparents,8);
             ko::parallel_for(setup_policy, NodeSetupFunctor(node_keys, node_address, pkeys, level, max_depth));
+            
             
             ko::parallel_for(setup_policy, NodeFillInternal(node_pt_idx, node_pt_ct, node_kids, 
                 lower.node_parent, pkeys, lower.node_keys, lower.node_pt_idx, lower.node_pt_ct, node_address, 

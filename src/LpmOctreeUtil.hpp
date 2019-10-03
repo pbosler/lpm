@@ -364,7 +364,7 @@ struct NodeSetupFunctor {
         if (new_parent) {
             const key_type pkey = parent_key(keys_in(i), level, max_depth);
             //const key_type first_kid = 8*i; // bug here
-            ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Int& j) {
+            ko::parallel_for(ko::TeamThreadRange(mbr, (level>0 ? 8 : 1)), KOKKOS_LAMBDA (const Int& j) {
                 keys_out(node_address(i)+j) = node_key(pkey, j, level, max_depth);
             });
         }

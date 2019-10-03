@@ -38,6 +38,9 @@ ko::initialize(argc, argv);
     NodeArrayInternal nextlev(leaves);
     
     NodeArrayInternal topLevel(nextlev);
+    
+    NodeArrayInternal root(topLevel);
+    std::cout << root.infoString();
     std::cout << topLevel.infoString();
     std::cout << nextlev.infoString();
     std::cout << leaves.infoString();

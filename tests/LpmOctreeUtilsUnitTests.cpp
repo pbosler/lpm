@@ -35,8 +35,18 @@ ko::initialize(argc, argv);
     host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
     
-    std::cout << "parentLUT(4,5) = " << Octree::ParentLUT::val(4,5) << "\n";
-    std::cout << "childLUT(4,5) = " << Octree::ChildLUT::val(4,5) << "\n";
+    ko::View<Octree::ParentLUT> ptable("ParentLUT");
+//     auto phost = ko::create_mirror_view(ptable);
+//     phost() = Octree::ParentLUT();
+//     ko::deep_copy(ptable, phost);
+    ko::View<Octree::ChildLUT> ctable("ChildLUT");
+//     auto chost = ko::create_mirror_view(ctable);
+//     chost() = Octree::ChildLUT();
+//     ko::deep_copy(ctable, chost);
+    ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
+        printf("childLUT(4,5) = %d\n", Octree::table_val(4,5,ctable));
+        printf("parentLUT(4,5) = %d\n", Octree::table_val(4,5,ptable));
+    });
     
     Octree::BBox box;
     ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), Octree::BBoxReducer<Host>(box));
