@@ -36,16 +36,12 @@ ko::initialize(argc, argv);
     ko::deep_copy(pts, host_pts);
     
     ko::View<Octree::ParentLUT> ptable("ParentLUT");
-//     auto phost = ko::create_mirror_view(ptable);
-//     phost() = Octree::ParentLUT();
-//     ko::deep_copy(ptable, phost);
     ko::View<Octree::ChildLUT> ctable("ChildLUT");
-//     auto chost = ko::create_mirror_view(ctable);
-//     chost() = Octree::ChildLUT();
-//     ko::deep_copy(ctable, chost);
+    ko::View<Octree::NeighborsAtVertexLUT> nvtable("NeighborsAtVertexLUT");
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
         printf("childLUT(4,5) = %d\n", Octree::table_val(4,5,ctable));
         printf("parentLUT(4,5) = %d\n", Octree::table_val(4,5,ptable));
+        printf("neighborsAtVertexLUT(4,5) = %d\n", Octree::table_val(4,5,nvtable));
     });
     
     Octree::BBox box;

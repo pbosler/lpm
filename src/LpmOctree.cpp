@@ -92,12 +92,66 @@ void Octree::init() {
     
     /// compute vertex relations
     std::vector<Index> nverts(max_depth+1);
+    std::vector<Index> vbase(max_depth+1);
+    vbase[0] = 0;
     sum = 0;
     for (Int lev=0; lev<=max_depth; ++lev) {
         nverts[lev] = nvertsAtLevel(lev);
         sum += nverts[lev];
     }
+    for (Int lev=1; lev<=max_depth; ++lev) {
+        vbase[lev] = 0;
+        for (Int i=0; i<lev; ++i)
+            vbase[lev] += nverts[i];
+    }
     vertex_nodes = ko::View<Index*[8]>("vertex_nodes", sum);
+    std::vector<ko::View<Index*[8]>> vert_nodes;
+    std::vector<ko::View<Index*[8]>> node_verts;
+    for (Int lev=1; lev<=max_depth; ++lev) {
+        auto node_policy = ExeSpaceUtils<>::get_default_team_policy(nnodes_at_level[lev],8);
+        // allocate views for level
+        ko::View<Index*[8]> vert_owners("vertex_owners", nnodes_at_level[lev]);
+        vert_nodes[lev] = ko::View<Index*[8]>("vert_nodes_lev", nverts[lev]);
+        node_verts[lev] = ko::View<Index*[8]>("node_verts_lev", nnodes_at_level[lev]);
+        
+        // each node, in parallel, determines the owning node of its vertices
+        ko::parallel_for(node_policy, VertexOwnerFunctor(vert_owners, node_keys, node_neighbors));
+        
+        // each node, in parallel, flags the vertices it owns
+        ko::View<Index*[8]> vert_flags("vertex_flags", nverts[lev]);
+        ko::parallel_for(node_policy, VertexFlagFunctor(vert_flags, vert_owners));
+        // count the number of vertices each node owns
+        ko::View<Index*> nverts_at_node("nverts_at_node", nnodes_at_level[lev]);
+        ko::parallel_for(node_policy, NVertsAtNodeFunctor(nverts_at_node, vert_flags));
+        // determine the unique address of each vertex by its owning node
+        ko::View<Index*> vert_address("vertex_address", nverts[lev]);
+        ko::parallel_scan(nnodes_at_level[lev], VertexAddressFunctor(vert_address, nverts_at_node));
+        
+        // fill the level's vertex array
+        ko::parallel_for(node_policy, VertexNodeFunctor(vert_nodes[lev], node_verts[lev], 
+            vert_owners, vert_address, node_neighbors));
+    }
+    // concatenate levels into vertex_nodes, node_vertices
+    auto root_vnodes = ko::subview(vertex_nodes, std::make_pair(0,8), ko::ALL);
+    auto root_nverts = ko::subview(node_vertices, 0, ko::ALL);
+    auto hroot_vn = ko::create_mirror_view(root_vnodes);
+    auto hroot_nv = ko::create_mirror_view(root_nverts);
+    for (Int i=0; i<8; ++i) {
+        for (Int j=0; j<8; ++j) {
+            hroot_vn(i,j) = (j != 7-i ? NULL_IND : 0);
+        }
+        hroot_nv(i) = i;
+    }
+    ko::deep_copy(root_vnodes, hroot_vn);
+    ko::deep_copy(root_nverts, hroot_nv);
+    for (Int lev=1; lev<=max_depth; ++lev) {
+        auto vertex_view_range = std::make_pair(vbase[lev], vbase[lev] + nverts[lev]);
+        auto node_view_range = std::make_pair(hbase(lev), hbase(lev) + nnodes_at_level[lev]);
+        auto nv_view = ko::subview(node_vertices, node_view_range, ko::ALL());
+        auto vn_view = ko::subview(vertex_nodes, vertex_view_range, ko::ALL());
+        ko::deep_copy(nv_view, node_verts[lev]);
+        ko::deep_copy(vn_view, vert_nodes[lev]);
+    }
 }
 
 }}

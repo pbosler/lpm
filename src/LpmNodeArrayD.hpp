@@ -106,14 +106,6 @@ class NodeArrayD {
         */
         ko::parallel_reduce(pts.extent(0), BoxFunctor(pts), BBoxReducer<Dev>(box));
         
-//         DEBUG START
-//         std::cout << "NodeArrayD: step 1 done.\n";
-//         auto hb = ko::create_mirror_view(box);
-//         ko::deep_copy(hb, box);
-//         std::cout << "\tbox : " << hb();
-//         END DEBUG
-//         
-        
         /// step 2: Encode node key/point index pairs
         /**
             Input: points
@@ -127,7 +119,7 @@ class NodeArrayD {
         ko::parallel_for(pts.extent(0), EncodeFunctor(pt_codes, pts, box, level, max_depth));
         
         ko::sort(pt_codes);
-        //std::cout << "NodeArrayD: step 2 done.\n";
+
         /// step 3: Sort point array
         /**
             Input: points, sorted point codes
@@ -141,8 +133,7 @@ class NodeArrayD {
             ko::parallel_for(pts.extent(0), PermuteFunctor(sort_pts, orig_ids, pts, pt_codes));
             pts = sort_pts;
         }
-        //std::cout << "NodeArrayD: step 3 done.\n";
-        
+
         /// step 4: Determine points contained by each node
         /**
             Input: point codes
@@ -172,8 +163,6 @@ class NodeArrayD {
         ko::View<Index*[2]> pt_inds("pt_inds", node_count_host());
         ko::parallel_for(pts.extent(0), UniqueNodeFunctor(ukeys, pt_inds, node_flags, pt_codes));
         
-        //std::cout << "NodeArrayD: step 4 done.\n";
-        
         /// step 5: Ensure that each node has a full set of siblings
         /**
             Input: keys for nodes that contain points
@@ -192,8 +181,6 @@ class NodeArrayD {
             NodeAddressFunctor(node_nums, node_address, ukeys, level, max_depth));
         ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0, node_count_host()),
             NodeAddressFunctor(node_nums, node_address, ukeys, level, max_depth));
-        
-        //std::cout << "NodeArrayD: step 5 done.\n";
         
         /// step 6: Make NodeArrayD
         /**
@@ -227,14 +214,13 @@ class NodeArrayD {
         ss.str("");
         ss << "node_parent" << level;
         node_parent = ko::View<Index*>(ss.str(), nnodes);
-       // std::cout << "NodeArrayD: step 6 allocations done.\n";
+
         auto policy6a = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 8);
         ko::parallel_for(policy6a, NodeSetupFunctor(node_keys, node_address, ukeys, level, max_depth));
-        //std::cout << "NodeArrayD: step 6 setup done.\n";
+
         auto policy6b = ExeSpaceUtils<>::get_default_team_policy(ukeys.extent(0), 128);
         ko::parallel_for(policy6b, NodeFillFunctor(node_pt_idx, node_pt_ct, pt_in_node, ukeys, 
             node_address, pt_inds, level, max_depth));
-        //std::cout << "NodeArrayD: step 6 done.\n";
     };
     
     std::string infoString() const;
