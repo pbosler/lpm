@@ -144,6 +144,48 @@ struct NeighborsAtVertexLUT {
 };
 
 
+struct NeighborsAtEdgeLUT {
+    const Int nrows = 12;
+    const Int entries[48] = {1,4,10,13, // 0
+                             3,4,12,13, // 1
+                             4,7,13,16, // 2
+                             4,5,13,14, // 3
+                             9,10,12,13, // 4
+                             10,11,13,14, // 5
+                             10,13,19,22, // 6
+                             12,13,21,22, // 7
+                             13,14,22,23, // 8
+                             13,16,22,25, // 9
+                             12,13,15,16, // 10
+                             13,14,16,17}; // 11
+};
+
+struct NeighborsAtFaceLUT {
+    const Int nrows = 6;
+    const Int entries[12] = {4,13, // 0
+                             10,13, // 1
+                             13,22, // 2
+                             13,16, // 3
+                             12,13, // 4
+                             13,14}; // 5
+};
+
+struct EdgeVerticesLUT {
+    const Int nrows = 12;
+    const Int entries[24] = {0,2, // 0
+                         0,1, // 1
+                         2,3, // 2
+                         3,1, // 3
+                         0,4, // 4
+                         1,5, // 5
+                         5,4, // 6
+                         4,6, // 7
+                         5,7, // 8
+                         7,6, // 9
+                         6,2, // 10
+                         7,3}; // 11
+};
+
 template <typename TableType> KOKKOS_INLINE_FUNCTION
 Int table_val(const Int& i, const Int& j, const ko::View<TableType>& tableview) {
     return tableview().entries[tableview().nrows*i+j];
