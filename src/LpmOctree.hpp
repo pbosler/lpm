@@ -12,45 +12,72 @@
 #include "LpmNodeArrayInternal.hpp"
 #include "Kokkos_Core.hpp"
 #include <cassert>
+#include "vtkSmartPointer.h"
+#include "vtkPolyData.h"
+#include "vtkPolyDataWriter.h"
+#include "vtkPoints.h"
 
 namespace Lpm {
 namespace Octree {
 
-
-
-class Octree {
+class Tree {
     public:
         ko::View<Real*[3]> pts;
         Int max_depth;
         
         ko::View<BBox> box;
-        
+        // node arrays
         ko::View<key_type*> node_keys;
         ko::View<Index*> node_pt_idx;
         ko::View<Index*> node_pt_ct;
         ko::View<Index*> node_parents;
         ko::View<Index*[8]> node_kids;
         ko::View<Index*[27]> node_neighbors;
+        ko::View<Index*> pt_in_leaf;
+        ko::View<Index*> pt_orig_id;
+        ko::View<Index*> base_address;
+        ko::View<Index*> nnodes_per_level;
+        
+        // node connectivity arrays
         ko::View<Index*[8]> node_vertices;
         ko::View<Index*[12]> node_edges;
         ko::View<Index*[6]> node_faces;
-        ko::View<Index*> pt_in_leaf;
-        ko::View<Index*> base_address;
         
         ko::View<Index*[8]> vertex_nodes;
         ko::View<Index*[2]> edge_vertices;
         ko::View<Index*[4]> face_edges;
         bool do_connectivity;
         
-        Octree(const ko::View<Real*[3]>& p, const Int& md, const bool& do_conn=false) : pts(p), max_depth(md), 
-            pt_in_leaf("pt_in_leaf", p.extent(0)), base_address("base_address", max_depth+1),
+        typedef typename ko::View<Index*>::HostMirror hbase_type;
+        
+        Tree(const ko::View<Real*[3]>& p, const Int& md, const bool& do_conn=false) : pts(p), max_depth(md), 
+            pt_in_leaf("pt_in_leaf", p.extent(0)), pt_orig_id("pt_orig_id", p.extent(0)),
+            base_address("base_address", max_depth+1), nnodes_per_level("nnodes_per_level", max_depth+1), 
             box("bbox"), do_connectivity(do_conn) {
                 init();
             }
         
+        std::string infoString() const;
+        
     //protected:
+        /**
+            Initializes the node arrays
+        */
         void init();
-    
+        /**
+            Initializes node-vertex connectivity relations.  Must be called after init().
+        */
+        void initVertices(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
+        
+        /** 
+            Initializes node-edge connectivity.  Must be called after initVertices().
+        */
+        void initEdges(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
+        
+        /** 
+            Initializes node-face connectivity.  Must be called after initEdges().
+        */
+        void initFaces(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
 };
 
 struct NeighborhoodFunctor {
@@ -134,6 +161,66 @@ struct VertexOwnerFunctor {
     }
 };
 
+struct EdgeOwnerFunctor {
+    // output
+    ko::View<Index*[12]> owner;
+    // input
+    ko::View<key_type*> keys;
+    ko::View<Index*[27]> neighbors;
+    // local
+    ko::View<NeighborsAtEdgeLUT> netable;
+    typedef typename ko::MinLoc<key_type,Index>::value_type minloc_type;
+    
+    EdgeOwnerFunctor(ko::View<Index*[12]>& o, const ko::View<key_type*>& k, const ko::View<Index*[27]>& n) :
+        owner(o), keys(k), neighbors(n), netable("NeighborsAtEdgeLUT") {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator () (const member_type& mbr) const {
+        const Index t = mbr.league_rank();
+        ko::parallel_for(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i) {
+            minloc_type result;
+            ko::parallel_reduce(ko::ThreadVectorRange(mbr,4), [=] (const Int& j, minloc_type& loc) {
+                const Index nbr_ind = neighbors(t, table_val(i,j,netable));
+                if (nbr_ind != NULL_IND) {
+                    if (keys(nbr_ind) < loc.val) {
+                        loc.val = keys(nbr_ind);
+                        loc.loc = nbr_ind;
+                    }
+                }
+            }, ko::MinLoc<key_type,Index>(result));
+            owner(t,i) = result.loc;
+        });    
+    }
+};
+
+struct FaceOwnerFunctor {
+    // output
+    ko::View<Index*[6]> owner;
+    // input
+    ko::View<key_type*> keys;
+    ko::View<Index*[27]> neighbors;
+    // local
+    ko::View<NeighborsAtFaceLUT> nftable;
+    typedef typename ko::MinLoc<key_type, Index>::value_type minloc_type;
+    
+    FaceOwnerFunctor(ko::View<Index*[6]>& o, const ko::View<key_type*>& k, const ko::View<Index*[27]>& n) : 
+        owner(o), keys(k), neighbors(n), nftable("NeighborsAtFaceLUT") {}
+
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& team) const {
+        const Index t = team.league_rank();
+        ko::parallel_for(ko::TeamThreadRange(team,6), KOKKOS_LAMBDA (const Int& i) {
+            const Index nbr1 = neighbors(t, table_val(i,0, nftable));
+            const Index nbr2 = neighbors(t, table_val(i,1, nftable));
+            const key_type key1 = keys(nbr1);
+            const key_type key2 = keys(nbr2);
+            owner(t,i) = (key1<key2 ? nbr1 : nbr2);
+        });
+    }
+};
+
+
+
 struct VertexFlagFunctor {
     // output
     ko::View<Int*[8]> flags;
@@ -154,6 +241,52 @@ struct VertexFlagFunctor {
         ko::parallel_reduce(ko::TeamThreadRange(mbr,8), KOKKOS_LAMBDA (const Int& i, Int& nv) {
             nv += flags(t,i);
         }, nverts_at_node(t));
+    }
+};
+
+struct EdgeFlagFunctor {
+    // output
+    ko::View<Int*[12]> flags;
+    ko::View<Int*> nedges_at_node;
+    // input
+    ko::View<Index*[12]> owner;
+    
+    EdgeFlagFunctor(ko::View<Int*[12]>& f, ko::View<Int*>& ne, const ko::View<Index*[12]>& o) : flags(f),
+        nedges_at_node(ne), owner(o) {}
+        
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& mbr) const {
+        const Index t = mbr.league_rank();
+        ko::parallel_for(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i) {
+            flags(t,i) = (owner(t,i) == t ? 1 : 0);
+        });
+        mbr.team_barrier();
+        ko::parallel_reduce(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i, Int& ne) {
+            ne += flags(t,i);
+        },nedges_at_node(t));
+    }
+};
+
+struct FaceFlagFunctor {
+    // output
+    ko::View<Int*[6]> flags;
+    ko::View<Int*> nfaces_at_node;
+    // input
+    ko::View<Index*[6]> owner;
+    
+    FaceFlagFunctor(ko::View<Int*[6]>& f, ko::View<Int*> nf, const ko::View<Index*[6]>& o) : flags(f),
+        nfaces_at_node(nf), owner(o) {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& team) const {
+        const Index t = team.league_rank();
+        ko::parallel_for(ko::TeamThreadRange(team,6), KOKKOS_LAMBDA (const Int& i) {
+            flags(t,i) = (owner(t,i) == t ? 1 : 0);
+        });
+        team.team_barrier();
+        ko::parallel_reduce(ko::TeamThreadRange(team,6), KOKKOS_LAMBDA (const Int& i, Int& nf) {
+            nf += flags(t,i);
+        }, nfaces_at_node(t));
     }
 };
 
@@ -207,68 +340,13 @@ struct VertexNodeFunctor {
     }
 };
 
-struct EdgeOwnerFunctor {
-    // output
-    ko::View<Index*[12]> owner;
-    // input
-    ko::View<key_type*> keys;
-    ko::View<Index*[27]> neighbors;
-    // local
-    ko::View<NeighborsAtEdgeLUT> netable;
-    typedef typename ko::MinLoc<key_type,Index>::value_type minloc_type;
-    
-    EdgeOwnerFunctor(ko::View<Index*[12]>& o, const ko::View<key_type*>& k, const ko::View<Index*[27]>& n) :
-        owner(o), keys(k), neighbors(n), netable("NeighborsAtEdgeLUT") {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator () (const member_type& mbr) const {
-        const Index t = mbr.league_rank();
-        ko::parallel_for(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i) {
-            minloc_type result;
-            ko::parallel_reduce(ko::ThreadVectorRange(mbr,4), [=] (const Int& j, minloc_type& loc) {
-                const Index nbr_ind = neighbors(t, table_val(i,j,netable));
-                if (nbr_ind != NULL_IND) {
-                    if (keys(nbr_ind) < loc.val) {
-                        loc.val = keys(nbr_ind);
-                        loc.loc = nbr_ind;
-                    }
-                }
-            }, ko::MinLoc<key_type,Index>(result));
-            owner(t,i) = result.loc;
-        });    
-    }
-};
-
-struct EdgeFlagFunctor {
-    // output
-    ko::View<Int*[12]> flags;
-    ko::View<Int*> nedges_at_node;
-    // input
-    ko::View<Index*[12]> owner;
-    
-    EdgeFlagFunctor(ko::View<Int*[12]>& f, ko::View<Int*>& ne, const ko::View<Index*[12]>& o) : flags(f),
-        nedges_at_node(ne), owner(o) {}
-        
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-        const Index t = mbr.league_rank();
-        ko::parallel_for(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i) {
-            flags(t,i) = (owner(t,i) == t ? 1 : 0);
-        });
-        mbr.team_barrier();
-        ko::parallel_reduce(ko::TeamThreadRange(mbr,12), KOKKOS_LAMBDA (const Int& i, Int& ne) {
-            ne += flags(t,i);
-        },nedges_at_node(t));
-    }
-};
-
 struct EdgeNodeFunctor {
     // output
     ko::View<Index*[2]> edge_verts;
     ko::View<Index*[12]> node_edges;
     // input
     ko::View<Int*[12]> flags;
-    ko::View<Index*[12]> owners;
+    ko::View<Index*[12]> owner;
     ko::View<Index*> address;
     ko::View<Index*[27]> neighbors;
     ko::View<Index*[8]> vertices;
@@ -276,6 +354,12 @@ struct EdgeNodeFunctor {
     ko::View<NeighborsAtEdgeLUT> netable;
     ko::View<EdgeVerticesLUT> evtable;
     ko::View<NeighborEdgeComplementLUT> nectable;
+    
+    EdgeNodeFunctor(ko::View<Index*[2]>& ev, ko::View<Index*[12]>& ne, const ko::View<Int*[12]>& f,
+        const ko::View<Index*[12]>& o, const ko::View<Index*>& a, const ko::View<Index*[27]>& nn,
+        const ko::View<Index*[8]>& nv) : edge_verts(ev), node_edges(ne), flags(f), owner(o), 
+            address(a), neighbors(nn), vertices(nv), netable("NeighborsAtEdgeLUT"),
+            evtable("EdgeVerticesLUT"), nectable("NeighborEdgeComplementLUT") {}
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const member_type& mbr) const {
@@ -295,7 +379,7 @@ struct EdgeNodeFunctor {
         mbr.team_barrier();
         
         ko::parallel_for(ko::TeamThreadRange(mbr, 12), KOKKOS_LAMBDA (const Int& i) {
-            if (owners(t,i) == t) {
+            if (owner(t,i) == t) {
                 const Index e = address(t) + local_scan[i];
                 edge_verts(e,0) = vertices(t, table_val(i,0, evtable));
                 edge_verts(e,1) = vertices(t, table_val(i,1, evtable));
@@ -309,6 +393,63 @@ struct EdgeNodeFunctor {
     
     size_t team_shmem_size(int team_size) const {
         return 12*sizeof(Int);
+    }
+};
+
+struct FaceNodeFunctor {
+    // output
+    ko::View<Index*[4]> face_edges;
+    ko::View<Index*[6]> node_faces;
+    // input
+    ko::View<Int*[6]> flags;
+    ko::View<Index*[6]> owner;
+    ko::View<Index*> address;
+    ko::View<Index*[27]> neighbors;
+    ko::View<Index*[12]> edges;
+    // local
+    ko::View<NeighborsAtFaceLUT> nftable;
+    ko::View<FaceEdgesLUT> fetable;
+    ko::View<NeighborFaceComplementLUT> nfctable;
+    
+    FaceNodeFunctor(ko::View<Index*[4]>& fe, ko::View<Index*[6]>& nf, const ko::View<Int*[6]>& f,
+        const ko::View<Index*[6]>& o, const ko::View<Index*>& a, const ko::View<Index*[27]>& nn, 
+        const ko::View<Index*[12]>& ne) : face_edges(fe), node_faces(nf), flags(f), owner(o),
+            address(a), neighbors(nn), edges(ne), nftable("NeighborsAtFaceLUT"), fetable("FaceEdgesLUT"),
+            nfctable("NeighborFaceComplementLUT") {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& team) const {
+        const Index t = team.league_rank();
+        
+        Int* local_scan = (Int*)team.team_shmem().get_shmem(6*sizeof(Int));
+        
+        ko::parallel_for(ko::TeamThreadRange(team, 6), KOKKOS_LAMBDA (const Int& i) {
+            Int flagi = 0;
+            ko::parallel_reduce(ko::ThreadVectorRange(team,i), [=] (const Int& j, Int& ct) {
+                ct += flags(t,j);
+            }, flagi);
+            ko::single(ko::PerThread(team), [=] () {
+                local_scan[i] = flagi;
+            });
+        });
+        team.team_barrier();
+        
+        ko::parallel_for(ko::TeamThreadRange(team, 6), KOKKOS_LAMBDA (const Int& i) {
+            if (owner(t,i) == t) {
+                const Index f = address(t) + local_scan[i];
+                ko::parallel_for(ko::ThreadVectorRange(team, 4), [=] (const Int& j) {
+                    face_edges(f,j) = edges(t, table_val(i,j, fetable));
+                });
+                const Index nbr0 = neighbors(t, table_val(i,0, nftable));
+                const Index nbr1 = neighbors(t, table_val(i,1, nftable));
+                node_faces(nbr0, table_val(i,0, nfctable)) = f;
+                node_faces(nbr1, table_val(i,1, nfctable)) = f;
+            }
+        });   
+    }
+    
+    size_t team_shmem_size(int team_size) const {
+        return 6*sizeof(Int);
     }
 };
 

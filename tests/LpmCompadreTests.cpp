@@ -233,9 +233,6 @@ Input::Input(int argc, char* argv[]) {
         if (token == "-d" || token == "-tree") {
             max_depth = std::stoi(argv[++i]);
         }
-        else if (token == "-nlon") {
-            tgt_nlon = std::stoi(argv[++i]);
-        }
         else if (token == "-m") {
             mfilename = argv[++i];
         }
