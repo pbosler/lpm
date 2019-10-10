@@ -110,6 +110,37 @@ key_type local_key(const key_type& k, const int& lev, const Int& max_depth=MAX_O
 }
 
 KOKKOS_INLINE_FUNCTION
+BBox box_from_key(const key_type& k, const BBox& rbox, const Int& level, const Int& max_depth) {
+    Real cx, cy, cz;
+    boxCentroid(cx, cy, cz, rbox);
+    Real half_len = 0.5*(rbox.xmax - rbox.xmin);
+    for (Int i=1; i<=level; ++i) {
+        const key_type lkey = local_key(k, i, max_depth);
+        if ((lkey & 1) > 0) {
+            cz += half_len;
+        }
+        else {
+            cz -= half_len;
+        }
+        if ((lkey & 2) > 0) {
+            cy += half_len;
+        }
+        else {
+            cy -= half_len;
+        }
+        if ((lkey & 4) > 0) {
+            cx += half_len;
+        }
+        else {
+            cx -= half_len;
+        }
+        half_len *= 0.5;
+    }
+    return BBox(cx-half_len, cx+half_len, cy-half_len, cy+half_len, cz-half_len, cz+half_len);
+}
+
+
+KOKKOS_INLINE_FUNCTION
 key_type node_key(const key_type& pk, const key_type& lk, const int& lev, const int& max_depth) {
     const key_type pzb = 3*max_depth - 3*(lev-1);
     const key_type sloc = (lk << (pzb-3));
@@ -363,7 +394,6 @@ struct NodeSetupFunctor {
         }
         if (new_parent) {
             const key_type pkey = parent_key(keys_in(i), level, max_depth);
-            //const key_type first_kid = 8*i; // bug here
             ko::parallel_for(ko::TeamThreadRange(mbr, (level>0 ? 8 : 1)), KOKKOS_LAMBDA (const Int& j) {
                 keys_out(node_address(i)+j) = node_key(pkey, j, level, max_depth);
             });

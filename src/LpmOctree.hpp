@@ -270,11 +270,12 @@ struct EdgeNodeFunctor {
     ko::View<Int*[12]> flags;
     ko::View<Index*[12]> owners;
     ko::View<Index*> address;
-    ko::View<Index*[27]> neighbors
+    ko::View<Index*[27]> neighbors;
     ko::View<Index*[8]> vertices;
     // local
     ko::View<NeighborsAtEdgeLUT> netable;
     ko::View<EdgeVerticesLUT> evtable;
+    ko::View<NeighborEdgeComplementLUT> nectable;
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const member_type& mbr) const {
@@ -296,11 +297,11 @@ struct EdgeNodeFunctor {
         ko::parallel_for(ko::TeamThreadRange(mbr, 12), KOKKOS_LAMBDA (const Int& i) {
             if (owners(t,i) == t) {
                 const Index e = address(t) + local_scan[i];
-                edge_verts(e,0) = vertices(nbr_ind, table_val(j,0, evtable));
-                edge_verts(e,1) = vertices(nbr_ind, table_val(j,1, evtable));
+                edge_verts(e,0) = vertices(t, table_val(i,0, evtable));
+                edge_verts(e,1) = vertices(t, table_val(i,1, evtable));
                 ko::parallel_for(ko::ThreadVectorRange(mbr, 4), [=] (const Int& j) {
                     const Index nbr_ind = neighbors(t, table_val(i,j,netable));
-                    node_edges(nbr_ind, i) = e;
+                    node_edges(nbr_ind, table_val(i,j, nectable)) = e;
                 });
             }
         });

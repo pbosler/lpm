@@ -187,7 +187,7 @@ void Octree::init() {
             for (Int i=0; i<lev; ++i) {
                 ebase[lev] += nedges_at_level[i];
             }
-            edge_vertices[lev] = ko::View<Index*[2]>("edge_verts_lev", nedges_at_level[lev]);
+            edge_verts[lev] = ko::View<Index*[2]>("edge_verts_lev", nedges_at_level[lev]);
             node_edges[lev] = ko::View<Index*[12]>("node_edges_lev", nnodes_at_level[lev]);
         }
     }

@@ -14,7 +14,7 @@ std::string NodeArrayD::infoString() const {
     auto bv = ko::create_mirror_view(box);
     ko::deep_copy(bv, box);
     ss << "NodeArrayD info:\n";
-    ss << "\tbounding box: " << bv();
+    ss << "\tbounding box: " << bv() << "\tedge_len <= " << longestEdge(bv()) << " ar = " << boxAspectRatio(bv()) << "\n";
     ss << "\tlowest level = " << level << " (<= " << max_depth << " allowed)\n";
     
     auto keys = ko::create_mirror_view(node_keys);
@@ -28,10 +28,12 @@ std::string NodeArrayD::infoString() const {
     ss << "\tNodes:\n";
     const Index nnodes = node_keys.extent(0);
     for (Index i=0; i<nnodes; ++i) {
+        const BBox nbox = box_from_key(keys(i), bv(), level, max_depth);
         ss << "node(" << std::setw(8)<< i << "): key = " << std::setw(8) << keys(i) 
            << " " << std::bitset<3*MAX_OCTREE_DEPTH>(keys(i))
            << " pt_start = " << pt_start(i) << " pt_ct = " << pt_ct(i) 
-           << " parent = " << prts(i) << "\n";
+           << " parent = " << prts(i) 
+           << "\tbox = " << nbox << "\tedge_len <= " << longestEdge(nbox) << " ar = " << boxAspectRatio(nbox) << "\n";
     }
     
     auto pin = ko::create_mirror_view(pt_in_node);

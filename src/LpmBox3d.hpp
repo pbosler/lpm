@@ -23,6 +23,7 @@ struct BBox {
     KOKKOS_INLINE_FUNCTION
     BBox() {init();}
 
+    KOKKOS_INLINE_FUNCTION
     BBox(const Real& xl, const Real& xr, const Real& yl, const Real& yr, const Real& zl, const Real& zr) :
         xmin(xl), xmax(xr), ymin(yl), ymax(yr), zmin(zl), zmax(zr) {}
 
