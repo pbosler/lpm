@@ -88,12 +88,36 @@ ko::initialize(argc, argv);
     trisphere.treeInit(mesh_depth, icseed);
     trisphere.updateDevice();
     ko::View<Real*[3]> src_crds = sourceCoords<SphereGeometry,TriFace>(trisphere);
-    
+
     NodeArrayD leaves(src_crds, octree_depth, octree_depth);
+    auto leaf_keys_host = ko::create_mirror_view(leaves.node_keys);
+    auto src_host = ko::create_mirror_view(src_crds);
+    auto leaf_pt_start = ko::create_mirror_view(leaves.node_pt_idx);
+    auto leaf_pt_ct = ko::create_mirror_view(leaves.node_pt_ct);
+    auto rbox_host = ko::create_mirror_view(leaves.box);
+    ko::deep_copy(rbox_host, leaves.box);
+    ko::deep_copy(src_host, src_crds);
+    ko::deep_copy(leaf_keys_host, leaves.node_keys);
+    ko::deep_copy(leaf_pt_start, leaves.node_pt_idx);
+    ko::deep_copy(leaf_pt_ct, leaves.node_pt_ct);
+    for (Index i=0; i<leaf_keys_host.extent(0); ++i) {
+        BBox node_box = box_from_key(leaf_keys_host(i),rbox_host(), octree_depth, octree_depth);
+        for (Index j=0; j<leaf_pt_ct(i); ++j) {
+            if (!boxContainsPoint(node_box, ko::subview(src_host, leaf_pt_start(i)+j, ko::ALL()))) {
+                std::cout << "Found error: box " << node_box;
+                std::cout << "\t does not contain point " << leaf_pt_start(i)+j << " (";
+                for (int k=0; k<3; ++k) {
+                    std::cout << src_host(leaf_pt_start(i)+j,k) << " ";
+                }
+                std::cout << ")\n";
+            }
+        }
+    }
+    
     NodeArrayInternal nextlev(leaves);
     std::ofstream of("node_array_d_test_output.txt");
     of << leaves.infoString();
-    of << nextlev.infoString();
+//     of << nextlev.infoString();
     of.close();
     }
     std::cout << "program complete." << std::endl;

@@ -165,8 +165,8 @@ Real volume(const BBox& b) {
     return dx*dy*dz;
 }
 
-KOKKOS_INLINE_FUNCTION
-bool boxContainsPoint(const BBox& b, const Real p[3]) {
+template <typename CPT> KOKKOS_INLINE_FUNCTION
+bool boxContainsPoint(const BBox& b, const CPT& p) {
     const bool inx = (b.xmin <= p[0] && p[0] <= b.xmax);
     const bool iny = (b.ymin <= p[1] && p[1] <= b.ymax);
     const bool inz = (b.zmin <= p[2] && p[2] <= b.zmax);

@@ -61,7 +61,7 @@ struct NodeFillInternal {
     void operator() (const member_type& mbr) const {
         const Index i = mbr.league_rank();
         const Index address = node_address(i) + local_key(keys_in(i), level, max_depth);
-        const Index first_kid = binarySearchKeys(keys_in(i), keys_from_lower);
+        const Index first_kid = binarySearchKeys(keys_in(i), keys_from_lower, true);
         pt_idx(address) = pt_start_from_lower(first_kid);
         ko::parallel_for(ko::TeamThreadRange(mbr, 8), KOKKOS_LAMBDA (const Index& j) {
             parents_from_lower(first_kid+j) = address;

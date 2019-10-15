@@ -25,6 +25,7 @@ static constexpr Int MAX_OCTREE_DEPTH=10;
 template <typename T=key_type, typename IntT2=int> 
 KOKKOS_INLINE_FUNCTION
 T pintpow2(IntT2 k) {
+    assert(k>= 0);
     T result = 1;
     while (k>0) {
         result *= 2;
@@ -36,6 +37,7 @@ T pintpow2(IntT2 k) {
 template <typename T=key_type, typename IntT2=int>
 KOKKOS_INLINE_FUNCTION
 T pintpow8(IntT2 k) {
+    assert(k>=0);
     T result = 1;
     while (k>0) {
         result *= 8;
@@ -51,7 +53,7 @@ T pintpow8(IntT2 k) {
     node i's parent in the x,y,z direction
 */
 template <typename CPtType> KOKKOS_INLINE_FUNCTION
-key_type compute_key(const CPtType& pos, const int& level_depth, const int& max_depth, BBox& bb) {
+key_type compute_key(const CPtType& pos, const int& level_depth, const int& max_depth, BBox bb) {
 	assert(max_depth>=0 && max_depth<=10);
     Real cx, cy, cz; // crds of box centroid
     if (std::abs(boxAspectRatio(bb) - 1) > ZERO_TOL) {
@@ -62,30 +64,31 @@ key_type compute_key(const CPtType& pos, const int& level_depth, const int& max_
     key_type key = 0;
     const Int nbits = 3*max_depth; // key length in bits
     for (int i=1; i<=level_depth; ++i) {
-    	const int b = nbits - 3*i;
-    	if (pos(2) > cz) {
+        half_len *= 0.5;
+    	const int b = nbits - 3*i; // z-bit for level
+    	if (pos(2) >= cz) {
             key += pintpow2(b);
     		cz += half_len;
     	}
     	else {
     		cz -= half_len;
     	}
-    	if (pos(1) > cy) {
+    	if (pos(1) >= cy) {
             key += pintpow2(b+1);
     		cy += half_len;
     	}
     	else {
     		cy -= half_len;
     	}
-    	if (pos(0) > cx) {
+    	if (pos(0) >= cx) {
             key += pintpow2(b+2);
     		cx += half_len;
     	}
     	else {
     		cx -= half_len;
     	}
-    	half_len *= 0.5;
 	}	
+// 	printf("pt = (%f,%f,%f) key = %u (cx,cy,cz) = (%f,%f,%f)\n", pos(0), pos(1), pos(2), key, cx, cy, cz);
     return key;
 }
 
@@ -115,6 +118,7 @@ BBox box_from_key(const key_type& k, const BBox& rbox, const Int& level, const I
     boxCentroid(cx, cy, cz, rbox);
     Real half_len = 0.5*(rbox.xmax - rbox.xmin);
     for (Int i=1; i<=level; ++i) {
+        half_len *= 0.5;
         const key_type lkey = local_key(k, i, max_depth);
         if ((lkey & 1) > 0) {
             cz += half_len;
@@ -134,7 +138,7 @@ BBox box_from_key(const key_type& k, const BBox& rbox, const Int& level, const I
         else {
             cx -= half_len;
         }
-        half_len *= 0.5;
+//         printf("k = %u, (cx,cy,cz) = (%f,%f,%f)\n", k, cx,cy,cz);
     }
     return BBox(cx-half_len, cx+half_len, cy-half_len, cy+half_len, cz-half_len, cz+half_len);
 }
@@ -258,7 +262,7 @@ template <typename CVT> KOKKOS_INLINE_FUNCTION
 Index binarySearchCodes(const key_type& key, const CVT& sorted_codes, const bool& get_first) {
 	Index low = 0;
 	Index high = sorted_codes.extent(0)-1;
-	Index result = -1;
+	Index result = NULL_IND;
 	while (low <= high) {
 		Index mid = (low + high) / 2;
 		const key_type mid_key = decode_key(sorted_codes(mid));
@@ -282,16 +286,21 @@ Index binarySearchCodes(const key_type& key, const CVT& sorted_codes, const bool
 }
 
 template <typename CVT> KOKKOS_INLINE_FUNCTION
-Index binarySearchKeys(const key_type& key, const CVT& sorted_keys) {
+Index binarySearchKeys(const key_type& key, const CVT& sorted_keys, const bool& get_first) {
     Index low = 0;
     Index high = sorted_keys.extent(0)-1;
-    Index result = -1;
+    Index result = NULL_IND;
     while (low <= high) {
         Index mid = (low+high)/2;
         const key_type mid_key = sorted_keys(mid);
         if (key == mid_key) {
             result = mid;
-            high = mid-1;
+            if (get_first) {
+                high = mid-1;
+            }
+            else {
+                low = mid+1;
+            }
         }
         else if (key < mid_key) {
             high = mid-1;
@@ -312,7 +321,7 @@ struct UniqueNodeFunctor {
     ko::View<Index*> flags;
     ko::View<code_type*> codes_in;
     
-    UniqueNodeFunctor(ko::View<key_type*>& oc, ko::View<Index*[2]> io,
+    UniqueNodeFunctor(ko::View<key_type*>& oc, ko::View<Index*[2]>& io,
     	const ko::View<Index*>& f, const ko::View<code_type*>& ic) : 
         flags(f), codes_in(ic), keys_out(oc), inds_out(io) {}
     

@@ -70,6 +70,10 @@ ADD_TEST(lpmCompadreTest lpmCompadre)
 #TARGET_LINK_LIBRARIES(lpmGaussGrid lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 #ADD_TEST(lpmGaussGridTest lpmGaussGrid)
 
+ADD_EXECUTABLE(lpmOctreeKeyTests LpmOctreeKeyTests.cpp)
+TARGET_LINK_LIBRARIES(lpmOctreeKeyTests lpm kokkos ${CMAKE_DL_LIBS})
+ADD_TEST(lpmOctreeKeyTests lpmOctreeKeyTests)
+
 ADD_EXECUTABLE(lpmOctreeLUTUnitTest LpmOctreeLUTUnitTests.cpp)
 TARGET_LINK_LIBRARIES(lpmOctreeLUTUnitTest lpm kokkos ${CMAKE_DL_LIBS})
 ADD_TEST(lpmOctreeLUTUnitTest lpmOctreeLUTUnitTest)

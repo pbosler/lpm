@@ -17,6 +17,7 @@ using namespace Lpm;
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv); 
 {
+    Int nerr = 0;
     const int npts = 6;
     const int max_depth = 4;
     const int tree_lev = 3;
@@ -34,15 +35,6 @@ ko::initialize(argc, argv);
     host_pts(5,1) = 0.91;
     host_pts(5,2) = 0.015;
     ko::deep_copy(pts, host_pts);
-    
-    ko::View<Octree::ParentLUT> ptable("ParentLUT");
-    ko::View<Octree::ChildLUT> ctable("ChildLUT");
-    ko::View<Octree::NeighborsAtVertexLUT> nvtable("NeighborsAtVertexLUT");
-    ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
-        printf("childLUT(4,5) = %d\n", Octree::table_val(4,5,ctable));
-        printf("parentLUT(4,5) = %d\n", Octree::table_val(4,5,ptable));
-        printf("neighborsAtVertexLUT(4,5) = %d\n", Octree::table_val(4,5,nvtable));
-    });
     
     Octree::BBox box;
     ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), Octree::BBoxReducer<Host>(box));
@@ -263,12 +255,25 @@ ko::initialize(argc, argv);
             std::cout << "node(" << std::setw(2) << i << "): key = " << nd_keys(i) << " " << std::bitset<12>(nd_keys(i)) << " pt_start = " << nd_p_is(i) 
                       << " pt_ct = " << nd_p_ct(i) << "\n";
         }
+        
         for (int i=0; i<npts; ++i) {
-            std::cout << "point(" << i << ") is in node " << nd_pinn(i) << "\n";
+            std::cout << "point(" << i << ") = (";
+            for (int j=0; j<3; ++j) {
+                std::cout << host_pts(i,j) << (j!=2 ? " " : ") ");
+            }
+            std::cout << " is in node " << nd_pinn(i);
+            const auto nbox = Octree::box_from_key(nd_keys(nd_pinn(i)), box, tree_lev, max_depth);
+            const bool pt_in_box = Octree::boxContainsPoint(nbox, ko::subview(host_pts, i, ko::ALL));
+            std::cout << "; node's box contains point = " << std::boolalpha 
+                      << pt_in_box << " " << nbox;  
+            if (!pt_in_box) ++nerr;
         }
         
     }
-    std::cout << std::endl;
+    if (nerr>0) {
+        throw std::runtime_error("Error found in LpmOctreeUnitTests");
+    }
+    std::cout << "program complete" << std::endl;
 }
 ko::finalize(); 
 return 0;
