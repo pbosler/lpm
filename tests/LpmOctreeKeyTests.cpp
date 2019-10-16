@@ -72,8 +72,13 @@ ko::initialize(argc, argv);
         }
         Int nerr = 0;
         for (int i=0; i<64; ++i) {
-            const key_type k = compute_key(ko::subview(l2centroids, i, ko::ALL()), 2, 2, sphereBox);
+            const key_type k = compute_key_for_point(ko::subview(l2centroids, i, ko::ALL()), 2, 2, sphereBox);
+            const code_type c = encode(k,i);
+            const key_type k1 = decode_key(c);
+            const int i1 = decode_id(c);
+            if (k!=k1) ++nerr;
             if (k!=i) ++nerr;
+            if (i!=i1) ++nerr;
         }
         if (nerr>0) {
             throw std::runtime_error("error in computed keys test.");

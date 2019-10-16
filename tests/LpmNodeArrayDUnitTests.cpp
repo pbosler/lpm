@@ -61,7 +61,7 @@ ko::initialize(argc, argv);
     
     std::cout << "points ready.\n";
     
-    NodeArrayD leaves(pts, tree_lev, max_depth);
+    NodeArrayD leaves(pts, tree_lev);
     
     NodeArrayInternal nextlev(leaves);
     
@@ -89,17 +89,21 @@ ko::initialize(argc, argv);
     trisphere.updateDevice();
     ko::View<Real*[3]> src_crds = sourceCoords<SphereGeometry,TriFace>(trisphere);
 
-    NodeArrayD leaves(src_crds, octree_depth, octree_depth);
+    NodeArrayD leaves(src_crds, octree_depth);
     auto leaf_keys_host = ko::create_mirror_view(leaves.node_keys);
     auto src_host = ko::create_mirror_view(src_crds);
     auto leaf_pt_start = ko::create_mirror_view(leaves.node_pt_idx);
     auto leaf_pt_ct = ko::create_mirror_view(leaves.node_pt_ct);
     auto rbox_host = ko::create_mirror_view(leaves.box);
+    auto pt_in_node_host = ko::create_mirror_view(leaves.pt_in_node);
     ko::deep_copy(rbox_host, leaves.box);
     ko::deep_copy(src_host, src_crds);
     ko::deep_copy(leaf_keys_host, leaves.node_keys);
     ko::deep_copy(leaf_pt_start, leaves.node_pt_idx);
     ko::deep_copy(leaf_pt_ct, leaves.node_pt_ct);
+    ko::deep_copy(pt_in_node_host, leaves.pt_in_node);
+    std::cout << "SPHERE TEST\n";
+    std::cout << "\troot box = " << rbox_host();
     for (Index i=0; i<leaf_keys_host.extent(0); ++i) {
         BBox node_box = box_from_key(leaf_keys_host(i),rbox_host(), octree_depth, octree_depth);
         for (Index j=0; j<leaf_pt_ct(i); ++j) {
@@ -113,9 +117,21 @@ ko::initialize(argc, argv);
             }
         }
     }
-    
-    NodeArrayInternal nextlev(leaves);
     std::ofstream of("node_array_d_test_output.txt");
+    for (Index i=0; i<src_host.extent(0); ++i) {
+        std::cout << "point(" << i << ") = (";
+        for (int j=0; j<3; ++j) {
+            std::cout << src_host(i,j) << (j!=2 ? " " : ") ");
+        }
+        std::cout << "is in node " << pt_in_node_host(i);
+        const auto nbox = box_from_key(leaf_keys_host(pt_in_node_host(i)), rbox_host(), octree_depth, octree_depth);
+        const bool pt_in_box = boxContainsPoint(nbox, ko::subview(src_host, i, ko::ALL()));
+        std::cout << "; node's box contains pt = " << std::boolalpha << pt_in_box
+            << nbox;
+    }
+    
+//     NodeArrayInternal nextlev(leaves);
+    
     of << leaves.infoString();
 //     of << nextlev.infoString();
     of.close();

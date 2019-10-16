@@ -13,12 +13,13 @@
 #include <bitset>
 
 using namespace Lpm;
+using namespace Lpm::Octree;
 
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv); 
 {
     Int nerr = 0;
-    const int npts = 6;
+    const int npts = 7;
     const int max_depth = 4;
     const int tree_lev = 3;
     ko::View<Real*[3]> pts("pts",npts);
@@ -34,13 +35,16 @@ ko::initialize(argc, argv);
     host_pts(5,0) = 0.011;
     host_pts(5,1) = 0.91;
     host_pts(5,2) = 0.015;
+    host_pts(6,0) = 0.0111;
+    host_pts(6,1) = 0.911;
+    host_pts(6,2) = 0.0151;
     ko::deep_copy(pts, host_pts);
     
-    Octree::BBox box;
-    ko::parallel_reduce(pts.extent(0), Octree::BoxFunctor(pts), Octree::BBoxReducer<Host>(box));
+    BBox box;
+    ko::parallel_reduce(pts.extent(0), BoxFunctor(pts), BBoxReducer<Host>(box));
     std::cout << "bbox = " << box;
     std::cout << "\taspect ratio = " << boxAspectRatio(box) << "\n";
-    Octree::BBox boxsol(-3,4,-1,3,-3,2);
+    BBox boxsol(-3,4,-1,3,-3,2);
     if (box != boxsol) {
         throw std::runtime_error("bbox computation failed.\n");
     }
@@ -56,9 +60,9 @@ ko::initialize(argc, argv);
             std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
         }
         for (int j=0; j<=tree_lev; ++j) {
-        	const Octree::key_type k = Octree::compute_key(ko::subview(host_pts, i, ko::ALL()), j, max_depth, box);
-        	const Octree::key_type p = Octree::parent_key(k, j, max_depth);
-        	const Octree::key_type lk = Octree::local_key(k, j, max_depth);
+        	const key_type k = compute_key_for_point(ko::subview(host_pts, i, ko::ALL()), j, max_depth, box);
+        	const key_type p = parent_key(k, j, max_depth);
+        	const key_type lk = local_key(k, j, max_depth);
         	std::cout << std::setw(20) << "key at lev " << j << " = " << std::setw(6) << k << " : " <<  std::bitset<12>(k) 
         		<<  " parent = " << std::setw(6) <<  p << " : " << std::bitset<12>(p) 
         		<< " local = " << std::setw(4) << lk << " : " << std::bitset<12>(lk) << "\n";
@@ -68,10 +72,10 @@ ko::initialize(argc, argv);
     
     
     
-    ko::View<Octree::BBox[8]> boxkids("boxkids");
+    ko::View<BBox[8]> boxkids("boxkids");
     n_view_type inkid("inkid");
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
-        Octree::BBox b(-1,1,-1,1,-1,1);
+        BBox b(-1,1,-1,1,-1,1);
         bisectBoxAllDims(boxkids, b);
         Real qp[3];
         qp[0] = 0.5;
@@ -94,16 +98,16 @@ ko::initialize(argc, argv);
         std::cout << "Local child id test passed.\n";
     }
     
-    ko::View<Octree::BBox> boxview("box");
+    ko::View<BBox> boxview("box");
     auto hb = ko::create_mirror_view(boxview);
     hb() = box;
     ko::deep_copy(boxview, hb);
-    ko::View<Octree::key_type*> keys("keys",npts);
-    ko::View<Octree::code_type*> codes("codes",npts);
+    ko::View<key_type*> keys("keys",npts);
+    ko::View<code_type*> codes("codes",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
         auto pos = ko::subview(pts, i, ko::ALL());
-        keys(i) = Octree::compute_key(pos, tree_lev, max_depth, boxview());
-        codes(i) = Octree::encode(keys(i), i);
+        keys(i) = compute_key_for_point(pos, tree_lev, max_depth, boxview());
+        codes(i) = encode(keys(i), i);
     });
     auto host_keys = ko::create_mirror_view(keys);
     ko::deep_copy(host_keys, keys);
@@ -132,9 +136,9 @@ ko::initialize(argc, argv);
         std::cout << host_codes(i) << (i<npts-1 ? " " : ")\n");
     }
     
-    ko::View<Octree::key_type*> decoded_ids("decoded_ids",npts);
+    ko::View<key_type*> decoded_ids("decoded_ids",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
-        decoded_ids(i) = Octree::decode_id(codes(i));
+        decoded_ids(i) = decode_id(codes(i));
     });
     auto host_ids = ko::create_mirror_view(decoded_ids);
     ko::deep_copy(host_ids, decoded_ids);
@@ -145,13 +149,13 @@ ko::initialize(argc, argv);
     
     std::cout << "decoded keys = (";
     for (int i=0; i<npts; ++i) {
-        std::cout << Octree::decode_key(host_codes(i)) << (i<npts-1 ? " " : ")\n");
+        std::cout << decode_key(host_codes(i)) << (i<npts-1 ? " " : ")\n");
     }
     
     ko::View<Index*> orig_id("original_pt_id", pts.extent(0));
     {
         ko::View<Real*[3]> temp_pts("temp_pts",pts.extent(0));
-        ko::parallel_for(pts.extent(0), Octree::PermuteFunctor(temp_pts, orig_id, pts, codes));
+        ko::parallel_for(pts.extent(0), PermuteFunctor(temp_pts, orig_id, pts, codes));
         pts = temp_pts;
     }
     ko::deep_copy(host_pts, pts);
@@ -165,8 +169,8 @@ ko::initialize(argc, argv);
     
     {
         ko::View<Index*> flag_view("flags",npts);
-        ko::parallel_for(ko::RangePolicy<Octree::MarkDuplicates::MarkTag>(0,npts),
-             Octree::MarkDuplicates(flag_view, codes));
+        ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0,npts),
+             MarkDuplicates(flag_view, codes));
         auto fhost = ko::create_mirror_view(flag_view);
         ko::deep_copy(fhost, flag_view);
         std::cout << "flags after marking: (";
@@ -174,8 +178,8 @@ ko::initialize(argc, argv);
             std::cout << fhost(i) << (i<npts-1 ? " " : ")\n");
         }
         
-        ko::parallel_scan(ko::RangePolicy<Octree::MarkDuplicates::ScanTag>(0,npts),
-            Octree::MarkDuplicates(flag_view, codes));
+        ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
+            MarkDuplicates(flag_view, codes));
         ko::deep_copy(fhost, flag_view);
         std::cout << "flags after scan = (";
         for (int i=0; i<npts; ++i) {
@@ -186,9 +190,9 @@ ko::initialize(argc, argv);
         auto host_ct = ko::create_mirror_view(count_view);
         ko::deep_copy(host_ct, count_view);
         std::cout << "found " << host_ct() << " unique keys.\n";
-        ko::View<Octree::key_type*> ukeys("unique_keys", host_ct());
+        ko::View<key_type*> ukeys("unique_keys", host_ct());
         ko::View<Index*[2]> pt_inds("pt_inds",host_ct());
-        ko::parallel_for(npts, Octree::UniqueNodeFunctor(ukeys, pt_inds, flag_view, codes));
+        ko::parallel_for(npts, UniqueNodeFunctor(ukeys, pt_inds, flag_view, codes));
         auto uhost = ko::create_mirror_view(ukeys);
         ko::deep_copy(uhost, ukeys);
         auto ihost = ko::create_mirror_view(pt_inds);
@@ -204,42 +208,50 @@ ko::initialize(argc, argv);
         		<< ihost(i,1) << "\n";
         }
         
-        ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
+//         ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
         ko::View<Index*> node_address("node_address", ukeys.extent(0));
-        ko::parallel_for(ko::RangePolicy<Octree::NodeAddressFunctor::MarkTag>(0, ukeys.extent(0)), 
-        	Octree::NodeAddressFunctor(node_nums, node_address, ukeys, tree_lev, max_depth));
-        ko::parallel_scan(ko::RangePolicy<Octree::NodeAddressFunctor::ScanTag>(0, ukeys.extent(0)),
-        	Octree::NodeAddressFunctor(node_nums, node_address, ukeys, tree_lev, max_depth));
-        auto host_nn = ko::create_mirror_view(node_nums);
         auto host_na = ko::create_mirror_view(node_address);
-        ko::deep_copy(host_nn, node_nums); // TODO: do node_nums and node_address need to be separate?
+        ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0, ukeys.extent(0)), 
+        	NodeAddressFunctor(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
-        	std::cout << "node_nums(" << i << ") = " << host_nn(i) 
-        			  << " node_address(" <<i << ") = " << host_na(i) 
-        			  << " local key = " << Octree::local_key(uhost(i), tree_lev, max_depth) << "\n";
+            std::cout << "node_address(mark)(i) = " << host_na(i) << " pkey = " << std::bitset<32>(parent_key(uhost(i), tree_lev, max_depth)) << "\n";
         }
+        ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0, ukeys.extent(0)),
+        	NodeAddressFunctor(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
+//         auto host_nn = ko::create_mirror_view(node_nums);
+        ko::deep_copy(host_na, node_address);
+        for (int i=0; i<ukeys.extent(0); ++i) {
+            std::cout << "node_address(scan)(i) = " << host_na(i) << " pkey = " << std::bitset<32>(parent_key(uhost(i), tree_lev, max_depth)) << "\n";
+        }
+//         ko::deep_copy(host_nn, node_nums); // TODO: do node_nums and node_address need to be separate?
+        
+//         for (int i=0; i<ukeys.extent(0); ++i) {
+//         	std::cout << "node_nums(" << i << ") = " << host_nn(i) 
+//         			  << " node_address(" <<i << ") = " << host_na(i) 
+//         			  << " local key = " << local_key(uhost(i), tree_lev, max_depth) << "\n";
+//         }
         
         const Int nnodes = host_na(ukeys.extent(0)-1) + 8;
-        ko::View<Octree::key_type*> nodeLevelDKeys("nld_keys",nnodes);
+        ko::View<key_type*> nodeLevelDKeys("nld_keys",nnodes);
         ko::View<Index*> nodeLevelDPointIdx("nld_pt_idx", nnodes);
         ko::View<Index*> nodeLevelDPointCnt("nld_pt_cnt", nnodes);
         ko::View<Index*> nodeLevelDPointInNode("nld_pt_in_node", npts);
         
 //         ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
 //             if (i==0 || node_nums(i) > 0 ) {
-//                 const Octree::key_type pkey = Octree::parent_key(ukeys(i), tree_lev, max_depth);
+//                 const key_type pkey = parent_key(ukeys(i), tree_lev, max_depth);
 //                 for (int j=0; j<8; ++j) {
-//                     nodeLevelDKeys(8*i+j) = Octree::node_key(pkey, j, tree_lev, max_depth);
+//                     nodeLevelDKeys(8*i+j) = node_key(pkey, j, tree_lev, max_depth);
 //                 }   
 //             }
 //         });
         
         auto bp = ko::TeamPolicy<>(ukeys.extent(0), 8);
-        ko::parallel_for(bp, Octree::NodeSetupFunctor(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_for(bp, NodeSetupFunctor(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
         
         auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
-        ko::parallel_for(policy, Octree::NodeFillFunctor(nodeLevelDPointIdx, nodeLevelDPointCnt,
+        ko::parallel_for(policy, NodeFillFunctor(nodeLevelDPointIdx, nodeLevelDPointCnt,
             nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
         
         auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);
@@ -262,8 +274,8 @@ ko::initialize(argc, argv);
                 std::cout << host_pts(i,j) << (j!=2 ? " " : ") ");
             }
             std::cout << " is in node " << nd_pinn(i);
-            const auto nbox = Octree::box_from_key(nd_keys(nd_pinn(i)), box, tree_lev, max_depth);
-            const bool pt_in_box = Octree::boxContainsPoint(nbox, ko::subview(host_pts, i, ko::ALL));
+            const auto nbox = box_from_key(nd_keys(nd_pinn(i)), box, tree_lev, max_depth);
+            const bool pt_in_box = boxContainsPoint(nbox, ko::subview(host_pts, i, ko::ALL));
             std::cout << "; node's box contains point = " << std::boolalpha 
                       << pt_in_box << " " << nbox;  
             if (!pt_in_box) ++nerr;

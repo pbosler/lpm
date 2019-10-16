@@ -88,8 +88,8 @@ class NodeArrayInternal {
         
         NodeArrayInternal() {}
         
-        NodeArrayInternal(NodeArrayD& leaves) : level(leaves.level-1), 
-            max_depth(leaves.max_depth), root_box(leaves.box) { initFromLeaves(leaves); }
+        NodeArrayInternal(NodeArrayD& leaves) : level(leaves.depth-1), 
+            max_depth(leaves.depth), root_box(leaves.box) { initFromLeaves(leaves); }
         
         NodeArrayInternal(NodeArrayInternal& lower) : level(lower.level-1),
             max_depth(lower.max_depth), root_box(lower.root_box) { initFromLower(lower); }
@@ -104,12 +104,12 @@ class NodeArrayInternal {
             
             
             /// augment keys to make sure included nodes' siblings are also included
-            ko::View<Index*> node_nums("node_nums", nparents);
+//             ko::View<Index*> node_nums("node_nums", nparents);
             ko::View<Index*> node_address("node_address", nparents);
             ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0,nparents),
-                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                NodeAddressFunctor(node_address, pkeys, level, max_depth));
             ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0,nparents),
-                NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                NodeAddressFunctor(node_address, pkeys, level, max_depth));
             
             n_view_type last_address = ko::subview(node_address, nparents-1);
             auto la_host = ko::create_mirror_view(last_address);
@@ -150,14 +150,14 @@ class NodeArrayInternal {
             ko::parallel_for(nparents, ParentNodeFunctor(pkeys, lower.node_keys, level, max_depth));
             
             key_type nnodes;
-            ko::View<Index*> node_nums("node_nums", nparents);
+//             ko::View<Index*> node_nums("node_nums", nparents);
             ko::View<Index*> node_address("node_address", nparents);
             if (level > 0) {
                 /// augment keys to make sure included nodes' siblings are also included   
                 ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0,nparents),
-                    NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                    NodeAddressFunctor(node_address, pkeys, level, max_depth));
                 ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0,nparents),
-                    NodeAddressFunctor(node_nums, node_address, pkeys, level, max_depth));
+                    NodeAddressFunctor(node_address, pkeys, level, max_depth));
                 n_view_type last_address = ko::subview(node_address, nparents-1);
                 auto la_host = ko::create_mirror_view(last_address);
                 ko::deep_copy(la_host, last_address);

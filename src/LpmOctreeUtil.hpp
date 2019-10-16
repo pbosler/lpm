@@ -53,7 +53,7 @@ T pintpow8(IntT2 k) {
     node i's parent in the x,y,z direction
 */
 template <typename CPtType> KOKKOS_INLINE_FUNCTION
-key_type compute_key(const CPtType& pos, const int& level_depth, const int& max_depth, BBox bb) {
+key_type compute_key_for_point(const CPtType& pos, const int& level_depth, const int& max_depth, BBox bb) {
 	assert(max_depth>=0 && max_depth<=10);
     Real cx, cy, cz; // crds of box centroid
     if (std::abs(boxAspectRatio(bb) - 1) > ZERO_TOL) {
@@ -167,6 +167,11 @@ key_type decode_key(const code_type& code) {
     return key_type((code>>32));
 }
 
+/**
+    Compute shuffled xyz key for a point, concatenate point id with key.
+    
+    Loop over: Points
+*/
 struct EncodeFunctor {
     // output
     ko::View<code_type*> codes;
@@ -182,12 +187,18 @@ struct EncodeFunctor {
         
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& i) const {
+        // each thread i gets a point
         auto pos = ko::subview(pts, i, ko::ALL());
-        const key_type key = compute_key(pos, level, max_depth, box());
+        const key_type key = compute_key_for_point(pos, level, max_depth, box());
         codes(i) = encode(key, i);
     }
 };
 
+/**
+    Using sorted codes (input), move points into sorted order.
+    
+    Loop over: point codes
+*/
 struct PermuteFunctor {
     // output
     ko::View<Real*[3]> outpts;
@@ -201,6 +212,7 @@ struct PermuteFunctor {
         
     KOKKOS_INLINE_FUNCTION
     void operator() (const id_type& i) const {
+        // Each thread gets a point code
         const id_type old_id = decode_id(codes(i));
         orig_inds(i) = old_id;
         for (int j=0; j<3; ++j) {
@@ -227,6 +239,16 @@ struct UnpermuteFunctor {
     }
 };
 
+/**
+    Flag & Scan Functor.
+    
+    Step 1: Flag 
+        Loop over sorted codes.  Set flag = 1 if new node key is found, 0 otherwise.
+    Step 2: Scan
+        Scan flags.  Inclusive scan.  
+        After scan, flag(npts-1) = number of unique nodes.
+    
+*/
 struct MarkDuplicates {
     // output
     ko::View<Index*> flags;
@@ -312,6 +334,17 @@ Index binarySearchKeys(const key_type& key, const CVT& sorted_keys, const bool& 
     return result;
 }
 
+/**
+    Collect data about each unique node, to be used later to construct the nodes in NodeArray.
+    
+    input = output of MarkDuplicates kernel's 2 steps.
+    
+    output = array containing unique node keys
+        node_ind = flag(i) if flag(i) is a new node.  Otherwise, the thread is idle.
+    for each node key, 2 indices:
+        inds_out(node_ind, 0) = index of first point (in sorted_pts) contained by node
+        inds_out(node_ind, 1) = count of points contained by node
+*/
 struct UniqueNodeFunctor {
     // output
     ko::View<key_type*> keys_out;
@@ -327,9 +360,11 @@ struct UniqueNodeFunctor {
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const Index& i) const {
+        // Each thread gets an index into flags
         bool newval = true;
         if (i > 0) newval = (flags(i) > flags(i-1));
         if (newval) {
+            // thread finds a new node
         	const Index node_ind = flags(i)-1;
         	const key_type newkey = decode_key(codes_in(i));
             keys_out(node_ind) = newkey;
@@ -338,12 +373,30 @@ struct UniqueNodeFunctor {
             inds_out(node_ind,0) = first;
             inds_out(node_ind,1) = last - first + 1;
         }
+        // thread is idle if not a new node
     }
 };
 
+
+/**
+    For later nearest-neighbor searches, we want to add the siblings of every unique node, even if they're empty,
+    so that each parent will have a full set of 8 child nodes.
+    
+    2-step Flag & Scan
+    
+    Loop over: unique nodes
+    
+    Step 1: Flag
+        Thread 0 is idle.  For thread i, where i>0:
+        If thread i and thread i-1 have the same parent, flag node_num = 0
+        If thread i and thread i-1 have different parents, flag node_num = 8
+        
+    Step 2: Scan (exclusive)
+        After scan, node_address contains the starting address of each set of siblings in NodeArrayD.    
+*/
 struct NodeAddressFunctor {
     // output
-	ko::View<Index*> node_nums;
+// 	ko::View<Index*> node_nums;
 	ko::View<Index*> node_address;
 	
 	// input
@@ -351,9 +404,8 @@ struct NodeAddressFunctor {
 	Int lev;
 	Int max_depth;
 	
-	NodeAddressFunctor(ko::View<Index*>& nn, ko::View<Index*> na, 
-		const ko::View<key_type*>& kk, const Int& ll, const Int& md) :
-		node_nums(nn), node_address(na), keys_in(kk), lev(ll), max_depth(md) {}
+	NodeAddressFunctor(ko::View<Index*> na, const ko::View<key_type*>& kk, const Int& ll, const Int& md) :
+        node_address(na), keys_in(kk), lev(ll), max_depth(md) {}
 	
 	struct MarkTag {};
 	struct ScanTag {};
@@ -363,23 +415,21 @@ struct NodeAddressFunctor {
 		if (i>0) {
 			const key_type pt_i = parent_key(keys_in(i), lev, max_depth);
 			const key_type pt_im1 = parent_key(keys_in(i-1), lev, max_depth);
-			if (pt_i == pt_im1) {
-				node_nums(i) = 0;
-			}
-			else {
-				node_nums(i) = 8;
-			}
+// 			node_nums(i) = (pt_i == pt_im1 ? 0 : 8);
+            node_address(i) = (pt_i == pt_im1 ? 0 : 8);
+		}
+		else {
+		    node_address(i) = 8;
 		}
 	}
 	
 	KOKKOS_INLINE_FUNCTION
 	void operator() (const ScanTag&, const Index& i, Index& ct, const bool& final_pass) const {
-		const Index inc = node_nums(i);
-		ct += inc;
+		const Index inc = node_address(i);
 		if (final_pass) {
 			node_address(i) = ct;
 		}
-		
+		ct += inc;
 	}
 };
 
