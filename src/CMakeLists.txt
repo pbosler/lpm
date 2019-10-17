@@ -2,7 +2,9 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}" "${VTK_I
 
 add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmFaces.cpp LpmVtkIO.cpp 
     LpmPolyMesh2d.cpp LpmBVESphere.cpp LpmCompadre.cpp LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
-    LpmErrorNorms.cpp LpmBox3d.cpp LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctreeLUT.cpp LpmOctree.cpp)
+    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp 
+#    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
+)
 TARGET_LINK_LIBRARIES(lpm kokkos compadre ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 if (USE_SPHEREPACK)
     message(STATUS "linking to spherepack")

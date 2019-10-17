@@ -6,6 +6,7 @@
 #include "LpmBox3d.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Sort.hpp"
+#include "LpmOctreeKernels.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -20,7 +21,7 @@ ko::initialize(argc, argv);
 {
     Int nerr = 0;
     const int npts = 7;
-    const int max_depth = 4;
+    const int max_depth = 3;
     const int tree_lev = 3;
     ko::View<Real*[3]> pts("pts",npts);
     typename ko::View<Real*[3]>::HostMirror host_pts = ko::create_mirror_view(pts);
@@ -60,7 +61,7 @@ ko::initialize(argc, argv);
             std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
         }
         for (int j=0; j<=tree_lev; ++j) {
-        	const key_type k = compute_key_for_point(ko::subview(host_pts, i, ko::ALL()), j, max_depth, box);
+        	const key_type k = compute_key_for_point(ko::subview(host_pts, i, ko::ALL()), max_depth, box);
         	const key_type p = parent_key(k, j, max_depth);
         	const key_type lk = local_key(k, j, max_depth);
         	std::cout << std::setw(20) << "key at lev " << j << " = " << std::setw(6) << k << " : " <<  std::bitset<12>(k) 
@@ -106,7 +107,7 @@ ko::initialize(argc, argv);
     ko::View<code_type*> codes("codes",npts);
     ko::parallel_for(keys.extent(0), KOKKOS_LAMBDA (const Int& i) {
         auto pos = ko::subview(pts, i, ko::ALL());
-        keys(i) = compute_key_for_point(pos, tree_lev, max_depth, boxview());
+        keys(i) = compute_key_for_point(pos, max_depth, boxview());
         codes(i) = encode(keys(i), i);
     });
     auto host_keys = ko::create_mirror_view(keys);
@@ -181,7 +182,7 @@ ko::initialize(argc, argv);
         ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
             MarkDuplicates(flag_view, codes));
         ko::deep_copy(fhost, flag_view);
-        std::cout << "flags after scan = (";
+        std::cout << "flags after scan   : (";
         for (int i=0; i<npts; ++i) {
             std::cout << fhost(i) << (i<npts-1 ? " " : ")\n");
         }
@@ -189,9 +190,9 @@ ko::initialize(argc, argv);
         n_view_type count_view = ko::subview(flag_view, npts-1);
         auto host_ct = ko::create_mirror_view(count_view);
         ko::deep_copy(host_ct, count_view);
-        std::cout << "found " << host_ct() << " unique keys.\n";
-        ko::View<key_type*> ukeys("unique_keys", host_ct());
-        ko::View<Index*[2]> pt_inds("pt_inds",host_ct());
+        std::cout << "found " << host_ct()+1 << " unique keys.\n";
+        ko::View<key_type*> ukeys("unique_keys", host_ct()+1);
+        ko::View<Index*[2]> pt_inds("pt_inds",host_ct()+1);
         ko::parallel_for(npts, UniqueNodeFunctor(ukeys, pt_inds, flag_view, codes));
         auto uhost = ko::create_mirror_view(ukeys);
         ko::deep_copy(uhost, ukeys);
@@ -211,14 +212,14 @@ ko::initialize(argc, argv);
 //         ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
         ko::View<Index*> node_address("node_address", ukeys.extent(0));
         auto host_na = ko::create_mirror_view(node_address);
-        ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0, ukeys.extent(0)), 
-        	NodeAddressFunctor(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_for(ko::RangePolicy<NodeSiblingCounter::MarkTag>(0, ukeys.extent(0)), 
+        	NodeSiblingCounter(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
             std::cout << "node_address(mark)(i) = " << host_na(i) << " pkey = " << std::bitset<32>(parent_key(uhost(i), tree_lev, max_depth)) << "\n";
         }
-        ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0, ukeys.extent(0)),
-        	NodeAddressFunctor(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
+        ko::parallel_scan(ko::RangePolicy<NodeSiblingCounter::ScanTag>(0, ukeys.extent(0)),
+        	NodeSiblingCounter(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
 //         auto host_nn = ko::create_mirror_view(node_nums);
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {

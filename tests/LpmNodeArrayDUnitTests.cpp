@@ -10,33 +10,6 @@
 using namespace Lpm;
 using namespace Octree;
 
-template <typename G, typename F>
-ko::View<Real*[3]> sourceCoords(const PolyMesh2d<G,F>& pm) {
-    const Index nv = pm.nvertsHost();
-    const Index nl = pm.faces.nLeavesHost();
-    std::cout << "nv = " << nv << " nleaf_faces = " << nl << "\n";
-    ko::View<Real*[3]> result("source_coords", nv + nl);
-    std::cout << "srcCrds result allocated.\n";
-    ko::parallel_for(nv, KOKKOS_LAMBDA (int i) {
-        for (int j=0; j<3; ++j) {
-            result(i,j) = pm.physVerts.crds(i,j);
-        }
-    });
-    std::cout << "vertices copied to srcCrds.\n";
-    ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
-        Int offset = nv;
-        for (int j=0; j<pm.nfaces(); ++j) {
-            if (!pm.faces.mask(j)) {
-                result(offset,0) = pm.physFaces.crds(j,0);
-                result(offset,1) = pm.physFaces.crds(j,1);
-                result(offset++,2) = pm.physFaces.crds(j,2);
-            }
-        }
-    });
-    std::cout << "faces copied to srcCrds.\n";
-    return result;
-}
-
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
@@ -79,8 +52,8 @@ ko::initialize(argc, argv);
     /**
         Build source mesh 
     */
-    const int mesh_depth = 4;
-    const int octree_depth = 4;
+    const int mesh_depth = 1;
+    const int octree_depth = mesh_depth;
     Index nmaxverts, nmaxedges, nmaxfaces;
     MeshSeed<IcosTriSphereSeed> icseed;
     icseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, mesh_depth);

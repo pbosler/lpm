@@ -85,5 +85,32 @@ template <typename Geo, typename FaceType> class PolyMesh2d {
         
 };
 
+template <typename G, typename F>
+ko::View<Real*[3]> sourceCoords(const PolyMesh2d<G,F>& pm) {
+    const Index nv = pm.nvertsHost();
+    const Index nl = pm.faces.nLeavesHost();
+    std::cout << "nv = " << nv << " nleaf_faces = " << nl << "\n";
+    ko::View<Real*[3]> result("source_coords", nv + nl);
+    std::cout << "srcCrds result allocated.\n";
+    ko::parallel_for(nv, KOKKOS_LAMBDA (int i) {
+        for (int j=0; j<3; ++j) {
+            result(i,j) = pm.physVerts.crds(i,j);
+        }
+    });
+    std::cout << "vertices copied to srcCrds.\n";
+    ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
+        Int offset = nv;
+        for (int j=0; j<pm.nfaces(); ++j) {
+            if (!pm.faces.mask(j)) {
+                result(offset,0) = pm.physFaces.crds(j,0);
+                result(offset,1) = pm.physFaces.crds(j,1);
+                result(offset++,2) = pm.physFaces.crds(j,2);
+            }
+        }
+    });
+    std::cout << "faces copied to srcCrds.\n";
+    return result;
+}
+
 }
 #endif

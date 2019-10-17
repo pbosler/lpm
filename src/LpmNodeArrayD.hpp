@@ -1,4 +1,4 @@
-#ifndef LPM_NODE_ARRAYD_HPP
+unode_countunode_count#ifndef LPM_NODE_ARRAYD_HPP
 #define LPM_NODE_ARRAYD_HPP
 
 #include "LpmConfig.h"
@@ -7,6 +7,7 @@
 #include "LpmCoords.hpp"
 #include "LpmBox3d.hpp"
 #include "LpmOctreeUtil.hpp"
+#include "LpmOctreeKernels.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Sort.hpp"
@@ -118,7 +119,7 @@ class NodeArrayD {
             Sort code array
         */
         ko::View<code_type*> pt_codes("pt_codes",npts);
-        ko::parallel_for(npts, EncodeFunctor(pt_codes, presorted_points, box, depth, depth));
+        ko::parallel_for(npts, EncodeFunctor(pt_codes, presorted_points, box, depth));
         ko::sort(pt_codes);
 
         /// step 3: Sort point array
@@ -151,14 +152,14 @@ class NodeArrayD {
         ko::View<Index*> node_flags("node_flags",npts);
         ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0,npts), 
             MarkDuplicates(node_flags, pt_codes));
+        Index unode_count = 0;
+        ko::parallel_for(ko::RangePolicy<MarkDuplicates::SumTag>(0,npts),
+            MarkDuplicates(node_flags, pt_codes), unode_count);
         ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
             MarkDuplicates(node_flags, pt_codes));
-        n_view_type node_count = ko::subview(node_flags, npts-1);
-        auto node_count_host = ko::create_mirror_view(node_count);
-        ko::deep_copy(node_count_host, node_count);
         
-        ko::View<key_type*> ukeys("keys", node_count_host());
-        ko::View<Index*[2]> pt_inds("pt_inds", node_count_host());
+        ko::View<key_type*> ukeys("keys", unode_count);
+        ko::View<Index*[2]> pt_inds("pt_inds", unode_count);
         ko::parallel_for(npts, UniqueNodeFunctor(ukeys, pt_inds, node_flags, pt_codes));
         
         /// step 5: Ensure that each node has a full set of siblings
@@ -173,11 +174,13 @@ class NodeArrayD {
                 node_address contains starting point for each set of 8 siblings
                 node_address(-1) + 8 = number of nodes at this level (nodes with data and possibly empty siblings)
         */
-//         ko::View<Index*> node_nums("node_nums", node_count_host());
-        ko::View<Index*> node_address("node_address", node_count_host());
-        ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0, node_count_host()),
+        ko::View<Index*> node_address("node_address", ukeys.extent(0));
+        ko::parallel_for(ko::RangePolicy<NodeAddressFunctor::MarkTag>(0, ukeys.extent(0)),
             NodeAddressFunctor(node_address, ukeys, depth, depth));
-        ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0, node_count_host()),
+        Index nnodes = 0;
+        ko::parallel_reduce(ko::RangePolicy<NodeAddressFunctor::SumTag>(0, ukeys.extent(0)),
+            NodeAddressFunctor(node_address, ukeys, depth, depth));
+        ko::parallel_scan(ko::RangePolicy<NodeAddressFunctor::ScanTag>(0, ukeys.extent(0)),
             NodeAddressFunctor(node_address, ukeys, depth, depth));
         
         /// step 6: Make NodeArrayD
