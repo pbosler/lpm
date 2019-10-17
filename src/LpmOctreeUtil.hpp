@@ -373,7 +373,7 @@ struct UniqueNodeFunctor {
             inds_out(node_ind,0) = first;
             inds_out(node_ind,1) = last - first + 1;
         }
-        // thread is idle if not a new node
+        // else thread is idle
     }
 };
 
@@ -396,7 +396,6 @@ struct UniqueNodeFunctor {
 */
 struct NodeAddressFunctor {
     // output
-// 	ko::View<Index*> node_nums;
 	ko::View<Index*> node_address;
 	
 	// input
@@ -415,7 +414,6 @@ struct NodeAddressFunctor {
 		if (i>0) {
 			const key_type pt_i = parent_key(keys_in(i), lev, max_depth);
 			const key_type pt_im1 = parent_key(keys_in(i-1), lev, max_depth);
-// 			node_nums(i) = (pt_i == pt_im1 ? 0 : 8);
             node_address(i) = (pt_i == pt_im1 ? 0 : 8);
 		}
 		else {

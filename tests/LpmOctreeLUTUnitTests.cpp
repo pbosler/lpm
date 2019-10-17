@@ -69,7 +69,7 @@ ko::initialize(argc, argv);
             }
         }
     });
-    ko::parallel_for(27, KOKKOS_LAMBDA (const Int& i) {
+    ko::parallel_for(8, KOKKOS_LAMBDA (const Int& i) {
         for (Int j=0; j<27; ++j) {
             bad_parent_nbrs(i,j) = false;
             bad_child_inds(i,j) = false;
@@ -105,7 +105,6 @@ ko::initialize(argc, argv);
             }
         }
     }
-    
     
     if (nerr == 0) {
         ss << "\tall tests pass.\n";
