@@ -324,12 +324,12 @@ void bisectBoxAllDims(BoxView& kids, const BBox& parent) {
     const Real ymid = 0.5*(parent.ymin + parent.ymax);
     const Real zmid = 0.5*(parent.zmin + parent.zmax);
     for (Int j=0; j<8; ++j) {
-        kids(j).xmin = ((j>>2 == 0) ? parent.xmin : xmid);
-        kids(j).xmax = ((j>>2 == 0) ? xmid : parent.xmax);
-        kids(j).ymin = (((j>>1)&1) == 0 ? parent.ymin : ymid);
-        kids(j).ymax = (((j>>1)&1) == 0 ? ymid : parent.ymax);
-        kids(j).zmin = (j%2 == 0 ? parent.zmin : zmid);
-        kids(j).zmax = (j%2 == 0 ? zmid : parent.zmax);
+        kids(j).xmin = ((j&4) == 0 ? parent.xmin : xmid);
+        kids(j).xmax = ((j&4) == 0 ? xmid : parent.xmax);
+        kids(j).ymin = ((j&2) == 0 ? parent.ymin : ymid);
+        kids(j).ymax = ((j&2) == 0 ? ymid : parent.ymax);
+        kids(j).zmin = ((j&1) == 0 ? parent.zmin : zmid);
+        kids(j).zmax = ((j&1) == 0 ? zmid : parent.zmax);
     }
 }
 

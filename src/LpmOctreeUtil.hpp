@@ -8,6 +8,7 @@
 #include "LpmBox3d.hpp"
 #include "Kokkos_Core.hpp"
 #include <cstdint>
+#include <limits>
 #include <iostream>
 #include <cassert>
 #include <cmath>
@@ -49,8 +50,8 @@ T pintpow8(IntT2 k) {
 /**
     key = x1y1z1x2y2z2...xdydzd
     
-    where bits xi, yi, zi, correspond to left (0) and right(1) of the midpoint of the octree
-    node i's parent in the x,y,z direction
+    where bits xi, yi, zi, correspond to left (0) and right(1) of the centroid of octree
+    node i in the x,y,z direction
 */
 template <typename CPtType> KOKKOS_INLINE_FUNCTION
 key_type compute_key_for_point(const CPtType& pos, const int& depth, BBox bb) {
@@ -66,34 +67,23 @@ key_type compute_key_for_point(const CPtType& pos, const int& depth, BBox bb) {
     for (int i=1; i<=depth; ++i) {
         half_len *= 0.5;
     	const int b = nbits - 3*i; // position of z-bit for level
-    	if (pos(2) >= cz) {
-            key += pintpow2(b);
-    		cz += half_len;
-    	}
-    	else {
-    		cz -= half_len;
-    	}
-    	if (pos(1) >= cy) {
-            key += pintpow2(b+1);
-    		cy += half_len;
-    	}
-    	else {
-    		cy -= half_len;
-    	}
-    	if (pos(0) >= cx) {
-            key += pintpow2(b+2);
-    		cx += half_len;
-    	}
-    	else {
-    		cx -= half_len;
-    	}
+    	const bool rightz = pos(2) >= cz;
+    	const bool righty = pos(1) >= cy;
+    	const bool rightx = pos(0) >= cx;
+    	key += (rightz ? pintpow2(b) : 0);
+    	cz  += (rightz ? half_len : -half_len);
+    	key += (righty ? pintpow2(b+1) : 0);
+    	cy  += (righty ? half_len : -half_len);
+    	key += (rightx ? pintpow2(b+2) : 0);
+    	cx  += (rightx ? half_len : -half_len);
 	}	
-// 	printf("pt = (%f,%f,%f) key = %u (cx,cy,cz) = (%f,%f,%f)\n", pos(0), pos(1), pos(2), key, cx, cy, cz);
     return key;
 }
 
 KOKKOS_INLINE_FUNCTION
 key_type parent_key(const key_type& k, const int& lev, const int& max_depth=MAX_OCTREE_DEPTH) {
+    assert(max_depth >0 && max_depth <= MAX_OCTREE_DEPTH);
+    assert(lev > 0 && lev <= max_depth);
 	const key_type nbits = 3*max_depth;
 	const key_type pzb = nbits-3*(lev-1);// position of parent's z bit
 	key_type mask = 0;
@@ -104,41 +94,29 @@ key_type parent_key(const key_type& k, const int& lev, const int& max_depth=MAX_
 
 KOKKOS_INLINE_FUNCTION
 key_type local_key(const key_type& k, const int& lev, const Int& max_depth=MAX_OCTREE_DEPTH) {
-    key_type nbits = 3*max_depth;
+    assert(max_depth >0 && max_depth <= MAX_OCTREE_DEPTH);
+    assert(lev > 0 && lev <= max_depth);
+    const key_type nbits = 3*max_depth;
     const key_type pzb = nbits - 3*(lev-1); // position of parent's z bit
     key_type mask = 0;
     for (int i=pzb-3; i<pzb; ++i) // turn on 3 bits lower than pzb
         mask += pintpow2(i);
-    return key_type((k & mask)>>(pzb-3));
+    return key_type((k & mask)>>(pzb-3)); // shift so result is in [0,7]
 }
 
 KOKKOS_INLINE_FUNCTION
-BBox box_from_key(const key_type& k, const BBox& rbox, const Int& level, const Int& max_depth) {
+BBox box_from_key(const key_type& k, const BBox& rbox, const Int& lev, const Int& max_depth) {
+    assert(max_depth >0 && max_depth <= MAX_OCTREE_DEPTH);
+    assert(lev > 0 && lev <= max_depth);
     Real cx, cy, cz;
     boxCentroid(cx, cy, cz, rbox);
     Real half_len = 0.5*(rbox.xmax - rbox.xmin);
-    for (Int i=1; i<=level; ++i) {
+    for (Int i=1; i<=lev; ++i) {
         half_len *= 0.5;
         const key_type lkey = local_key(k, i, max_depth);
-        if ((lkey & 1) > 0) {
-            cz += half_len;
-        }
-        else {
-            cz -= half_len;
-        }
-        if ((lkey & 2) > 0) {
-            cy += half_len;
-        }
-        else {
-            cy -= half_len;
-        }
-        if ((lkey & 4) > 0) {
-            cx += half_len;
-        }
-        else {
-            cx -= half_len;
-        }
-//         printf("k = %u, (cx,cy,cz) = (%f,%f,%f)\n", k, cx,cy,cz);
+        cz += ((lkey&1) > 0 ? half_len : -half_len);
+        cy += ((lkey&2) > 0 ? half_len : -half_len);
+        cx += ((lkey&4) > 0 ? half_len : -half_len);
     }
     return BBox(cx-half_len, cx+half_len, cy-half_len, cy+half_len, cz-half_len, cz+half_len);
 }
@@ -153,6 +131,8 @@ key_type node_key(const key_type& pk, const key_type& lk, const int& lev, const 
 
 KOKKOS_INLINE_FUNCTION
 code_type encode(const key_type key, const id_type id) {
+    assert(id < std::numeric_limits<id_type>::max());
+    assert(key < std::numeric_limits<key_type>::max());
     code_type result(key);
     return ((result<<32) + id);
 }

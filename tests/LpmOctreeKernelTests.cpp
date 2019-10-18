@@ -28,13 +28,12 @@ ko::initialize(argc, argv);
     typedef CubedSphereSeed seedtype;
     
     Int nerr = 0;
-    
-    
+//=========================================================== 
 //     typedef TriFace facetype;
 //     typedef IcosTriSphereSeed seedtype;
     
-    const int mesh_depth = 4; // must be >= 2
-    const int octree_depth = 2;
+    const int mesh_depth = 6; // must be >= 2
+    const int octree_depth = 4;
     Index nmaxverts, nmaxedges, nmaxfaces;
     MeshSeed<seedtype> seed;
     seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, mesh_depth);
@@ -65,7 +64,10 @@ ko::initialize(argc, argv);
         ++nerr;
         throw std::runtime_error("Box reduction failed.");
     }
-
+    else {
+        std::cout << "Box reduction passed.\n";
+    }
+//===========================================================
     ko::View<code_type*> pt_codes("point_codes", npts);
     ko::parallel_for(npts, EncodeFunctor(pt_codes, src_crds, root_box, octree_depth));
     auto codes_host = ko::create_mirror_view(pt_codes);
@@ -75,11 +77,19 @@ ko::initialize(argc, argv);
 //         std::cout << "point " << i << " has node key = " << decode_key(codes_host(i)) 
 //             << " and id = " << decode_id(codes_host(i)) << "\n";
         if (i != decode_id(codes_host(i))) ++nerr; 
+        const key_type ptkey = decode_key(codes_host(i));
+        const auto pbox = box_from_key(ptkey, rb_host(), octree_depth, octree_depth);
+        if (!boxContainsPoint(pbox, ko::subview(src_crds_host, i, ko::ALL()))) {
+            ++nerr;
+        }
     }
     if (nerr > 0) {
         throw std::runtime_error("presort: encode/decode id test failed.");
     }
-    
+    else {
+        std::cout << "presort: pt encoding & node box test passes.\n";
+    }
+//===========================================================    
     ko::sort(pt_codes);
     ko::deep_copy(codes_host, pt_codes);
     
@@ -97,12 +107,16 @@ ko::initialize(argc, argv);
         if (decode_id(codes_host(i)) != orig_inds(i)) ++nerr;
     }
     if (nerr > 0) {throw std::runtime_error("postsort: encode/decode id test failed.");}
-    
+    else {std::cout << "postsort: encode/decode id test passes.\n";}
+//===========================================================    
     ko::View<Real*[3]> unsorted_pts("unsorted_pts", npts);
     ko::parallel_for(npts, UnpermuteFunctor(unsorted_pts, sorted_pts, original_ptids));
     auto unsort_host = ko::create_mirror_view(unsorted_pts);
     ko::deep_copy(unsort_host, unsorted_pts);
     for (int i=0; i<npts; ++i) {
+        const key_type ptkey = decode_key(codes_host(i));
+        const auto pbox = box_from_key(ptkey, rb_host(), octree_depth, octree_depth);
+        if (!boxContainsPoint(pbox, ko::subview(sort_host, i, ko::ALL()))) ++nerr;
         for (int j=0; j<3; ++j) {
             if (src_crds(i,j) != unsort_host(i,j)) {
                 ++nerr;
@@ -115,8 +129,11 @@ ko::initialize(argc, argv);
     if (nerr>0) {
         throw std::runtime_error("permute/unpermute test failed.");
     }
-    
-//     std::cout << "key(0) = " << decode_key(codes_host(0)) << " key(1) = " << decode_key(codes_host(1)) << "\n";
+    else {
+        std::cout << "permute/unpermute test passes.\n";
+    }
+//===========================================================    
+
     ko::View<Index*> unode_flags("unode_flags", npts);
     ko::View<Index*> marked_nodes("marked_nodes", npts);
     ko::View<key_type*> ukeys_test("ukeys_test", npts);
@@ -130,12 +147,7 @@ ko::initialize(argc, argv);
         }
     });
     auto marked_nodes_host = ko::create_mirror_view(marked_nodes);
-    
-    ko::deep_copy(marked_nodes_host, marked_nodes);
-//     for (Index i=0; i<npts; ++i) {
-//         std::cout << uflag_host(i) << (i<npts-1 ? " " :")\n");
-//     }
-
+    ko::deep_copy(marked_nodes_host, marked_nodes);    
     
     ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
         MarkDuplicates(unode_flags, pt_codes));
@@ -163,6 +175,9 @@ ko::initialize(argc, argv);
     Index uniq_ind = 0;
     for (Index i=0; i<npts; ++i) {
         if (marked_nodes_host(i) > 0) {
+            const key_type ptkey = ukeys_test_host(i);
+            const auto pbox = box_from_key(ptkey, rb_host(), octree_depth, octree_depth);
+            if (!boxContainsPoint(pbox, ko::subview(sort_host, i, ko::ALL()))) ++nerr;
             if (ukeys_host(uniq_ind) != ukeys_test_host(i)) {
                 std::cout << "error: ukeys(" << uniq_ind << ") = " << ukeys_host(uniq_ind) << " .NEQ. ukeys_test("
                 << i << ")\n";
@@ -179,13 +194,20 @@ ko::initialize(argc, argv);
     if (nerr > 0) {
         throw std::runtime_error("Unique Node tests failed.");
     }
-    
+    else {
+        std::cout << "unique node tests pass.\n";
+    }
+//===========================================================    
     ko::View<key_type*> pkeys("pkeys", nunodes);
     ko::parallel_for(nunodes, KOKKOS_LAMBDA (const Index& i) {
         pkeys(i) = parent_key(ukeys(i), octree_depth, octree_depth);
     });
     auto pkeys_host = ko::create_mirror_view(pkeys);
     ko::deep_copy(pkeys_host, pkeys);
+    std::cout << "ukeys = (";
+    for (Index i=0; i<nunodes; ++i) {
+        std::cout << ukeys_host(i) << (i<nunodes-1 ? " " : ")\n");
+    }
     std::cout << "pkeys = (";
     for (Index i=0; i<nunodes; ++i) {
         std::cout << pkeys_host(i) << (i<nunodes-1 ? " " : ")\n");
@@ -220,33 +242,35 @@ ko::initialize(argc, argv);
             const Index kid0_address = nsiblings(i) - 8;
             const key_type pkey = parent_key(ukeys(i), octree_depth, octree_depth);
             for (int j=0; j<8; ++j) {
+                const Index node_ind = kid0_address +j;
                 const key_type new_key = pkey+j;
-                node_keys(kid0_address + j) = new_key;
+                node_keys(node_ind) = new_key;
                 const Index found_key = binarySearchKeys(new_key, ukeys, true);
+//                 printf("new_key = %u found_key = %d ukeys(found_key) = %u\n", new_key, found_key, ukeys(found_key));
                 if (found_key != NULL_IND) {
-                    node_pt_inds(i,0) = uinds(found_key,0);
-                    node_pt_inds(i,1) = uinds(found_key,1);    
+                    node_pt_inds(node_ind,0) = uinds(found_key,0);
+                    node_pt_inds(node_ind,1) = uinds(found_key,1);    
                 }
                 else {
-                    node_pt_inds(i,0) = 0;
-                    node_pt_inds(i,1) = 0;
+                    node_pt_inds(node_ind,0) = 0;
+                    node_pt_inds(node_ind,1) = 0;
                 }
             }
         }
     });
     auto nkeys_host = ko::create_mirror_view(node_keys);
-    auto nodepts_host = ko::create_mirror_view(node_pt_inds);
+    auto node_pts_host = ko::create_mirror_view(node_pt_inds);
     ko::deep_copy(nkeys_host, node_keys);
-    ko::deep_copy(nodepts_host, node_pt_inds);
-    std::cout << "node_keys = (";
+    ko::deep_copy(node_pts_host, node_pt_inds);
+
     for (Index i=0; i<nnodes(); ++i) {
-        std::cout << "node " << i << " has key " << nkeys_host(i) << " and contains " << nodepts_host(i,1) <<
-            " points starting at pt address " << nodepts_host(i,0) << "\n";
+//         std::cout << "node " << i << " has key " << nkeys_host(i) << " and contains " << node_pts_host(i,1) <<
+//             " points starting at pt address " << node_pts_host(i,0) << "\n";
         const BBox nbox = box_from_key(nkeys_host(i), rb_host(), octree_depth, octree_depth);
-        for (Index j=0; j<nodepts_host(i,1); ++j) {
-            auto pt = ko::subview(sort_host, nodepts_host(i,0) + j, ko::ALL());
+        for (Index j=0; j<node_pts_host(i,1); ++j) {
+            auto pt = ko::subview(sort_host, node_pts_host(i,0) + j, ko::ALL());
             if (!boxContainsPoint(nbox, pt)) {
-                std::cout << "\tpt(" << nodepts_host(i,0) + j << ") = (" << pt(0) << " " << pt(1) << " " << pt(2)
+                std::cout << "\tpt(" << node_pts_host(i,0) + j << ") = (" << pt(0) << " " << pt(1) << " " << pt(2)
                     << ") is not contained in node box " << nbox;
             
                 ++nerr;
@@ -254,8 +278,10 @@ ko::initialize(argc, argv);
         }
     }
     if (nerr>0) throw std::runtime_error("error: node box/point relationship test failed.");
-    
-    
+    else {
+        std::cout << "node box/point relationship tests pass.\n";
+    }
+//===========================================================    
 }
 ko::finalize();
 return 0;

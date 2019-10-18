@@ -19,23 +19,30 @@ using namespace Lpm::Octree;
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
+    Int nerr = 0;
     const BBox sphereBox(-1,1,-1,1,-1,1);
     {// Max tree depth = 1
         std::vector<Int> leaf_keys(8);
         for (int k=0; k<8; ++k) {
             leaf_keys[k] = k;
-            std::cout << "key " << k << " = " << std::bitset<3>(k) << "\n";
-            std::cout << "k = " << k << " (k&4) = " << (k&4) << " (k&2) = " << (k&2) << " (k&1) = " << (k&1) << "\n";
+            std::cout << "key " << k << " = " << std::bitset<3>(k) <<  " (k&4) = " << (k&4) 
+                << " (k&2) = " << (k&2) << " (k&1) = " << (k&1) << "\n";
         }
-        std::cout << "sphereBox = " << sphereBox;
+//         std::cout << "sphereBox = " << sphereBox;
         std::vector<BBox> kidboxes(8);
+        ko::View<BBox[8],Host> kidboxes1("kidboxes");
+        bisectBoxAllDims(kidboxes1, sphereBox);
         for (int k=0; k<8; ++k) {
-            std::cout << "local_key(k,1,1) = " << local_key(k,1,1) << "\n";
+//             std::cout << "local_key(k,1,1) = " << local_key(k,1,1) << "\n";
             kidboxes[k] = box_from_key(leaf_keys[k], sphereBox, 1,1);
-            std::cout << "child box " << k << " = " << kidboxes[k];
+//             std::cout << "child box from key    " << k << " = " << kidboxes[k];
+//             std::cout << "child box from bisect " << k << " = " << kidboxes1(k);
+            if (kidboxes[k] != kidboxes1(k)) ++nerr;
         }
+        if (nerr>0) {throw std::runtime_error("Box division test failed.");}
+        else {std::cout << "box division test passed.\n";}
     }
-    {// Max tree depth > 1
+    {// Max tree depth = 2
         const int max_depth = 2;
         std::vector<key_type> ldkeys(pintpow8(max_depth));
         ko::View<Real[64][3],Host> l2centroids("cntds");
@@ -70,7 +77,7 @@ ko::initialize(argc, argv);
             l2centroids(k,1) = cy;
             l2centroids(k,2) = cz;
         }
-        Int nerr = 0;
+
         for (int i=0; i<64; ++i) {
             const key_type k = compute_key_for_point(ko::subview(l2centroids, i, ko::ALL()), 2, sphereBox);
             const code_type c = encode(k,i);
@@ -89,7 +96,10 @@ ko::initialize(argc, argv);
             if (cz != l2centroids(i,2)) ++nerr;
         }
         if (nerr>0) {
-            throw std::runtime_error("error in computed keys test.");
+            throw std::runtime_error("error in computed keys/boxes test.");
+        }
+        else {
+            std::cout << "computed keys/boxes tests pass.\n";
         }
         
 //         for (key_type k=0; k<pintpow8(max_depth); ++k) {
