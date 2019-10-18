@@ -235,7 +235,7 @@ ko::initialize(argc, argv);
     
     ko::View<key_type*> node_keys("node_keys", nnodes());
     ko::View<Index*[2]> node_pt_inds("node_pt_inds", nnodes());
-    ko::parallel_for(nunodes, KOKKOS_LAMBDA (const Index& i) {
+    ko::parallel_for(nunodes, KOKKOS_LAMBDA (const Index& i) { // TODO: Replace NodeSetup and NodeFill Functors with this
         bool new_parent = true;
         if (i>0) new_parent = (nsiblings(i) > nsiblings(i-1));
         if (new_parent) {
