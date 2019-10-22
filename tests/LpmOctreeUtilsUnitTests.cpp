@@ -191,8 +191,8 @@ ko::initialize(argc, argv);
         auto host_ct = ko::create_mirror_view(count_view);
         ko::deep_copy(host_ct, count_view);
         std::cout << "found " << host_ct()+1 << " unique keys.\n";
-        ko::View<key_type*> ukeys("unique_keys", host_ct()+1);
-        ko::View<Index*[2]> pt_inds("pt_inds",host_ct()+1);
+        ko::View<key_type*> ukeys("unique_keys", host_ct());
+        ko::View<Index*[2]> pt_inds("pt_inds",host_ct());
         ko::parallel_for(npts, UniqueNodeFunctor(ukeys, pt_inds, flag_view, codes));
         auto uhost = ko::create_mirror_view(ukeys);
         ko::deep_copy(uhost, ukeys);
@@ -208,83 +208,25 @@ ko::initialize(argc, argv);
         	std::cout << "key(" << uhost(i) << ") start = " << ihost(i,0) << " count = " 
         		<< ihost(i,1) << "\n";
         }
-        
-//         ko::View<Index*> node_nums("node_nums",ukeys.extent(0));
         ko::View<Index*> node_address("node_address", ukeys.extent(0));
         auto host_na = ko::create_mirror_view(node_address);
         ko::parallel_for(ko::RangePolicy<NodeSiblingCounter::MarkTag>(0, ukeys.extent(0)), 
-        	NodeSiblingCounter(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
+        	NodeSiblingCounter(node_address, ukeys, tree_lev, max_depth));
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
             std::cout << "node_address(mark)(i) = " << host_na(i) << " pkey = " << std::bitset<32>(parent_key(uhost(i), tree_lev, max_depth)) << "\n";
         }
         ko::parallel_scan(ko::RangePolicy<NodeSiblingCounter::ScanTag>(0, ukeys.extent(0)),
-        	NodeSiblingCounter(/*node_nums,*/ node_address, ukeys, tree_lev, max_depth));
-//         auto host_nn = ko::create_mirror_view(node_nums);
+        	NodeSiblingCounter(node_address, ukeys, tree_lev, max_depth));
         ko::deep_copy(host_na, node_address);
         for (int i=0; i<ukeys.extent(0); ++i) {
             std::cout << "node_address(scan)(i) = " << host_na(i) << " pkey = " << std::bitset<32>(parent_key(uhost(i), tree_lev, max_depth)) << "\n";
         }
-//         ko::deep_copy(host_nn, node_nums); // TODO: do node_nums and node_address need to be separate?
-        
-//         for (int i=0; i<ukeys.extent(0); ++i) {
-//         	std::cout << "node_nums(" << i << ") = " << host_nn(i) 
-//         			  << " node_address(" <<i << ") = " << host_na(i) 
-//         			  << " local key = " << local_key(uhost(i), tree_lev, max_depth) << "\n";
-//         }
-        
-        const Int nnodes = host_na(ukeys.extent(0)-1) + 8;
-        ko::View<key_type*> nodeLevelDKeys("nld_keys",nnodes);
-        ko::View<Index*> nodeLevelDPointIdx("nld_pt_idx", nnodes);
-        ko::View<Index*> nodeLevelDPointCnt("nld_pt_cnt", nnodes);
-        ko::View<Index*> nodeLevelDPointInNode("nld_pt_in_node", npts);
-        
-//         ko::parallel_for(ukeys.extent(0), KOKKOS_LAMBDA (const Index& i) {
-//             if (i==0 || node_nums(i) > 0 ) {
-//                 const key_type pkey = parent_key(ukeys(i), tree_lev, max_depth);
-//                 for (int j=0; j<8; ++j) {
-//                     nodeLevelDKeys(8*i+j) = node_key(pkey, j, tree_lev, max_depth);
-//                 }   
-//             }
-//         });
-        
-        auto bp = ko::TeamPolicy<>(ukeys.extent(0), 8);
-        ko::parallel_for(bp, NodeSetupFunctor(nodeLevelDKeys, node_address, ukeys, tree_lev, max_depth));
-        
-        auto policy = ko::TeamPolicy<>(ukeys.extent(0),ko::AUTO());
-        ko::parallel_for(policy, NodeFillFunctor(nodeLevelDPointIdx, nodeLevelDPointCnt,
-            nodeLevelDPointInNode, ukeys, node_address, pt_inds, tree_lev, max_depth));
-        
-        auto nd_keys = ko::create_mirror_view(nodeLevelDKeys);
-        auto nd_p_is = ko::create_mirror_view(nodeLevelDPointIdx);
-        auto nd_p_ct = ko::create_mirror_view(nodeLevelDPointCnt);
-        auto nd_pinn = ko::create_mirror_view(nodeLevelDPointInNode);
-        ko::deep_copy(nd_keys, nodeLevelDKeys);
-        ko::deep_copy(nd_p_is, nodeLevelDPointIdx);
-        ko::deep_copy(nd_p_ct, nodeLevelDPointCnt);
-        ko::deep_copy(nd_pinn, nodeLevelDPointInNode);
-        
-        for (int i=0; i<nnodes; ++i) {
-            std::cout << "node(" << std::setw(2) << i << "): key = " << nd_keys(i) << " " << std::bitset<12>(nd_keys(i)) << " pt_start = " << nd_p_is(i) 
-                      << " pt_ct = " << nd_p_ct(i) << "\n";
-        }
-        
-        for (int i=0; i<npts; ++i) {
-            std::cout << "point(" << i << ") = (";
-            for (int j=0; j<3; ++j) {
-                std::cout << host_pts(i,j) << (j!=2 ? " " : ") ");
-            }
-            std::cout << " is in node " << nd_pinn(i);
-            const auto nbox = box_from_key(nd_keys(nd_pinn(i)), box, tree_lev, max_depth);
-            const bool pt_in_box = boxContainsPoint(nbox, ko::subview(host_pts, i, ko::ALL));
-            std::cout << "; node's box contains point = " << std::boolalpha 
-                      << pt_in_box << " " << nbox;  
-            if (!pt_in_box) ++nerr;
-        }
+
         
     }
     if (nerr>0) {
-        throw std::runtime_error("Error found in LpmOctreeUnitTests");
+        throw std::runtime_error("Error found in LpmOctreeUtilsUnitTests");
     }
     std::cout << "program complete" << std::endl;
 }

@@ -86,13 +86,14 @@ ADD_EXECUTABLE(lpmOctreeKernelTests LpmOctreeKernelTests.cpp)
 TARGET_LINK_LIBRARIES(lpmOctreeKernelTests lpm kokkos ${CMAKE_DL_LIBS})
 ADD_TEST(lpmOctreeKernelTests lpmOctreeKernelTests)
 
+ADD_EXECUTABLE(lpmNodeArrayDTest LpmNodeArrayDUnitTests.cpp)
+TARGET_LINK_LIBRARIES(lpmNodeArrayDTest lpm kokkos ${CMAKE_DL_LIBS})
+ADD_TEST(lpmNodeArrayDTest lpmNodeArrayDTest)
+
 #ADD_EXECUTABLE(lpmOctreeTest LpmOctreeTests.cpp)
 #TARGET_LINK_LIBRARIES(lpmOctreeTest lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
 #ADD_TEST(lpmOctreeTest lpmOctreeTest)
-#
-#ADD_EXECUTABLE(lpmNodeArrayDTest LpmNodeArrayDUnitTests.cpp)
-#TARGET_LINK_LIBRARIES(lpmNodeArrayDTest lpm kokkos ${CMAKE_DL_LIBS})
-#ADD_TEST(lpmNodeArrayDTest lpmNodeArrayDTest)
+
 
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
 #SET_TARGET_PROPERTIES(lpmBVETest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")

@@ -28,7 +28,6 @@ ko::initialize(argc, argv);
             std::cout << "key " << k << " = " << std::bitset<3>(k) <<  " (k&4) = " << (k&4) 
                 << " (k&2) = " << (k&2) << " (k&1) = " << (k&1) << "\n";
         }
-//         std::cout << "sphereBox = " << sphereBox;
         std::vector<BBox> kidboxes(8);
         ko::View<BBox[8],Host> kidboxes1("kidboxes");
         bisectBoxAllDims(kidboxes1, sphereBox);

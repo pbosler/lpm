@@ -228,66 +228,48 @@ struct NodeSiblingCounter {
 
 /**
     Prepare NodeArrayD construction.
+
+    Loop over: unique nodes
     
-    // input
-    
-    // output
+    For each unique parent, construct full set of 8 children; some of them may be empty (contain no points)
 */
-struct NodeSetupFunctor {
-    ko::View<key_type*> keys_out;
-    ko::View<Index*> node_address;
-    ko::View<key_type*> keys_in;
-    Int level;
+struct NodeArrayDFunctor {
+    // output
+    ko::View<key_type*> node_keys;
+    ko::View<Index*[2]> node_pt_inds;
+    // input    
+    ko::View<Index*> nsiblings;
+    ko::View<key_type*> ukeys;
+    ko::View<Index*[2]> uinds;
     Int max_depth;
     
-    NodeSetupFunctor(ko::View<key_type*>& ko, const ko::View<Index*>& na, const ko::View<key_type*>& ki,
-         const Int& lev, const Int& md) :
-        keys_out(ko), node_address(na), keys_in(ki), level(lev), max_depth(md) {}
-
+    NodeArrayDFunctor(ko::View<key_type*>& nk, ko::View<Index*[2]>& np, const ko::View<Index*>& ns, 
+        const ko::View<key_type*>& uk, const ko::View<Index*[2]>& ui, const Int& d) : 
+        node_keys(nk), node_pt_inds(np), nsiblings(ns), ukeys(uk), uinds(ui), max_depth(d) {}
+    
     KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-        const Index i=mbr.league_rank();
+    void operator () (const member_type& team) const {
+        const Index i = team.league_rank();
         bool new_parent = true;
-        if (i>0) {
-            new_parent = node_address(i) > node_address(i-1);
-        }
+        if (i>0) new_parent = (nsiblings(i) > nsiblings(i-1));
         if (new_parent) {
-            const key_type pkey = parent_key(keys_in(i), level, max_depth);
-            ko::parallel_for(ko::TeamThreadRange(mbr, (level>0 ? 8 : 1)), KOKKOS_LAMBDA (const Int& j) {
-                keys_out(node_address(i)+j) = node_key(pkey, j, level, max_depth);
+            const Index kid0_address = nsiblings(i)-8;
+            const key_type pkey = parent_key(ukeys(i), max_depth, max_depth);
+            ko::parallel_for(ko::TeamThreadRange(team,8), [=] (const Int& j) {
+                const Index node_ind = kid0_address + j;
+                const key_type new_key = pkey + j;
+                node_keys(node_ind) = new_key;
+                const Index found_key = binarySearchKeys(new_key, ukeys, true);
+                if (found_key != NULL_IND) {
+                    node_pt_inds(node_ind, 0) = uinds(found_key,0);
+                    node_pt_inds(node_ind, 1) = uinds(found_key,1);
+                }
+                else {
+                    node_pt_inds(node_ind,0) = NULL_IND;
+                    node_pt_inds(node_ind,1) = 0;
+                }
             });
         }
-    }
-};
-
-struct NodeFillFunctor {
-    // output
-    ko::View<Index*> pt_idx;
-    ko::View<Index*> pt_ct;
-    ko::View<Index*> pt_in_node;
-    
-    // input
-    ko::View<key_type*> keys_in;  // only non-empty keys
-    ko::View<Index*> node_address;
-    ko::View<Index*[2]> pt_inds;    
-    Int level;
-    Int max_depth;
-    
-    NodeFillFunctor(ko::View<Index*>& ps, ko::View<Index*>& pc, ko::View<Index*>& pn,
-        const ko::View<key_type*>& ki, const ko::View<Index*>& na, const ko::View<Index*[2]>& pi, 
-        const Int& ll, const Int& md=MAX_OCTREE_DEPTH) : pt_idx(ps), pt_ct(pc), pt_in_node(pn),
-        keys_in(ki), node_address(na), pt_inds(pi), level(ll), max_depth(md) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-    	const Index i = mbr.league_rank();
-    	const key_type address = node_address(i) + local_key(keys_in(i), level, max_depth);
-    	pt_idx(address) = pt_inds(i,0);
-    	pt_ct(address) = pt_inds(i,1);
-    	ko::parallel_for(ko::TeamThreadRange(mbr, pt_inds(i,0), pt_inds(i,0)+pt_inds(i,1)),
-    		KOKKOS_LAMBDA (const Index& j) {
-    			pt_in_node(j) = address;
-    		});
     }
 };
 

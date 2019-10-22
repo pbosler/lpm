@@ -32,7 +32,7 @@ ko::initialize(argc, argv);
 //     typedef TriFace facetype;
 //     typedef IcosTriSphereSeed seedtype;
     
-    const int mesh_depth = 6; // must be >= 2
+    const int mesh_depth = 6; // must be >= 2 for IcosTriSphere or box test will fail
     const int octree_depth = 4;
     Index nmaxverts, nmaxedges, nmaxfaces;
     MeshSeed<seedtype> seed;
@@ -235,29 +235,10 @@ ko::initialize(argc, argv);
     
     ko::View<key_type*> node_keys("node_keys", nnodes());
     ko::View<Index*[2]> node_pt_inds("node_pt_inds", nnodes());
-    ko::parallel_for(nunodes, KOKKOS_LAMBDA (const Index& i) { // TODO: Replace NodeSetup and NodeFill Functors with this
-        bool new_parent = true;
-        if (i>0) new_parent = (nsiblings(i) > nsiblings(i-1));
-        if (new_parent) {
-            const Index kid0_address = nsiblings(i) - 8;
-            const key_type pkey = parent_key(ukeys(i), octree_depth, octree_depth);
-            for (int j=0; j<8; ++j) {
-                const Index node_ind = kid0_address +j;
-                const key_type new_key = pkey+j;
-                node_keys(node_ind) = new_key;
-                const Index found_key = binarySearchKeys(new_key, ukeys, true);
-//                 printf("new_key = %u found_key = %d ukeys(found_key) = %u\n", new_key, found_key, ukeys(found_key));
-                if (found_key != NULL_IND) {
-                    node_pt_inds(node_ind,0) = uinds(found_key,0);
-                    node_pt_inds(node_ind,1) = uinds(found_key,1);    
-                }
-                else {
-                    node_pt_inds(node_ind,0) = 0;
-                    node_pt_inds(node_ind,1) = 0;
-                }
-            }
-        }
-    });
+
+    ko::parallel_for(ko::TeamPolicy<>(nunodes,8), NodeArrayDFunctor(node_keys, node_pt_inds, nsiblings,
+        ukeys, uinds, octree_depth));
+    std::cout << "NodeArrayDFunctor pfor returned.\n";
     auto nkeys_host = ko::create_mirror_view(node_keys);
     auto node_pts_host = ko::create_mirror_view(node_pt_inds);
     ko::deep_copy(nkeys_host, node_keys);
@@ -267,13 +248,15 @@ ko::initialize(argc, argv);
 //         std::cout << "node " << i << " has key " << nkeys_host(i) << " and contains " << node_pts_host(i,1) <<
 //             " points starting at pt address " << node_pts_host(i,0) << "\n";
         const BBox nbox = box_from_key(nkeys_host(i), rb_host(), octree_depth, octree_depth);
-        for (Index j=0; j<node_pts_host(i,1); ++j) {
-            auto pt = ko::subview(sort_host, node_pts_host(i,0) + j, ko::ALL());
-            if (!boxContainsPoint(nbox, pt)) {
-                std::cout << "\tpt(" << node_pts_host(i,0) + j << ") = (" << pt(0) << " " << pt(1) << " " << pt(2)
-                    << ") is not contained in node box " << nbox;
+        if (node_pts_host(i,0) != NULL_IND) {
+            for (Index j=0; j<node_pts_host(i,1); ++j) {
+                auto pt = ko::subview(sort_host, node_pts_host(i,0) + j, ko::ALL());
+                if (!boxContainsPoint(nbox, pt)) {
+                    std::cout << "\tpt(" << node_pts_host(i,0) + j << ") = (" << pt(0) << " " << pt(1) << " " << pt(2)
+                        << ") is not contained in node box " << nbox;
             
-                ++nerr;
+                    ++nerr;
+                }
             }
         }
     }
