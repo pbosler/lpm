@@ -9,7 +9,6 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmKokkosUtil.hpp"
 #include <vector>
-// #ifdef HAVE_COMPADRE
 #include "Compadre_GMLS.hpp"
 #include "Compadre_Config.h"
 #include "Compadre_Operators.hpp"

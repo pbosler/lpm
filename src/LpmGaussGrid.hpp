@@ -2,7 +2,7 @@
 #define SPHERICAL_GAUSSIAN_GRID_HPP
 
 #include "LpmConfig.h"
-#ifdef HAVE_SPHEREPACK
+#ifdef LPM_HAVE_SPHEREPACK
 
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"

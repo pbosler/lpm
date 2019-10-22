@@ -3,7 +3,6 @@
 #include <sstream>
 #include <string>
 #include <iostream>
-// #ifdef HAVE_COMPADRE
 #include "Compadre_PointCloudSearch.hpp"
 
 

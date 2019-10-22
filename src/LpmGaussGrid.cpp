@@ -1,6 +1,6 @@
 #include "LpmGaussGrid.hpp"
 
-#ifdef HAVE_SPHEREPACK
+#ifdef LPM_HAVE_SPHEREPACK
 #include <sstream>
 #include <string>
 #include <iostream>

@@ -47,7 +47,7 @@ typedef unsigned Uint;
 /// Memory index type
 typedef int Index;
 /// Memory layout
-#ifdef HAVE_CUDA
+#ifdef LPM_HAVE_CUDA
 typedef ko::LayoutLeft Layout;
 #else
 typedef ko::LayoutRight Layout;
@@ -66,7 +66,7 @@ typedef ko::HostSpace HostMem;
 typedef ko::Device<DevExe, DevMem> Dev;
 typedef ko::Device<HostExe, HostMem> Host;
 
-#ifdef HAVE_CUDA
+#ifdef LPM_HAVE_CUDA
 /// 1d slice of an array
 template <typename VT> KOKKOS_FORCEINLINE_FUNCTION
 ko::View<typename VT::value_type*, ko::LayoutStride, typename VT::device_type, ko::MemoryTraits<ko::Unmanaged>>

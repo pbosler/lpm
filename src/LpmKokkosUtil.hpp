@@ -140,7 +140,7 @@ struct ExeSpaceUtils {
     
     GPU: <= 128 threads per team.
 */
-#ifdef HAVE_CUDA
+#ifdef LPM_HAVE_CUDA
 template <>
 struct ExeSpaceUtils<ko::Cuda> {
     using TeamPolicy = ko::TeamPolicy<ko::Cuda>;

@@ -7,7 +7,6 @@
 #include "LpmCoords.hpp"
 #include "LpmBox3d.hpp"
 #include "LpmOctreeUtil.hpp"
-#include "LpmOctreeKernels.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "Kokkos_Core.hpp"
 
@@ -55,7 +54,6 @@ class NodeArrayD {
     
     std::string infoString() const;
 };
-
 
 }}
 #endif

@@ -18,14 +18,22 @@ struct BBox {
     Real ymin, ymax;
     Real zmin, zmax;
     
-    ko::View<Real*[3]> pts;
-    
     KOKKOS_INLINE_FUNCTION
     BBox() {init();}
 
     KOKKOS_INLINE_FUNCTION
     BBox(const Real& xl, const Real& xr, const Real& yl, const Real& yr, const Real& zl, const Real& zr) :
         xmin(xl), xmax(xr), ymin(yl), ymax(yr), zmin(zl), zmax(zr) {}
+        
+    KOKKOS_INLINE_FUNCTION
+    BBox(const BBox& other) {
+        xmin = other.xmin;
+        xmax = other.xmax;
+        ymin = other.ymin;
+        ymax = other.ymax;
+        zmin = other.zmin;
+        zmax = other.zmax;
+    }
 
     KOKKOS_INLINE_FUNCTION
     void init() {

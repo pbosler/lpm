@@ -72,7 +72,7 @@ ko::initialize(argc, argv);
     ko::parallel_for(npts, EncodeFunctor(pt_codes, src_crds, root_box, octree_depth));
     auto codes_host = ko::create_mirror_view(pt_codes);
     ko::deep_copy(codes_host, pt_codes);
-    
+    std::cout << "testing point codes.\n";
     for (Int i=0; i<npts; ++i) {
 //         std::cout << "point " << i << " has node key = " << decode_key(codes_host(i)) 
 //             << " and id = " << decode_id(codes_host(i)) << "\n";
@@ -235,8 +235,9 @@ ko::initialize(argc, argv);
     
     ko::View<key_type*> node_keys("node_keys", nnodes());
     ko::View<Index*[2]> node_pt_inds("node_pt_inds", nnodes());
+    ko::View<Index*> node_parents("node_parents", nnodes());
 
-    ko::parallel_for(ko::TeamPolicy<>(nunodes,8), NodeArrayDFunctor(node_keys, node_pt_inds, nsiblings,
+    ko::parallel_for(nunodes, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents, nsiblings,
         ukeys, uinds, octree_depth));
     std::cout << "NodeArrayDFunctor pfor returned.\n";
     auto nkeys_host = ko::create_mirror_view(node_keys);

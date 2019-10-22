@@ -20,7 +20,11 @@ typedef uint_fast32_t key_type;
 typedef uint32_t id_type;
 typedef uint_fast64_t code_type;
 
-static constexpr Int MAX_OCTREE_DEPTH=10;
+#ifdef LPM_HAVE_CUDA
+#define MAX_OCTREE_DEPTH 10
+#else
+static constexpr Int MAX_OCTREE_DEPTH = 10;
+#endif
 
 /// 2 raised to a nonnegative integer power
 template <typename T=key_type, typename IntT2=int> 

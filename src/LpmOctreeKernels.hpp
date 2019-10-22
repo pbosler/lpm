@@ -237,28 +237,29 @@ struct NodeArrayDFunctor {
     // output
     ko::View<key_type*> node_keys;
     ko::View<Index*[2]> node_pt_inds;
+    ko::View<Index*> node_parents;
     // input    
     ko::View<Index*> nsiblings;
     ko::View<key_type*> ukeys;
     ko::View<Index*[2]> uinds;
     Int max_depth;
     
-    NodeArrayDFunctor(ko::View<key_type*>& nk, ko::View<Index*[2]>& np, const ko::View<Index*>& ns, 
-        const ko::View<key_type*>& uk, const ko::View<Index*[2]>& ui, const Int& d) : 
-        node_keys(nk), node_pt_inds(np), nsiblings(ns), ukeys(uk), uinds(ui), max_depth(d) {}
+    NodeArrayDFunctor(ko::View<key_type*>& nk, ko::View<Index*[2]>& np, ko::View<Index*>& nprts, 
+        const ko::View<Index*>& ns, const ko::View<key_type*>& uk, const ko::View<Index*[2]>& ui, const Int& d) : 
+        node_keys(nk), node_pt_inds(np), node_parents(nprts), nsiblings(ns), ukeys(uk), uinds(ui), max_depth(d) {}
     
     KOKKOS_INLINE_FUNCTION
-    void operator () (const member_type& team) const {
-        const Index i = team.league_rank();
+    void operator () (const Index& i) const {
         bool new_parent = true;
         if (i>0) new_parent = (nsiblings(i) > nsiblings(i-1));
         if (new_parent) {
             const Index kid0_address = nsiblings(i)-8;
             const key_type pkey = parent_key(ukeys(i), max_depth, max_depth);
-            ko::parallel_for(ko::TeamThreadRange(team,8), [=] (const Int& j) {
+            for (int j=0; j<8; ++j) {
                 const Index node_ind = kid0_address + j;
                 const key_type new_key = pkey + j;
                 node_keys(node_ind) = new_key;
+                node_parents(node_ind) = NULL_IND;
                 const Index found_key = binarySearchKeys(new_key, ukeys, true);
                 if (found_key != NULL_IND) {
                     node_pt_inds(node_ind, 0) = uinds(found_key,0);
@@ -268,8 +269,37 @@ struct NodeArrayDFunctor {
                     node_pt_inds(node_ind,0) = NULL_IND;
                     node_pt_inds(node_ind,1) = 0;
                 }
-            });
+            }
         }
+    }
+};
+
+struct ParentNodeFunctor {
+    // output
+    ko::View<key_type*> keys_out;
+    ko::View<Index*[2]> inds_out;
+    // input
+    ko::View<key_type*> keys_from_lower;
+    ko::View<Index*[2]> inds_from_lower;
+    Int level;
+    Int lower_level;
+    Int max_depth;
+    
+    ParentNodeFunctor(ko::View<key_type*>& ko, ko::View<Index*[2]>& io, const ko::View<key_type*>& kl, 
+        const ko::View<Index*[2]>& il, const Int& lev, const Int& md) :
+        keys_out(ko), inds_out(io), keys_from_lower(kl), inds_from_lower(il), 
+        level(lev), lower_level(lev+1), max_depth(md) {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const member_type& team) const {
+        const Index i = team.league_rank();
+        const Index my_first_kid = 8*i;
+        const key_type my_key = parent_key(keys_from_lower(my_first_kid), lower_level, max_depth);
+        keys_out(i) = my_key;
+        inds_out(i,0) = inds_from_lower(my_first_kid,0);
+        ko::parallel_reduce(ko::TeamThreadRange(team,8), KOKKOS_LAMBDA (const Int& j, Index& ct) {
+            ct += inds_from_lower(my_first_kid + j, 1);
+        }, inds_out(i,1));
     }
 };
 
