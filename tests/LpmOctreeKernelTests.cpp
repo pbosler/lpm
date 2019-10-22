@@ -118,7 +118,7 @@ ko::initialize(argc, argv);
         const auto pbox = box_from_key(ptkey, rb_host(), octree_depth, octree_depth);
         if (!boxContainsPoint(pbox, ko::subview(sort_host, i, ko::ALL()))) ++nerr;
         for (int j=0; j<3; ++j) {
-            if (src_crds(i,j) != unsort_host(i,j)) {
+            if (src_crds_host(i,j) != unsort_host(i,j)) {
                 ++nerr;
                 std::cout << "error: src_crds(" << i << "," << j << ") (" << 
                     src_crds_host(i,j) << " .NEQ. unsorted_pts(" << i << "," << j << ") (" <<
