@@ -16,6 +16,10 @@ ko::initialize(argc, argv);
 {
     typedef QuadFace facetype;
     typedef CubedSphereSeed seedtype;
+    
+//     typedef TriFace facetype;
+//     typedef IcosTriSphereSeed seedtype;
+    
     const int mesh_depth = 6; // must be >= 2 for IcosTriSphere or box test will fail
     const int octree_depth = 4;
     Index nmaxverts, nmaxedges, nmaxfaces;
@@ -30,7 +34,8 @@ ko::initialize(argc, argv);
     ko::deep_copy(src_crds_host, src_crds);
 
     NodeArrayD leaves(src_crds, octree_depth);
-    std::cout << leaves.infoString();
+    const bool verbose_output = false;
+    std::cout << leaves.infoString(verbose_output);
 }
 ko::finalize();
 return 0;

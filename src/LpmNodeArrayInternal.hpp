@@ -32,12 +32,14 @@ class NodeArrayInternal {
         NodeArrayInternal(NodeArrayD& leaves) : level(leaves.depth-1), 
             max_depth(leaves.depth), root_box(leaves.box) { initFromLeaves(leaves); }
         
-//         NodeArrayInternal(NodeArrayInternal& lower) : level(lower.level-1),
-//             max_depth(lower.max_depth), root_box(lower.root_box) { initFromLower(lower); }
+        NodeArrayInternal(NodeArrayInternal& lower) : level(lower.level-1),
+            max_depth(lower.max_depth), root_box(lower.root_box) { initFromLower(lower); }
     
-        std::string infoString() const;
+        std::string infoString(const bool& verbose=false) const;
     
         void initFromLeaves(NodeArrayD& leaves); 
+        
+        void initFromLower(NodeArrayInternal& lower);
     protected:
 };
 

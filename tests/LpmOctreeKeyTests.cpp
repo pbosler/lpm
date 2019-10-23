@@ -101,13 +101,25 @@ ko::initialize(argc, argv);
             std::cout << "computed keys/boxes tests pass.\n";
         }
         
-//         for (key_type k=0; k<pintpow8(max_depth); ++k) {
-//             ldkeys[k] = k;
-//             const key_type pkey = parent_key(k, max_depth, max_depth);
-//             std::cout << "ldkeys[" << k << "] = " << k << " " << std::bitset<12>(k) << " parent = " 
-//                 << pkey << " " << std::bitset<12>(pkey) 
-//                 << " box = " << box_from_key(k, sphereBox, max_depth, max_depth);
-//         }
+        for (int i=0; i<64; ++i) {
+            const key_type k = compute_key_for_point(ko::subview(l2centroids, i, ko::ALL()), 4, sphereBox);
+            const key_type pkey = parent_key(k, 4, 4);
+            const key_type gpkey = parent_key(k, 3, 4);
+            const key_type lkey = local_key(k, 4, 4);
+            const key_type plkey = local_key(k, 3, 4);
+            const key_type ktest = node_key(pkey, lkey, 4, 4);
+            const key_type ptest = node_key(gpkey, plkey, 3, 4);
+            if (k!= ktest) ++nerr;
+            if (pkey != ptest) ++nerr;
+            std::cout << "k = " << std::bitset<12>(k) << " pk = " << std::bitset<12>(pkey)
+             << " gpk = " << std::bitset<12>(gpkey) << "\n";
+        }
+        if (nerr>0) {
+            throw std::runtime_error("error in computed keys/levels test.");
+        }
+        else {
+            std::cout << "computed keys/levels tests pass.\n";
+        }
     }
 }
 ko::finalize();

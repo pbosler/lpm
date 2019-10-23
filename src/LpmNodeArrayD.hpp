@@ -52,7 +52,7 @@ class NodeArrayD {
     */
     void init(const ko::View<Real*[3]>& presorted_points);
     
-    std::string infoString() const;
+    std::string infoString(const bool& verbose=false) const;
 };
 
 }}

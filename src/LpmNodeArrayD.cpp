@@ -128,19 +128,44 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     node_pt_inds = ko::View<Index*[2]>("node_pt_inds", nnodes);
     node_parents = ko::View<Index*>("node_parents", nnodes);
     ko::parallel_for(unode_count, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents, 
-        nsiblings, ukeys, uinds, depth));
+        pt_in_node, nsiblings, ukeys, uinds, depth));
     
 #ifdef LPM_ENABLE_DEBUG
     std::cout << "NodeArrayD::init step 6 of 6 done.\n";
 #endif    
 };
 
-std::string NodeArrayD::infoString() const {
+std::string NodeArrayD::infoString(const bool& verbose) const {
     std::ostringstream ss;
     ss << "NodeArrayD info:\n";
     ss << "\tdepth = " << depth << "\n";
     ss << "\tnpts = " << sorted_pts.extent(0) << "\n";
     ss << "\tnnodes = " << node_keys.extent(0) << "\n";
+    auto rbox = ko::create_mirror_view(box);
+    ko::deep_copy(rbox, box);
+    ss << "\tbbox = " << rbox();
+    if (verbose) {
+        auto keys = ko::create_mirror_view(node_keys);
+        auto pt_inds = ko::create_mirror_view(node_pt_inds);
+        auto parents = ko::create_mirror_view(node_parents);
+        auto pt_node = ko::create_mirror_view(pt_in_node);
+        auto old_ids = ko::create_mirror_view(orig_ids);
+        
+        ko::deep_copy(keys, node_keys);
+        ko::deep_copy(pt_inds, node_pt_inds);
+        ko::deep_copy(parents, node_parents);
+        ko::deep_copy(pt_node, pt_in_node);
+        ko::deep_copy(old_ids, orig_ids);
+        
+        for (Index i=0; i<node_keys.extent(0); ++i) {
+            ss << "\t\t" << i << ": key = " << keys(i) << " pt_start = " << pt_inds(i,0) << " pt_ct = " << pt_inds(i,1)
+               << " parent key = " << parent_key(keys(i), depth, depth) << " parent index = " << parents(i) << "\n";
+        }
+//         ss << "\tpoints:\n";
+//         for (Index i=0; i<pt_in_node.extent(0); ++i) {
+//             ss << "\t\t" << i << ": in node " << pt_node(i) << " old_id = " << old_ids(i) << "\n";
+//         }
+    }
     return ss.str();
 }
 

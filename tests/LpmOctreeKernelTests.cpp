@@ -236,9 +236,10 @@ ko::initialize(argc, argv);
     ko::View<key_type*> node_keys("node_keys", nnodes());
     ko::View<Index*[2]> node_pt_inds("node_pt_inds", nnodes());
     ko::View<Index*> node_parents("node_parents", nnodes());
+    ko::View<Index*> pt_in_node("point_in_node", npts);
 
-    ko::parallel_for(nunodes, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents, nsiblings,
-        ukeys, uinds, octree_depth));
+    ko::parallel_for(nunodes, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents, 
+        pt_in_node, nsiblings,ukeys, uinds, octree_depth));
     std::cout << "NodeArrayDFunctor pfor returned.\n";
     auto nkeys_host = ko::create_mirror_view(node_keys);
     auto node_pts_host = ko::create_mirror_view(node_pt_inds);

@@ -14,7 +14,7 @@ export SP=$HOME/spherepack3.2
 export OMPI_CXX=g++
 
 cmake \
--D CMAKE_BUILD_TYPE:STRING="RelWithDebInfo" \
+-D CMAKE_BUILD_TYPE:STRING="DEBUG" \
 -D Kokkos_ROOT=$KO \
 -D Compadre_ROOT=$CP \
 -D Spherepack_ROOT=$SP \

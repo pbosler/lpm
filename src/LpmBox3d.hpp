@@ -288,7 +288,7 @@ void boxCentroid(Real& cx, Real& cy, Real& cz, const BBox& bb) {
 
 KOKKOS_INLINE_FUNCTION
 Real boxEdgeLength(const BBox& bb) {
-    assert(std::abs(bb.boxAspectRatio(bb) - 1.0) < ZERO_TOL);
+    assert(std::abs(boxAspectRatio(bb) - 1.0) < ZERO_TOL);
     return bb.xmax - bb.xmin;
 }
 

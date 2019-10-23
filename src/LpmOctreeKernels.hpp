@@ -238,6 +238,7 @@ struct NodeArrayDFunctor {
     ko::View<key_type*> node_keys;
     ko::View<Index*[2]> node_pt_inds;
     ko::View<Index*> node_parents;
+    ko::View<Index*> pt_in_node;
     // input    
     ko::View<Index*> nsiblings;
     ko::View<key_type*> ukeys;
@@ -245,8 +246,9 @@ struct NodeArrayDFunctor {
     Int max_depth;
     
     NodeArrayDFunctor(ko::View<key_type*>& nk, ko::View<Index*[2]>& np, ko::View<Index*>& nprts, 
-        const ko::View<Index*>& ns, const ko::View<key_type*>& uk, const ko::View<Index*[2]>& ui, const Int& d) : 
-        node_keys(nk), node_pt_inds(np), node_parents(nprts), nsiblings(ns), ukeys(uk), uinds(ui), max_depth(d) {}
+        ko::View<Index*>& pinn, const ko::View<Index*>& ns, const ko::View<key_type*>& uk, 
+        const ko::View<Index*[2]>& ui, const Int& d) : node_keys(nk), node_pt_inds(np), 
+        node_parents(nprts), pt_in_node(pinn), nsiblings(ns), ukeys(uk), uinds(ui), max_depth(d) {}
     
     KOKKOS_INLINE_FUNCTION
     void operator () (const Index& i) const {
@@ -262,8 +264,13 @@ struct NodeArrayDFunctor {
                 node_parents(node_ind) = NULL_IND;
                 const Index found_key = binarySearchKeys(new_key, ukeys, true);
                 if (found_key != NULL_IND) {
-                    node_pt_inds(node_ind, 0) = uinds(found_key,0);
-                    node_pt_inds(node_ind, 1) = uinds(found_key,1);
+                    const Index points_start_ind = uinds(found_key,0);
+                    const Index points_count = uinds(found_key,1);
+                    node_pt_inds(node_ind, 0) = points_start_ind;
+                    node_pt_inds(node_ind, 1) = points_count;
+                    for (Index k=points_start_ind; k<points_start_ind+points_count; ++k) {
+                        pt_in_node(k) = node_ind;
+                    }
                 }
                 else {
                     node_pt_inds(node_ind,0) = NULL_IND;
@@ -274,6 +281,13 @@ struct NodeArrayDFunctor {
     }
 };
 
+/**
+    Collect unique parents from lower level
+    
+    Loop over: lower level nodes, but only work on every 8th one
+    
+    nparents = nkeys_from_lower / 8;
+*/
 struct ParentNodeFunctor {
     // output
     ko::View<key_type*> keys_out;
@@ -291,15 +305,79 @@ struct ParentNodeFunctor {
         level(lev), lower_level(lev+1), max_depth(md) {}
     
     KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& team) const {
-        const Index i = team.league_rank();
-        const Index my_first_kid = 8*i;
+    void operator() (const Index& i) const {
+        // i in [0, nparents-1]
+        const Index my_first_kid = 8*i; // address of first kid in lower level arrays
         const key_type my_key = parent_key(keys_from_lower(my_first_kid), lower_level, max_depth);
         keys_out(i) = my_key;
-        inds_out(i,0) = inds_from_lower(my_first_kid,0);
-        ko::parallel_reduce(ko::TeamThreadRange(team,8), KOKKOS_LAMBDA (const Int& j, Index& ct) {
-            ct += inds_from_lower(my_first_kid + j, 1);
-        }, inds_out(i,1));
+        inds_out(i,1) = 0;
+        for (int j=0; j<8; ++j) {
+            inds_out(i,1) += inds_from_lower(my_first_kid+j,1);
+        }
+        assert(inds_out(i,1)>0);
+        for (int j=0; j<8; ++j) {
+            if (inds_from_lower(my_first_kid+j,0) != NULL_IND) {
+                inds_out(i,0) = inds_from_lower(my_first_kid+j,0);
+                break;
+            }
+        }
+    }
+};
+
+struct NodeArrayInternalFunctor {
+    // output
+    ko::View<key_type*> node_keys;
+    ko::View<Index*[2]> node_pt_inds;
+    ko::View<Index*> node_parents;
+    ko::View<Index*[8]> node_kids;
+    ko::View<Index*> parents_from_lower;
+    // input
+    ko::View<Index*> nsiblings;
+    ko::View<key_type*> ukeys;
+    ko::View<Index*[2]> uinds;
+    ko::View<key_type*> keys_from_lower;
+    Int level;
+    Int max_depth;
+    
+    NodeArrayInternalFunctor(ko::View<key_type*>& nkeys, ko::View<Index*[2]>& npi, ko::View<Index*>& npts,
+        ko::View<Index*[8]>& nkids, ko::View<Index*>& plow, const ko::View<Index*>& nsibs, 
+        const ko::View<key_type*>& uk, const ko::View<Index*[2]>& ui, const ko::View<key_type*>& klow,
+        const Int& lev, const Int& max) : node_keys(nkeys), node_pt_inds(npi), node_parents(npts),
+        node_kids(nkids), parents_from_lower(plow), nsiblings(nsibs), ukeys(uk), uinds(ui),
+        keys_from_lower(klow), level(lev), max_depth(max) {}
+    
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const Index& i) const {
+        bool new_parent = true;  // true if nodes at this level have different parents
+        if (i>0) new_parent = (nsiblings(i) > nsiblings(i-1));
+        if (new_parent) {
+            const key_type pkey = parent_key(ukeys(i), level, max_depth); // key of common parent at next level up
+            const Index kid0_address = nsiblings(i)-8;  // index of new parent's first child at this level
+            for (int j=0; j<8; ++j) {
+                const Index node_ind = kid0_address + j; // index of new node at this level
+                const key_type new_key = node_key(pkey, j, level, max_depth); // key of new node at this level
+                node_keys(node_ind) = new_key;
+                node_parents(node_ind) = NULL_IND;
+                const Index found_key = binarySearchKeys(new_key, ukeys, true);
+                if (found_key != NULL_IND) {  // this sibling is nonempty
+                    node_pt_inds(node_ind,0) = uinds(found_key,0);
+                    node_pt_inds(node_ind,1) = uinds(found_key,1);
+                    const Index kid0_lower = binarySearchKeys(new_key, keys_from_lower, true);
+                    for (int k=0; k<8; ++k) {
+                        node_kids(node_ind,k) = kid0_lower + k;
+                        parents_from_lower(kid0_lower+k) = node_ind;
+                    }
+                }
+                else { // this sibling is empty
+                    node_pt_inds(node_ind,0) = NULL_IND;
+                    node_pt_inds(node_ind,1) = 0;
+                    for (int k=0; k<8; ++k) {
+                        node_kids(node_ind, k) = NULL_IND;
+                    }
+                }
+                
+            }
+        }
     }
 };
 
