@@ -24,11 +24,7 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
         Output: bounding box
     */
     ko::parallel_reduce(npts, BoxFunctor(presorted_pts), BBoxReducer<Dev>(box));
-    
-#ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 1 of 6 done.\n";
-#endif
-    
+
     /// step 2: Encode node key/point index pairs
     /**
         Input: points
@@ -41,9 +37,6 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     ko::View<code_type*> pt_codes("pt_codes",npts);
     ko::parallel_for(npts, EncodeFunctor(pt_codes, presorted_pts, box, depth));
     
-#ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 2 of 6 done.\n";
-#endif    
     /// step 3: Sort point array
     /**
         Input: points, sorted point codes
@@ -53,12 +46,8 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
         Output: sorted point array, with original id array to allow unsort later
     */
     ko::sort(pt_codes);
-    
     ko::parallel_for(npts, PermuteFunctor(sorted_pts, orig_ids, presorted_pts, pt_codes));
     
-#ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 3 of 6 done.\n";
-#endif
     /// step 4: Determine points contained by each node
     /**
         Input: point codes
@@ -78,11 +67,9 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     */
     ko::View<Index*> node_flags("node_flags",npts);
     ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0,npts), 
-        MarkDuplicates(node_flags, pt_codes));
-    
+        MarkDuplicates(node_flags, pt_codes));    
     ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
         MarkDuplicates(node_flags, pt_codes));
-    
     
     n_view_type unode_count_view = ko::subview(node_flags, npts-1);
     auto un_count_host = ko::create_mirror_view(unode_count_view);
@@ -92,10 +79,6 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     ko::View<key_type*> ukeys("ukeys", unode_count);
     ko::View<Index*[2]> uinds("uinds", unode_count);
     ko::parallel_for(npts, UniqueNodeFunctor(ukeys, uinds, node_flags, pt_codes));
-    
-#ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 4 of 6 done.\n";
-#endif
     
     /// step 5: Ensure that each node has a full set of siblings
     /**
@@ -110,7 +93,6 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     ko::View<Index*> nsiblings("nsiblings", unode_count);
     ko::parallel_for(ko::RangePolicy<NodeSiblingCounter::MarkTag>(0, unode_count), 
         NodeSiblingCounter(nsiblings, ukeys, depth, depth));
-    
     ko::parallel_scan(ko::RangePolicy<NodeSiblingCounter::ScanTag>(0, unode_count),
         NodeSiblingCounter(nsiblings, ukeys, depth, depth));
     
@@ -119,11 +101,8 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
     auto nnhost = ko::create_mirror_view(nnodes_view);
     ko::deep_copy(nnhost, nnodes_view);
     const Index nnodes = nnhost();
-#ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 5 of 6 done.\n";
-#endif   
+
     /// step 6: Build NodeArrayD
-//     std::cout << "allocated " << nnodes << " leaf nodes.\n";
     node_keys = ko::View<key_type*>("node_keys", nnodes);
     node_pt_inds = ko::View<Index*[2]>("node_pt_inds", nnodes);
     node_parents = ko::View<Index*>("node_parents", nnodes);
@@ -131,7 +110,14 @@ void NodeArrayD::init(const ko::View<Real*[3]>& presorted_pts)  {
         pt_in_node, nsiblings, ukeys, uinds, depth));
     
 #ifdef LPM_ENABLE_DEBUG
-    std::cout << "NodeArrayD::init step 6 of 6 done.\n";
+    std::cout << "NodeArrayD::init: nnodes = " << nnodes << " out of " << pintpow8(depth) << " possible.\n";
+    Index npts_check = 0;
+    const auto loc_pt_inds = node_pt_inds;
+    ko::parallel_reduce(nnodes, KOKKOS_LAMBDA (const Index& i, Index& ct) {
+        ct += loc_pt_inds(i,1);
+    }, npts_check);
+    assert(npts_check == npts);
+    std::cout << "NodeArrayD::init: npoints check = " << (npts_check == npts ? " pass\n" : "FAIL\n");
 #endif    
 };
 
@@ -158,7 +144,7 @@ std::string NodeArrayD::infoString(const bool& verbose) const {
         ko::deep_copy(old_ids, orig_ids);
         
         for (Index i=0; i<node_keys.extent(0); ++i) {
-            ss << "\t\t" << i << ": key = " << keys(i) << " pt_start = " << pt_inds(i,0) << " pt_ct = " << pt_inds(i,1)
+            ss << "\t\t" << i << ": key = " << std::bitset<32>(keys(i)) << " pt_start = " << pt_inds(i,0) << " pt_ct = " << pt_inds(i,1)
                << " parent key = " << parent_key(keys(i), depth, depth) << " parent index = " << parents(i) << "\n";
         }
 //         ss << "\tpoints:\n";

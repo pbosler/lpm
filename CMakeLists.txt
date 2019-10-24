@@ -29,7 +29,7 @@ if (VTK_FOUND)
     printvar(VTK_LIBRARIES)
 endif()
 
-if (LPM_ENABLE_DEBUG)
+if (LPM_ENABLE_DEBUG OR ${CMAKE_BUILD_TYPE} STREQUAL "DEBUG")
     option(LPM_ENABLE_DEBUG "Enable thorough debugging checks." ON)
 endif()
 

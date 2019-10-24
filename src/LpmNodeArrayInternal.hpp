@@ -14,7 +14,13 @@ namespace Lpm {
 namespace Octree {
 
 
-
+/**
+    Class must initialize its own arrays 
+        * and *
+    Set the lower level's node_parents values.
+    
+    These actions are performed in the constructors.
+*/
 class NodeArrayInternal {
     public:
         Int level;

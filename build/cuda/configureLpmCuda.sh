@@ -10,7 +10,7 @@ export SP=$HOME/spherepack3.2
 export OMP_CXX=$HOME/kokkos/bin/nvcc_wrapper
 
 cmake -Wno-dev \
--D CMAKE_BUILD_TYPE:STRING="RelWithDebInfo" \
+-D CMAKE_BUILD_TYPE:STRING="DEBUG" \
 -D Kokkos_ROOT=$KO \
 -D Compadre_ROOT=$CP \
 -D CMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
