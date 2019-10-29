@@ -94,9 +94,9 @@ ADD_EXECUTABLE(lpmNodeArrayInternalTest LpmNodeArrayInternalTests.cpp)
 TARGET_LINK_LIBRARIES(lpmNodeArrayInternalTest lpm kokkos ${CMAKE_DL_LIBS})
 ADD_TEST(lpmNodeArrayInternalTest lpmNodeArrayInternalTest)
 
-#ADD_EXECUTABLE(lpmOctreeTest LpmOctreeTests.cpp)
-#TARGET_LINK_LIBRARIES(lpmOctreeTest lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
-#ADD_TEST(lpmOctreeTest lpmOctreeTest)
+ADD_EXECUTABLE(lpmOctreeTest LpmOctreeTests.cpp)
+TARGET_LINK_LIBRARIES(lpmOctreeTest lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
+ADD_TEST(lpmOctreeTest lpmOctreeTest)
 
 
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)

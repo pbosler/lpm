@@ -73,55 +73,50 @@ class Tree {
         /**
             Initializes node-vertex connectivity relations.  Must be called after init().
         */
-        void initVertices(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
+//         void initVertices(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
         
         /** 
             Initializes node-edge connectivity.  Must be called after initVertices().
         */
-        void initEdges(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
+//         void initEdges(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
         
         /** 
             Initializes node-face connectivity.  Must be called after initEdges().
         */
-        void initFaces(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
+//         void initFaces(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase);
 };
 
-// struct NeighborhoodFunctor {
-//     // output
-//     ko::View<Index*[27]> neighbors;
-//     // input
-//     ko::View<key_type*> keys;
-//     ko::View<Index*[8]> kids;
-//     ko::View<Index*> parents;
-//     ko::View<Index*> base_address;
-//     ko::View<ParentLUT> ptable;
-//     ko::View<ChildLUT> ctable;
-//     Int level; // assume > 0
-//     Int max_depth;
-//     
-//     NeighborhoodFunctor(ko::View<Index*[27]>& n, const ko::View<key_type*>& k, const ko::View<Index*[8]>& c,
-//         const ko::View<Index*>& p, const ko::View<Index*>& b, const Int& l, const Int& m) :
-//         neighbors(n), keys(k), kids(c), parents(p), base_address(b), level(l), max_depth(m), 
-//         ptable("ParentLUT"), ctable("ChildLUT") {}
-//     
-//     KOKKOS_INLINE_FUNCTION
-//     void operator() (const member_type& mbr) const {
-//         const Index t = base_address(level) + mbr.league_rank();
-//         const Index p = parents(t);
-//         const key_type i = local_key(keys(t), level, max_depth);
-//         ko::parallel_for(ko::TeamThreadRange(mbr, 27), KOKKOS_LAMBDA (const Index& j) {
-//             const Index plut = table_val(i,j, ptable);
-//             if ( neighbors(p,plut) != NULL_IND) {
-//                 const Index h = neighbors(p, plut);
-//                 neighbors(t,j) = kids(h, table_val(i,j, ctable));
-//             }
-//             else {
-//                 neighbors(t,j) = NULL_IND;
-//             }
-//         });
-//     }
-// };
-// 
+struct NeighborhoodFunctor {
+    // output
+    ko::View<Index*[27]> neighbors;
+    // input
+    ko::View<key_type*> keys;
+    ko::View<Index*[8]> kids;
+    ko::View<Index*> parents;
+    ko::View<ParentLUT> ptable;
+    ko::View<ChildLUT> ctable;
+    Int level; 
+    Int max_depth;
+    
+    NeighborhoodFunctor(ko::View<Index*[27]>& n, const ko::View<key_type*>& k, const ko::View<Index*[8]>& c,
+        const ko::View<Index*>& p, const Int& l, const Int& m) :
+        neighbors(n), keys(k), kids(c), parents(p),level(l), max_depth(m), 
+        ptable("ParentLUT"), ctable("ChildLUT") {
+        	assert(l>0); 
+        	assert(l<=m);}
+
+	KOKKOS_INLINE_FUNCTION
+	void operator() (const Index& t) const { 
+		const Index p = parents(t);
+		const key_type i = local_key(keys(t), level, max_depth);
+		for (int j=0; j<27; ++j) {
+			const Index plut = table_val(i,j, ptable);
+			const Index h = neighbors(p,plut);
+			neighbors(t,j) = (h != NULL_IND ? kids(h, table_val(i,j,ctable)) : NULL_IND);
+		}
+	}
+};
+
 // KOKKOS_INLINE_FUNCTION
 // Index nvertsAtLevel(const Int& lev) {
 //     Index points_per_edge = 2;

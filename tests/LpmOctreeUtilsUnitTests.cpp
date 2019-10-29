@@ -60,7 +60,7 @@ ko::initialize(argc, argv);
         for (int j=0; j<3; ++j) {
             std::cout << std::setw(5) << host_pts(i,j) << (j<2 ? " " : ")\n");
         }
-        for (int j=0; j<=tree_lev; ++j) {
+        for (int j=1; j<=tree_lev; ++j) {
         	const key_type k = compute_key_for_point(ko::subview(host_pts, i, ko::ALL()), max_depth, box);
         	const key_type p = parent_key(k, j, max_depth);
         	const key_type lk = local_key(k, j, max_depth);

@@ -45,13 +45,13 @@ void Tree::initNodes() {
     auto nnodes_per_level_host = ko::create_mirror_view(nnodes_per_level);
     Index nnodes_total = nleaves;
     nnodes_per_level_host(max_depth) = nleaves;
-    for (lev=0; lev<max_depth; ++lev) {
+    for (int lev=0; lev<max_depth; ++lev) {
         nnodes_per_level_host(lev) = internal_levels[lev].node_keys.extent(0);
         nnodes_total += nnodes_per_level_host(lev);
     }
     auto base_address_host = ko::create_mirror_view(base_address);
     base_address_host(0) = 0;
-    for (lev=1; lev<=max_depth; ++lev) {
+    for (int lev=1; lev<=max_depth; ++lev) {
         base_address_host(lev) = base_address_host(lev-1) + nnodes_per_level_host(lev-1);
     }
     ko::deep_copy(nnodes_per_level, nnodes_per_level_host);
@@ -64,19 +64,29 @@ void Tree::initNodes() {
     node_neighbors = ko::View<Index*[27]>("node_neighbors", nnodes_total);
     
     /// concatenate levels
-    for (lev=0; lev<max_depth; ++lev) {
+    for (int lev=0; lev<max_depth; ++lev) {
         auto dest_range = std::make_pair(base_address_host(lev), base_address_host(lev) + nnodes_per_level_host(lev));
         ko::deep_copy(ko::subview(node_keys, dest_range), internal_levels[lev].node_keys);
         ko::deep_copy(ko::subview(node_pt_inds, dest_range, ko::ALL()), internal_levels[lev].node_pt_inds);
-        ko::deep_copy(ko::subview(node_parents, dest_range), internal_levels.node_parents);
-        ko::deep_copy(ko::subview(node_kids, dest_range, ko::ALL()), internal_levels.node_kids);
+        ko::deep_copy(ko::subview(node_parents, dest_range), internal_levels[lev].node_parents);
+        ko::deep_copy(ko::subview(node_kids, dest_range, ko::ALL()), internal_levels[lev].node_kids);
     }
     auto dest_range = std::make_pair(base_address_host(max_depth), 
         base_address_host(max_depth) + nnodes_per_level_host(max_depth));
     ko::deep_copy(ko::subview(node_keys, dest_range), leaves.node_keys);
     ko::deep_copy(ko::subview(node_pt_inds, dest_range, ko::ALL()), leaves.node_pt_inds);
     ko::deep_copy(ko::subview(node_parents, dest_range), leaves.node_parents);
-    ko::deep_copy(ko::subview(node_kids, dest_range, ko::ALL()), leaves.node_kids);
+    auto leaf_kids = ko::subview(node_kids, dest_range, ko::ALL());
+    ko::parallel_for(nleaves, KOKKOS_LAMBDA (const Index& i) {
+    	for (int j=0; j<8; ++j) leaf_kids(i,j) = NULL_IND;
+    });
+    
+    for (int lev=1; lev<=max_depth; ++lev) {
+    	const ko::RangePolicy<> range_pol(base_address_host(lev), 
+    		base_address_host(lev)+nnodes_per_level_host(lev));
+    	ko::parallel_for(range_pol, NeighborhoodFunctor(node_neighbors,
+    		node_keys, node_kids, node_parents, lev, max_depth));
+    }
 }
 
 // void Tree::initVertices(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase) {
