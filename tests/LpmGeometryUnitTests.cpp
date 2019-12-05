@@ -8,15 +8,15 @@
 using namespace Lpm;
 
 int main(int argc, char* argv[]) {
-ko::initialize(argc, argv); 
+ko::initialize(argc, argv);
 {
     { //PLANAR TESTS
     const Real r2a[2] = {1.0, 0.0};
     const Real r2b[2] = {2.0, 1.0};
     const Real r2c[2] = {-1.0, -10.0};
     const Real r2d[2] = {-0.5, -1};
-    
-    
+
+
     // allocate a Vec on the device
     ko::View<Real[2],Dev> r2device_a("a");
     // allocate a mirror on host
@@ -26,37 +26,37 @@ ko::initialize(argc, argv);
     ha[1] = r2a[1];
     // copy to device
     ko::deep_copy(r2device_a, ha);
-    
+
     ko::View<Real[2],Dev> r2device_b("b");
     ko::View<Real[2],Dev>::HostMirror hb = ko::create_mirror_view(r2device_b);
     hb[0] = r2b[0];
     hb[1] = r2b[1];
     ko::deep_copy(r2device_b, hb);
-    
+
     ko::View<Real[2],Dev> r2device_c("c");
     ko::View<Real[2],Dev>::HostMirror hc = ko::create_mirror_view(r2device_c);
     hc[0] = r2c[0];
     hc[1] = r2c[1];
     ko::deep_copy(r2device_c, hc);
-    
+
     ko::View<Real[2],Dev> r2device_d("d");
     ko::View<Real[2],Dev>::HostMirror hd = ko::create_mirror_view(r2device_d);
     hd[0] = r2d[0];
     hd[1] = r2d[1];
     ko::deep_copy(r2device_d, hd);
-    
+
     // allocate a scalar on the device and a host mirror
     ko::View<Real,Layout,Dev> scalar_result("res");
     ko::View<Real>::HostMirror host_scalar = ko::create_mirror_view(scalar_result);
     ko::View<Real[2],Dev> result("res");
-    
-    
+
+
     ko::View<Real[2],Dev>::HostMirror host_result = ko::create_mirror_view(result);
     ko::View<Real*[2],Dev> vecs("vecs", 4);
     std::cout << "shape(vecs) = (" << vecs.extent(0) << ", " << vecs.extent(1) << ")" << std::endl;
-    
+
     std::cout << typeid(vecs).name() << std::endl;
-    
+
     // execute functions on device
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
         scalar_result() = PlaneGeometry::triArea<ko::View<Real[2],Dev>>(r2device_a, r2device_b, r2device_c);
@@ -84,7 +84,7 @@ ko::initialize(argc, argv);
         scalar_result() = PlaneGeometry::polygonArea(vecs, 4);
         if (std::abs(scalar_result() - 10.5) > ZERO_TOL) error("polygonArea error.");
         scalar_result() = PlaneGeometry::dot(r2device_a, r2device_b);
-        }); 
+        });
     // copy results to host
     ko::deep_copy(host_result, result);
     prarr("barycenter", host_result.data(), 2);
@@ -94,14 +94,15 @@ ko::initialize(argc, argv);
     PlaneGeometry::normalize(host_result);
     LPM_THROW_IF( PlaneGeometry::mag(host_result) != 1, "normalize error.");
     } // END PLANAR TESTS
-    
+
     { // SPHERICAL TESTS
-    
+
     const Real p0[3] = {0.57735026918962584,-0.57735026918962584,0.57735026918962584};
     const Real p1[3] = {0.57735026918962584,-0.57735026918962584,-0.57735026918962584};
     const Real p2[3] = {0.57735026918962584,0.57735026918962584,-0.57735026918962584};
     const Real p3[3] = {0.57735026918962584,0.57735026918962584,0.57735026918962584};
-    
+    const Real p4[3] = {0,0,1};
+
     ko::View<Real[3],Dev> a("a");
     ko::View<Real[3],Dev>::HostMirror ha = ko::create_mirror_view(a);
     ko::View<Real[3],Dev> b("b");
@@ -110,7 +111,12 @@ ko::initialize(argc, argv);
     ko::View<Real[3],Dev>::HostMirror hc = ko::create_mirror_view(c);
     ko::View<Real[3],Dev> d("d");
     ko::View<Real[3],Dev>::HostMirror hd = ko::create_mirror_view(d);
-    
+
+    const Real lat = SphereGeometry::latitude(p0);
+    std::cout << "lat(p0) = " << lat << "\n";
+    const Real lat4 = SphereGeometry::latitude(p4);
+    std::cout << "lat(p4) = " << lat4 << "\n";
+
     for (int i=0; i<3; ++i) {
         ha[i] = p0[i];
         hb[i] = p1[i];
@@ -126,9 +132,9 @@ ko::initialize(argc, argv);
     ko::View<Real, Dev>::HostMirror hres = ko::create_mirror_view(res);
     ko::View<Real[3],Dev> vres("vres");
     ko::View<Real[3],Dev>::HostMirror hvres = ko::create_mirror_view(vres);
-    
+
     ko::View<Real*[3],Dev> vecs("vecs", 4);
-    
+
     ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
         res() = SphereGeometry::triArea(a, b, c);
         if (std::abs(res() - PI/3.0) > ZERO_TOL) error("sphereTriArea error.");
@@ -142,8 +148,8 @@ ko::initialize(argc, argv);
         printf("sphere midpoint = (%f,%f,%f)\n", vres(0), vres(1), vres(2));
         if (std::abs(vres(0) - 0.5*std::sqrt(2.0)) > ZERO_TOL) error("sphereMidpoint error.");
         SphereGeometry::cross(vres, a, b);
-        if (std::abs(vres(0)-2.0/3.0) > ZERO_TOL || 
-            std::abs(vres(1)-2.0/3.0) > ZERO_TOL || 
+        if (std::abs(vres(0)-2.0/3.0) > ZERO_TOL ||
+            std::abs(vres(1)-2.0/3.0) > ZERO_TOL ||
             std::abs(vres(2)) > ZERO_TOL) error("cross product error.");
         res() = SphereGeometry::distance(a,b);
         printf("distance(a,b) = %f\n", res());
@@ -152,8 +158,8 @@ ko::initialize(argc, argv);
         res() = SphereGeometry::polygonArea(vres, vecs, 4);
         if (std::abs(res()-2*PI/3) > ZERO_TOL) error("sphere polygon error.");
     });
-    
-    
+
+
     } // END SPHERICAL TESTS
 }
 std::cout << "tests pass." << std::endl;
