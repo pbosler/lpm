@@ -84,8 +84,6 @@ struct WingedEdge {
 	    const Index& cwo, const Index& ccwo, const Index& cwd, const Index& ccwd, const std::vector<Vertex>& vertices) :
 	    orig_vertex(orig), dest_vertex(dest), left_cell(left), right_cell(right), cw_orig(cwo), ccw_orig(ccwo),
 	    cw_dest(cwd), ccw_dest(ccwd) {
-
-        Real xyz[3];
         SphereGeometry::midpoint(xyz, vertices[orig_vertex].xyz, vertices[dest_vertex].xyz);
         latlon[0] = SphereGeometry::latitude(xyz);
         latlon[1] = SphereGeometry::longitude(xyz);

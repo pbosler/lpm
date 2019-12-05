@@ -3,12 +3,14 @@
 
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
+#include "LpmMeshSeed.hpp"
 #include "LpmSphereVoronoiPrimitives.hpp"
 #include <vector>
 
 namespace Lpm {
 namespace Voronoi {
 
+template <typename SeedType>
 struct VoronoiMesh {
     static constexpr Short MAX_POLYGON_SIDES = 10;
     static constexpr Short MAX_VERTEX_DEGREE = 10;
@@ -16,6 +18,8 @@ struct VoronoiMesh {
     std::vector<WingedEdge> edges;
     std::vector<Vertex> vertices;
     std::vector<Cell> cells;
+
+    VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& init_refinement_level);
 
     /**
 		Okabe et. al. algorithm 4.2.1
@@ -45,8 +49,10 @@ struct VoronoiMesh {
 		const Index& cell_ind) const;
 
 	std::string infoString(const bool& verbose=false) const;
-};
 
+	protected:
+	    void seedInit(const MeshSeed<SeedType>& seed);
+};
 
 }}
 #endif
