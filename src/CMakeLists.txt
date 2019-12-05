@@ -4,7 +4,7 @@ add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmF
     LpmPolyMesh2d.cpp LpmBVESphere.cpp LpmCompadre.cpp LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
     LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
     LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
-    LpmSphereVoronoiPrimitives.cpp
+    LpmSphereVoronoiPrimitives.cpp LpmSphereVoronoiMesh.cpp
 )
 TARGET_LINK_LIBRARIES(lpm kokkos compadre ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 if (USE_SPHEREPACK)

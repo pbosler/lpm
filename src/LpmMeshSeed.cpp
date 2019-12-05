@@ -1,4 +1,5 @@
 #include "LpmMeshSeed.hpp"
+#include "LpmSphereVoronoiPrimitives.hpp"
 #include <sstream>
 #include <iomanip>
 #include <fstream>
@@ -11,10 +12,10 @@ void MeshSeed<SeedType>::readfile() {
     std::ifstream file(fullFilename());
     std::ostringstream oss;
     if (!file.is_open()) {
-        oss << "MeshSeed::readfile error: cannot open file " << fullFilename();   
+        oss << "MeshSeed::readfile error: cannot open file " << fullFilename();
         LPM_THROW_IF(true, oss.str());
     }
-    
+
     /// parse file
     std::string line;
     Int lineNumber = 0;
@@ -25,7 +26,7 @@ void MeshSeed<SeedType>::readfile() {
     Int edgeCounter = 0;
     Int faceVertCounter = 0;
     Int faceEdgeCounter = 0;
-    
+
     while (std::getline(file, line)) {
         ++lineNumber;
         if (line.find("edgeO") != std::string::npos) {
@@ -43,14 +44,14 @@ void MeshSeed<SeedType>::readfile() {
             bool crdErr = false;
             switch (SeedType::geo::ndim) {
                 case (2) : {
-                    if (!(iss >> x >> y)) 
+                    if (!(iss >> x >> y))
                         crdErr = true;
                     scrds(crdCounter, 0) = x;
                     scrds(crdCounter++,1) = y;
                     break;
                 }
                 case (3) : {
-                    if (!(iss >> x >> y >> z)) 
+                    if (!(iss >> x >> y >> z))
                         crdErr = true;
                     scrds(crdCounter, 0) = x;
                     scrds(crdCounter, 1) = y;
@@ -64,19 +65,36 @@ void MeshSeed<SeedType>::readfile() {
                 LPM_THROW_IF(true, oss.str());
             }
         }
-        else if (edgeHeaderLine > 0 && lineNumber > edgeHeaderLine 
+        else if (edgeHeaderLine > 0 && lineNumber > edgeHeaderLine
             && lineNumber < edgeHeaderLine+SeedType::nedges+1) {
             Index orig;
             Index dest;
             Index left;
             Index right;
+            Index cwo;
+            Index ccwo;
+            Index cwd;
+            Index ccwd;
             bool edgeErr = false;
-            if (!(iss >> orig >> dest >> left >> right))
-                edgeErr = true;
+            if (SeedType::isDual) {
+                if (!(iss >> orig >> dest >> left >> right >> cwo >> ccwo >> cwd >> ccwd))
+                    edgeErr = true;
+            }
+            else {
+                if (!(iss >> orig >> dest >> left >> right))
+                    edgeErr = true;
+            }
             sedges(edgeCounter, 0) = orig;
             sedges(edgeCounter, 1) = dest;
             sedges(edgeCounter, 2) = left;
-            sedges(edgeCounter++, 3) = right;
+            sedges(edgeCounter, 3) = right;
+            if (SeedType::isDual) {
+                sedges(edgeCounter,4) = cwo;
+                sedges(edgeCounter,5) = ccwo;
+                sedges(edgeCounter,6) = cwd;
+                sedges(edgeCounter,7) = ccwd;
+            }
+            ++edgeCounter;
             if (edgeErr) {
                 oss << "MeshSeed::readfile error: cannot read edge from line " << lineNumber
                     << " of file " << fullFilename();
@@ -85,11 +103,11 @@ void MeshSeed<SeedType>::readfile() {
         }
         else if (faceVertHeaderLine > 0 && lineNumber > faceVertHeaderLine
             && lineNumber < faceVertHeaderLine + SeedType::nfaces + 1) {
-            Index v0, v1, v2, v3;
+            Index v0, v1, v2, v3, v4;
             bool faceErr = false;
             switch (SeedType::nfaceverts) {
                 case (3) : {
-                    if (!(iss >> v0 >> v1 >> v2)) 
+                    if (!(iss >> v0 >> v1 >> v2))
                         faceErr = true;
                     sfaceverts(faceVertCounter, 0) = v0;
                     sfaceverts(faceVertCounter, 1) = v1;
@@ -97,12 +115,22 @@ void MeshSeed<SeedType>::readfile() {
                 	break;
                 }
                 case (4) : {
-                    if (!(iss >> v0 >> v1 >> v2 >> v3)) 
+                    if (!(iss >> v0 >> v1 >> v2 >> v3))
                         faceErr = true;
                     sfaceverts(faceVertCounter, 0) = v0;
                     sfaceverts(faceVertCounter, 1) = v1;
                     sfaceverts(faceVertCounter, 2) = v2;
                     sfaceverts(faceVertCounter++, 3) = v3;
+                    break;
+                }
+                case (5) : {
+                    if (!(iss >> v0 >> v1 >> v2 >> v3 >> v4))
+                        faceErr = true;
+                    sfaceverts(faceVertCounter, 0) = v0;
+                    sfaceverts(faceVertCounter, 1) = v1;
+                    sfaceverts(faceVertCounter, 2) = v2;
+                    sfaceverts(faceVertCounter, 3) = v3;
+                    sfaceverts(faceVertCounter++,4) = v4;
                     break;
                 }
             }
@@ -112,13 +140,13 @@ void MeshSeed<SeedType>::readfile() {
                 LPM_THROW_IF(true, oss.str());
             }
         }
-        else if (faceEdgeHeaderLine > 0 && lineNumber > faceEdgeHeaderLine 
+        else if (faceEdgeHeaderLine > 0 && lineNumber > faceEdgeHeaderLine
             && lineNumber < faceEdgeHeaderLine + SeedType::nfaces + 1) {
-            Index e0, e1, e2, e3;
+            Index e0, e1, e2, e3, e4;
             bool faceErr = false;
             switch (SeedType::nfaceverts) {
                 case (3) : {
-                    if (!(iss >> e0 >> e1 >> e2)) 
+                    if (!(iss >> e0 >> e1 >> e2))
                         faceErr = true;
                     sfaceedges(faceEdgeCounter, 0) = e0;
                     sfaceedges(faceEdgeCounter, 1) = e1;
@@ -134,6 +162,16 @@ void MeshSeed<SeedType>::readfile() {
                     sfaceedges(faceEdgeCounter++, 3) = e3;
                     break;
                 }
+                case (5) : {
+                    if (!(iss >> e0 >> e1 >> e2 >> e3 >> e4))
+                        faceErr = true;
+                    sfaceedges(faceEdgeCounter, 0) = e0;
+                    sfaceedges(faceEdgeCounter, 1) = e1;
+                    sfaceedges(faceEdgeCounter, 2) = e2;
+                    sfaceedges(faceEdgeCounter, 3) = e3;
+                    sfaceedges(faceEdgeCounter++, 4) = e4;
+                    break;
+                }
             }
             if (faceErr) {
                 oss << "MeshSeed::readfile error: cannot read face edges from line " << lineNumber
@@ -142,8 +180,8 @@ void MeshSeed<SeedType>::readfile() {
             }
         }
     }
-    
-    
+
+
     file.close();
 }
 
@@ -170,8 +208,15 @@ std::string MeshSeed<SeedType>::infoString() const {
     ss << "\tseed edges:" << std::endl;
     for (int i=0; i<SeedType::nedges; ++i) {
         ss << "\t";
-        for (int j=0; j<4; ++j) {
-            ss << sedges(i,j) << " ";
+        if (SeedType::isDual) {
+            for (int j=0; j<8; ++j) {
+                ss << sedges(i,j) << " ";
+            }
+        }
+        else {
+            for (int j=0; j<4; ++j) {
+                ss << sedges(i,j) << " ";
+            }
         }
         ss << std::endl;
     }
@@ -279,10 +324,26 @@ Index IcosTriSphereSeed::nEdgesAtTreeLevel(const Index nv, const Index nf) {
     return nv + nf - 2;
 }
 
+Index IcosTriDualSeed::nFacesAtTreeLevel(const Int lev) {
+    return Voronoi::nfacesAtUniformRefinementLevel(12, lev);
+}
+
+Index IcosTriDualSeed::nVerticesAtTreeLevel(const Int lev) {
+    return Voronoi::nvertsAtUniformRefinementLevel(12, lev);
+}
+
+Index IcosTriDualSeed::nEdgesAtTreeLevel(const Index nv, const Index nf) {
+    return nf + nv - 2;
+}
+
+
+
+
 /// ETI
 template struct MeshSeed<QuadRectSeed>;
 template struct MeshSeed<TriHexSeed>;
 template struct MeshSeed<IcosTriSphereSeed>;
 template struct MeshSeed<CubedSphereSeed>;
+template struct MeshSeed<IcosTriDualSeed>;
 
 }

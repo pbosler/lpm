@@ -94,6 +94,10 @@ struct WingedEdge {
 	std::string infoString() const;
 };
 
+Index nfacesAtUniformRefinementLevel(const Short& nrootfaces, const Short& lev);
+
+Index nvertsAtUniformRefinementLevel(const Short& nrootfaces, const Short& lev);
+
 }
 }
 #endif

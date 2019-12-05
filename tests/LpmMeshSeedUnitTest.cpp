@@ -30,7 +30,7 @@ ko::initialize(argc, argv);
         qrseed.setMaxAllocations(nmax_verts, nmax_edges, nmax_faces, i);
         std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
     }
-    
+
     MeshSeed<TriHexSeed> thseed;
     std::cout << thseed.infoString();
     std::cout << thseed.idString() << " memory requirements" << std::endl;
@@ -40,7 +40,7 @@ ko::initialize(argc, argv);
         std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
     }
 
-    
+
     MeshSeed<CubedSphereSeed> csseed;
     std::cout << csseed.infoString();
     std::cout << csseed.idString() << " memory requirements" << std::endl;
@@ -50,7 +50,7 @@ ko::initialize(argc, argv);
         std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
     }
 
-    
+
     MeshSeed<IcosTriSphereSeed> icseed;
     std::cout << icseed.infoString();
     std::cout << icseed.idString() << " memory requirements" << std::endl;
@@ -60,7 +60,15 @@ ko::initialize(argc, argv);
         std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
     }
 
-    
+    MeshSeed<IcosTriDualSeed> icdseed;
+    std::cout << icdseed.infoString();
+    std::cout << icdseed.idString() << " memory requirements\n";
+    std::cout << MEM_HEADER;
+    for (int i=0; i<maxlev; ++i) {
+        icdseed.setMaxAllocations(nmax_verts, nmax_edges, nmax_faces, i);
+        std::cout << MEM_LINE(i, nmax_verts, nmax_edges, nmax_faces);
+    }
+
 }
 std::cout << "tests pass." << std::endl;
 ko::finalize();
