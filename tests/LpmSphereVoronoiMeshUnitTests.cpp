@@ -22,9 +22,21 @@ ko::initialize(argc, argv);
 
     MeshSeed<IcosTriDualSeed> seed;
 
-    VoronoiMesh<IcosTriDualSeed> vmesh(seed, 0);
+    VoronoiMesh<IcosTriDualSeed> vmesh0(seed, 0);
+    std::vector<Index> vinds;
+    std::vector<Index> einds0;
+    std::vector<Index> einds1;
+    std::vector<Index> finds;
 
-    std::cout << vmesh.infoString(true);
+    std::cout << vmesh0.infoString(true);
+
+    for (Short i=0; i<vmesh0.nverts(); ++i) {
+        vmesh0.getEdgesAndCellsAtVertex(einds0, finds, i);
+    }
+
+    for (Short i=0; i<vmesh0.ncells(); ++i) {
+        vmesh0.getEdgesAndVerticesInCell(einds1, vinds, i);
+    }
 
     if (nerr == 0) {
         ss << "\tall tests pass.\n";

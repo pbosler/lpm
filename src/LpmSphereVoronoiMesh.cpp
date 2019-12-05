@@ -17,7 +17,6 @@ void VoronoiMesh<SeedType>::getEdgesAndCellsAtVertex(std::vector<Index>& edge_in
 	Short ctr = 0;
 	while (keepGoing) {
 		edge_inds.push_back(k);
-
 		assert(vert_ind == edges[k].orig_vertex || vert_ind == edges[k].dest_vertex);
 
 		if (vert_ind == edges[k].orig_vertex) {
@@ -73,13 +72,13 @@ std::string VoronoiMesh<SeedType>::infoString(const bool& verbose) const {
     ss << "\tnfaces = " << cells.size() << "\n";
     if (verbose) {
         for (Index i=0; i<vertices.size(); ++i) {
-            ss << vertices[i].infoString();
+            ss << vertices[i].infoString(1, i);
         }
         for (Index i=0; i<edges.size(); ++i) {
-            ss << edges[i].infoString();
+            ss << edges[i].infoString(1, i);
         }
         for (Index i=0; i<cells.size(); ++i) {
-            ss << cells[i].infoString();
+            ss << cells[i].infoString(1, i);
         }
     }
     return ss.str();
@@ -99,32 +98,26 @@ VoronoiMesh<SeedType>::VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& 
 
 template <typename SeedType>
 void VoronoiMesh<SeedType>::seedInit(const MeshSeed<SeedType>& seed) {
+    // initialize cells
     const Short face_offset = SeedType::nfaces;
     for (Short i=0; i<SeedType::nfaces; ++i) {
         Real xyz[3] = {seed.scrds(i,0), seed.scrds(i,1), seed.scrds(i,2)};
         cells.push_back(Cell(xyz, seed.sfaceedges(i,0)));
     }
+    // initialize vertices
+    std::vector<Short> edges_at_vertex(SeedType::nverts, -1);
+    for (Short i=0; i<SeedType::nedges; ++i) {
+        if (edges_at_vertex[seed.sedges(i,0)-face_offset] == -1) {
+            edges_at_vertex[seed.sedges(i,0)-face_offset] = i;
+        }
+        if (edges_at_vertex[seed.sedges(i,1)-face_offset] == -1) {
+            edges_at_vertex[seed.sedges(i,1)-face_offset] = i;
+        }
+    }
+
     for (Short i=0; i<SeedType::nverts; ++i) {
         Real xyz[3] = {seed.scrds(i+face_offset, 0), seed.scrds(i+face_offset, 1), seed.scrds(i+face_offset, 2)};
-        Index edge_ind = -1;
-        bool stop = false;
-        for (Short j=0; j<SeedType::nedges; ++j) {
-            if (i == seed.sedges(j,0)-face_offset) {
-                edge_ind = seed.sedges(j,0) - face_offset;
-                stop = true;
-            }
-            else if (i == seed.sedges(j,1) - face_offset) {
-                edge_ind = seed.sedges(j,1) - face_offset;
-                stop = true;
-            }
-            if (stop) {
-//                 std::cout << "vertex " << i << " has edge index = " << edge_ind << "\n";
-                break;
-            }
-        }
-        assert(edge_ind >= 0);
-
-        vertices.push_back(Vertex(xyz, edge_ind));
+        vertices.push_back(Vertex(xyz, edges_at_vertex[i]));
     }
     for (Short i=0; i<SeedType::nedges; ++i) {
         edges.push_back(WingedEdge(seed.sedges(i,0)-face_offset, seed.sedges(i,1)-face_offset, seed.sedges(i,2), seed.sedges(i,3),

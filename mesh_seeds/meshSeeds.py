@@ -624,13 +624,9 @@ def plotSphereSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, fac
             dxy[27:33] = pxy[5:11]
             dinds[27:33] = (1,2,3,4,5,1)
             dxy[33:39] = pxy[11:17]
-#             dxy[37:43] = pxy[11:17]
             dinds[33:39] = (6,7,8,9,10,6)
-#             dinds[37:43] = (6,7,8,9,10,6)
             dxy[39] = pxy[19]
-#             dxy[43:48] = pxy[17:22]
             dinds[39] = 11
-#             dinds[43:48] = 11
 #                                0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32
             edge_inds =np.array([4,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 29])
             edge_origs=np.array([0,  1,  2,  3,  4,  5,  1,  2,  3,  4,  5,  9,  11, 13, 15, 17, 9,  11, 13, 15, 17, 7,  8,  10, 12, 14, 16, 20, 21, 22, 23, 24, 19])
@@ -649,8 +645,14 @@ def plotSphereSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, fac
             for i in points_list:
                 ax0.plot(dxy[i,0],dxy[i,1], 'ko', markersize=m_size)
 
+            vert_ctr = 0;
             for i in points_list:
-                ax0.text(dxy[i,0], dxy[i,1], '{}'.format(dinds[i]), color='k')
+                if i > 25:
+                    ax0.text(dxy[i,0], dxy[i,1], '{}'.format(dinds[i]), color='k')
+                else :
+                    ax0.text(dxy[i,0], dxy[i,1], '({},{})'.format(dinds[i], vert_ctr), color='k')
+                    vert_ctr += 1
+
             ax0.set(title='edges & particles')
             ax1.set(title='edges & faces')
             for i in range(len(edge_inds)):

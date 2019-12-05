@@ -21,6 +21,10 @@ struct VoronoiMesh {
 
     VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& init_refinement_level);
 
+    inline Index nverts() const {return vertices.size();}
+    inline Index nedges() const {return edges.size();}
+    inline Index ncells() const {return cells.size();}
+
     /**
 		Okabe et. al. algorithm 4.2.1
 		Retrieve the edges and cells incident to a Vertex

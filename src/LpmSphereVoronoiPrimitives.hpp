@@ -36,7 +36,7 @@ struct Cell {
 	    latlon[0] = lat;
 	    latlon[1] = lon;
     }
-	std::string infoString() const;
+	std::string infoString(const Short tab_level=0, const Short id=-1) const;
 };
 
 struct Vertex {
@@ -54,7 +54,7 @@ struct Vertex {
 	    latlon[1] = lon;
 	}
 
-	std::string infoString() const;
+	std::string infoString(const Short tab_level=0, const Short id=-1) const;
 };
 
 struct WingedEdge {
@@ -89,7 +89,7 @@ struct WingedEdge {
         latlon[1] = SphereGeometry::longitude(xyz);
 	}
 
-	std::string infoString() const;
+	std::string infoString(const Short tab_level=0, const Short id=-1) const;
 };
 
 Index nfacesAtUniformRefinementLevel(const Short& nrootfaces, const Short& lev);
