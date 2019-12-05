@@ -7,6 +7,8 @@
 #include "LpmGeometry.hpp"
 #include "Kokkos_Core.hpp"
 #include "LpmBVEKernels.hpp"
+#include <vector>
+#include <sstream>
 
 namespace Lpm {
 
@@ -25,12 +27,16 @@ template <typename FaceType> class BVESphere : public PolyMesh2d<SphereGeometry,
         scalar_field streamFnFaces;
         vector_field velocityFaces;
         
-        BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) : 
+        std::vector<scalar_field> tracer_verts;
+        std::vector<scalar_field> tracer_faces;
+        
+        BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const Int ntracers=0) : 
             PolyMesh2d<SphereGeometry,FaceType>(nmaxverts, nmaxedges, nmaxfaces), 
             relVortVerts("relVortVerts", nmaxverts), absVortVerts("absVortVerts",nmaxverts), 
             streamFnVerts("streamFnVerts", nmaxverts), velocityVerts("velocityVerts", nmaxverts),
             relVortFaces("relVortFaces", nmaxfaces), absVortFaces("absVortFaces", nmaxfaces), 
-            streamFnFaces("streamFnFaces", nmaxfaces), velocityFaces("velocityFaces", nmaxfaces) {
+            streamFnFaces("streamFnFaces", nmaxfaces), velocityFaces("velocityFaces", nmaxfaces),
+            tracer_verts(ntracers), tracer_faces(ntracers) {
             _hostRelVortVerts = ko::create_mirror_view(relVortVerts);
             _hostAbsVortVerts = ko::create_mirror_view(absVortVerts);
             _hostStreamFnVerts = ko::create_mirror_view(streamFnVerts);
@@ -39,6 +45,10 @@ template <typename FaceType> class BVESphere : public PolyMesh2d<SphereGeometry,
             _hostAbsVortFaces = ko::create_mirror_view(absVortFaces);
             _hostStreamFnFaces = ko::create_mirror_view(streamFnFaces);
             _hostVelocityFaces = ko::create_mirror_view(velocityFaces);
+            
+            std::ostringstream ss;
+            for (int k=0; k<ntracers; ++k) {
+            }
         }
         
         KOKKOS_INLINE_FUNCTION

@@ -141,6 +141,49 @@ def icosTriSeed():
     return xyz, edgeOrigs, edgeDests, edgeLefts, edgeRights, edgeInteriors, \
         faceVerts, faceCenters, faceEdges
 
+def icosTriDualSeed():
+    trixyz, tri_origs, tri_dests, tri_lefts, tri_rights, tri_interiors, tri_face_verts, tri_face_centers, tri_face_edges = icosTriSeed()
+    xyz = trixyz;
+#                           0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29
+    edgeOrigs =   np.array([12, 13, 14, 15, 16, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 18, 20, 22, 24, 26, 17, 19, 21, 23, 25, 27, 28, 29, 30, 31], dtype=int)
+    edgeDests =   np.array([13, 14, 15, 16, 12, 18, 20, 22, 24, 26, 17, 19, 21, 23, 25, 19, 21, 23, 25, 17, 27, 28, 29, 30, 31, 28, 29, 30, 31, 27], dtype=int)
+    edgeLefts =   np.array([0,  0,  0,  0,  0,  2,  3,  4,  5,  1,  7,  8,  9,  10, 6,  2,  3,  4,  5,  1,  7,  8,  9,  10, 6,  7,  8,  9,  10, 6], dtype=int)
+    edgeRights =  np.array([2,  3,  4,  5,  1,  1,  2,  3,  4,  5,  1,  2,  3,  4,  5,  7,  8,  9,  10, 6,  6,  7,  8,  9,  10, 11, 11, 11, 11, 11], dtype=int)
+    edgeCwOrig =  np.array([5,  6,  7,  8,  9,  4,  0,  1,  2,  3,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 19, 15, 16, 17, 18, 29, 25, 26, 27, 28], dtype=int)
+    edgeCcwOrig = np.array([4,  0,  1,  2,  3,  0,  1,  2,  3,  4,  15, 16, 17, 18, 19,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24], dtype=int)
+    edgeCwDest =  np.array([1,  2,  3,  4,  0,  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 11, 12, 13, 14, 10, 25, 26, 27, 28, 29, 21, 22, 23, 24, 20], dtype=int)
+    edgeCcwDest = np.array([6,  7,  8,  9,  5,  10, 11, 12, 13, 14, 19, 15, 16, 17, 18, 21, 22, 23, 24, 20, 29, 25, 26, 27, 28, 26, 27, 28, 29, 25], dtype=int)
+    edgeInteriors = None
+    faceVerts = np.zeros([12,5],dtype=int)
+    faceVerts[0] = (12,13,14,15,16)
+    faceVerts[1] = (17,18,12,16,26)
+    faceVerts[2] = (12,18,19,20,13)
+    faceVerts[3] = (13,20,21,22,14)
+    faceVerts[4] = (14,22,23,24,15)
+    faceVerts[5] = (15,24,25,26,16)
+    faceVerts[6] = (25,31,27,17,26)
+    faceVerts[7] = (17,27,28,19,18)
+    faceVerts[8] = (19,28,29,21,20)
+    faceVerts[9] = (21,29,30,23,22)
+    faceVerts[10]= (23,30,31,25,24)
+    faceVerts[11]= (27,28,29,30,31)
+    faceCenters = np.array(range(12), dtype=int)
+    faceEdges = np.zeros([12,5],dtype=int)
+    faceEdges[0] = ( 0, 1, 2, 3, 4)
+    faceEdges[1] = ( 9,19,10, 5, 4)
+    faceEdges[2] = ( 5,15,11, 6, 0)
+    faceEdges[3] = ( 6,16,12, 7, 1)
+    faceEdges[4] = ( 7,17,13, 8, 2)
+    faceEdges[5] = ( 8,18,14, 9, 3)
+    faceEdges[6] = (24,29,20,19,14)
+    faceEdges[7] = (20,25,21,15,10)
+    faceEdges[8] = (21,26,22,16,11)
+    faceEdges[9] = (22,27,23,17,12)
+    faceEdges[10]= (23,28,24,18,13)
+    faceEdges[11]= (25,26,27,28,29)
+    return xyz, edgeOrigs, edgeDests, edgeLefts, edgeRights, edgeInteriors, \
+        faceVerts, faceCenters, faceEdges, edgeCwOrig, edgeCcwOrig, edgeCwDest, edgeCcwDest
+
 def triHexSeed():
     pio3 = np.pi/3.0
     xyz = np.zeros([13,2])
@@ -354,7 +397,7 @@ def writeNamelistFile(fname, xyz, origs, dests, lefts, rights, ints, faceVerts, 
         # last line
         f.write('/\n')
 
-def writeSeedFile(fname, xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges):
+def writeSeedFile(fname, xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges, cwo=None, ccwo=None, cwd=None, ccwd=None):
     nparticles = len(xyz)
     nedges = len(origs)
     nfaces = len(faceVerts)
@@ -362,11 +405,20 @@ def writeSeedFile(fname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
     nverts = len(faceVerts[0])
     nints = 0
     eformat = '%i   %i  %i  %i  '
-    if ints is not None:
+    high_order_edges = ints is not None
+    winged_edges = cwo is not None and ccwo is not None and cwd is not None and ccwd is not None
+    edge_header = "edgeO      edgeD       edgeLeft        edgeRight"
+    if high_order_edges:
         nints = len(ints[0])
+        edge_header += '    edgeInts'
         for i in range(nints):
             eformat += '%i  '
+    if winged_edges:
+        edge_header += 'origCw    origCcw    destCw    destCcw'
+        for i in range(4):
+            eformat += '%i  '
     eformat += '\n'
+    edge_header += '\n'
     with open(fname, 'w') as f:
         if np.shape(xyz)[1]==2:
             f.write(("x     y \n"))
@@ -376,14 +428,14 @@ def writeSeedFile(fname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
             f.write(("x   y   z\n"))
             for x, y, z in xyz:
                 f.write(('%.17f  %.17f  %.17f\n'%(x,y,z)))
-        if (ints is None):
-            f.write(("edgeO      edgeD       edgeLeft        edgeRight\n"))
-        else:
-            f.write(("edgeO      edgeD       edgeLeft        edgeRight    edgeInts \n"))
-    
-        if ints is not None:
+        f.write(edge_header)
+
+        if high_order_edges:
             for i in range(nedges):
                 f.write((eformat%(origs[i], dests[i], lefts[i], rights[i], ints[i,0], ints[i,1])))
+        elif winged_edges:
+            for i in range(nedges):
+                f.write((eformat%(origs[i], dests[i], lefts[i], rights[i], cwo[i], ccwo[i], cwd[i], ccwd[i])))
         else:
             for i in range(nedges):
                 f.write((eformat%(origs[i], dests[i], lefts[i], rights[i])))
@@ -429,8 +481,8 @@ def plotSphereSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, fac
     ax1 = plt.subplot(gs[1,0])
     ax1.axis('off')
 
-    if 'cubed' in oname:
-        if 'cubic' in oname:
+    if 'cubed' in oname.lower():
+        if 'cubic' in oname.lower():
             pass
         else:
             pxy = np.zeros([20,2])
@@ -460,7 +512,28 @@ def plotSphereSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, fac
             porigs = np.array([0,1,2,3,2,4,5,4,6,7, 8, 0,8, 0,10,13,11,12,2],dtype=int)
             for i in range(ncenters):
                 ax1.text(pxy[14+i,0], pxy[14+i,1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
-    elif 'icos' in oname:
+            ax0.plot(pxy[:,0], pxy[:,1], 'ko', markersize=m_size)
+            for i in range(len(pinds)):
+                ax0.text(pxy[i,0], pxy[i,1], str(pinds[i]+indexBase), color='k')
+            ax0.set(title='edges & particles')
+            ax1.set(title='edges & faces')
+            for i in range(len(einds)):
+                if ints is not None:
+                    exy = edgeXyz(pxy, porigs[i], pdests[i], ints[i])
+                else:
+                    exy = edgeXyz(pxy, porigs[i], pdests[i], None)
+                dx = exy[1:,0] - exy[0:-1,0]
+                dy = exy[1:,1] - exy[0:-1,1]
+                midpt = 0.5 * (exy[0] + exy[-1])
+                ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax0.text(midpt[0], midpt[1]+0.05, str(einds[i] + indexBase), color='r')
+                ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax1.text(midpt[0], midpt[1]+0.05, str(einds[i]+indexBase), color='r')
+    elif 'icos' in oname.lower():
         pio3 = np.pi/3.0
         pxy = np.zeros([42,2])
         pinds = np.zeros(42,dtype=int)
@@ -520,37 +593,114 @@ def plotSphereSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, fac
         pxy[39] = (pxy[13] + pxy[14] + pxy[19]) / 3.0 #17
         pxy[40] = (pxy[14] + pxy[15] + pxy[20]) / 3.0 #18
         pxy[41] = (pxy[15] + pxy[16] + pxy[21]) / 3.0 #19
-        pinds[22:27] = range(12,17)
-        pinds[27:37] = range(17,27)
-        pinds[37:42] = range(27,32)
-        einds  = np.array([0,1,2,2,3,4,4,5,6,6,7,8,8, 9,0,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,10,25,26,26,27,27,28,28,29,29,25], dtype=int)
-        porigs = np.array([0,5,6,6,6,1,2,7,8,8,8,9,9, 9,4, 5,11,12,12,12,13,13,13, 7,14,14,15,15,15,16,10,17,17,18,13,13,19,20,15,15,21], dtype=int)
-        pdests = np.array([5,6,0,1,7,7,7,8,2,3,9,3,4,10,10,11,12, 5, 6,13, 6, 7,14,14, 8,15, 8, 9,16, 9,16,11,12,12,18,19,14,14,20,21,16], dtype=int)
-        for i in range(ncenters):
-            ax1.text(pxy[22+i,0]-0.05, pxy[22+i,1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
-    make_ticklabels_invisible(plt.gcf())
+        pinds[22:42] = range(12,32)
+        if "dual" in oname.lower():
+            dinds = np.zeros(40,dtype=int)
+            ncenters = 12
+            pio6 = 0.5*pio3
+            dxy = np.zeros([48,2])
+            #vertices
+            dxy[0] = (pxy[0,0]+np.cos(5*pio6), pxy[0,1]+0.5*np.sin(5*pio6))
+            dxy[1:6] = pxy[22:27]
+            dxy[6] = (pxy[4,0] + np.cos(pio6), pxy[4,1]+0.5*np.sin(pio6))
+            dinds[0] = 16
+            dinds[1:6] = range(12,17)
+            dinds[6] = 12
+            dxy[7] = (pxy[5,0] + np.cos(-5*pio6), pxy[5,1] + np.sin(-5*pio6))
+            dxy[8:18] = pxy[27:37]
+            dxy[18] = (pxy[36,0] + np.cos(-pio6), pxy[36,1]+0.5*np.sin(-pio6))
+            dxy[19] = (pxy[37,0] + np.cos(-5*pio6), pxy[37,1]+np.sin(-5*pio6))
+            dinds[7] = 26
+            dinds[8:18] = range(17,27)
+            dinds[18] = 17
+            dinds[19] = 29
+            dxy[20:25] = pxy[37:42]
+            dinds[20:25] = range(27,32)
+            dxy[25] = (dxy[24,0]+np.cos(-pio6), dxy[24,1]+np.sin(-pio6))
+            dinds[25] = 27
+            #centers
+            dxy[26] = pxy[2]
+            dinds[26] = 0
+            dxy[27:33] = pxy[5:11]
+            dinds[27:33] = (1,2,3,4,5,1)
+            dxy[33:39] = pxy[11:17]
+#             dxy[37:43] = pxy[11:17]
+            dinds[33:39] = (6,7,8,9,10,6)
+#             dinds[37:43] = (6,7,8,9,10,6)
+            dxy[39] = pxy[19]
+#             dxy[43:48] = pxy[17:22]
+            dinds[39] = 11
+#             dinds[43:48] = 11
+#                                0   1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30  31  32
+            edge_inds =np.array([4,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 29])
+            edge_origs=np.array([0,  1,  2,  3,  4,  5,  1,  2,  3,  4,  5,  9,  11, 13, 15, 17, 9,  11, 13, 15, 17, 7,  8,  10, 12, 14, 16, 20, 21, 22, 23, 24, 19])
+            edge_dests=np.array([1,  2,  3,  4,  5,  6,  9, 11, 13, 15, 17,  8,  10, 12, 14, 16, 10, 12, 14, 16, 18, 8,  20, 21, 22, 23, 24, 21, 22, 23, 24, 25, 20])
 
-    ax0.plot(pxy[:,0], pxy[:,1], 'ko', markersize=m_size)
-    for i in range(len(pinds)):
-        ax0.text(pxy[i,0], pxy[i,1], str(pinds[i]+indexBase), color='k')
-    ax0.set(title='edges & particles')
-    ax1.set(title='edges & faces')
-    for i in range(len(einds)):
-        if ints is not None:
-            exy = edgeXyz(pxy, porigs[i], pdests[i], ints[i])
+#                 ax1.text(dxy[26+i,0]-0.05, dxy[26+i,1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
+            make_ticklabels_invisible(plt.gcf())
+
+            points_list = list(range(40))
+            points_list.remove(0)
+            points_list.remove(6)
+            points_list.remove(7)
+            points_list.remove(18)
+            points_list.remove(19)
+            points_list.remove(25)
+            for i in points_list:
+                ax0.plot(dxy[i,0],dxy[i,1], 'ko', markersize=m_size)
+
+            for i in points_list:
+                ax0.text(dxy[i,0], dxy[i,1], '{}'.format(dinds[i]), color='k')
+            ax0.set(title='edges & particles')
+            ax1.set(title='edges & faces')
+            for i in range(len(edge_inds)):
+                if ints is not None:
+                    exy = edgeXyz(dxy, edge_origs[i], edge_dests[i], ints[i])
+                else:
+                    exy = edgeXyz(dxy, edge_origs[i], edge_dests[i], None)
+                dx = exy[1:,0] - exy[0:-1,0]
+                dy = exy[1:,1] - exy[0:-1,1]
+                midpt = 0.5 * (exy[0] + exy[-1])
+                ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax0.text(midpt[0], midpt[1]+0.05, str(edge_inds[i] + indexBase), color='r')
+                ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax1.text(midpt[0], midpt[1]+0.05, str(edge_inds[i]+indexBase), color='r')
+            cell_inds = np.array([0,1,2,3,4,5,1,6,7,8,9,10,6,11])
+            for i in range(14):
+                ax1.text(dxy[26+i,0]-0.05, dxy[26+i,1]-0.05, str(cell_inds[i]+indexBase), color='b', bbox=dict(facecolor='r',alpha=0.25))
         else:
-            exy = edgeXyz(pxy, porigs[i], pdests[i], None)
-        dx = exy[1:,0] - exy[0:-1,0]
-        dy = exy[1:,1] - exy[0:-1,1]
-        midpt = 0.5 * (exy[0] + exy[-1])
-        ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
-            head_length=0.05, fc='r', ec='r', length_includes_head=False)
-        ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
-        ax0.text(midpt[0], midpt[1]+0.05, str(einds[i] + indexBase), color='r')
-        ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
-            head_length=0.05, fc='r', ec='r', length_includes_head=False)
-        ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
-        ax1.text(midpt[0], midpt[1]+0.05, str(einds[i]+indexBase), color='r')
+            einds  = np.array([0,1,2,2,3,4,4,5,6,6,7,8,8, 9,0,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,10,25,26,26,27,27,28,28,29,29,25], dtype=int)
+            porigs = np.array([0,5,6,6,6,1,2,7,8,8,8,9,9, 9,4, 5,11,12,12,12,13,13,13, 7,14,14,15,15,15,16,10,17,17,18,13,13,19,20,15,15,21], dtype=int)
+            pdests = np.array([5,6,0,1,7,7,7,8,2,3,9,3,4,10,10,11,12, 5, 6,13, 6, 7,14,14, 8,15, 8, 9,16, 9,16,11,12,12,18,19,14,14,20,21,16], dtype=int)
+            for i in range(ncenters):
+                ax1.text(pxy[22+i,0]-0.05, pxy[22+i,1], str(i+indexBase), color='b', bbox=dict(facecolor='r', alpha=0.25))
+            make_ticklabels_invisible(plt.gcf())
+
+            ax0.plot(pxy[:,0], pxy[:,1], 'ko', markersize=m_size)
+            for i in range(len(pinds)):
+                ax0.text(pxy[i,0], pxy[i,1], str(pinds[i]+indexBase), color='k')
+            ax0.set(title='edges & particles')
+            ax1.set(title='edges & faces')
+            for i in range(len(einds)):
+                if ints is not None:
+                    exy = edgeXyz(pxy, porigs[i], pdests[i], ints[i])
+                else:
+                    exy = edgeXyz(pxy, porigs[i], pdests[i], None)
+                dx = exy[1:,0] - exy[0:-1,0]
+                dy = exy[1:,1] - exy[0:-1,1]
+                midpt = 0.5 * (exy[0] + exy[-1])
+                ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax0.text(midpt[0], midpt[1]+0.05, str(einds[i] + indexBase), color='r')
+                ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+                    head_length=0.05, fc='r', ec='r', length_includes_head=False)
+                ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+                ax1.text(midpt[0], midpt[1]+0.05, str(einds[i]+indexBase), color='r')
 
 
 
@@ -722,3 +872,9 @@ if (__name__ == "__main__"):
     writeSeedFile('icosTriSphereSeed.dat', xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
     plotSphereSeed('icosTriSphereSeed.pdf', xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
     writeNamelistFile("icosTri.namelist", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
+
+    print("icosahedral dual sphere seed")
+    xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges, origCw, origCcw, destCw, destCcw = icosTriDualSeed()
+    writeSeedFile('icosTriDualSeed.dat', xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges, origCw, origCcw, destCw, destCcw)
+    plotSphereSeed('icosTriDualSeed.pdf', xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
+

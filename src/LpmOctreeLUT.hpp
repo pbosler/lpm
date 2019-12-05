@@ -132,11 +132,10 @@ struct ChildLUT {
 };
 
 /**
-    For each node t, 
-    vertex v = node_vertices(t,i) = node_vertices(node_neighbors(t,NeighborsAtVertexLUT(i,j)), 7-j)
+	node_vertices(t,i) = node_vertices(neighbors(t,NeighborsAtVertexLUT(i,7-i)))
     i = local index of vertex
-    j = local index of node at vertex
-    NeighborsAtVertexLUT(i,j) = node neighbor
+    j = local index of node at vertex (arbitrarily ascending)
+    NeighborsAtVertexLUT(i,j) = node neighbor at vertex
 */
 struct NeighborsAtVertexLUT {
     static constexpr Int nrow_host = 8;

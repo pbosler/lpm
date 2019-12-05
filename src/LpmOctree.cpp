@@ -42,14 +42,14 @@ void Tree::initNodes() {
     }
     
     /// allocate full tree arrays
-    auto nnodes_per_level_host = ko::create_mirror_view(nnodes_per_level);
-    Index nnodes_total = nleaves;
+    nnodes_per_level_host = ko::create_mirror_view(nnodes_per_level);
+    nnodes_total = nleaves;
     nnodes_per_level_host(max_depth) = nleaves;
     for (int lev=0; lev<max_depth; ++lev) {
         nnodes_per_level_host(lev) = internal_levels[lev].node_keys.extent(0);
         nnodes_total += nnodes_per_level_host(lev);
     }
-    auto base_address_host = ko::create_mirror_view(base_address);
+    base_address_host = ko::create_mirror_view(base_address);
     base_address_host(0) = 0;
     for (int lev=1; lev<=max_depth; ++lev) {
         base_address_host(lev) = base_address_host(lev-1) + nnodes_per_level_host(lev-1);
@@ -78,267 +78,71 @@ void Tree::initNodes() {
     ko::deep_copy(ko::subview(node_parents, dest_range), leaves.node_parents);
     auto leaf_kids = ko::subview(node_kids, dest_range, ko::ALL());
     ko::parallel_for(nleaves, KOKKOS_LAMBDA (const Index& i) {
-    	for (int j=0; j<8; ++j) leaf_kids(i,j) = NULL_IND;
+    	for (int j=0; j<8; ++j) leaf_kids(i,j) = NULL_IND;  // all leaves have no children
     });
-    
+    auto root_neighbors = ko::subview(node_neighbors, 0, ko::ALL());
+    auto root_neighbors_host = ko::create_mirror_view(root_neighbors);
+	for (int j=0; j<27; ++j) {
+		root_neighbors_host(j) = (j == 13 ? 0 : NULL_IND);
+	} 
+    ko::deep_copy(root_neighbors, root_neighbors_host);
     for (int lev=1; lev<=max_depth; ++lev) {
     	const ko::RangePolicy<> range_pol(base_address_host(lev), 
     		base_address_host(lev)+nnodes_per_level_host(lev));
     	ko::parallel_for(range_pol, NeighborhoodFunctor(node_neighbors,
     		node_keys, node_kids, node_parents, lev, max_depth));
     }
+
+#ifdef LPM_ENABLE_DEBUG
+	for (int lev=0; lev<=max_depth; ++lev) {
+		Index null_neighbor_ct=0;
+		const ko::RangePolicy<> range_pol(base_address_host(lev), 
+				base_address_host(lev)+nnodes_per_level_host(lev));
+		auto neighbors = node_neighbors;
+		ko::parallel_reduce(range_pol, KOKKOS_LAMBDA (const Index& i, Index& ct) {
+			for (int j=0; j<27; ++j) {
+				if (neighbors(i,j) == NULL_IND) ct += 1;
+			}
+		}, null_neighbor_ct);
+			std::cout << "null neighbors at level " << lev << ": " << null_neighbor_ct << "\n";
+	}
+#endif
+
+	if (do_connectivity) {
+		initVertices();
+	}
 }
 
-// void Tree::initVertices(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase) {
-//     /// compute vertex relations for each level
-//     std::vector<ko::View<Index*[8]>> vert_nodes;
-//     std::vector<ko::View<Index*[8]>> node_verts;
-//     std::vector<Index> vbase(max_depth+1);
-//     std::vector<Index> nverts_at_level(max_depth+1);
-//     vbase[0] = 0;
-//     nverts_at_level[0] = 8;
-//     for (Int lev=1; lev<=max_depth; ++lev) {
-//         auto node_policy = ExeSpaceUtils<>::get_default_team_policy(nnodes_at_level[lev],8);
-//         // each node, in parallel, determines the owning node of its vertices
-//         ko::View<Index*[8]> vert_owners("vertex_owners", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, VertexOwnerFunctor(vert_owners, node_keys, node_neighbors));
-//         // each node, in parallel, flags the vertices it owns and counts the number of vertices it owns
-//         ko::View<Int*[8]> vert_flags("vertex_flags", nnodes_at_level[lev]);
-//         ko::View<Int*> nverts_at_node("nverts_at_node", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, VertexFlagFunctor(vert_flags, nverts_at_node, vert_owners));
-//         // compute the number of vertices at this level
-//         ko::parallel_reduce(nnodes_at_level[lev], KOKKOS_LAMBDA (const Index& t, Index& nv) {
-//             nv += nverts_at_node(t);
-//         }, nverts_at_level[lev]);
-//         for (Int i=0; i<lev; ++i) {
-//             vbase[lev] += nverts_at_level[i];
-//         }
-//         // determine the unique address of each vertex by its owning node
-//         ko::View<Index*> vert_address("vertex_address", nverts_at_level[lev]);
-//         ko::parallel_scan(nnodes_at_level[lev], 
-//             KOKKOS_LAMBDA (const Index& i, Int& ct, const bool& final_pass) {
-//                 const Index old_val = nverts_at_node(i);
-//                 if (final_pass) {
-//                     vert_address(i) = ct;
-//                 }
-//                 ct += old_val;
-//             });
-//         // allocate vertex arrays for this level
-//         vert_nodes[lev] = ko::View<Index*[8]>("vert_nodes_lev", nverts_at_level[lev]);
-//         node_verts[lev] = ko::View<Index*[8]>("node_verts_lev", nnodes_at_level[lev]);        
-//         // fill the level's vertex arrays
-//         ko::parallel_for(node_policy, VertexNodeFunctor(vert_nodes[lev], node_verts[lev], 
-//             vert_flags, vert_owners, vert_address, node_neighbors));
-//     }
-//     /// concatenate levels into vertex_nodes, node_vertices
-//     Index nv = 0;
-//     for (Int lev=0; lev<=max_depth; ++lev) {
-//         nv += nverts_at_level[lev];
-//     }
-//     vertex_nodes = ko::View<Index*[8]>("vertex_nodes", nv);
-//     auto root_vnodes = ko::subview(vertex_nodes, std::make_pair(0,8), ko::ALL);
-//     auto root_nverts = ko::subview(node_vertices, 0, ko::ALL);
-//     ko::parallel_for(8, KOKKOS_LAMBDA (const Int& i) {
-//         for (Int j=0; j<8; ++j) {
-//             root_vnodes(i,j) = (j != 7-i ? NULL_IND : 0);
-//         }
-//         root_nverts(i) = i;
-//     });
-//     for (Int lev=1; lev<=max_depth; ++lev) {
-//         auto vertex_view_range = std::make_pair(vbase[lev], vbase[lev] + nverts_at_level[lev]);
-//         auto node_view_range = std::make_pair(hbase(lev), hbase(lev) + nnodes_at_level[lev]);
-//         auto nv_view = ko::subview(node_vertices, node_view_range, ko::ALL());
-//         auto vn_view = ko::subview(vertex_nodes, vertex_view_range, ko::ALL());
-//         ko::deep_copy(nv_view, node_verts[lev]);
-//         ko::deep_copy(vn_view, vert_nodes[lev]);
-//     }
-// }
-// 
-// void Tree::initEdges(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase) {
-//     /// compute edge relations for each level
-//     std::vector<ko::View<Index*[2]>> everts(max_depth+1); // vector edge-vertex relations for each level
-//     std::vector<ko::View<Index*[12]>> nedges(max_depth+1); // vector of node-edge relations for each level
-//     std::vector<Index> ebase(max_depth+1); // starting address in full tree of each level's edges
-//     std::vector<Index> nedges_at_level(max_depth+1); // number of edges in each level
-//     ebase[0] = 0;
-//     nedges_at_level[0] = 12;
-//     for (Int lev=1; lev<=max_depth; ++lev) {
-//         auto node_policy = ko::TeamPolicy<>(nnodes_at_level[lev],12,4);
-//         // each node, in parallel, determines the owning node of its 12 edges
-//         ko::View<Index*[12]> edge_owners("edge_owners", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, EdgeOwnerFunctor(edge_owners, node_keys, node_neighbors));
-//         // each node flags the edges it owns, and counts them
-//         ko::View<Int*[12]> edge_flags("edge_flags", nnodes_at_level[lev]);
-//         ko::View<Int*> nedges_at_node("nedges_at_node", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, EdgeFlagFunctor(edge_flags, nedges_at_node, edge_owners));
-//         // compute the number of edges in this level
-//         ko::parallel_reduce(nnodes_at_level[lev], KOKKOS_LAMBDA (const Index& t, Index& ne) {
-//             ne += nedges_at_node(t);
-//         }, nedges_at_level[lev]);
-//         // compute the address of each node's first owned edge
-//         ko::View<Index*> edge_address("edge_address", nedges_at_level[lev]);
-//         ko::parallel_scan(nnodes_at_level[lev], 
-//             KOKKOS_LAMBDA (const Index& t, Int& ct, const bool& final_pass) {
-//                 const Index old_val = nedges_at_node(t);
-//                 if (final_pass) {
-//                     edge_address(t) = ct;
-//                 }
-//                 ct += old_val;
-//             });
-//         for (Int i=0; i<lev; ++i) {
-//             ebase[lev] += nedges_at_level[i];
-//         }
-//         // construct edges at this level. edges are added by their owning node
-//         everts[lev] = ko::View<Index*[2]>("edge_verts_lev", nedges_at_level[lev]);
-//         nedges[lev] = ko::View<Index*[12]>("node_edges_lev", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, EdgeNodeFunctor(everts[lev], nedges[lev], edge_flags,
-//             edge_owners, edge_address, node_neighbors, node_vertices));
-//     }
-//     /// concatenate levels to form node_edges and edge_vertices
-//     Index ne = 0;
-//     for (int lev = 0; lev<=max_depth; ++lev) {
-//         ne += nedges_at_level[lev];
-//     }
-//     edge_vertices = ko::View<Index*[2]>("edge_vertices", ne);
-//     auto evroot = ko::subview(edge_vertices, std::make_pair(0,12), ko::ALL());
-//     auto neroot = ko::subview(node_edges, 0, ko::ALL());
-//     auto evtable = ko::View<EdgeVerticesLUT>("EdgeVerticesLUT");
-//     ko::parallel_for(12, KOKKOS_LAMBDA (const Int& i) {
-//         for (Int j=0; j<2; ++j) evroot(i,j) = table_val(i,j, evtable);
-//         neroot(i) = i;
-//     });
-//     for (Int lev=1; lev<=max_depth; ++lev) {
-//         auto edge_view_range = std::make_pair(ebase[lev], ebase[lev] + nedges_at_level[lev]);
-//         auto node_view_range = std::make_pair(hbase(lev), hbase(lev) + nnodes_at_level[lev]);
-//         auto ev_view = ko::subview(edge_vertices, edge_view_range, ko::ALL());
-//         auto ne_view = ko::subview(node_edges, node_view_range, ko::ALL());
-//         ko::deep_copy(ev_view, everts[lev]);
-//         ko::deep_copy(ne_view, nedges[lev]);
-//     }
-// }
-// 
-// void Tree::initFaces(const std::vector<Index>& nnodes_at_level, const hbase_type& hbase) {
-//     /// compute face relations for each level
-//     std::vector<ko::View<Index*[4]>> fedges(max_depth+1); // vector of face-edge relations for each level
-//     std::vector<ko::View<Index*[6]>> nfaces(max_depth+1); // vector of node-face relations for each level
-//     std::vector<Index> fbase(max_depth+1); // starting address in full tree of each level's faces
-//     std::vector<Index> nfaces_at_level(max_depth+1); // number of faces in each level
-//     fbase[0] = 0;
-//     nfaces_at_level[0] = 6;
-//     for (Int lev=1; lev<=max_depth; ++lev) {
-//         auto node_policy = ko::TeamPolicy<>(nnodes_at_level[lev],6);
-//         // each node determines the node that owns its 6 faces
-//         ko::View<Index*[6]> face_owners("face_owners", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, FaceOwnerFunctor(face_owners, node_keys, node_neighbors));
-//         // each node flags the faces it owns, and counts them
-//         ko::View<Int*[6]> face_flags("face_flags", nnodes_at_level[lev]);
-//         ko::View<Int*> nfaces_at_node("nfaces_at_node", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, FaceFlagFunctor(face_flags, nfaces_at_node, face_owners));
-//         // compute the number of faces in this level
-//         ko::parallel_reduce(nnodes_at_level[lev], KOKKOS_LAMBDA (const Index& t, Index& nf) {
-//             nf += nfaces_at_node(t);
-//         }, nfaces_at_level[lev]);
-//         // scan to compute the address of each node's first owned face
-//         ko::View<Index*> face_address("face_address", nfaces_at_level[lev]);
-//         ko::parallel_scan(nnodes_at_level[lev],
-//             KOKKOS_LAMBDA (const Index& t, Int& ct, const bool& final_pass) {
-//                 const Index old_val = nfaces_at_node(t);
-//                 if (final_pass) {
-//                     face_address(t) = ct;
-//                 }
-//                 ct += old_val;
-//             });
-//         for (Int i=0; i<lev; ++i) {
-//             fbase[lev] += nfaces_at_level[i];
-//         }
-//         // construct faces at this level. 
-//         fedges[lev] = ko::View<Index*[4]>("face_edges_lev", nfaces_at_level[lev]);
-//         nfaces[lev] = ko::View<Index*[6]>("node_faces_lev", nnodes_at_level[lev]);
-//         ko::parallel_for(node_policy, FaceNodeFunctor(fedges[lev], nfaces[lev], face_flags, 
-//             face_owners, face_address, node_neighbors, node_edges));
-//     }
-//     /// concatenate levels to form face_edges and node_faces
-//     Index nf = 0;
-//     for (Int lev=0; lev<=max_depth; ++lev) {
-//         nf += nfaces_at_level[lev];
-//     }
-//     face_edges = ko::View<Index*[4]>("face_edges", nf);
-//     auto feroot = ko::subview(face_edges, std::make_pair(0,6), ko::ALL);
-//     auto nfroot = ko::subview(node_faces, 0, ko::ALL());
-//     auto fetable = ko::View<FaceEdgesLUT>("FaceEdgesLUT");
-//     ko::parallel_for(6, KOKKOS_LAMBDA (const Int& i) {
-//         for (Int j=0; j<4; ++j) feroot(i,j) = table_val(i,j, fetable);
-//         nfroot(i) = i;
-//     });
-//     for (Int lev=1; lev <= max_depth; ++lev) {
-//         auto face_view_range = std::make_pair(fbase[lev], fbase[lev] + nfaces_at_level[lev]);
-//         auto node_view_range = std::make_pair(hbase(lev), hbase(lev) + nnodes_at_level[lev]);
-//         auto fe_view = ko::subview(face_edges, face_view_range, ko::ALL());
-//         auto nf_view = ko::subview(node_faces, node_view_range, ko::ALL());
-//         ko::deep_copy(fe_view, fedges[lev]);
-//         ko::deep_copy(nf_view, nfaces[lev]);
-//     }
-// }
-// 
-// std::string Tree::infoString() const {
-//     auto root_box_host = ko::create_mirror_view(box);
-//     auto node_keys_host = ko::create_mirror_view(node_keys);
-//     auto node_pt_host = ko::create_mirror_view(node_pt_idx);
-//     auto node_ct_host = ko::create_mirror_view(node_pt_ct);
-//     auto node_parent_host = ko::create_mirror_view(node_parents);
-//     auto node_kids_host = ko::create_mirror_view(node_kids);
-//     auto node_neighbors_host = ko::create_mirror_view(node_neighbors);
-//     auto pt_leaf_host = ko::create_mirror_view(pt_in_leaf);
-//     auto pt_orig_host = ko::create_mirror_view(pt_orig_id);
-//     auto ba_host = ko::create_mirror_view(base_address); 
-//     auto nnodes_host = ko::create_mirror_view(nnodes_per_level);
-//     
-//     ko::deep_copy(root_box_host, box);
-//     ko::deep_copy(node_keys_host, node_keys);
-//     ko::deep_copy(node_pt_host, node_pt_idx);
-//     ko::deep_copy(node_ct_host, node_pt_ct);
-//     ko::deep_copy(node_parent_host, node_parents);
-//     ko::deep_copy(node_kids_host, node_kids);
-//     ko::deep_copy(node_neighbors_host, node_neighbors);
-//     ko::deep_copy(pt_leaf_host, pt_in_leaf);
-//     ko::deep_copy(pt_orig_host, pt_orig_id);
-//     ko::deep_copy(ba_host, base_address);
-//     ko::deep_copy(nnodes_host, nnodes_per_level);
-//     
-//     if (do_connectivity) {
-//         auto node_verts_host = ko::create_mirror_view(node_vertices);
-//         auto node_edges_host = ko::create_mirror_view(node_edges);
-//         auto node_faces_host = ko::create_mirror_view(node_faces);
-//         auto vertnodes_host = ko::create_mirror_view(vertex_nodes);
-//         auto edgeverts_host = ko::create_mirror_view(edge_vertices);
-//         auto faceedges_host = ko::create_mirror_view(face_edges);
-//         ko::deep_copy(node_verts_host, node_vertices);
-//         ko::deep_copy(node_edges_host, node_edges);
-//         ko::deep_copy(node_faces_host, node_faces);
-//         ko::deep_copy(vertnodes_host, vertex_nodes);
-//         ko::deep_copy(edgeverts_host, edge_vertices);
-//         ko::deep_copy(faceedges_host, face_edges);
-//     }
-//     
-//     std::ostringstream ss;
-//     ss << "Octree info:\n";
-//     for (Int lev=0; lev<=max_depth; ++lev) {
-//         ss << "\tlevel " << lev << "\n";
-//         for (Index i=0; i<nnodes_host[lev]; ++i) {
-//             const std::string tabstr("\t\t");
-//             ss << tabstr << "node(" << i << "): key = " << std::bitset<3*MAX_OCTREE_DEPTH>(node_keys_host(i))
-//                << " pt_start = " << node_pt_host(i) << " pt_ct = " << node_ct_host(i)
-//                << " parent = " << node_parent_host(i)
-//                << " kids = ";
-//             for (int j=0; j<8; ++j) {
-//                 ss << node_kids_host(i,j) << " ";
-//             }
-//             ss << " box = ";
-//             const BBox nbox = box_from_key(node_keys_host(i), root_box_host(), lev, max_depth);
-//             ss << nbox;
-//         }
-//     }
-//     return ss.str();
-// }
+void Tree::initVertices() {
+	/// vertex_owner(t,i) = address of node that owns node t's ith vertex
+	ko::View<Index*[8]> vertex_owners("vertex_owners", nnodes_total);
+	/// nverts_at_node(t) = count of vertices owned by node t
+	ko::View<Index*> nverts_at_node("nverts_at_node", nnodes_total);
+	ko::View<Int*[8]> vertex_flags("vertex_flags", nnodes_total);
+	/// vertex_address(t) = address in vertex array of first vertex owned by node t
+	ko::View<Index*> vertex_address("vertex_address", nnodes_total);
+	
+	Index nverts_total = 8;
+	for (int lev=1; lev<=max_depth; ++lev) {
+		const Index lev_slice_start = base_address_host(lev);
+		const Index lev_slice_end = base_address_host(lev) + nnodes_per_level_host(lev);
+		
+		ko::parallel_for(ko::RangePolicy<VertexSetupFunctor::OwnerTag>(lev_slice_start, lev_slice_end),
+			VertexSetupFunctor(vertex_owners, vertex_flags, nverts_at_node, vertex_address, 
+			node_keys, node_neighbors, lev_slice_start));
+		
+		Index nverts_this_level = 0;
+		ko::parallel_reduce(ko::RangePolicy<VertexSetupFunctor::ReduceTag>(lev_slice_start, lev_slice_end),
+		 VertexSetupFunctor(vertex_owners, vertex_flags, nverts_at_node, vertex_address, 
+		 	node_keys, node_neighbors, lev_slice_start), nverts_this_level);
+		
+		nverts_total += nverts_this_level;
+		
+		ko::parallel_scan(ko::RangePolicy<VertexSetupFunctor::ScanTag>(lev_slice_start, lev_slice_end),
+			VertexSetupFunctor(vertex_owners, vertex_flags, nverts_at_node, vertex_address,
+				node_keys, node_neighbors, lev_slice_start));
+	}
+}
+
 
 }}
