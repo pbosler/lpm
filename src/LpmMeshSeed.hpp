@@ -106,7 +106,7 @@ struct IcosTriDualSeed {
     typedef SphereGeometry geo;
     typedef VoronoiFace faceKind;
     static constexpr Short nfaceverts = 5;
-    static std::string filename() {return "IcosTriDualSeed.dat";}
+    static std::string filename() {return "icosTriDualSeed.dat";}
     static std::string idString() {return "IcosTriDualSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
     static Index nVerticesAtTreeLevel(const Int lev);

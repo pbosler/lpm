@@ -51,7 +51,7 @@ ko::initialize(argc, argv);
         }
     }
 
-    for (Int i=6; i<9; ++i) {
+    for (Int i=0; i<9; ++i) {
         ss.str(std::string());
         VoronoiMesh<IcosTriDualSeed> vmesh(seed,i);
         std::cout << vmesh.infoString(false);
