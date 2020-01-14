@@ -577,6 +577,7 @@ void VoronoiMesh<SeedType>::insertCellAtPoint(const Real* xyz, const Index& firs
 
 //     Step 3
     const std::vector<Index> broken_corners = buildBrokenCornerList(xyz, vert_ind); // Okabe's "set T"
+    assert(!broken_corners.empty());
 //
 //     std::cout << "broken_corners = ";
 //     for (auto& bc : broken_corners) {

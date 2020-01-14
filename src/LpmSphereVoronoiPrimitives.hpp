@@ -5,6 +5,7 @@
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
 #include <string>
+#include <vector>
 
 namespace Lpm {
 namespace Voronoi {

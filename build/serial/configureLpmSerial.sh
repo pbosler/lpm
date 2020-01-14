@@ -8,12 +8,12 @@ if [ "$HOSTNAME" = "s979598" ] ; then
     export VTK_ROOT=$HOME/installs/vtk-8.1.1
     export KO=$HOME/kokkos-serial-debug
     export CPTK=$HOME/repos/cp_toolkit/build
-elif [ "$HOSTNAME" = "s979562" ] ; then
+elif [ "$HOSTNAME" = "s1024454" ] ; then
     echo "hostname = $HOSTNAME"
     SRC_ROOT=$HOME/lpm
-    export VTK_ROOT=$HOME/installs/vtk-8.1.1
-    export KO=$HOME/kokkos-serial-debug
-    export CPTK=$HOME/compadre-serial-debug
+    export VTK_ROOT=$HOME/vtk-8.1.0/gcc-6.3.1
+    export KO=$HOME/kokkos-serial/gcc-6.3.1
+    export CPTK=$HOME/compadre/build/serial
 else
     SRC_ROOT=$HOME/lpmkokkos
     export VTK_ROOT=$HOME/VTK-8.1.1
