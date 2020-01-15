@@ -146,7 +146,7 @@ void VtkInterface<SeedType>::writePolyData(const std::string& fname,
     pdwriter->SetFileName(fname.c_str());
     pdwriter->Write();
 }
-}
+} //namespace Voronoi
 
 template <typename Geo, typename FacesType>
 void VtkInterface<Geo, FacesType>::writePolyData(const std::string& fname, const vtkSmartPointer<vtkPolyData> pd) {

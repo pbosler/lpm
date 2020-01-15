@@ -48,7 +48,7 @@ x     y
 0.27639320225002106  0.27639320225002106
 0.72360679774997894  0.27639320225002106
 0.72360679774997894  0.72360679774997894
-edgeO      edgeD       edgeLeft        edgeRight    edgeInts 
+edgeO      edgeD       edgeLeft        edgeRight    edgeInts
 0   3  0  -1  1  2  
 3   18  1  -1  16  17  
 18   21  1  -1  19  20  

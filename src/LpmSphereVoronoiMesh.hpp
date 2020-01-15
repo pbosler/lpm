@@ -88,7 +88,7 @@ struct VoronoiMesh {
 
 	    void seedInit(const MeshSeed<SeedType>& seed);
 
-	    std::vector<Index> buildBrokenCornerList(const Real* xyz, const Index& first_bc) const;
+	    std::vector<Index> buildBrokenCornerList(const Real* xyz, const Index& first_bc, const bool& verbose=false) const;
 
 	    void pointInsertionBookkeeping(std::vector<Index>& edges_to_delete, std::vector<Index>& edges_to_update_ccw,
 	        std::vector<Index>& new_vert_inds, std::vector<CCWVertexGenerators>& gens, std::vector<Index>& new_edge_inds,

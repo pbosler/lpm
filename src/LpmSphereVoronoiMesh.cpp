@@ -11,7 +11,7 @@
 namespace Lpm {
 namespace Voronoi {
 
-#define TEST_FILE_ROOT "voronoi_mesh_surf_area_test_fail_ncells"
+#define TEST_FILE_ROOT "voronoi_mesh"
 
 template <typename SeedType>
 void VoronoiMesh<SeedType>::getEdgesAndCellsAtVertex(std::vector<Index>& edge_inds, std::vector<Index>& cell_inds,
@@ -73,10 +73,12 @@ std::vector<Index> VoronoiMesh<SeedType>::getAdjacentCells(const Index& cell_ind
 template <typename SeedType>
 Index VoronoiMesh<SeedType>::cellContainingPoint(const Real* xyz, const Index start) const {
     const std::vector<Index> adj_cells = getAdjacentCells(start);
-    Real dist = SphereGeometry::sqEuclideanDistance(xyz, cells[start].xyz);
+//     Real dist = SphereGeometry::sqEuclideanDistance(xyz, cells[start].xyz);
+    Real dist = SphereGeometry::distance(xyz, cells[start].xyz);
     Index next_index = start;
     for (Short i=0; i<adj_cells.size(); ++i) {
-        const Real testdist = SphereGeometry::sqEuclideanDistance(xyz, cells[adj_cells[i]].xyz);
+//         const Real testdist = SphereGeometry::sqEuclideanDistance(xyz, cells[adj_cells[i]].xyz);
+        const Real testdist = SphereGeometry::distance(xyz, cells[adj_cells[i]].xyz);
         if (testdist < dist) {
             dist = testdist;
             next_index = adj_cells[i];
@@ -174,8 +176,8 @@ VoronoiMesh<SeedType>::VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& 
             insertCellAtPoint(newx[j], j);
         }
         std::cout << "uniform refinement " << i+1 << " done.\n";
-        std::cout << infoString(false);
     }
+    std::cout << infoString(false);
 }
 
 template <typename SeedType>
@@ -184,9 +186,11 @@ Index VoronoiMesh<SeedType>::nearestCornerToPoint(const Real* xyz, const Index c
     std::vector<Index> cellverts;
     getEdgesAndVerticesInCell(celledges, cellverts, cell_ind);
     Index vert_ind = cellverts[0];
-    Real dist = SphereGeometry::sqEuclideanDistance(xyz, vertices[vert_ind].xyz);
+//     Real dist = SphereGeometry::sqEuclideanDistance(xyz, vertices[vert_ind].xyz);
+    Real dist = SphereGeometry::distance(xyz, vertices[vert_ind].xyz);
     for (Short i=1; i<cellverts.size(); ++i) {
-        const Real test_dist = SphereGeometry::sqEuclideanDistance(xyz, vertices[cellverts[i]].xyz);
+//         const Real test_dist = SphereGeometry::sqEuclideanDistance(xyz, vertices[cellverts[i]].xyz);
+        const Real test_dist = SphereGeometry::distance(xyz, vertices[cellverts[i]].xyz);
 
         if (test_dist < dist) {
             dist = test_dist;
@@ -265,27 +269,45 @@ void VoronoiMesh<SeedType>::updateSurfArea() {
 }
 
 template <typename SeedType>
-std::vector<Index> VoronoiMesh<SeedType>::buildBrokenCornerList(const Real* xyz, const Index& first_bc) const {
+std::vector<Index> VoronoiMesh<SeedType>::buildBrokenCornerList(const Real* xyz, const Index& first_bc, const bool& verbose) const {
     std::vector<Index> result;
+    result.push_back(first_bc);
     std::deque<Index> vertex_que;
-    vertex_que.push_back(first_bc);
+    std::vector<Index> vertedges;
+    std::vector<Index> vertcells;
+    getEdgesAndCellsAtVertex(vertedges, vertcells, first_bc);
+    for (const auto& e : vertedges) {
+        const Index opposite_vert = (edges[e].orig_vertex == first_bc ? edges[e].dest_vertex : edges[e].orig_vertex);
+        vertex_que.push_back(opposite_vert);
+    }
     Index pass_ctr = 0;
     std::set<Index> tested_verts;
-//     std::cout << "DEBUG: VoronoiMesh::buildBrokenCornerList\n";
+    tested_verts.insert(first_bc);
+
+#ifdef LPM_ENABLE_DEBUG
+    std::ostringstream ss;
+    ss << __FILE__ << " " << __LINE__ << "\n";
+    ss << "VoronoiMesh::buildBrokenCornerList \n";
+    ss << "\txyz = (" << xyz[0] << " " << xyz[1] << " " << xyz[2] << ")\n";
+    ss << "\tfirst_bc = " << first_bc << "\n";
+    ss << "\tbc test " << SphereGeometry::sqEuclideanDistance(xyz, vertices[first_bc].xyz) - vertices[first_bc].circumradius << "\n";
+    ss << "\tbc gc test " << SphereGeometry::distance(xyz, vertices[first_bc].xyz) - vertices[first_bc].circumradius << "\n";
+#endif
+
+
     while (!vertex_que.empty()) {
         const Index vind = vertex_que.front();
         vertex_que.pop_front();
         tested_verts.insert(vind);
         if (brokenCorner(xyz, vind)) {
             result.push_back(vind);
-            std::vector<Index> vertedges;
-            std::vector<Index> vertcells;
+
             getEdgesAndCellsAtVertex(vertedges, vertcells, vind);
-            for (const auto& v : vertedges) {
+            for (const auto& e : vertedges) {
 
-                assert(edges[v].orig_vertex == vind || edges[v].dest_vertex == vind);
+                assert(edges[e].orig_vertex == vind || edges[e].dest_vertex == vind);
 
-                const Index opposite_vert = (edges[v].orig_vertex == vind ? edges[v].dest_vertex : edges[v].orig_vertex);
+                const Index opposite_vert = (edges[e].orig_vertex == vind ? edges[e].dest_vertex : edges[e].orig_vertex);
                 const bool is_new = tested_verts.find(opposite_vert) == tested_verts.end();
                 if (is_new) {
                     vertex_que.push_back(opposite_vert);
@@ -294,19 +316,29 @@ std::vector<Index> VoronoiMesh<SeedType>::buildBrokenCornerList(const Real* xyz,
         }
         ++pass_ctr;
 
-//         std::cout << "\tDEBUG: end of pass " << pass_ctr << " vertex_que = ";
-//         for (const auto& v : vertex_que) {
-//             std::cout << v << " ";
-//         }
-//         std::cout << "\n";
-//         std::cout << "\tbroken_corners = ";
-//         for (const auto& bc : result) {
-//             std::cout << bc << " ";
-//         }
-//         std::cout << "\n";
+#ifdef LPM_ENABLE_DEBUG
+        ss << "\tend of pass " << pass_ctr << "\n";
 
+        ss << "\t\tvertex_que = ";
+        for (const auto& v : vertex_que) {
+            ss << v << " ";
+        }
+        ss << "\n";
+
+        ss << "\t\tbroken_corners (result) = ";
+        for (const auto& bc : result) {
+            ss << bc << " ";
+        }
+        ss << "\n";
+#endif
         assert(pass_ctr <= 100);
     }
+#ifdef LPM_ENABLE_DEBUG
+    if (result.empty()) {
+        std::cout << ss.str();
+    }
+#endif
+
     return result;
 }
 
@@ -555,6 +587,7 @@ void VoronoiMesh<SeedType>::makeNewVertices(std::vector<Vertex>& newverts, const
         SphereGeometry::circumcenter(newxyz, xyz, cells[gens[i].cell_b].xyz, cells[gens[i].cell_c].xyz);
         Vertex newvert(newxyz, edges_to_update_ccw[i]);
         newvert.circumradius = SphereGeometry::sqEuclideanDistance(xyz, newxyz);
+//         newvert.circumradius = SphereGeometry::distance(xyz, newxyz);
         newverts.push_back(newvert);
     }
 }
@@ -569,21 +602,29 @@ void VoronoiMesh<SeedType>::insertCellAtPoint(const Real* xyz, const Index& firs
 
     // Step 1
     const Index ptloc = cellContainingPoint(xyz, first_guess_cell_ind);
-//     std::cout << "found point in cell " << ptloc << "\n";
 
     // Step 2
     const Index vert_ind = nearestCornerToPoint(xyz, ptloc);
-//     std::cout << "found closest corner = " << vert_ind << "\n";
 
 //     Step 3
     const std::vector<Index> broken_corners = buildBrokenCornerList(xyz, vert_ind); // Okabe's "set T"
-    assert(!broken_corners.empty());
-//
-//     std::cout << "broken_corners = ";
-//     for (auto& bc : broken_corners) {
-//         std::cout << bc << " ";
-//     }
-//     std::cout << "\n";
+
+#ifdef LPM_ENABLE_DEBUG
+    if (broken_corners.empty()) {
+        std::ostringstream ss;
+        ss << __FILE__ << ": " << __LINE__ << "\n";
+        ss << "VoronoiMesh::insertCellAtPoint error: broken corners list is empty.\n";
+        ss << "\tadding point: (" << xyz[0] << " " << xyz[1] << " " << xyz[2] << ")\n";
+        ss << "\tcell containg point (ptloc) = " << ptloc << " first guess ind = " << first_guess_cell_ind << "\n";
+        ss << cells[ptloc].infoString();
+        ss << "\tnearest corner (vert_ind): " << vert_ind << "\n";
+        ss << vertices[vert_ind].infoString();
+
+        std::cout << ss.str();
+
+        throw std::logic_error("Empty broken corners list.");
+    }
+#endif
 
 //     bookkeeping
     std::vector<Index> edges_to_delete;
@@ -600,11 +641,6 @@ void VoronoiMesh<SeedType>::insertCellAtPoint(const Real* xyz, const Index& firs
         newverts[i].id = new_vert_inds[i];
         vertices[new_vert_inds[i]] = newverts[i];
     }
-//
-//     std::cout << "nnewverts = " << newverts.size() << " nverts = " << vertices.size() << "\n";
-//     for (Int i=0; i<newverts.size(); ++i) {
-//         std::cout << "\tnewverts["<< i <<"]: gens " << gens[i] << newverts[i].infoString();
-//     }
 
     const Int nnewverts = edges_to_update_ccw.size();
 
@@ -640,13 +676,19 @@ void VoronoiMesh<SeedType>::insertCellAtPoint(const Real* xyz, const Index& firs
     assert(new_edge_inds[0] >= 0);
 
     auto newcell = Cell(xyz, new_edge_inds[0]);
-    newcell.id = cells.size();
+    newcell.id = newcellind;
     cells.push_back(newcell);
     newcell.area = cellArea(newcell.id);
     updateSurfArea();
-//     std::cout << "point addition complete\n";
+
 
 #ifdef LPM_ENABLE_DEBUG
+    VtkInterface<SeedType> vtk;
+    auto pd = vtk.toVtkPolyData(*this);
+    std::ostringstream ss;
+    ss << TEST_FILE_ROOT << cells.size() << ".vtk";
+    vtk.writePolyData(ss.str(), pd);
+
     if (std::isnan(surfarea) || std::abs(surfarea - 4*PI) > 5*ZERO_TOL) {
         std::ostringstream ss;
         ss << __FILE__ << ": " << __LINE__ << "\n";
@@ -685,11 +727,7 @@ void VoronoiMesh<SeedType>::insertCellAtPoint(const Real* xyz, const Index& firs
         throw std::logic_error(ss.str());
     }
 
-//     VtkInterface<SeedType> vtk;
-//     auto pd = vtk.toVtkPolyData(*this);
-//     std::ostringstream ss;
-//     ss << TEST_FILE_ROOT << cells.size() << ".vtk";
-//     vtk.writePolyData(ss.str(), pd);
+
 //     bool print_verbose = false;
 //     if (vertices.size() > 72) {
 //         print_verbose = true;
@@ -736,6 +774,7 @@ void VoronoiMesh<SeedType>::seedInit(const MeshSeed<SeedType>& seed) {
         const Index edge_ind = vertices[i].edgeAtVertex;
         const Index cell_ind = edges[edge_ind].left_cell;
         vertices[i].circumradius = SphereGeometry::sqEuclideanDistance(vertices[i].xyz, cells[cell_ind].xyz);
+//         vertices[i].circumradius = SphereGeometry::distance(vertices[i].xyz, cells[cell_ind].xyz);
         vertices[i].id = i;
     }
     surfarea = 0.0;
@@ -762,7 +801,8 @@ void VoronoiMesh<SeedType>::seedInit(const MeshSeed<SeedType>& seed) {
 
 template <typename SeedType>
 bool VoronoiMesh<SeedType>::brokenCorner(const Real* newxyz, const Index& vert_ind) const {
-    return SphereGeometry::sqEuclideanDistance(newxyz, vertices[vert_ind].xyz) - vertices[vert_ind].circumradius < 0; //-ZERO_TOL;
+    return SphereGeometry::sqEuclideanDistance(newxyz, vertices[vert_ind].xyz) - vertices[vert_ind].circumradius < 0; //ZERO_TOL;
+//     return SphereGeometry::distance(newxyz, vertices[vert_ind].xyz) - vertices[vert_ind].circumradius < 0; //ZERO_TOL;
 }
 
 
