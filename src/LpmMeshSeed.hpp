@@ -46,6 +46,7 @@ struct QuadRectSeed {
     typedef PlaneGeometry geo;
     typedef QuadFace faceKind;
     static constexpr Int nfaceverts = 4;
+    static constexpr Int vertex_degree = 4;
     static std::string filename() {return "quadRectSeed.dat";}
     static std::string idString() {return "QuadRectSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
@@ -61,6 +62,7 @@ struct TriHexSeed {
     typedef PlaneGeometry geo;
     typedef TriFace faceKind;
     static constexpr Int nfaceverts = 3;
+    static constexpr Int vertex_degree = 6;
     static std::string filename() {return "triHexSeed.dat";}
     static std::string idString() {return "TriHexSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
@@ -76,6 +78,7 @@ struct CubedSphereSeed {
     typedef SphereGeometry geo;
     typedef QuadFace faceKind;
     static constexpr Int nfaceverts = 4;
+    static constexpr Int vertex_degree = 4;
     static std::string filename() {return "cubedSphereSeed.dat";}
     static std::string idString() {return "CubedSphereSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
@@ -91,6 +94,7 @@ struct IcosTriSphereSeed {
     typedef SphereGeometry geo;
     typedef TriFace faceKind;
     static constexpr Int nfaceverts = 3;
+    static constexpr Int vertex_degree = 6;
     static std::string filename() {return "icosTriSphereSeed.dat";}
     static std::string idString() {return "IcosTriSphereSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
@@ -106,6 +110,7 @@ struct IcosTriDualSeed {
     typedef SphereGeometry geo;
     typedef VoronoiFace faceKind;
     static constexpr Short nfaceverts = 5;
+    static constexpr Int vertex_degree = 3;
     static std::string filename() {return "icosTriDualSeed.dat";}
     static std::string idString() {return "IcosTriDualSeed";}
     static Index nFacesAtTreeLevel(const Int lev);
@@ -132,10 +137,11 @@ template <typename SeedType> struct MeshSeed {
     ko::View<Index[SeedType::nedges][8],Host> sedges;
     ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceverts;
     ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceedges;
+    ko::View<Index[SeedType::nverts][SeedType::vertex_degree],Host> svertedges;
 
     /// constructor.  Automatically reads data file.
     MeshSeed() : scrds("seed coords"), sedges("seed edges"), sfaceverts("seed face vertices"),
-        sfaceedges("seed face edges") {readfile();}
+        sfaceedges("seed face edges"), svertedges("seed vertex edges") {readfile();}
 
     /// idString
     static std::string idString() {return SeedType::idString();}

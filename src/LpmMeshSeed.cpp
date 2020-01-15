@@ -22,10 +22,13 @@ void MeshSeed<SeedType>::readfile() {
     Int edgeHeaderLine = NULL_IND;
     Int faceVertHeaderLine = NULL_IND;
     Int faceEdgeHeaderLine = NULL_IND;
+    Int vertEdgeHeaderLine = NULL_IND;
     Int crdCounter = 0;
     Int edgeCounter = 0;
     Int faceVertCounter = 0;
     Int faceEdgeCounter = 0;
+    Int vertCounter = 0;
+
 
     while (std::getline(file, line)) {
         ++lineNumber;
@@ -37,6 +40,9 @@ void MeshSeed<SeedType>::readfile() {
         }
         if (line.find("faceedges") != std::string::npos) {
             faceEdgeHeaderLine = lineNumber;
+        }
+        if (line.find("vertEdges") != std::string::npos) {
+            vertEdgeHeaderLine = lineNumber;
         }
         std::istringstream iss(line);
         if (lineNumber > 1 && lineNumber < ncrds+2) {
@@ -179,9 +185,39 @@ void MeshSeed<SeedType>::readfile() {
                 LPM_THROW_IF(true, oss.str());
             }
         }
+        else if (vertEdgeHeaderLine > 0 && lineNumber > vertEdgeHeaderLine &&
+            lineNumber < vertEdgeHeaderLine + SeedType::nverts +1) {
+            Index e0, e1, e2, e3, e4, e5;
+            bool dualError = false;
+            switch (SeedType::vertex_degree) {
+                case (4) : {
+                    if (!(iss >> e0 >> e1 >> e2 >> e3))
+                        dualError = true;
+                    svertedges(vertCounter, 0) = e0;
+                    svertedges(vertCounter, 1) = e1;
+                    svertedges(vertCounter, 2) = e2;
+                    svertedges(vertCounter++, 3) = e3;
+                    break;
+                }
+                case (6) : {
+                    if (!(iss >> e0 >> e1 >> e2 >> e3 >> e4 >> e5))
+                        dualError = true;
+                    svertedges(vertCounter, 0) = e0;
+                    svertedges(vertCounter, 1) = e1;
+                    svertedges(vertCounter, 2) = e2;
+                    svertedges(vertCounter, 3) = e3;
+                    svertedges(vertCounter, 4) = e4;
+                    svertedges(vertCounter++, 5) = e5;
+                    break;
+                }
+            }
+            if (dualError) {
+                oss << "MeshSeed::readfile error: cannot read vertex edges from line " << lineNumber
+                    << " of file " << fullFilename();
+                LPM_THROW_IF(true, oss.str());
+            }
+        }
     }
-
-
     file.close();
 }
 
@@ -235,6 +271,14 @@ std::string MeshSeed<SeedType>::infoString() const {
             ss << sfaceedges(i,j) << " ";
         }
         ss << std::endl;
+    }
+    ss << "\tseed vertex edges:" << "\n";
+    for (int i=0; i<SeedType::nverts; ++i) {
+        ss << "\t";
+        for (int j=0; j<SeedType::vertex_degree; ++j) {
+            ss << svertedges(i,j) << " ";
+        }
+        ss << "\n";
     }
     return ss.str();
 }
