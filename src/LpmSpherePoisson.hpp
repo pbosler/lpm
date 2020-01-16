@@ -59,10 +59,10 @@ struct Init {
     scalar_view_type exactpsi;
     vec_view exactu;
     crd_view x;
-    
-    Init(scalar_view_type ff, scalar_view_type psi, vec_view u, crd_view xx) : 
+
+    Init(scalar_view_type ff, scalar_view_type psi, vec_view u, crd_view xx) :
         f(ff), exactpsi(psi), exactu(u), x(xx) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index i) const {
         auto myx = ko::subview(x, i, ko::ALL());
@@ -84,11 +84,11 @@ struct ReduceDistinct {
     scalar_view_type srcf;
     scalar_view_type srca;
     mask_view_type facemask;
-    
+
     KOKKOS_INLINE_FUNCTION
     ReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm) :
         i(ii), tgtx(x), srcx(xx), srcf(f), srca(a), facemask(fm) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& j, value_type& pot) const {
         Real potential = 0;
@@ -109,11 +109,11 @@ struct UReduceDistinct {
     scalar_view_type srcf;
     scalar_view_type srca;
     mask_view_type facemask;
-    
+
     KOKKOS_INLINE_FUNCTION
     UReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm):
     i(ii), tgtx(x), srcx(xx), srcf(f), srca(a), facemask(fm) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& j, value_type& vel) const {
         ko::Tuple<Real,3> u;
@@ -135,11 +135,11 @@ struct VertexSolve {
     scalar_view_type vertpsi;
     vec_view vertu;
     Index nf;
-    
-    VertexSolve(crd_view vx, crd_view fx, scalar_view_type ff, scalar_view_type fa, mask_view_type fm, 
+
+    VertexSolve(crd_view vx, crd_view fx, scalar_view_type ff, scalar_view_type fa, mask_view_type fm,
         scalar_view_type vpsi, vec_view vu) :
         vertx(vx), facex(fx), facef(ff), facea(fa), facemask(fm), vertpsi(vpsi), vertu(vu), nf(fx.extent(0)) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator () (const member_type& mbr) const {
         const Index i = mbr.league_rank();
@@ -161,11 +161,11 @@ struct ReduceCollocated {
     scalar_view_type srcf;
     scalar_view_type srca;
     mask_view_type mask;
-    
+
     KOKKOS_INLINE_FUNCTION
-    ReduceCollocated(const Index& ii, crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m) : 
+    ReduceCollocated(const Index& ii, crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m) :
         i(ii), srcx(x), srcf(f), srca(a), mask(m) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& j, value_type& pot) const {
         Real potential = 0;
@@ -185,11 +185,11 @@ struct UReduceCollocated {
     scalar_view_type srcf;
     scalar_view_type srca;
     mask_view_type mask;
-    
+
     KOKKOS_INLINE_FUNCTION
     UReduceCollocated(const Index& ii, crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m) :
         i(ii), srcx(x), srcf(f), srca(a), mask(m) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const Index& j, value_type& vel) const {
         ko::Tuple<Real,3> u;
@@ -210,10 +210,10 @@ struct FaceSolve {
     scalar_view_type facepsi;
     vec_view faceu;
     Index nf;
-    
+
     FaceSolve(crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m, scalar_view_type p, vec_view u) :
         facex(x), facef(f), facea(a), facemask(m), facepsi(p), faceu(u), nf(x.extent(0)) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const member_type& mbr) const {
         const Index i=mbr.league_rank();
@@ -234,24 +234,24 @@ struct Error {
     scalar_view_type fexact;
     scalar_view_type ferror;
     mask_view_type mask;
-    
+
     struct VertTag{};
     struct FaceTag{};
     struct MaxTag{};
-    
-    Error(scalar_view_type e, scalar_view_type fc, scalar_view_type fe, mask_view_type m) : 
+
+    Error(scalar_view_type e, scalar_view_type fc, scalar_view_type fe, mask_view_type m) :
         ferror(e), fcomputed(fc), fexact(fe), mask(m) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator () (const VertTag&, const Index& i) const {
         ferror(i) = abs(fcomputed(i) - fexact(i));
     }
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator () (const FaceTag&, const Index& i) const {
         ferror(i) = (mask(i) ? 0 : abs(fcomputed(i) - fexact(i)));
     }
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const MaxTag&, const Index& i, value_type& max) const {
         if (ferror(i) > max) max=ferror(i);
@@ -264,21 +264,21 @@ struct UError {
     vec_view ucomputed;
     vec_view uexact;
     mask_view_type mask;
-    
+
     struct VertTag{};
     struct FaceTag{};
     struct MaxTag{};
-    
-    UError(vec_view e, vec_view uc, vec_view ue, mask_view_type m) : 
+
+    UError(vec_view e, vec_view uc, vec_view ue, mask_view_type m) :
     	uerror(e), ucomputed(uc), uexact(ue), mask(m) {}
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator () (const VertTag&, const Index& i) const {
         for (int j=0; j<3; ++j) {
             uerror(i,j) = abs(ucomputed(i,j) - uexact(i,j));
         }
     }
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator() (const FaceTag&, const Index& i) const {
         if (mask(i)) {
@@ -292,7 +292,7 @@ struct UError {
             }
         }
     }
-    
+
     KOKKOS_INLINE_FUNCTION
     void operator () (const MaxTag&, const Index& i, value_type& max) const {
         Real emag = 0;
@@ -306,8 +306,9 @@ struct UError {
 /**
     Solves laplacian(psi) = -f on the sphere
 */
-template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeometry,FaceKind> {
+template <typename SeedType> class SpherePoisson : public PolyMesh2d<SeedType> {
     public:
+        typedef typename SeedType::faceKind FaceKind;
         scalar_view_type fverts;
         scalar_view_type psiverts;
         scalar_view_type psiexactverts;
@@ -326,16 +327,16 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
         Real linf_faces;
         Real linf_uverts;
         Real linf_ufaces;
-    
-        SpherePoisson(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) : 
-            PolyMesh2d<SphereGeometry,FaceKind>(nmaxverts, nmaxedges, nmaxfaces),
+
+        SpherePoisson(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) :
+            PolyMesh2d<SeedType>(nmaxverts, nmaxedges, nmaxfaces),
             fverts("f",nmaxverts), psiverts("psi",nmaxverts),
             ffaces("f",nmaxfaces), psifaces("psi",nmaxfaces),
             psiexactverts("psi_exact",nmaxverts), psiexactfaces("psi_exact",nmaxfaces),
             everts("error", nmaxverts), efaces("error",nmaxfaces),
-            uverts("u",nmaxverts), ufaces("u",nmaxfaces), 
+            uverts("u",nmaxverts), ufaces("u",nmaxfaces),
             uvertsexact("u_exact",nmaxverts), ufacesexact("u_exact",nmaxfaces),
-            uerrverts("u_error",nmaxverts), uerrfaces("u_error",nmaxfaces) 
+            uerrverts("u_error",nmaxverts), uerrfaces("u_error",nmaxfaces)
         {
             _fverts = ko::create_mirror_view(fverts);
             _psiverts = ko::create_mirror_view(psiverts);
@@ -352,20 +353,20 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
             _uerrverts = ko::create_mirror_view(uerrverts);
             _uerrfaces = ko::create_mirror_view(uerrfaces);
         }
-        
+
         inline Real meshSize() const {return std::sqrt(4*PI / this->faces.nLeavesHost());}
-        
+
         void init() {
             ko::parallel_for(this->nvertsHost(), Init(fverts, psiexactverts, uvertsexact, this->getVertCrds()));
             ko::parallel_for(this->nfacesHost(), Init(ffaces, psiexactfaces, ufacesexact, this->getFaceCrds()));
         }
-        
+
         void solve() {
             ko::TeamPolicy<> vertex_policy(this->nvertsHost(), ko::AUTO());
             ko::TeamPolicy<> face_policy(this->nfacesHost(), ko::AUTO());
-            ko::parallel_for(vertex_policy, VertexSolve(this->getVertCrds(), this->getFaceCrds(), ffaces, 
+            ko::parallel_for(vertex_policy, VertexSolve(this->getVertCrds(), this->getFaceCrds(), ffaces,
                 this->getFaceArea(), this->getFacemask(), psiverts, uverts));
-            ko::parallel_for(face_policy, FaceSolve(this->getFaceCrds(), ffaces, this->getFaceArea(), 
+            ko::parallel_for(face_policy, FaceSolve(this->getFaceCrds(), ffaces, this->getFaceArea(),
                 this->getFacemask(), psifaces, ufaces));
             /// compute error in potential
             ko::parallel_for(ko::RangePolicy<Error::VertTag>(0,this->nvertsHost()),
@@ -385,15 +386,15 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
                 UError(uerrverts, uverts, uvertsexact, this->getFacemask()), ko::Max<Real>(linf_uverts));
             ko::parallel_reduce("MaxReduce", ko::RangePolicy<UError::MaxTag>(0,this->nfacesHost()),
                 UError(uerrfaces, ufaces, ufacesexact, this->getFacemask()), ko::Max<Real>(linf_ufaces));
-            
+
             std::cout << meshSize()*RAD2DEG << ":\n"
                       << "\tpotential: linf_verts = " << linf_verts << ", linf_faces = " << linf_faces << '\n'
                       << "\tvelocity:  linf_verts = " << std::sqrt(linf_uverts) << ", linf_faces = " << std::sqrt(linf_ufaces) << '\n';
-                    
+
         }
 
         void updateHost() const override {
-            PolyMesh2d<SphereGeometry,FaceKind>::updateHost();
+            PolyMesh2d<SeedType>::updateHost();
             ko::deep_copy(_fverts, fverts);
             ko::deep_copy(_psiverts, psiverts);
             ko::deep_copy(_ffaces, ffaces);
@@ -409,22 +410,22 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
             ko::deep_copy(_uerrverts, uerrverts);
             ko::deep_copy(_uerrfaces, uerrfaces);
         }
-        
+
         void updateDevice() const override {
-            PolyMesh2d<SphereGeometry,FaceKind>::updateDevice();
+            PolyMesh2d<SeedType>::updateDevice();
         }
-    
+
         void outputVtk(const std::string& fname) const override {
             VtkInterface<SphereGeometry,Faces<FaceKind>> vtk;
             auto ptdata = vtkSmartPointer<vtkPointData>::New();
             vtk.addScalarToPointData(ptdata, _fverts, "f", this->nvertsHost());
             vtk.addScalarToPointData(ptdata, _psiverts, "psi", this->nvertsHost());
-            vtk.addScalarToPointData(ptdata, _psiexactverts, "psi_exact", this->nvertsHost()); 
-            vtk.addScalarToPointData(ptdata, _everts, "psi_error", this->nvertsHost()); 
+            vtk.addScalarToPointData(ptdata, _psiexactverts, "psi_exact", this->nvertsHost());
+            vtk.addScalarToPointData(ptdata, _everts, "psi_error", this->nvertsHost());
             vtk.addVectorToPointData(ptdata, _uverts, "velocity", this->nvertsHost());
             vtk.addVectorToPointData(ptdata, _uvertsexact, "velocity_exact", this->nvertsHost());
             vtk.addVectorToPointData(ptdata, _uerrverts, "velocity_error", this->nvertsHost());
-            
+
             auto celldata = vtkSmartPointer<vtkCellData>::New();
             vtk.addScalarToCellData(celldata, this->faces.getAreaHost(), "area", this->faces);
             vtk.addScalarToCellData(celldata, _ffaces, "f", this->faces);
@@ -434,11 +435,11 @@ template <typename FaceKind> class SpherePoisson : public PolyMesh2d<SphereGeome
             vtk.addVectorToCellData(celldata, _ufaces, "velocity", this->faces);
             vtk.addVectorToCellData(celldata, _ufacesexact, "velocity_exact", this->faces);
             vtk.addVectorToCellData(celldata, _uerrfaces, "velocity_error", this->faces);
-            
+
             auto pd = vtk.toVtkPolyData(this->faces, this->edges, this->physFaces, this->physVerts, ptdata, celldata);
             vtk.writePolyData(fname, pd);
         }
-        
+
     protected:
         typedef typename scalar_view_type::HostMirror host_scalar_view;
         typedef typename vec_view::HostMirror host_vec_view;

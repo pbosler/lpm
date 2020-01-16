@@ -23,16 +23,16 @@ ko::initialize(argc, argv);
 
 //     typedef TriFace facetype;
 //     typedef IcosTriSphereSeed seedtype;
-    
+
     const int mesh_depth = 6; // must be >= 2 for IcosTriSphere or box test will fail
     const int octree_depth = 4;
     Index nmaxverts, nmaxedges, nmaxfaces;
     MeshSeed<seedtype> seed;
     seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, mesh_depth);
-    PolyMesh2d<SphereGeometry,facetype> sphere(nmaxverts, nmaxedges, nmaxfaces);
+    PolyMesh2d<seedtype> sphere(nmaxverts, nmaxedges, nmaxfaces);
     sphere.treeInit(mesh_depth, seed);
     sphere.updateDevice();
-    ko::View<Real*[3]> src_crds = sourceCoords<SphereGeometry,facetype>(sphere);
+    ko::View<Real*[3]> src_crds = sourceCoords<seedtype>(sphere);
     const Int npts = src_crds.extent(0);
     auto src_crds_host = ko::create_mirror_view(src_crds);
     ko::deep_copy(src_crds_host, src_crds);
@@ -47,7 +47,7 @@ ko::initialize(argc, argv);
     std::cout << "level 1 done\n";
     NodeArrayInternal level0(level1);
     std::cout << "level 0 done\n";
-        
+
     std::cout << leaves.infoString();
     std::cout << level3.infoString();
     std::cout << level2.infoString(true);
