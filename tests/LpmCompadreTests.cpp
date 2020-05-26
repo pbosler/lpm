@@ -45,16 +45,16 @@ struct Output {
     std::vector<Real> lap_linf;
     std::vector<Real> lap_l2rate;
     std::vector<Real> lap_linfrate;
-    
-    Output(const int ord, const int ntrials) : order(ord), 
-        nsrc(ntrials), interp_l1(ntrials), interp_l2(ntrials), interp_linf(ntrials), 
+
+    Output(const int ord, const int ntrials) : order(ord),
+        nsrc(ntrials), interp_l1(ntrials), interp_l2(ntrials), interp_linf(ntrials),
         lap_l1(ntrials), lap_l2(ntrials), lap_linf(ntrials),
         interp_l2rate(ntrials), interp_linfrate(ntrials), lap_l2rate(ntrials), lap_linfrate(ntrials) {}
-    
+
     std::string infoString() const;
-    
+
     void computeRates();
-    
+
     void writeInterpData() const;
     void writeLapData() const;
 };
@@ -81,24 +81,24 @@ ko::initialize(argc, argv);
     gmlsParams.gmls_order = input.order;
     gmlsParams.gmls_manifold_order = input.order;
     std::cout << gmlsParams.infoString();
-    
+
     Output output(gmlsParams.gmls_order, input.max_depth-2+1);
 //     std::cout << output.infoString();
     for (int i=2; i<=input.max_depth; ++i) {
         /**
-            Build source mesh 
+            Build source mesh
         */
         Index nmaxverts, nmaxedges, nmaxfaces;
         MeshSeed<IcosTriSphereSeed> icseed;
         icseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, i);
-        PolyMesh2d<SphereGeometry,TriFace> trisphere(nmaxverts, nmaxedges, nmaxfaces);
+        PolyMesh2d<IcosTriSphereSeed> trisphere(nmaxverts, nmaxedges, nmaxfaces);
         trisphere.treeInit(i, icseed);
         trisphere.updateDevice();
-        ko::View<Real*[3]> srcCrds = sourceCoords<SphereGeometry,TriFace>(trisphere);
+        ko::View<Real*[3]> srcCrds = sourceCoords<IcosTriSphereSeed>(trisphere);
         auto src_host = ko::create_mirror_view(srcCrds);
         ko::deep_copy(src_host, srcCrds);
 
-        /** 
+        /**
             Define source data
         */
         ko::View<Real*> zeta("zeta", srcCrds.extent(0));
@@ -111,7 +111,7 @@ ko::initialize(argc, argv);
         });
         std::cout << "source data ready.\n";
         for (int j=0; j<input.nlons.size(); ++j) {
-            /** 
+            /**
                 Build target mesh
             */
             const int nlon = input.nlons[j];
@@ -120,13 +120,13 @@ ko::initialize(argc, argv);
             LatLonMesh ll(nlat, nlon);
 
             std::cout << "nsrc = " << srcCrds.extent(0) << " ntgt = " << nunif << "\n";
-            
+
             /**
                 Construct neighbor lists
             */
             CompadreNeighborhoods nn(src_host, ll.pts_host, gmlsParams);
             std::cout << nn.infoString(1);
-            
+
             /**
                 Setup gmls
             */
@@ -134,22 +134,22 @@ ko::initialize(argc, argv);
             ko::View<Real*> tgt_zeta("zeta", nunif);
             ko::View<Real*> tgt_zeta_lap("zeta", nunif);
             std::vector<Compadre::TargetOperation> s_ops = {Compadre::ScalarPointEvaluation,
-                                                            Compadre::LaplacianOfScalarPointEvaluation};                                                         
+                                                            Compadre::LaplacianOfScalarPointEvaluation};
             Compadre::GMLS sgmls = scalarGMLS(srcCrds, ll.pts, nn, gmlsParams, s_ops);
-            
-       
+
+
             /**
                 Compute solutions: lap(psi) = -zeta
             */
             Compadre::Evaluator e_scalar(&sgmls);
             tgt_psi = e_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(psi, s_ops[0],
                 Compadre::PointSample);
-            tgt_zeta = e_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(zeta, s_ops[0], 
+            tgt_zeta = e_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(zeta, s_ops[0],
             	Compadre::PointSample);
             tgt_zeta_lap = e_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(psi, s_ops[1],
                 Compadre::PointSample);
-            
-            /** 
+
+            /**
                 Calculate error
             */
             ko::View<Real*> psi_exact("psi_exact", nunif);
@@ -160,7 +160,7 @@ ko::initialize(argc, argv);
                 zeta_exact(i) = zt;
                 psi_exact(i) = -zt/30.0;
             });
-            
+
             ko::View<Real*> psi_err("abs_err(psi)", nunif);
             ko::View<Real*> zeta_err("abs_err(zeta)", nunif);
             ko::View<Real*> zeta_lap_err("abs_err(zeta_lap)", nunif);
@@ -170,12 +170,12 @@ ko::initialize(argc, argv);
             ErrNorms<> enrm_psi(psi_err, psi_exact, ll.wts);
             ErrNorms<> enrm_zeta(zeta_err, zeta_exact, ll.wts);
             ErrNorms<> enrm_zeta_lap(zeta_lap_err, zeta_exact, ll.wts);
-            
+
             output.nsrc[i-2] = srcCrds.extent(0);
             output.interp_l1[i-2] = enrm_psi.l1;
             output.interp_l2[i-2] = enrm_psi.l2;
             output.interp_linf[i-2] = enrm_psi.linf;
-            
+
             output.lap_l1[i-2] = enrm_zeta_lap.l1;
             output.lap_l2[i-2] = enrm_zeta_lap.l2;
             output.lap_linf[i-2] = enrm_zeta_lap.linf;
@@ -190,12 +190,12 @@ ko::initialize(argc, argv);
             ko::deep_copy(psi_host, tgt_psi);
             ko::deep_copy(zeta_host, tgt_zeta);
             ko::deep_copy(zeta_lap_err, tgt_zeta_lap);
-            
+
             auto exact_psi_host = ko::create_mirror_view(psi_exact);
             auto exact_zeta_host = ko::create_mirror_view(zeta_exact);
             ko::deep_copy(exact_psi_host, psi_exact);
             ko::deep_copy(exact_zeta_host, zeta_exact);
-            
+
             std::ostringstream ss;
             ss << "gmls_icostri" << i << "_latlon" << nlon << ".m";
             std::ofstream mfile(ss.str());
@@ -205,7 +205,7 @@ ko::initialize(argc, argv);
             ll.writeLatLonScalar(mfile, "zeta_lap", zeta_lap_host);
             ll.writeLatLonScalar(mfile, "psi_exact", exact_psi_host);
             ll.writeLatLonScalar(mfile, "zeta_exact", exact_zeta_host);
-            mfile.close(); 
+            mfile.close();
         }
     }
     output.computeRates();
@@ -247,14 +247,14 @@ std::string Output::infoString() const {
     ss << "Order " << order << " error(interpolate(psi),psi)\n";
     ss << std::setw(20) << "nsrc" << std::setw(20) << "l1" << std::setw(20) << "l2" << std::setw(20) << "l2rate" << std::setw(20) << "linf" << std::setw(20) << "linfrate\n";
     for (int i=0; i<nsrc.size(); ++i) {
-        ss << std::setw(20) << nsrc[i] << std::setw(20) << interp_l1[i] << std::setw(20) 
-           << interp_l2[i] << std::setw(20) << interp_l2rate[i] << std::setw(20) 
+        ss << std::setw(20) << nsrc[i] << std::setw(20) << interp_l1[i] << std::setw(20)
+           << interp_l2[i] << std::setw(20) << interp_l2rate[i] << std::setw(20)
            << interp_linf[i] << std::setw(20) << interp_linfrate[i] << "\n";
     }
     ss << "Order " << order << "error(laplacian(-psi),zeta)\n";
     ss << std::setw(20) << "nsrc" << std::setw(20) << "l1" << std::setw(20) << "l2" << std::setw(20) << "l2rate" << std::setw(20) << "linf" << std::setw(20) << "linfrate\n";
     for (int i=0; i<nsrc.size(); ++i) {
-        ss << std::setw(20) << nsrc[i] << std::setw(20) << lap_l1[i] << std::setw(20) << lap_l2[i] << std::setw(20) 
+        ss << std::setw(20) << nsrc[i] << std::setw(20) << lap_l1[i] << std::setw(20) << lap_l2[i] << std::setw(20)
            << lap_l2rate[i] << std::setw(20) << lap_linf[i] << std::setw(20) << lap_linfrate[i] << "\n";
     }
     return ss.str();
@@ -276,7 +276,7 @@ void Output::writeInterpData() const {
     std::ofstream f(ss.str());
     f << "nsrc" << "," << "l1" << "," << "l2" << ",l2rate" << "," << "linf" << ",linfrate\n";
     for (int i=0; i<nsrc.size(); ++i) {
-        f << nsrc[i] << "," << interp_l1[i] << "," << interp_l2[i] << "," 
+        f << nsrc[i] << "," << interp_l1[i] << "," << interp_l2[i] << ","
           << interp_l2rate[i] << "," << interp_linf[i] << "," << interp_linfrate[i] << "\n";
     }
 }
@@ -287,7 +287,7 @@ void Output::writeLapData() const {
     std::ofstream f(ss.str());
     f << "nsrc" << "," << "l1" << "," << "l2" << ",l2rate" << ",linf" << ",linfrate\n";
     for (int i=0; i<nsrc.size(); ++i) {
-        f << nsrc[i] << "," << lap_l1[i] << "," << lap_l2[i] << "," 
+        f << nsrc[i] << "," << lap_l1[i] << "," << lap_l2[i] << ","
           << lap_l2rate[i] << "," << lap_linf[i] <<"," << lap_linfrate[i] << "\n";
     }
 }

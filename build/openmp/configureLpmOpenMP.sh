@@ -15,6 +15,7 @@ export OMPI_CXX=g++
 
 cmake \
 -D CMAKE_BUILD_TYPE:STRING="DEBUG" \
+-D LPM_ENABLE_DEBUG=ON \
 -D Kokkos_ROOT=$KO \
 -D Compadre_ROOT=$CP \
 -D Spherepack_ROOT=$SP \

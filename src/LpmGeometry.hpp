@@ -17,7 +17,7 @@ namespace Lpm {
         triArea(a,b,c) : area of the triangle formed by vertices a, b, c
         barycenter( vs, n) : barycenter of the n vectors in array vs
         polygonArea(ctr, vs, n): area of the polygon with ctr interior coordinate and vertices vs
-        
+
     Required typedefs:
         crd_view_type : View type associated with vectors in Euclidean space
 */
@@ -36,22 +36,22 @@ struct PlaneGeometry {
         v[0] *= a;
         v[1] *= a;
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real dot(const CV a, const CV b) {
         return a[0]*b[0] + a[1]*b[1];
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real norm2(const CV v) {
         return dot(v,v);
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real mag(const CV v) {
         return std::sqrt(norm2(v));
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real distance(const CV a, const CV b) {
         Real bma[2];
@@ -59,7 +59,7 @@ struct PlaneGeometry {
         bma[1] = b[1] - a[1];
         return mag(bma);
     }
-    
+
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real triArea(const CV& va, const CV2& vb, const CV2& vc) {
         Real bma[2], cma[2];
@@ -70,12 +70,12 @@ struct PlaneGeometry {
         const Real ar = bma[0]*cma[1] - bma[1]*cma[0];
         return 0.5*std::abs(ar);
     }
-    
+
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void normalize(V v) {
         scale(1.0/mag(v), v);
     }
-    
+
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void barycenter(V v, const CV cv, const Int n) {
         setzero(v);
@@ -85,7 +85,7 @@ struct PlaneGeometry {
         }
         scale(1.0/n, v);
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real polygonArea(const CV& v, const Int n) {
         Real ar = 0;
@@ -94,7 +94,7 @@ struct PlaneGeometry {
         }
         return ar;
     }
-    
+
     template <typename CV1, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real polygonArea(const CV1& ctr, const CV2& verts, const Int nverts) {
         Real ar = 0.0;
@@ -103,13 +103,13 @@ struct PlaneGeometry {
         }
         return ar;
     }
-    
+
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void midpoint(V v, const CV& a, const CV& b) {
         v[0] = 0.5*(a[0] + b[0]);
         v[1] = 0.5*(a[1] + b[1]);
     }
-    
+
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void copy(V d, const CV s) {
         d[0] = s[0];
@@ -120,12 +120,12 @@ struct PlaneGeometry {
 struct SphereGeometry {
     static constexpr Int ndim = 3;
     typedef ko::View<Real*[ndim],Dev> crd_view_type;
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real latitude(const CV v) {
         return std::atan2(v[2], std::sqrt(v[0]*v[0] + v[1]*v[1]));
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real longitude(const CV v) {
         return atan4(v[1], v[0]);
@@ -144,19 +144,19 @@ struct SphereGeometry {
         v[1] *= a;
         v[2] *= a;
     }
-    
+
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real dot(const CV a, const CV2 b) {
         return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
     }
-    
+
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void cross(V c, const CV a, const CV2 b) {
         c[0] = a[1]*b[2] - a[2]*b[1];
         c[1] = a[2]*b[0] - a[0]*b[2];
         c[2] = a[0]*b[1] - a[1]*b[0];
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static ko::Tuple<Real,3> cross(const CV a, const CV b) {
         ko::Tuple<Real,3> c;
@@ -165,22 +165,38 @@ struct SphereGeometry {
         c[2] = a[0]*b[1] - a[1]*b[0];
         return c;
     }
-    
+
+    template <typename V, typename CV, typename CV1=CV> KOKKOS_INLINE_FUNCTION
+    static void circumcenter(V& cc, const CV a, const CV1 b, const CV1 c) {
+        Real cpab[3], cpbc[3], cpca[3];
+        cross(cpab, a, b);
+        cross(cpbc, b, c);
+        cross(cpca, c, a);
+        Real norm = 0.0;
+        for (Short i=0; i<3; ++i) {
+            norm += square(cpab[i] + cpbc[i] + cpca[i]);
+        }
+        norm = std::sqrt(norm);
+        for (Short i=0; i<3; ++i) {
+            cc[i] = (cpab[i] + cpbc[i] + cpca[i])/norm;
+        }
+    }
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real norm2(const CV v) {
         return dot(v,v);
     }
-    
+
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real mag(const CV v) {
         return std::sqrt(norm2(v));
     }
-    
+
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void normalize(V v) {
         scale(1.0/mag(v), v);
     }
-    
+
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real distance(const CV a, const CV2 b) {
         Real cp[3];
@@ -188,14 +204,23 @@ struct SphereGeometry {
         const Real dp = dot(a,b);
         return std::atan2(mag<Real*>(cp), dp);
     }
-    
+
+    template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+    static Real sqEuclideanDistance(const CV a, const CV2 b) {
+        Real result=0.0;
+        for (int i=0; i<3; ++i) {
+            result += square(b[i]-a[i]);
+        }
+        return result;
+    }
+
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void copy(V d, const CV& s) {
         d[0] = s[0];
         d[1] = s[1];
         d[2] = s[2];
     }
-    
+
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void barycenter(V v, const CV& cv, const Int n) {
         setzero(v);
@@ -207,7 +232,7 @@ struct SphereGeometry {
         scale(1.0/n, v);
         normalize(v);
     }
-    
+
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void midpoint(V v, const CV& a, const CV2& b) {
         v[0] = 0.5*(a[0] + b[0]);
@@ -215,7 +240,7 @@ struct SphereGeometry {
         v[2] = 0.5*(a[2] + b[2]);
         normalize(v);
     }
-    
+
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real triArea(const CV& a, const CV2& b, const CV2& c) {
         const Real s1 = distance(a, b);
@@ -224,9 +249,9 @@ struct SphereGeometry {
         const Real half_perim = 0.5*(s1 + s2 + s3);
         const Real zz = std::tan(0.5*half_perim) * std::tan(0.5*(half_perim-s1)) * std::tan(0.5*(half_perim-s2)) *
             std::tan(0.5*(half_perim-s3));
-        return 4*std::atan(std::sqrt(zz));    
+        return 4*std::atan(std::sqrt(zz));
     }
-    
+
     template <typename CV1, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real polygonArea(const CV1& ctr, const CV2& verts, const Int nverts) {
         Real ar = 0;

@@ -38,14 +38,7 @@ KOKKOS_INLINE_FUNCTION static void error (const char* const msg)
 KOKKOS_INLINE_FUNCTION static void message (const char* const msg)
 { printf("%s\n", msg); }
 
-/// Real number type
-typedef double Real;
-/// Integer type
-typedef int Int;
-/// Unsigned integer type
-typedef unsigned Uint;
-/// Memory index type
-typedef int Index;
+
 /// Memory layout
 #ifdef LPM_HAVE_CUDA
 typedef ko::LayoutLeft Layout;
@@ -125,12 +118,12 @@ typedef ko::View<const bool*,Dev> const_mask_view_type;
 
 #ifdef KOKKOS_ENABLE_CUDA
     /// GPU-friendly replacements for stdlib functions
-    template <typename T> KOKKOS_INLINE_FUNCTION 
+    template <typename T> KOKKOS_INLINE_FUNCTION
     const T& min (const T& a, const T& b) {return a < b ? a : b;}
-    
+
     template <typename T> KOKKOS_INLINE_FUNCTION
     const T& max (const T& a, const T& b) {return a > b ? a : b;}
-    
+
     template <typename T> KOKKOS_INLINE_FUNCTION
     const T* max_element(const T* const begin, const T* const end) {
         const T* me = begin;
@@ -139,7 +132,7 @@ typedef ko::View<const bool*,Dev> const_mask_view_type;
         }
         return me;
     }
-    
+
 #else
     using std::min;
     using std::max;
@@ -148,11 +141,11 @@ typedef ko::View<const bool*,Dev> const_mask_view_type;
 
 // KOKKOS_INLINE_FUNCTION
 // Real min(const Real& a, const volatile Real& b) {return Real(a < b ? a : b);}
-// 
+//
 // KOKKOS_INLINE_FUNCTION
 // Real max(const Real& a, const volatile Real& b) {return Real(a > b ? a : b);}
 
-/// Timers 
+/// Timers
 static timeval tic () {
   timeval t;
   gettimeofday(&t, 0);

@@ -26,21 +26,21 @@ ko::initialize(argc, argv);
 {
     typedef QuadFace facetype;
     typedef CubedSphereSeed seedtype;
-    
+
     Int nerr = 0;
-//=========================================================== 
+//===========================================================
 //     typedef TriFace facetype;
 //     typedef IcosTriSphereSeed seedtype;
-    
+
     const int mesh_depth = 6; // must be >= 2 for IcosTriSphere or box test will fail
     const int octree_depth = 4;
     Index nmaxverts, nmaxedges, nmaxfaces;
     MeshSeed<seedtype> seed;
     seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, mesh_depth);
-    PolyMesh2d<SphereGeometry,facetype> sphere(nmaxverts, nmaxedges, nmaxfaces);
+    PolyMesh2d<seedtype> sphere(nmaxverts, nmaxedges, nmaxfaces);
     sphere.treeInit(mesh_depth, seed);
     sphere.updateDevice();
-    ko::View<Real*[3]> src_crds = sourceCoords<SphereGeometry,facetype>(sphere);
+    ko::View<Real*[3]> src_crds = sourceCoords<seedtype>(sphere);
     const Int npts = src_crds.extent(0);
     auto src_crds_host = ko::create_mirror_view(src_crds);
     ko::deep_copy(src_crds_host, src_crds);
@@ -74,9 +74,9 @@ ko::initialize(argc, argv);
     ko::deep_copy(codes_host, pt_codes);
     std::cout << "testing point codes.\n";
     for (Int i=0; i<npts; ++i) {
-//         std::cout << "point " << i << " has node key = " << decode_key(codes_host(i)) 
+//         std::cout << "point " << i << " has node key = " << decode_key(codes_host(i))
 //             << " and id = " << decode_id(codes_host(i)) << "\n";
-        if (i != decode_id(codes_host(i))) ++nerr; 
+        if (i != decode_id(codes_host(i))) ++nerr;
         const key_type ptkey = decode_key(codes_host(i));
         const auto pbox = box_from_key(ptkey, rb_host(), octree_depth, octree_depth);
         if (!boxContainsPoint(pbox, ko::subview(src_crds_host, i, ko::ALL()))) {
@@ -89,10 +89,10 @@ ko::initialize(argc, argv);
     else {
         std::cout << "presort: pt encoding & node box test passes.\n";
     }
-//===========================================================    
+//===========================================================
     ko::sort(pt_codes);
     ko::deep_copy(codes_host, pt_codes);
-    
+
     ko::View<Real*[3]> sorted_pts("sorted_pts", npts);
     ko::View<Index*> original_ptids("orig_pt_ids", npts);
     ko::parallel_for(npts, PermuteFunctor(sorted_pts, original_ptids, src_crds, pt_codes));
@@ -101,14 +101,14 @@ ko::initialize(argc, argv);
     ko::deep_copy(sort_host, sorted_pts);
     ko::deep_copy(orig_inds, original_ptids);
     for (Index i=0; i<npts; ++i) {
-//         std::cout << "sorted point " << i << " has key = " << decode_key(codes_host(i)) << " old ind = " 
+//         std::cout << "sorted point " << i << " has key = " << decode_key(codes_host(i)) << " old ind = "
 //             << decode_id(codes_host(i)) << " == " << orig_inds(i) << "\n";
         if (i>0 && decode_key(codes_host(i)) < decode_key(codes_host(i-1))) ++nerr;
         if (decode_id(codes_host(i)) != orig_inds(i)) ++nerr;
     }
     if (nerr > 0) {throw std::runtime_error("postsort: encode/decode id test failed.");}
     else {std::cout << "postsort: encode/decode id test passes.\n";}
-//===========================================================    
+//===========================================================
     ko::View<Real*[3]> unsorted_pts("unsorted_pts", npts);
     ko::parallel_for(npts, UnpermuteFunctor(unsorted_pts, sorted_pts, original_ptids));
     auto unsort_host = ko::create_mirror_view(unsorted_pts);
@@ -120,7 +120,7 @@ ko::initialize(argc, argv);
         for (int j=0; j<3; ++j) {
             if (src_crds_host(i,j) != unsort_host(i,j)) {
                 ++nerr;
-                std::cout << "error: src_crds(" << i << "," << j << ") (" << 
+                std::cout << "error: src_crds(" << i << "," << j << ") (" <<
                     src_crds_host(i,j) << " .NEQ. unsorted_pts(" << i << "," << j << ") (" <<
                     unsort_host(i,j) << ")\n";
             }
@@ -132,7 +132,7 @@ ko::initialize(argc, argv);
     else {
         std::cout << "permute/unpermute test passes.\n";
     }
-//===========================================================    
+//===========================================================
 
     ko::View<Index*> unode_flags("unode_flags", npts);
     ko::View<Index*> marked_nodes("marked_nodes", npts);
@@ -140,28 +140,28 @@ ko::initialize(argc, argv);
     ko::parallel_for(ko::RangePolicy<MarkDuplicates::MarkTag>(0,npts),
         MarkDuplicates(unode_flags, pt_codes));
     ko::deep_copy(marked_nodes, unode_flags);
-    
+
     ko::parallel_for(npts, KOKKOS_LAMBDA (const Index& i) {
         if (unode_flags(i) > 0) {
             ukeys_test(i) = decode_key(pt_codes(i));
         }
     });
     auto marked_nodes_host = ko::create_mirror_view(marked_nodes);
-    ko::deep_copy(marked_nodes_host, marked_nodes);    
-    
+    ko::deep_copy(marked_nodes_host, marked_nodes);
+
     ko::parallel_scan(ko::RangePolicy<MarkDuplicates::ScanTag>(0,npts),
         MarkDuplicates(unode_flags, pt_codes));
-    
+
     n_view_type un_count = ko::subview(unode_flags, npts-1);
     auto un_count_host = ko::create_mirror_view(un_count);
     ko::deep_copy(un_count_host, un_count);
     const Index nunodes = un_count_host();
     std::cout << "counted " << nunodes << " nonempty nodes out of " << pintpow8(octree_depth) << " possible\n";
-    
+
     auto uflag_host = ko::create_mirror_view(unode_flags);
     ko::deep_copy(uflag_host, unode_flags);
 
-    
+
     ko::View<key_type*> ukeys("ukeys", nunodes);
     ko::View<Index*[2]> uinds("uinds", nunodes);
     ko::parallel_for(npts, UniqueNodeFunctor(ukeys, uinds, unode_flags, pt_codes));
@@ -171,7 +171,7 @@ ko::initialize(argc, argv);
     ko::deep_copy(ukeys_host, ukeys);
     ko::deep_copy(uinds_host, uinds);
     ko::deep_copy(ukeys_test_host, ukeys_test);
-    
+
     Index uniq_ind = 0;
     for (Index i=0; i<npts; ++i) {
         if (marked_nodes_host(i) > 0) {
@@ -197,7 +197,7 @@ ko::initialize(argc, argv);
     else {
         std::cout << "unique node tests pass.\n";
     }
-//===========================================================    
+//===========================================================
     ko::View<key_type*> pkeys("pkeys", nunodes);
     ko::parallel_for(nunodes, KOKKOS_LAMBDA (const Index& i) {
         pkeys(i) = parent_key(ukeys(i), octree_depth, octree_depth);
@@ -213,7 +213,7 @@ ko::initialize(argc, argv);
         std::cout << pkeys_host(i) << (i<nunodes-1 ? " " : ")\n");
     }
     ko::View<Index*> nsiblings("nsiblings", nunodes);
-    ko::parallel_for(ko::RangePolicy<NodeSiblingCounter::MarkTag>(0,nunodes), 
+    ko::parallel_for(ko::RangePolicy<NodeSiblingCounter::MarkTag>(0,nunodes),
         NodeSiblingCounter(nsiblings, ukeys, octree_depth, octree_depth));
     auto na_host = ko::create_mirror_view(nsiblings);
     ko::deep_copy(na_host, nsiblings);
@@ -232,13 +232,13 @@ ko::initialize(argc, argv);
     auto nnodes = ko::create_mirror_view(nnodesview);
     ko::deep_copy(nnodes, nnodesview);
     std::cout << "including all siblings makes " << nnodes() << " nodes out of " << pintpow8(octree_depth) << " possible.\n";
-    
+
     ko::View<key_type*> node_keys("node_keys", nnodes());
     ko::View<Index*[2]> node_pt_inds("node_pt_inds", nnodes());
     ko::View<Index*> node_parents("node_parents", nnodes());
     ko::View<Index*> pt_in_node("point_in_node", npts);
 
-    ko::parallel_for(nunodes, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents, 
+    ko::parallel_for(nunodes, NodeArrayDFunctor(node_keys, node_pt_inds, node_parents,
         pt_in_node, nsiblings,ukeys, uinds, octree_depth));
     std::cout << "NodeArrayDFunctor pfor returned.\n";
     auto nkeys_host = ko::create_mirror_view(node_keys);
@@ -256,7 +256,7 @@ ko::initialize(argc, argv);
                 if (!boxContainsPoint(nbox, pt)) {
                     std::cout << "\tpt(" << node_pts_host(i,0) + j << ") = (" << pt(0) << " " << pt(1) << " " << pt(2)
                         << ") is not contained in node box " << nbox;
-            
+
                     ++nerr;
                 }
             }
@@ -266,7 +266,7 @@ ko::initialize(argc, argv);
     else {
         std::cout << "node box/point relationship tests pass.\n";
     }
-//===========================================================    
+//===========================================================
 }
 ko::finalize();
 return 0;

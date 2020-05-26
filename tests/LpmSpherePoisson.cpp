@@ -14,18 +14,18 @@ ko::initialize(argc, argv);
         int tree_depth = i;
         Index nmaxverts, nmaxedges, nmaxfaces;
         std::ostringstream ss;
-        {    
+        {
         MeshSeed<IcosTriSphereSeed> triseed;
         triseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
-    
-        SpherePoisson<TriFace> ic(nmaxverts, nmaxedges, nmaxfaces);
+
+        SpherePoisson<IcosTriSphereSeed> ic(nmaxverts, nmaxedges, nmaxfaces);
         ic.treeInit(tree_depth, triseed);
         ic.updateDevice();
-    
+
         ic.init();
         std::cout << "icostri: ";
         ic.solve();
-    
+
         ic.updateHost();
         ss << "poisson_ic_" << tree_depth << ".vtk";
         ic.outputVtk(ss.str());
@@ -34,15 +34,15 @@ ko::initialize(argc, argv);
         {
         MeshSeed<CubedSphereSeed> quadseed;
         quadseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, tree_depth);
-    
-        SpherePoisson<QuadFace> cs(nmaxverts, nmaxedges, nmaxfaces);
+
+        SpherePoisson<CubedSphereSeed> cs(nmaxverts, nmaxedges, nmaxfaces);
         cs.treeInit(tree_depth, quadseed);
         cs.updateDevice();
-    
+
         cs.init();
         std::cout << "cubedsphere: ";
         cs.solve();
-    
+
         cs.updateHost();
         ss << "poisson_cs_" << tree_depth << ".vtk";
         cs.outputVtk(ss.str());

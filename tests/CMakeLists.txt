@@ -1,8 +1,8 @@
 include (CTest)
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
-                    "${PROJECT_BINARY_DIR}" 
-                    "${VTK_INCLUDE_DIRS}" 
-                    "${Kokkos_ROOT}/include" 
+                    "${PROJECT_BINARY_DIR}"
+                    "${VTK_INCLUDE_DIRS}"
+                    "${Kokkos_ROOT}/include"
                     "${Compadre_ROOT}/include"
 )
 
@@ -61,7 +61,7 @@ ADD_TEST(lpmLatLonMeshTest lpmLatLonMesh)
 
 ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
 TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre kokkos ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-if (USE_CUDA) 
+if (USE_CUDA)
    TARGET_LINK_LIBRARIES(lpmCompadre cublas cudart cusolver)
 endif()
 ADD_TEST(lpmCompadreTest lpmCompadre)
@@ -98,6 +98,13 @@ ADD_EXECUTABLE(lpmOctreeTest LpmOctreeTests.cpp)
 TARGET_LINK_LIBRARIES(lpmOctreeTest lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
 ADD_TEST(lpmOctreeTest lpmOctreeTest)
 
+ADD_EXECUTABLE(lpmSphereVoronoiPrimitives LpmSphereVoronoiPrimitivesUnitTests.cpp)
+TARGET_LINK_LIBRARIES(lpmSphereVoronoiPrimitives lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
+ADD_TEST(lpmSphereVoronoiPrimitives lpmSphereVoronoiPrimitives)
+
+#ADD_EXECUTABLE(lpmSphereVoronoiMesh LpmSphereVoronoiMeshUnitTests.cpp)
+#TARGET_LINK_LIBRARIES(lpmSphereVoronoiMesh lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${NETCDF_C} ${NETCDF_CXX})
+#ADD_TEST(lpmSphereVoronoiMesh lpmSphereVoronoiMesh)
 
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
 #SET_TARGET_PROPERTIES(lpmBVETest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")

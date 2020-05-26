@@ -4,8 +4,8 @@
 
 namespace Lpm {
 
-template <typename Geo, typename FaceType> template <typename SeedType>
-void PolyMesh2d<Geo,FaceType>::seedInit(const MeshSeed<SeedType>& seed) {
+template <typename SeedType>
+void PolyMesh2d<SeedType>::seedInit(const MeshSeed<SeedType>& seed) {
     physVerts.initBoundaryCrdsFromSeed(seed);
     lagVerts.initBoundaryCrdsFromSeed(seed);
     edges.initFromSeed(seed);
@@ -14,9 +14,9 @@ void PolyMesh2d<Geo,FaceType>::seedInit(const MeshSeed<SeedType>& seed) {
     lagFaces.initInteriorCrdsFromSeed(seed);
 }
 
-template <typename Geo, typename FaceType> template <typename SeedType>
-void PolyMesh2d<Geo,FaceType>::treeInit(const Int initDepth, const MeshSeed<SeedType>& seed) {
-    seedInit<SeedType>(seed);
+template <typename SeedType>
+void PolyMesh2d<SeedType>::treeInit(const Int initDepth, const MeshSeed<SeedType>& seed) {
+    seedInit(seed);
     baseTreeDepth=initDepth;
     for (int i=0; i<initDepth; ++i) {
         Index startInd = 0;
@@ -29,8 +29,8 @@ void PolyMesh2d<Geo,FaceType>::treeInit(const Int initDepth, const MeshSeed<Seed
     }
 }
 
-template <typename Geo, typename FaceType> 
-void PolyMesh2d<Geo,FaceType>::outputVtk(const std::string& fname) const {
+template <typename SeedType>
+void PolyMesh2d<SeedType>::outputVtk(const std::string& fname) const {
     VtkInterface<Geo,Faces<FaceType>> vtk;
     auto cd = vtkSmartPointer<vtkCellData>::New();
     vtk.addScalarToCellData(cd, faces.getAreaHost(), "area", faces);
@@ -38,8 +38,8 @@ void PolyMesh2d<Geo,FaceType>::outputVtk(const std::string& fname) const {
     vtk.writePolyData(fname, pd);
 }
 
-template <typename Geo, typename FaceType> 
-void PolyMesh2d<Geo,FaceType>::updateDevice() const {
+template <typename SeedType>
+void PolyMesh2d<SeedType>::updateDevice() const {
     physVerts.updateDevice();
     lagVerts.updateDevice();
     edges.updateDevice();
@@ -48,8 +48,8 @@ void PolyMesh2d<Geo,FaceType>::updateDevice() const {
     lagFaces.updateDevice();
 }
 
-template <typename Geo, typename FaceType> 
-void PolyMesh2d<Geo,FaceType>::updateHost() const {
+template <typename SeedType>
+void PolyMesh2d<SeedType>::updateHost() const {
     physVerts.updateHost();
     lagVerts.updateHost();
     //edges.updateHost();
@@ -59,15 +59,15 @@ void PolyMesh2d<Geo,FaceType>::updateHost() const {
 }
 
 /// ETI
-template class PolyMesh2d<PlaneGeometry,TriFace>;
-template class PolyMesh2d<PlaneGeometry,QuadFace>;
-template class PolyMesh2d<SphereGeometry,TriFace>;
-template class PolyMesh2d<SphereGeometry,QuadFace>;
+template class PolyMesh2d<TriHexSeed>;
+template class PolyMesh2d<QuadRectSeed>;
+template class PolyMesh2d<IcosTriSphereSeed>;
+template class PolyMesh2d<CubedSphereSeed>;
 
-template void PolyMesh2d<PlaneGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<TriHexSeed>& seed);
-template void PolyMesh2d<PlaneGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<QuadRectSeed>& seed);
-template void PolyMesh2d<SphereGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<IcosTriSphereSeed>& seed);
-template void PolyMesh2d<SphereGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<CubedSphereSeed>& seed);
+// template void PolyMesh2d<PlaneGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<TriHexSeed>& seed);
+// template void PolyMesh2d<PlaneGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<QuadRectSeed>& seed);
+// template void PolyMesh2d<SphereGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<IcosTriSphereSeed>& seed);
+// template void PolyMesh2d<SphereGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<CubedSphereSeed>& seed);
 
 
 

@@ -1,12 +1,13 @@
 #include "LpmVtkIO.hpp"
 #include "vtkDoubleArray.h"
+#include "vtkIntArray.h"
 #include "vtkPoints.h"
 
 
 namespace Lpm {
 
-template <typename Geo, typename FacesType> 
-vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const FacesType& faces, const Edges& edges, 
+template <typename Geo, typename FacesType>
+vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const FacesType& faces, const Edges& edges,
     const Coords<Geo>& faceCrds, const Coords<Geo>& vertCrds, const vtkSmartPointer<vtkPointData>& ptdata,
             const vtkSmartPointer<vtkCellData>& cdata) const {
     auto result = vtkSmartPointer<vtkPolyData>::New();
@@ -46,6 +47,107 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FacesType>::toVtkPolyData(const F
     return result;
 }
 
+namespace Voronoi {
+template <typename SeedType>
+vtkSmartPointer<vtkPolyData> VtkInterface<SeedType>::toVtkPolyData(const Voronoi::VoronoiMesh<SeedType>& vmesh,
+    const vtkSmartPointer<vtkPointData>& ptdata, const vtkSmartPointer<vtkCellData>& cdata) const {
+
+    auto result = vtkSmartPointer<vtkPolyData>::New();
+
+    auto pts = vtkSmartPointer<vtkPoints>::New();
+    Real xyz[3];
+    for (Index i=0; i<vmesh.vertices.size(); ++i) {
+        for (Short j=0; j<3; ++j) {
+            xyz[j] = vmesh.vertices[i].xyz[j];
+        }
+        pts->InsertNextPoint(xyz[0], xyz[1], xyz[2]);
+    }
+
+    auto polys = vtkSmartPointer<vtkCellArray>::New();
+    std::vector<Index> einds;
+    std::vector<Index> vinds;
+    for (Index i=0; i<vmesh.cells.size(); ++i) {
+        vmesh.getEdgesAndVerticesInCell(einds, vinds, i);
+        polys->InsertNextCell(vinds.size());
+        for (Short j=0; j<vinds.size(); ++j) {
+            polys->InsertCellPoint(vinds[j]);
+        }
+    }
+    result->SetPoints(pts);
+    result->SetPolys(polys);
+
+    auto ccr = vtkSmartPointer<vtkDoubleArray>::New();
+    ccr->SetName("circumradius");
+    ccr->SetNumberOfComponents(1);
+    ccr->SetNumberOfTuples(vmesh.vertices.size());
+    for (Index i=0; i<vmesh.vertices.size(); ++i) {
+        ccr->InsertTuple1(i, vmesh.vertices[i].circumradius);
+    }
+
+    auto vid = vtkSmartPointer<vtkIntArray>::New();
+    vid->SetName("vertex_id");
+    vid->SetNumberOfComponents(1);
+    vid->SetNumberOfTuples(vmesh.vertices.size());
+    for (Index i=0; i<vmesh.vertices.size(); ++i) {
+        vid->InsertTuple1(i, vmesh.vertices[i].id);
+    }
+
+    auto ca = vtkSmartPointer<vtkDoubleArray>::New();
+    ca->SetName("cell_area");
+    ca->SetNumberOfComponents(1);
+    ca->SetNumberOfTuples(vmesh.cells.size());
+    for (Index i=0; i<vmesh.cells.size(); ++i) {
+        ca->InsertTuple1(i, vmesh.cells[i].area);
+    }
+
+    auto cid = vtkSmartPointer<vtkIntArray>::New();
+    cid->SetName("cell_id");
+    cid->SetNumberOfComponents(1);
+    cid->SetNumberOfTuples(vmesh.cells.size());
+    for (Index i=0; i<vmesh.cells.size(); ++i) {
+        cid->InsertTuple1(i, vmesh.cells[i].id);
+    }
+
+    vtkSmartPointer<vtkPointData> pdata;
+    if (!ptdata) {
+        pdata = vtkSmartPointer<vtkPointData>::New();
+    }
+    else {
+        pdata = ptdata;
+    }
+    pdata->AddArray(ccr);
+    pdata->AddArray(vid);
+    for (Short i=0; i<pdata->GetNumberOfArrays(); ++i) {
+        result->GetPointData()->AddArray(pdata->GetAbstractArray(i));
+    }
+
+    vtkSmartPointer<vtkCellData> celldata;
+    if (!cdata) {
+        celldata = vtkSmartPointer<vtkCellData>::New();
+    }
+    else {
+        celldata = cdata;
+    }
+    celldata->AddArray(ca);
+    celldata->AddArray(cid);
+    for (Short i=0; i<celldata->GetNumberOfArrays(); ++i) {
+        result->GetCellData()->AddArray(celldata->GetAbstractArray(i));
+    }
+
+
+    return result;
+}
+
+template <typename SeedType>
+void VtkInterface<SeedType>::writePolyData(const std::string& fname,
+    const vtkSmartPointer<vtkPolyData> pd) {
+    pdwriter = vtkSmartPointer<vtkPolyDataWriter>::New();
+    pdwriter->SetInputData(pd);
+    pdwriter->SetFileName(fname.c_str());
+    pdwriter->Write();
+}
+} //namespace Voronoi
+
 template <typename Geo, typename FacesType>
 void VtkInterface<Geo, FacesType>::writePolyData(const std::string& fname, const vtkSmartPointer<vtkPolyData> pd) {
 //     std::cout << "starting to write." << std::endl;
@@ -59,8 +161,8 @@ void VtkInterface<Geo, FacesType>::writePolyData(const std::string& fname, const
     pdwriter->Write();
 }
 
-template <typename Geo, typename FacesType> 
-void VtkInterface<Geo,FacesType>::addScalarToPointData(vtkSmartPointer<vtkPointData>& pd, 
+template <typename Geo, typename FacesType>
+void VtkInterface<Geo,FacesType>::addScalarToPointData(vtkSmartPointer<vtkPointData>& pd,
     const typename scalar_view_type::HostMirror sf, const std::string& name, const Index nverts) const {
     auto data = vtkSmartPointer<vtkDoubleArray>::New();
     data->SetName(name.c_str());
@@ -73,7 +175,7 @@ void VtkInterface<Geo,FacesType>::addScalarToPointData(vtkSmartPointer<vtkPointD
 }
 
 template <typename Geo, typename FacesType>
-void VtkInterface<Geo,FacesType>::addVectorToPointData(vtkSmartPointer<vtkPointData>& pd, 
+void VtkInterface<Geo,FacesType>::addVectorToPointData(vtkSmartPointer<vtkPointData>& pd,
     const typename ko::View<Real*[Geo::ndim],Dev>::HostMirror vf, const std::string& name, const Index nverts) const {
     auto data = vtkSmartPointer<vtkDoubleArray>::New();
     data->SetName(name.c_str());
@@ -97,7 +199,7 @@ void VtkInterface<Geo,FacesType>::addVectorToPointData(vtkSmartPointer<vtkPointD
 }
 
 template <typename Geo, typename FacesType>
-void VtkInterface<Geo,FacesType>::addScalarToCellData(vtkSmartPointer<vtkCellData>& cd, 
+void VtkInterface<Geo,FacesType>::addScalarToCellData(vtkSmartPointer<vtkCellData>& cd,
     const typename scalar_view_type::HostMirror sf, const std::string& name, const FacesType& faces) const {
     auto data = vtkSmartPointer<vtkDoubleArray>::New();
     data->SetName(name.c_str());
@@ -113,7 +215,7 @@ void VtkInterface<Geo,FacesType>::addScalarToCellData(vtkSmartPointer<vtkCellDat
 }
 
 template <typename Geo, typename FacesType>
-void VtkInterface<Geo,FacesType>::addVectorToCellData(vtkSmartPointer<vtkCellData>& cd, 
+void VtkInterface<Geo,FacesType>::addVectorToCellData(vtkSmartPointer<vtkCellData>& cd,
     const typename ko::View<Real*[Geo::ndim],Dev>::HostMirror vf, const std::string& name, const FacesType& faces) const {
     auto data = vtkSmartPointer<vtkDoubleArray>::New();
     data->SetName(name.c_str());
@@ -142,10 +244,13 @@ void VtkInterface<Geo,FacesType>::addVectorToCellData(vtkSmartPointer<vtkCellDat
 }
 
 
+
+
 /// ETI
 template class VtkInterface<PlaneGeometry, Faces<TriFace>>;
 template class VtkInterface<SphereGeometry, Faces<TriFace>>;
 template class VtkInterface<PlaneGeometry, Faces<QuadFace>>;
 template class VtkInterface<SphereGeometry, Faces<QuadFace>>;
+template class Voronoi::VtkInterface<IcosTriDualSeed>;
 }
 
