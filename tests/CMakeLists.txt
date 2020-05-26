@@ -102,9 +102,9 @@ ADD_EXECUTABLE(lpmSphereVoronoiPrimitives LpmSphereVoronoiPrimitivesUnitTests.cp
 TARGET_LINK_LIBRARIES(lpmSphereVoronoiPrimitives lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES})
 ADD_TEST(lpmSphereVoronoiPrimitives lpmSphereVoronoiPrimitives)
 
-ADD_EXECUTABLE(lpmSphereVoronoiMesh LpmSphereVoronoiMeshUnitTests.cpp)
-TARGET_LINK_LIBRARIES(lpmSphereVoronoiMesh lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${NETCDF_C} ${NETCDF_CXX})
-ADD_TEST(lpmSphereVoronoiMesh lpmSphereVoronoiMesh)
+#ADD_EXECUTABLE(lpmSphereVoronoiMesh LpmSphereVoronoiMeshUnitTests.cpp)
+#TARGET_LINK_LIBRARIES(lpmSphereVoronoiMesh lpm kokkos ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${NETCDF_C} ${NETCDF_CXX})
+#ADD_TEST(lpmSphereVoronoiMesh lpmSphereVoronoiMesh)
 
 #ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
 #SET_TARGET_PROPERTIES(lpmBVETest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
