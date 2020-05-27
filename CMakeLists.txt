@@ -60,8 +60,8 @@ else()
     Message(STATUS "Spherepack not found.")
 endif()
 
-#ADD_SUBDIRECTORY (src)
-#ADD_SUBDIRECTORY (tests)
+ADD_SUBDIRECTORY (src)
+ADD_SUBDIRECTORY (tests)
 #ADD_SUBDIRECTORY (examples)
 
 CONFIGURE_FILE("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
