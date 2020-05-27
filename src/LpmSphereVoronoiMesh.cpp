@@ -8,6 +8,8 @@
 #include <sstream>
 #include <exception>
 #include <cmath>
+#include <vector>
+#include <array>
 namespace Lpm {
 namespace Voronoi {
 
@@ -165,7 +167,7 @@ VoronoiMesh<SeedType>::VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& 
     seedInit(seed);
     for (Short i=0; i<init_refinement_level; ++i) {
         const Index nverts = vertices.size();
-        std::vector<Real[3]> newx(nverts);
+        std::vector<std::array<Real,3>> newx(nverts);
         for (Index j=0; j<nverts; ++j) {
             newx[j][0] = vertices[j].xyz[0];
             newx[j][1] = vertices[j].xyz[1];
@@ -173,7 +175,7 @@ VoronoiMesh<SeedType>::VoronoiMesh(const MeshSeed<SeedType>& seed, const Short& 
         }
         for (Index j=0; j<nverts; ++j) {
 //             std::cout << "adding vertex " << j << " to cells.\n";
-            insertCellAtPoint(newx[j], j);
+            insertCellAtPoint(newx[j].data(), j);
         }
         std::cout << "uniform refinement " << i+1 << " done.\n";
     }
