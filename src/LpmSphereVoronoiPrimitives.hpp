@@ -59,6 +59,7 @@ struct Cell {
         for (Short i=0; i<2; ++i) {
             this->latlon[i] = other.latlon[i];
         }
+        return *this;
     }
 
 	std::string infoString(const Short tab_level=0) const;
