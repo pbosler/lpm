@@ -47,6 +47,33 @@ if (Trilinos_FOUND)
   message("Trilinos found. Details:")
   printvar(Trilinos_INCLUDE_DIRS)
   printvar(Trilinos_LIBRARIES)
+  printvar(Trilinos_TPL_INCLUDE_DIRS)
+  printvar(Trilinos_TPL_LIBRARIES)
+endif()
+
+find_package(CUDA QUIET)
+if (${CUDA_FOUND})
+  # Cuda found, but it's possible trilinos was not built with cuda support.
+  execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show"
+    RESULT_VARIABLE WRAPS_NVCC
+    OUTPUT_VARIABLE WRAPS_NVCC_OUT1
+    ERROR_QUIET)
+
+  if (DEFINED ENV{OMPI_CXX})
+    execute_process(COMMAND $ENV{OMPI_CXX} "--nvcc-wrapper-show"
+    RESULT_VARIABLE WRAPS_NVCC
+    OUTPUT_VARIABLE WRAPS_NVCC_OUT2
+    ERROR_QUIET)
+  endif()
+
+  string(FIND "${WRAPS_NVCC_OUT1} ${WRAPS_NVCC_OUT2}" "nvcc" pos)
+  if (${pos} GREATER -1)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
+    option (LPM_HAVE_CUDA "LPM build with cuda support." ON)
+    message(STATUS "Cuda enabled!")
+  else ()
+    message(STATUS "Cuda was found, but the C++ compiler is not nvcc_wrapper.  Building without cuda.")
+  endif()
 endif()
 
 set(USE_SPHEREPACK CACHE BOOL FALSE)
