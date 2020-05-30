@@ -1,7 +1,7 @@
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}" "${VTK_INCLUDE_DIRS}" "${Trilinos_INCLUDE_DIRS}")
 
 add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmFaces.cpp LpmVtkIO.cpp
-    LpmPolyMesh2d.cpp #LpmCompadre.cpp
+    LpmPolyMesh2d.cpp LpmCompadre.cpp
     LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
     LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
     LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp

@@ -5,14 +5,17 @@ rm -rf CMakeFiles/ CMakeCache.txt
 SRC_ROOT=$HOME/aj/lpmkokkos
 EXTRA_ARGS=$1
 if [ "$HOSTNAME" = "s1046231" ]; then
-	export KO=$HOME/kokkos-openmp
+  echo $HOSTNAME
+	export TR=$HOME/trilinos-openmp-debug/install
+elif [ "$HOSTNAME" = "s1024454" ]; then
+  echo $HOSTNAME
+  export TR=$HOME/aj/trilinos-openmp-debug/install
 else
-	export KO=$HOME/aj/kokkos-openmp/install
+  export TR=$HOME/trilinos-openmp
 fi
 #export CP=$HOME/aj/compadre/build/openmp/install
 export SP=$HOME/spherepack3.2
 export OMPI_CXX=g++
-export TR=$HOME/aj/trilinos-openmp-debug/install
 
 cmake \
 -D CMAKE_BUILD_TYPE:STRING="DEBUG" \

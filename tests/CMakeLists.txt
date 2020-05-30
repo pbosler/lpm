@@ -5,47 +5,35 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
                     "${Trilinos_INCLUDE_DIRS}"
 )
 
-#get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
-#set(CMAKE_CXX_COMPILE_FEATURES ${cxx_features})
-#set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})
-
 ADD_EXECUTABLE(lpmGeomTest LpmGeometryUnitTests.cpp)
-#SET_TARGET_PROPERTIES(lpmGeomTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmGeomTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmGeom lpmGeomTest)
 
 ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
-#SET_TARGET_PROPERTIES(lpmCoordsTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmCoords lpmCoordsTest)
 
 ADD_EXECUTABLE(lpmEdgesTest LpmEdgesUnitTest.cpp)
-#SET_TARGET_PROPERTIES(lpmEdgesTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmEdgesTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmEdges lpmEdgesTest)
 
 ADD_EXECUTABLE(lpmFacesTest LpmFacesUnitTests.cpp)
-#SET_TARGET_PROPERTIES(lpmFacesTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmFacesTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmFaces lpmFacesTest)
 
 ADD_EXECUTABLE(lpmMeshSeedTest LpmMeshSeedUnitTest.cpp)
-#SET_TARGET_PROPERTIES(lpmMeshSeedTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmMeshSeedTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmMeshSeed lpmMeshSeedTest)
 
 ADD_EXECUTABLE(lpmPolyMeshTest LpmPolyMeshTest.cpp)
-#SET_TARGET_PROPERTIES(lpmPolyMeshTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmPolyMeshTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmPolyMeshTest lpmPolyMeshTest)
 
 ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
-SET_TARGET_PROPERTIES(lpmKernelTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmKernelTest lpmKernelTest)
 
-ADD_EXECUTABLE(lpmSpherePoissonTest LpmSpherePoisson.cpp)
-#SET_TARGET_PROPERTIES(lpmSpherePoissonTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
+ADD_EXECUTABLE(lpmSpherePoissonTest LpmSpherePoisson.cpp)#SET_TARGET_PROPERTIES(lpmSpherePoissonTest PROPERTIES COMPILE_FLAGS "${LPM_CXXFLAGS}" LINK_FLAGS "${LPM_LDFLAGS}")
 TARGET_LINK_LIBRARIES(lpmSpherePoissonTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES})
 ADD_TEST(lpmSpherePoissonTest lpmSpherePoissonTest)
 
@@ -58,12 +46,12 @@ ADD_EXECUTABLE(lpmLatLonMesh LpmLatLonMeshTests.cpp)
 TARGET_LINK_LIBRARIES(lpmLatLonMesh lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 ADD_TEST(lpmLatLonMeshTest lpmLatLonMesh)
 
-#ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
-#TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-#if (USE_CUDA)
-#   TARGET_LINK_LIBRARIES(lpmCompadre cublas cudart cusolver)
-#endif()
-#ADD_TEST(lpmCompadreTest lpmCompadre)
+ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
+TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+if (USE_CUDA)
+  TARGET_LINK_LIBRARIES(lpmCompadre cublas cudart cusolver)
+endif()
+ADD_TEST(lpmCompadreTest lpmCompadre)
 
 #ADD_EXECUTABLE(lpmGaussGrid LpmGaussGridTests.cpp)
 #TARGET_LINK_LIBRARIES(lpmGaussGrid lpm compadre ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
