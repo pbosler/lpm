@@ -116,6 +116,11 @@ ko::initialize(argc, argv);
     std::cout << "lat(p0) = " << lat << "\n";
     const Real lat4 = SphereGeometry::latitude(p4);
     std::cout << "lat(p4) = " << lat4 << "\n";
+    const Real colat4 = SphereGeometry::colatitude(p4);
+    std::cout << "colat(p4) = " << colat4 << "\n";
+    const Real colattest = std::abs(colat4 + lat4 - 0.5*PI);
+    std::cout << "abs(colat + lat - pi/2) = " << colattest << "\n";
+    LPM_THROW_IF(colattest > ZERO_TOL, "colatitude + latitude != pi/2");
 
     for (int i=0; i<3; ++i) {
         ha[i] = p0[i];

@@ -131,6 +131,16 @@ struct SphereGeometry {
         return atan4(v[1], v[0]);
     }
 
+    template <typename CV> KOKKOS_INLINE_FUNCTION
+    static Real colatitude(const CV v) {
+      return std::atan2(std::sqrt(v[0]*v[0] + v[1]*v[1]), v[2]);
+    }
+
+    template <typename CV> KOKKOS_INLINE_FUNCTION
+    static Real azimuth(const CV v) {
+      return std::atan2(v[1],v[0]);
+    }
+
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
         v[0] = 0.0;
