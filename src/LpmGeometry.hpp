@@ -204,9 +204,10 @@ struct SphereGeometry {
 
     /** \brief Computes the dot product of two vectors
 
+      \param c output view for cross product
       \param a view of a position vector a = [a0,a1,a2]
       \param b view of a position vector b = [b0,b1,b2]
-      \return \f$a \times b \f$
+      \return \f$c = a \times b \f$
     */
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void cross(V c, const CV a, const CV2 b) {
@@ -233,9 +234,10 @@ struct SphereGeometry {
 
     /** \brief Computes the circumcenter of a triangle using its vertices a, b, c.
 
+      \param cc output view for circumenter
       \param a view of a position vector a = [a0,a1,a2]
       \param b view of a position vector b = [b0,b1,b2]
-      \param c view of a position vector b = [bc,c1,c2]
+      \param c view of a position vector c = [bc,c1,c2]
     */
     template <typename V, typename CV, typename CV1=CV> KOKKOS_INLINE_FUNCTION
     static void circumcenter(V& cc, const CV a, const CV1 b, const CV1 c) {
@@ -358,7 +360,7 @@ struct SphereGeometry {
 
       \param a vertex a = [a0,a1,a2]
       \param b vertex b = [b0,b1,b2]
-      \param a vertex c = [c0,c1,c2]
+      \param c vertex c = [c0,c1,c2]
     */
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real triArea(const CV& a, const CV2& b, const CV2& c) {
