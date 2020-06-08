@@ -80,7 +80,7 @@ ADD_TEST(lpmNodeArrayInternalTest lpmNodeArrayInternalTest)
 
 ADD_EXECUTABLE(lpmOctreeTest LpmOctreeTests.cpp)
 TARGET_LINK_LIBRARIES(lpmOctreeTest lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-ADD_TEST(lpmOctreeTest lpmOctreeTest)
+#ADD_TEST(lpmOctreeTest lpmOctreeTest)
 
 ADD_EXECUTABLE(lpmSphereVoronoiPrimitives LpmSphereVoronoiPrimitivesUnitTests.cpp)
 TARGET_LINK_LIBRARIES(lpmSphereVoronoiPrimitives lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})

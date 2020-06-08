@@ -218,7 +218,7 @@ return 0;
 }
 
 Input::Input(int argc, char* argv[]) {
-    max_depth = 7;
+    max_depth = 2;
     tgt_nlon = 180;
     mfilename = "compadre_tests.m";
     nlats = {91};//, 181, 361, 721};

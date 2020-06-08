@@ -1,15 +1,17 @@
 #!/bin/bash
 
 rm -rf CMakeFiles/ CMakeCache.txt
-
-SRC_ROOT=$HOME/aj/lpmkokkos
+#
+# **BEFORE** running this script, set SRC_ROOT to your local clone of lpmkokkos
+#
+SRC_ROOT=$HOME/lpm
 EXTRA_ARGS=$1
 if [ "$HOSTNAME" = "s1046231" ]; then
   echo $HOSTNAME
 	export TR=$HOME/trilinos-openmp-debug/install
 elif [ "$HOSTNAME" = "s1024454" ]; then
   echo $HOSTNAME
-  export TR=$HOME/aj/trilinos-openmp-debug/install
+  export TR=/ascldap/users/pabosle/trilinos-openmp-debug/install
 else
   export TR=$HOME/trilinos-openmp
 fi

@@ -2,10 +2,18 @@
 
 rm -rf CMakeFiles/ CMakeCache.txt
 
-SRC_ROOT=$HOME/aj/lpmkokkos
+# ** BEFORE ** you run this script
+# 1. Change SRC_ROOT to point to your own clone of lpmkokkos
+#
+
+SRC_ROOT=$HOME/lpm
+
+
 EXTRA_ARGS=$1
-export TR=$HOME/aj/trilinos-cuda-debug/install
-export SP=$HOME/spherepack3.2
+export TR=/ascldap/users/pabosle/trilinos-cuda-debug/install
+export SP=/ascldap/users/pabosle/spherepack3.2
+
+export OMPI_CXX=$TR/bin/nvcc_wrapper
 
 cmake -Wno-dev \
 -D CMAKE_BUILD_TYPE:STRING="DEBUG" \
