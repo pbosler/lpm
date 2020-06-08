@@ -117,30 +117,61 @@ struct PlaneGeometry {
     }
 };
 
-struct SphereGeometry {
-    static constexpr Int ndim = 3;
-    typedef ko::View<Real*[ndim],Dev> crd_view_type;
+/**
+  \brief Class to handle computations related to spherical geometry.  Stateless.
 
+  Spherical geometry is expressed in 3D Cartesian coordinates
+  [x0,x1,x2] with \f$ x_0^2 + x_1^2 + x_2^2 = 1 \f$.
+*/
+struct SphereGeometry {
+    static constexpr Int ndim = 3; ///<  number of components in a position vector
+
+    typedef ko::View<Real*[ndim],Dev> crd_view_type; ///< vector array type for, e.g., position and velocity
+
+    /** \brief Returns the latitude of a point represented in Cartesian coordinates.
+
+      Same as azimuth except that the range is [0,2*pi] instead of [-pi,pi].
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real latitude(const CV v) {
         return std::atan2(v[2], std::sqrt(v[0]*v[0] + v[1]*v[1]));
     }
 
+    /** \brief Returns the latitude of a point represented in Cartesian coordinates
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real longitude(const CV v) {
         return atan4(v[1], v[0]);
     }
 
+    /** \brief Returns the colatitude of a point represented in Cartesian coordinates
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real colatitude(const CV v) {
       return std::atan2(std::sqrt(v[0]*v[0] + v[1]*v[1]), v[2]);
     }
 
+    /** \brief Returns the azimuth of a point represented in Cartesian coordinates.
+
+      Same as longitude, except that the range is [-pi,pi] instead of [0, 2*pi];
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real azimuth(const CV v) {
       return std::atan2(v[1],v[0]);
     }
 
+    /** \brief Sets all components of vector to zero.
+
+    \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
         v[0] = 0.0;
@@ -148,6 +179,11 @@ struct SphereGeometry {
         v[2] = 0.0;
     }
 
+    /** \brief  Multiplies all components of vector by the same scalar.
+
+    \param a scalar multiplier
+    \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void scale(const Real& a, V v) {
         v[0] *= a;
@@ -155,11 +191,23 @@ struct SphereGeometry {
         v[2] *= a;
     }
 
+    /** \brief Computes the dot product of two vectors
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+      \return \f$ a\cdot \f$
+    */
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real dot(const CV a, const CV2 b) {
         return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
     }
 
+    /** \brief Computes the dot product of two vectors
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+      \return \f$a \times b \f$
+    */
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void cross(V c, const CV a, const CV2 b) {
         c[0] = a[1]*b[2] - a[2]*b[1];
@@ -167,6 +215,12 @@ struct SphereGeometry {
         c[2] = a[0]*b[1] - a[1]*b[0];
     }
 
+    /** \brief Computes the dot product of two vectors
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+      \return \f$a \times b \f$
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static ko::Tuple<Real,3> cross(const CV a, const CV b) {
         ko::Tuple<Real,3> c;
@@ -176,6 +230,13 @@ struct SphereGeometry {
         return c;
     }
 
+
+    /** \brief Computes the circumcenter of a triangle using its vertices a, b, c.
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+      \param c view of a position vector b = [bc,c1,c2]
+    */
     template <typename V, typename CV, typename CV1=CV> KOKKOS_INLINE_FUNCTION
     static void circumcenter(V& cc, const CV a, const CV1 b, const CV1 c) {
         Real cpab[3], cpbc[3], cpca[3];
@@ -192,21 +253,39 @@ struct SphereGeometry {
         }
     }
 
+
+    /** \brief Computes the squared Euclidean norm of a vector
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real norm2(const CV v) {
         return dot(v,v);
     }
 
+    /** \brief Computes the Euclidean norm of a vector
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename CV> KOKKOS_INLINE_FUNCTION
     static Real mag(const CV v) {
         return std::sqrt(norm2(v));
     }
 
+    /** \brief Normalizes a vector so that its magnitude = 1
+
+      \param v view of a position vector v = [v0,v1,v2]
+    */
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void normalize(V v) {
         scale(1.0/mag(v), v);
     }
 
+    /** \brief Computes the great circle distance between two points on the sphere
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+    */
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real distance(const CV a, const CV2 b) {
         Real cp[3];
@@ -215,6 +294,12 @@ struct SphereGeometry {
         return std::atan2(mag<Real*>(cp), dp);
     }
 
+
+    /**\brief  Computes the squared Euclidean distance between two points on the sphere
+
+      \param a view of a position vector a = [a0,a1,a2]
+      \param b view of a position vector b = [b0,b1,b2]
+    */
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real sqEuclideanDistance(const CV a, const CV2 b) {
         Real result=0.0;
@@ -224,6 +309,11 @@ struct SphereGeometry {
         return result;
     }
 
+    /** \brief copies the content of one vector view to another
+
+      \param d destination vector
+      \param s source vector
+    */
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void copy(V d, const CV& s) {
         d[0] = s[0];
@@ -231,6 +321,13 @@ struct SphereGeometry {
         d[2] = s[2];
     }
 
+
+    /** \brief Computes the spherical barycenter defined by n vertices on the sphere.
+
+      \param v output view, contains coordinates of barycenter on the sphere
+      \param cv input view of vertex vectors
+      \param n number of vertices
+    */
     template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
     static void barycenter(V v, const CV& cv, const Int n) {
         setzero(v);
@@ -243,6 +340,12 @@ struct SphereGeometry {
         normalize(v);
     }
 
+    /** \brief Computes the spherical midpoint between two vectors on the sphere
+
+      \param v output vector, contains the coordinates of the midpoint
+      \param a vertex a = [a0,a1,a2]
+      \param b vertex b = [b0,b1,b2]
+    */
     template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static void midpoint(V v, const CV& a, const CV2& b) {
         v[0] = 0.5*(a[0] + b[0]);
@@ -251,6 +354,12 @@ struct SphereGeometry {
         normalize(v);
     }
 
+    /** \brief  Computes the area of the spherical triangle whose vertices a defined (in ccw order) by a, b, c.
+
+      \param a vertex a = [a0,a1,a2]
+      \param b vertex b = [b0,b1,b2]
+      \param a vertex c = [c0,c1,c2]
+    */
     template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real triArea(const CV& a, const CV2& b, const CV2& c) {
         const Real s1 = distance(a, b);
@@ -262,6 +371,12 @@ struct SphereGeometry {
         return 4*std::atan(std::sqrt(zz));
     }
 
+    /** \brief  Computes the area of the spherical polygon, given its vertices and centroid
+
+      \param ctr centroid of polygon
+      \param verts vertices of polygon, in counter-clockwise (ccw) order
+      \param nverts nubmer of vertices in polygon >= 3
+    */
     template <typename CV1, typename CV2> KOKKOS_INLINE_FUNCTION
     static Real polygonArea(const CV1& ctr, const CV2& verts, const Int nverts) {
         Real ar = 0;
