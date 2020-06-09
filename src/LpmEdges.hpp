@@ -173,7 +173,7 @@ class Edges {
         inline Index getEdgeKidHost(const Index ind, const Int child) const {return _hk(ind, child);}
 
         /// Host function
-        std::string infoString(const std::string& label) const;
+        std::string infoString(const std::string& label, const short& tab_level=0, const bool& dump_all=false) const;
 
         /// Host functions
         inline Index getOrigHost(const Index ind) const {return _ho(ind);}

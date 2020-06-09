@@ -230,7 +230,7 @@ template <typename FaceKind> class Faces {
 
         @param label name for Faces object
         */
-        std::string infoString(const std::string& label) const;
+        std::string infoString(const std::string& label, const int& tab_level=0, const bool& dump_all=false) const;
 
         /** @brief Initialize a collection of Faces from a MeshSeed
 

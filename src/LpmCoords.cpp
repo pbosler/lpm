@@ -1,18 +1,22 @@
 #include "LpmCoords.hpp"
+#include "LpmUtilities.hpp"
 #include <random>
 
 namespace Lpm {
 
-template <typename Geo> 
-std::string Coords<Geo>::infoString(const std::string& label) const {
+template <typename Geo>
+std::string Coords<Geo>::infoString(const std::string& label, const short& tab_level, const bool& dump_all) const {
     std::ostringstream oss;
-    oss << "Coords " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory" << std::endl; 
-    for (Index i=0; i<_nmax; ++i) {
-        if (i==_nh()) oss << "---------------------------------" << std::endl;
-        oss << label << ": (" << i << ") : ";
-        for (Int j=0; j<Geo::ndim; ++j) 
-            oss << _hostcrds(i,j) << " ";
-        oss << std::endl;
+    const std::string tabstr = indentString(tab_level);
+    oss << tabstr << "Coords " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory" << std::endl;
+    if (dump_all) {
+      for (Index i=0; i<_nmax; ++i) {
+          if (i==_nh()) oss << tabstr <<  "---------------------------------" << std::endl;
+          oss << tabstr << "\t" << label << ": (" << i << ") : ";
+          for (Int j=0; j<Geo::ndim; ++j)
+              oss << "\t" << _hostcrds(i,j) << " ";
+          oss << std::endl;
+      }
     }
     return oss.str();
 }
@@ -52,7 +56,7 @@ template <> void Coords<SphereGeometry>::initRandom(const Real max_range, const 
         while (uu*uu + vv*vv > 1.0) {
             uu = randDist(generator);
             vv = randDist(generator);
-        }        
+        }
         const Real uv2 = uu*uu + vv*vv;
         const Real uvr = std::sqrt(1-uv2);
         const Real cvec[3] = {2*uu*uvr*max_range, 2*vv*uvr*max_range, (1-2*uv2)*max_range};

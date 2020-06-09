@@ -162,6 +162,13 @@ template <typename SeedType> class PolyMesh2d {
         /// @brief Copies data from device to host
         virtual void updateHost() const;
 
+
+        /** @brief Writes basic info about a PolyMesh2d instance to a string.
+
+        @hostfn
+        */
+        std::string infoString(const std::string& label="", const int& tab_level = 0, const bool& dump_all=false) const;
+
     protected:
         typedef FaceDivider<Geo,FaceType> divider;
 

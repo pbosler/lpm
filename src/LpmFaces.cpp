@@ -1,5 +1,5 @@
 #include "LpmFaces.hpp"
-
+#include "LpmUtilities.hpp"
 
 namespace Lpm {
 
@@ -23,7 +23,7 @@ void Faces<FaceKind>::insertHost(const Index ctr_ind, ko::View<Index*,Host> vert
     _hnLeaves() += 1;
 }
 
-template <typename FaceKind> template<typename SeedType> 
+template <typename FaceKind> template<typename SeedType>
 void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
     LPM_THROW_IF(_nmax < SeedType::nfaces, "Faces::initFromSeed error: not enough memory.");
     for (int i=0; i<SeedType::nfaces; ++i) {
@@ -54,30 +54,35 @@ Real Faces<FaceKind>::surfAreaHost() const {
 }
 
 template <typename FaceKind>
-std::string Faces<FaceKind>::infoString(const std::string& label) const {
+std::string Faces<FaceKind>::infoString(const std::string& label, const int& tab_level, const bool& dump_all) const {
     std::ostringstream oss;
-    oss << "Faces " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory; " 
+    const auto idnt = indentString(tab_level);
+    const auto bigidnt = indentString(tab_level+1);
+    oss << idnt <<  "Faces " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory; "
         << _hnLeaves() << " leaves." << std::endl;
-    for (Index i=0; i<_nmax; ++i) {
-        if (i==_nh()) oss << "---------------------------------" << std::endl;
-        oss << ": (" << i << ") : ";
-        oss << "verts = (";
-        for (int j=0; j<FaceKind::nverts; ++j) {
-            oss << _hostverts(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
-        }
-        oss << "edges = (";
-        for (int j=0; j<FaceKind::nverts; ++j) {
-            oss << _hostedges(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
-        }
-        oss << "center = (" << _hostcenters(i) << ") ";
-        oss << "level = (" << _hlevel(i) << ") ";
-        oss << "parent = (" << _hostparent(i) << ") ";
-        oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << "," 
-            << _hostkids(i,2) << "," << _hostkids(i,3) <<") ";
-        oss << "area = (" << _hostarea(i) << ")";
-        oss << std::endl;
+
+    if (dump_all) {
+      for (Index i=0; i<_nmax; ++i) {
+          if (i==_nh()) oss << "---------------------------------" << std::endl;
+          oss << ": (" << i << ") : ";
+          oss << "verts = (";
+          for (int j=0; j<FaceKind::nverts; ++j) {
+              oss << _hostverts(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
+          }
+          oss << "edges = (";
+          for (int j=0; j<FaceKind::nverts; ++j) {
+              oss << _hostedges(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");
+          }
+          oss << "center = (" << _hostcenters(i) << ") ";
+          oss << "level = (" << _hlevel(i) << ") ";
+          oss << "parent = (" << _hostparent(i) << ") ";
+          oss << "kids = (" << _hostkids(i,0) << "," << _hostkids(i,1) << ","
+              << _hostkids(i,2) << "," << _hostkids(i,3) <<") ";
+          oss << "area = (" << _hostarea(i) << ")";
+          oss << std::endl;
+      }
     }
-    oss << "\ttotal area = " << surfAreaHost() << std::endl;
+    oss << bigidnt << "total area = " << surfAreaHost() << std::endl;
     return oss.str();
 }
 
@@ -89,14 +94,14 @@ void Faces<FaceKind>::setKids(const Index parent, const Index* kids) {
 }
 
 template <typename Geo>
-void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts, 
+void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts,
         Edges& edges, Faces<TriFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces){
     LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
     LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
 
     ko::View<Index[4][3], Host> newFaceEdgeInds("newFaceEdges");  // (child face index, edge index)
     ko::View<Index[4][3], Host> newFaceVertInds("newFaceVerts");  // (child face index, vertex index)
-    
+
     // for debugging, set to invalid value
     for (int i=0; i<4; ++i) {
         for (int j=0; j<3; ++j) {
@@ -107,7 +112,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
     /// pull data from parent face
     auto parentVertInds = ko::subview(faces._hostverts, faceInd, ko::ALL());
     auto parentEdgeInds = ko::subview(faces._hostedges, faceInd, ko::ALL());
-    
+
     /// determine child face indices
     const Index face_insert_pt = faces.nh();
     ko::View<Index[4], Host> newFaceKids("newFaceKids");
@@ -129,26 +134,26 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
         else { // divide edge
             edgekids(0) = edges.nh();
             edgekids(1) = edges.nh() + 1;
-            
+
             edges.divide<Geo>(parentEdge, physVerts, lagVerts);
         }
-        
+
         // connect child edges to child faces
         if (faces.edgeIsPositive(faceInd, i, edges)) { // edge has positive orientation
             newFaceEdgeInds(i,i) = edgekids(0);
             edges.setLeft(edgekids(0), newFaceKids(i));
-            
+
             newFaceEdgeInds((i+1)%3, i) = edgekids(1);
             edges.setLeft(edgekids(1), newFaceKids((i+1)%3));
         }
         else { // edge has negative orientation
             newFaceEdgeInds(i,i) = edgekids(1);
             edges.setRight(edgekids(1), newFaceKids(i));
-            
+
             newFaceEdgeInds((i+1)%3, i) = edgekids(0);
             edges.setRight(edgekids(0), newFaceKids((i+1)%3));
         }
-        
+
         const Index c1dest = edges.getDestHost(edgekids(0));
         if (i==0) {
             newFaceVertInds(0,1) = c1dest;
@@ -166,14 +171,14 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
             newFaceVertInds(3,1) = c1dest;
         }
     }
-    
+
     // debug: check vertex connectivity
     for (int i=0; i<4; ++i) {
         for (int j=0; j<3; ++j) {
             LPM_THROW_IF(newFaceVertInds(i,j) == NULL_IND, "TriFace::divide error: vertex connectivity");
         }
     }
-    
+
     /// create new interior edges
     const Index edge_ins_pt = edges.nh();
     for (int i=0; i<3; ++i) {
@@ -185,7 +190,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
     edges.insertHost(newFaceVertInds(2,1), newFaceVertInds(2,0), newFaceKids(3), newFaceKids(2));
     edges.insertHost(newFaceVertInds(0,2), newFaceVertInds(0,1), newFaceKids(3), newFaceKids(0));
     edges.insertHost(newFaceVertInds(1,0), newFaceVertInds(1,2), newFaceKids(3), newFaceKids(1));
-    
+
     /// create new center coordinates
     ko::View<Real[3][Geo::ndim], Host> vertCrds("vertCrds");
     ko::View<Real[3][Geo::ndim], Host> vertLagCrds("vertLagCrds");
@@ -212,7 +217,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
         physFaces.insertHost(slice(faceCrds,i));
         lagFaces.insertHost(slice(faceLagCrds,i));
         faces.insertHost(crd_ins_pt+i, ko::subview(newFaceVertInds,i, ko::ALL()), ko::subview(newFaceEdgeInds, i, ko::ALL()), faceInd, faceArea(i));
-    }    
+    }
     /// Remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
@@ -221,15 +226,15 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVer
 }
 
 template <typename Geo>
-void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts, 
+void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts,
     Edges& edges, Faces<QuadFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces)
 {
     LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
     LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
-    
+
     ko::View<Index[4][4], Host> newFaceEdgeInds("newFaceEdges");  // (child face index, edge index)
     ko::View<Index[4][4], Host> newFaceVertInds("newFaceVerts");  // (child face index, vertex index)
-    
+
     // for debugging, set to invalid value
     for (int i=0; i<4; ++i) {
         for (int j=0; j<4; ++j) {
@@ -246,12 +251,12 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
     for (int i=0; i<4; ++i) {
         newFaceKids(i) = face_insert_pt+i;
     }
-    
+
     /// connect parent vertices to child faces
     for (int i=0; i<4; ++i) {
         newFaceVertInds(i,i) = parentVertInds(i);
     }
-    
+
     /// loop over parent edges
     for (int i=0; i<4; ++i) {
         const Index parentEdge = parentEdgeInds(i);
@@ -259,26 +264,26 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
         if (edges.hasKidsHost(parentEdge)) { // edge already divided
             edgekids(0) = edges.getEdgeKidHost(parentEdge,0);
             edgekids(1) = edges.getEdgeKidHost(parentEdge,1);
-        }   
+        }
         else { // divide edge
             edgekids(0) = edges.nh();
             edgekids(1) = edges.nh() + 1;
-            
+
             edges.divide<Geo>(parentEdge, physVerts, lagVerts);
         }
-        
+
         /// connect child edges to child faces
         if (faces.edgeIsPositive(faceInd, i, edges)) { /// edge has positive orientation
             newFaceEdgeInds(i,i) = edgekids(0);
             edges.setLeft(edgekids(0), newFaceKids(i));
-            
+
             newFaceEdgeInds((i+1)%4,i) = edgekids(1);
             edges.setLeft(edgekids(1), newFaceKids((i+1)%4));
         }
         else { /// edge has negative orientation
             newFaceEdgeInds(i,i) = edgekids(1);
             edges.setRight(edgekids(1), newFaceKids(i));
-            
+
             newFaceEdgeInds((i+1)%4,i) = edgekids(0);
             edges.setRight(edgekids(0), newFaceKids((i+1)%4));
         }
@@ -286,7 +291,7 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
         newFaceVertInds(i,(i+1)%4) = c1dest;
         newFaceVertInds((i+1)%4,i) = c1dest;
     }
-    
+
     /// special case for QuadFace: parent center becomes a vertex
     const Index parent_center_ind = faces.getCenterIndHost(faceInd);
     ko::View<Real[Geo::ndim],Host> newcrd("newcrd");
@@ -316,7 +321,7 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
     edges.insertHost(newFaceVertInds(3,1), newFaceVertInds(3,0), newFaceKids(0), newFaceKids(3));
     newFaceEdgeInds(0,2) = edge_ins_pt+3;
     newFaceEdgeInds(3,0) = edge_ins_pt+3;
-    
+
     /// create new center coordinates
     ko::View<Real[4][Geo::ndim],Host> vertCrds("vertCrds");
     ko::View<Real[4][Geo::ndim],Host> vertLagCrds("vertLagCrds");
@@ -344,7 +349,7 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
         faces.insertHost(face_crd_ins_pt+i, ko::subview(newFaceVertInds,i,ko::ALL()),
             ko::subview(newFaceEdgeInds,i,ko::ALL()), faceInd, faceArea(i));
     }
-    
+
     /// remove parent from leaf computations
     faces.setKidsHost(faceInd, newFaceKids);
     faces.setAreaHost(faceInd, 0.0);
