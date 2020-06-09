@@ -20,6 +20,13 @@ namespace Lpm {
      }
   }
 
+std::string indentString(const int tab_lev) {
+  std::string result("");
+  for (int i=0; i<tab_lev; ++i) {
+    result += "\t";
+  }
+  return result;
+}
 
 std::string weightName(const int ndim) {
     std::string result;

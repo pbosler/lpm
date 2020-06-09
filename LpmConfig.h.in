@@ -7,7 +7,6 @@
 
 #cmakedefine LPM_HAVE_VTK
 #cmakedefine LPM_HAVE_CUDA
-#cmakedefine LPM_HAVE_COMPADRE
 #cmakedefine LPM_HAVE_SPHEREPACK
 #cmakedefine LPM_ENABLE_DEBUG
 

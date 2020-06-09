@@ -1,4 +1,5 @@
 #include "LpmEdges.hpp"
+#include "LpmUtilities.hpp"
 #include <sstream>
 
 namespace Lpm {
@@ -40,7 +41,7 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
     // record beginning state
     const Index crd_ins_pt = crds.nh();
     const Index edge_ins_pt = _nh();
-    
+
     // determine edge midpoints
     ko::View<Real[Geo::ndim], Host> midpt("midpt"), lagmidpt("lagmidpt");
     ko::View<Real[2][Geo::ndim], Host> endpts("endpts"), lagendpts("lagendpts");
@@ -50,31 +51,37 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
         endpts(1,i) = crds.getCrdComponentHost(_hd(ind), i);
         lagendpts(1,i) = lagcrds.getCrdComponentHost(_hd(ind), i);
     }
-    
+
     Geo::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()), ko::subview(endpts, 1, ko::ALL()));
     Geo::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()), ko::subview(lagendpts, 1, ko::ALL()));
-    // insert new midpoint to Coords 
+    // insert new midpoint to Coords
     crds.insertHost(midpt);
     lagcrds.insertHost(lagmidpt);
     // insert new child edges
     insertHost(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
     insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
     _hk(ind,0) = edge_ins_pt;
-    _hk(ind,1) = edge_ins_pt+1;    
+    _hk(ind,1) = edge_ins_pt+1;
     _hnLeaves() -= 1;
 }
 
-std::string Edges::infoString(const std::string& label) const {
+std::string Edges::infoString(const std::string& label, const short& tab_level, const bool& dump_all) const {
     std::ostringstream oss;
-    oss << "Edges " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory; "
+    const auto indent = indentString(tab_level);
+
+    oss << indent << "Edges " << label << " info: nh = (" << _nh() << ") of nmax = " << _nmax << " in memory; "
         << _hnLeaves() << " leaves." << std::endl;
-    for (Index i=0; i<_nmax; ++i) {
-        if (i==_nh()) oss << "---------------------------------" << std::endl;
-        oss << label << ": (" << i << ") : ";
-        oss << "orig = " << _ho(i) << ", dest = " << _hd(i);
-        oss << ", left = " << _hl(i) << ", right = " << _hr(i);
-        oss << ", parent = " << _hp(i) << ", kids = " << _hk(i,0) << "," << _hk(i,1);
-        oss << std::endl;
+
+    if (dump_all) {
+      const auto bigindent = indentString(tab_level+1);
+      for (Index i=0; i<_nmax; ++i) {
+          if (i==_nh()) oss << indent << "---------------------------------" << std::endl;
+          oss << bigindent << label << ": (" << i << ") : ";
+          oss << "orig = " << _ho(i) << ", dest = " << _hd(i);
+          oss << ", left = " << _hl(i) << ", right = " << _hr(i);
+          oss << ", parent = " << _hp(i) << ", kids = " << _hk(i,0) << "," << _hk(i,1);
+          oss << std::endl;
+      }
     }
     return oss.str();
 }

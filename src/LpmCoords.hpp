@@ -113,7 +113,7 @@ template <typename Geo> class Coords {
 
         \param label name of instance
         */
-        std::string infoString(const std::string& label) const;
+        std::string infoString(const std::string& label, const short& tab_level=0, const bool& dump_all=false) const;
 
         /** \brief Initializes a random set of coordinates.
 
