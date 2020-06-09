@@ -106,7 +106,7 @@ template <typename FaceKind> class Faces {
 
         /** @brief Returns the maximum number of faces allowed in memory.
         */
-        inline Index nMax() const {return return verts.extent(0);}
+        inline Index nMax() const {return verts.extent(0);}
 
         /** @brief Updates the mask value of a face
 
