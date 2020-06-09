@@ -88,7 +88,7 @@ class Edges {
         /** \brief Maximum number of edges allowed in memory
         */
         KOKKOS_INLINE_FUNCTION
-        inline Index nmax() const {return origs.extent(0);}
+        Index nmax() const {return origs.extent(0);}
 
         /** Number of initialized edges.
 
