@@ -6,6 +6,7 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "LpmGeometry.hpp"
+#include "LpmRossbyWaves.hpp"
 #include "Kokkos_Core.hpp"
 #include "LpmVtkIO.hpp"
 #include <cmath>
@@ -17,11 +18,32 @@ typedef typename SphereGeometry::crd_view_type crd_view;
 typedef typename SphereGeometry::crd_view_type vec_view;
 typedef typename ko::TeamPolicy<>::member_type member_type;
 
+/** @brief Evaluates the Poisson equation's Green's function for the SpherePoisson
+
+  Returns \f$ g(x,y)f(y)A(y),\f$ where \f$ g(x,y) = -log(1-x\cdot y)/(4\pi) \f$.
+
+  @param psi Output value --- potential response due to a source of strength src_f*src_area
+  @param tgt_x Coordinate of target location
+  @param src_x Source location
+  @param src_f Source (e.g., vorticity) value
+  @param src_area Area of source panel
+*/
 template <typename VecType> KOKKOS_INLINE_FUNCTION
 void greensFn(Real& psi, const VecType& tgt_x, const VecType& src_xx, const Real& src_f, const Real& src_area) {
     psi = -std::log(1.0 - SphereGeometry::dot(tgt_x, src_xx))*src_f*src_area/(4*PI);
 }
 
+
+/** @brief Computes the spherical Biot-Savart kernel's contribution to velocity for a single source
+
+  Returns \f$ K(x,y)f(y)A(y)\f$, where \f$K(x,y) = \nabla g(x,y)\times x = \frac{x \times y}{4\pi(1-x\cdot y)}\f$.
+
+  @param psi Output value --- potential response due to a source of strength src_f*src_area
+  @param tgt_x Coordinate of target location
+  @param src_x Source location
+  @param src_f Source (e.g., vorticity) value
+  @param src_area Area of source panel
+*/
 template <typename VecType> KOKKOS_INLINE_FUNCTION
 void biotSavart(ko::Tuple<Real,3>& u, const VecType& tgt_x, const VecType& src_xx, const Real& src_f, const Real& src_area) {
     u = SphereGeometry::cross(tgt_x, src_xx);
@@ -31,34 +53,14 @@ void biotSavart(ko::Tuple<Real,3>& u, const VecType& tgt_x, const VecType& src_x
     }
 }
 
-KOKKOS_INLINE_FUNCTION
-Real legendre54(const Real& z) {
-    return z * (z*z - 1.0) * (z*z - 1.0);
-}
+/** @brief Initializes vorticity on the sphere, and computes exact velocity and stream function values.
 
-template <typename VecType> KOKKOS_INLINE_FUNCTION
-Real SphHarm54(const VecType& x) {
-    const Real lam = SphereGeometry::longitude(x);
-    return 30*std::cos(4*lam)*legendre54(x[2]);
-}
-
-template <typename VT> KOKKOS_INLINE_FUNCTION
-ko::Tuple<Real,3> RH54Velocity(const VT& x) {
-    const Real theta = SphereGeometry::latitude(x);
-    const Real lambda = SphereGeometry::longitude(x);
-    const Real usph = 0.5*std::cos(4*lambda)*cube(std::cos(theta))*(5*std::cos(2*theta) - 3);
-    const Real vsph = 4*cube(std::cos(theta))*std::sin(theta)*std::sin(4*lambda);
-    const Real u = -usph*std::sin(lambda) - vsph*std::sin(theta)*std::cos(lambda);
-    const Real v =  usph*std::cos(lambda) - vsph*std::sin(theta)*std::sin(lambda);
-    const Real w = vsph*std::cos(theta);
-    return ko::Tuple<Real,3>(u,v,w);
-}
-
+*/
 struct Init {
-    scalar_view_type f;
-    scalar_view_type exactpsi;
-    vec_view exactu;
-    crd_view x;
+    scalar_view_type f; ///< output view holds vorticity values
+    scalar_view_type exactpsi; ///< output view holds exact stream function values
+    vec_view exactu; ///< output view holds exact velocity values
+    crd_view x; ///< input view of coordinates
 
     Init(scalar_view_type ff, scalar_view_type psi, vec_view u, crd_view xx) :
         f(ff), exactpsi(psi), exactu(u), x(xx) {}
@@ -76,14 +78,18 @@ struct Init {
     }
 };
 
+/** Stream function reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
+
+*/
 struct ReduceDistinct {
-    typedef Real value_type;
-    Index i;
-    crd_view tgtx;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type facemask;
+    typedef Real value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target point in tgtx view
+    crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+    crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+    scalar_view_type srcf; ///< view holding RHS (vorticity) data
+    scalar_view_type srca; ///< view holding panel areas
+    mask_view_type facemask; ///< mask to exclude divided panels from the computation.
 
     KOKKOS_INLINE_FUNCTION
     ReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm) :
@@ -101,14 +107,17 @@ struct ReduceDistinct {
     }
 };
 
+/** Velocity reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
+*/
 struct UReduceDistinct {
-    typedef ko::Tuple<Real,3> value_type;
-    Index i;
-    crd_view tgtx;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type facemask;
+    typedef ko::Tuple<Real,3> value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target point in tgtx view
+    crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+    crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+    scalar_view_type srcf; ///< view holding RHS (vorticity) data
+    scalar_view_type srca; ///< view holding panel areas
+    mask_view_type facemask; ///< mask to exclude divided panels from the computation.
 
     KOKKOS_INLINE_FUNCTION
     UReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm):
@@ -126,6 +135,10 @@ struct UReduceDistinct {
     }
 };
 
+
+/** @brief Solves the Poisson equation at panel vertices
+
+*/
 struct VertexSolve {
     crd_view vertx;
     crd_view facex;

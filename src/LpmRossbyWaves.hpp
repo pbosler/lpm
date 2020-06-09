@@ -11,17 +11,31 @@
 
 namespace Lpm {
 
+
+/** @brief Associated Legendre polynomial \f$ P_5^4(x) \f$
+  @param z input value
+*/
 KOKKOS_INLINE_FUNCTION
 Real legendre54(const Real& z) {
     return z * (z*z - 1.0) * (z*z - 1.0);
 }
 
+
+/** @brief Spherical Harmonic \f$ Y_5^4(x) \f$
+
+  @param x input coordinate vector
+*/
 template <typename VecType> KOKKOS_INLINE_FUNCTION
 Real SphHarm54(const VecType& x) {
     const Real lam = SphereGeometry::longitude(x);
     return 30*std::cos(4*lam)*legendre54(x[2]);
 }
 
+/** @brief If vorticity is defined by SphHarm54(), then the resulting velocity
+  is given by this function (BVE Only, not SWE).
+
+  @param x input coordinate vector
+*/
 template <typename VT> KOKKOS_INLINE_FUNCTION
 ko::Tuple<Real,3> RH54Velocity(const VT& x) {
     const Real theta = SphereGeometry::latitude(x);
