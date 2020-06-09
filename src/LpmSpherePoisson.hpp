@@ -6,10 +6,12 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "LpmGeometry.hpp"
+#include "LpmRossbyWaves.hpp"
 #include "Kokkos_Core.hpp"
 #include "LpmVtkIO.hpp"
 #include <cmath>
 #include <iomanip>
+
 
 namespace Lpm {
 
@@ -17,11 +19,32 @@ typedef typename SphereGeometry::crd_view_type crd_view;
 typedef typename SphereGeometry::crd_view_type vec_view;
 typedef typename ko::TeamPolicy<>::member_type member_type;
 
+/** @brief Evaluates the Poisson equation's Green's function for the SpherePoisson
+
+  Returns \f$ g(x,y)f(y)A(y),\f$ where \f$ g(x,y) = -log(1-x\cdot y)/(4\pi) \f$.
+
+  @param psi Output value --- potential response due to a source of strength src_f*src_area
+  @param tgt_x Coordinate of target location
+  @param src_x Source location
+  @param src_f Source (e.g., vorticity) value
+  @param src_area Area of source panel
+*/
 template <typename VecType> KOKKOS_INLINE_FUNCTION
 void greensFn(Real& psi, const VecType& tgt_x, const VecType& src_xx, const Real& src_f, const Real& src_area) {
     psi = -std::log(1.0 - SphereGeometry::dot(tgt_x, src_xx))*src_f*src_area/(4*PI);
 }
 
+
+/** @brief Computes the spherical Biot-Savart kernel's contribution to velocity for a single source
+
+  Returns \f$ K(x,y)f(y)A(y)\f$, where \f$K(x,y) = \nabla g(x,y)\times x = \frac{x \times y}{4\pi(1-x\cdot y)}\f$.
+
+  @param psi Output value --- potential response due to a source of strength src_f*src_area
+  @param tgt_x Coordinate of target location
+  @param src_x Source location
+  @param src_f Source (e.g., vorticity) value
+  @param src_area Area of source panel
+*/
 template <typename VecType> KOKKOS_INLINE_FUNCTION
 void biotSavart(ko::Tuple<Real,3>& u, const VecType& tgt_x, const VecType& src_xx, const Real& src_f, const Real& src_area) {
     u = SphereGeometry::cross(tgt_x, src_xx);
@@ -31,34 +54,14 @@ void biotSavart(ko::Tuple<Real,3>& u, const VecType& tgt_x, const VecType& src_x
     }
 }
 
-KOKKOS_INLINE_FUNCTION
-Real legendre54(const Real& z) {
-    return z * (z*z - 1.0) * (z*z - 1.0);
-}
+/** @brief Initializes vorticity on the sphere, and computes exact velocity and stream function values.
 
-template <typename VecType> KOKKOS_INLINE_FUNCTION
-Real SphHarm54(const VecType& x) {
-    const Real lam = SphereGeometry::longitude(x);
-    return 30*std::cos(4*lam)*legendre54(x[2]);
-}
-
-template <typename VT> KOKKOS_INLINE_FUNCTION
-ko::Tuple<Real,3> RH54Velocity(const VT& x) {
-    const Real theta = SphereGeometry::latitude(x);
-    const Real lambda = SphereGeometry::longitude(x);
-    const Real usph = 0.5*std::cos(4*lambda)*cube(std::cos(theta))*(5*std::cos(2*theta) - 3);
-    const Real vsph = 4*cube(std::cos(theta))*std::sin(theta)*std::sin(4*lambda);
-    const Real u = -usph*std::sin(lambda) - vsph*std::sin(theta)*std::cos(lambda);
-    const Real v =  usph*std::cos(lambda) - vsph*std::sin(theta)*std::sin(lambda);
-    const Real w = vsph*std::cos(theta);
-    return ko::Tuple<Real,3>(u,v,w);
-}
-
+*/
 struct Init {
-    scalar_view_type f;
-    scalar_view_type exactpsi;
-    vec_view exactu;
-    crd_view x;
+    scalar_view_type f; ///< output view holds vorticity values
+    scalar_view_type exactpsi; ///< output view holds exact stream function values
+    vec_view exactu; ///< output view holds exact velocity values
+    crd_view x; ///< input view of coordinates
 
     Init(scalar_view_type ff, scalar_view_type psi, vec_view u, crd_view xx) :
         f(ff), exactpsi(psi), exactu(u), x(xx) {}
@@ -76,14 +79,18 @@ struct Init {
     }
 };
 
+/** Stream function reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
+
+*/
 struct ReduceDistinct {
-    typedef Real value_type;
-    Index i;
-    crd_view tgtx;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type facemask;
+    typedef Real value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target point in tgtx view
+    crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+    crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+    scalar_view_type srcf; ///< view holding RHS (vorticity) data
+    scalar_view_type srca; ///< view holding panel areas
+    mask_view_type facemask; ///< mask to exclude divided panels from the computation.
 
     KOKKOS_INLINE_FUNCTION
     ReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm) :
@@ -101,14 +108,17 @@ struct ReduceDistinct {
     }
 };
 
+/** Velocity reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
+*/
 struct UReduceDistinct {
-    typedef ko::Tuple<Real,3> value_type;
-    Index i;
-    crd_view tgtx;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type facemask;
+    typedef ko::Tuple<Real,3> value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target point in tgtx view
+    crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+    crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+    scalar_view_type srcf; ///< view holding RHS (vorticity) data
+    scalar_view_type srca; ///< view holding panel areas
+    mask_view_type facemask; ///< mask to exclude divided panels from the computation.
 
     KOKKOS_INLINE_FUNCTION
     UReduceDistinct(const Index& ii, crd_view x, crd_view xx, scalar_view_type f, scalar_view_type a, mask_view_type fm):
@@ -126,15 +136,25 @@ struct UReduceDistinct {
     }
 };
 
+
+/** @brief Solves the Poisson equation at panel vertices.
+
+
+ @device
+
+ @par Parallel pattern:
+ 1 thread team per target site performs two reductions -- 1 for stream function and 1 for velocity
+
+*/
 struct VertexSolve {
-    crd_view vertx;
-    crd_view facex;
-    scalar_view_type facef;
-    scalar_view_type facea;
-    mask_view_type facemask;
-    scalar_view_type vertpsi;
-    vec_view vertu;
-    Index nf;
+    crd_view vertx; ///< [input] target coordinates
+    crd_view facex; ///< [input] source coordinates
+    scalar_view_type facef; ///< [input] source vorticity
+    scalar_view_type facea; ///< [input] source area
+    mask_view_type facemask;///< [input] source mask (prevent divided panels from contributing to sums)
+    scalar_view_type vertpsi; ///< [output] stream function values
+    vec_view vertu; ///< [output] velocity values
+    Index nf; ///< [input] number of sources
 
     VertexSolve(crd_view vx, crd_view fx, scalar_view_type ff, scalar_view_type fa, mask_view_type fm,
         scalar_view_type vpsi, vec_view vu) :
@@ -154,13 +174,16 @@ struct VertexSolve {
     }
 };
 
+/** Stream function reduction kernel for collocated source and target sets of points on the sphere,
+
+*/
 struct ReduceCollocated {
-    typedef Real value_type;
-    Index i;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type mask;
+    typedef Real value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target coordinate vector
+    crd_view srcx; ///< collection of source coordinate vectors
+    scalar_view_type srcf; ///< source vorticity values
+    scalar_view_type srca; ///< panel areas
+    mask_view_type mask; ///< mask (excludes non-leaf faces)
 
     KOKKOS_INLINE_FUNCTION
     ReduceCollocated(const Index& ii, crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m) :
@@ -178,13 +201,16 @@ struct ReduceCollocated {
     }
 };
 
+/** Velocity reduction kernel for  collocated source and target sets of points on the sphere,
+
+*/
 struct UReduceCollocated {
-    typedef ko::Tuple<Real,3> value_type;
-    Index i;
-    crd_view srcx;
-    scalar_view_type srcf;
-    scalar_view_type srca;
-    mask_view_type mask;
+    typedef ko::Tuple<Real,3> value_type; ///< required by kokkos for custom reducers
+    Index i; ///< index of target coordinate vector
+    crd_view srcx; ///< collection of source coordinates
+    scalar_view_type srcf; ///< source vorticity
+    scalar_view_type srca; ///< source areas
+    mask_view_type mask; ///< mask (excludes non-leaf sources)
 
     KOKKOS_INLINE_FUNCTION
     UReduceCollocated(const Index& ii, crd_view x, scalar_view_type f, scalar_view_type a, mask_view_type m) :
@@ -202,6 +228,15 @@ struct UReduceCollocated {
     }
 };
 
+
+/** @brief Solves the Poisson equation at panel centers.
+
+ @device
+
+ @par Parallel pattern:
+ 1 thread team per target site performs two reductions -- 1 for stream function and 1 for velocity
+
+*/
 struct FaceSolve {
     crd_view facex;
     scalar_view_type facef;
@@ -228,12 +263,19 @@ struct FaceSolve {
     }
 };
 
+
+/** @brief custom reducer for computing relative error in scalar fields
+
+  @todo move to its own header
+
+
+*/
 struct Error {
-    typedef Real value_type;
-    scalar_view_type fcomputed;
-    scalar_view_type fexact;
-    scalar_view_type ferror;
-    mask_view_type mask;
+    typedef Real value_type; ///< required by kokkos for custom reducers
+    scalar_view_type fcomputed; ///< [input] computed values with possible error
+    scalar_view_type fexact; ///< [input] exact values
+    scalar_view_type ferror; ///< [output] abs(computed-exact)
+    mask_view_type mask; ///< [input] exclude non-leaves
 
     struct VertTag{};
     struct FaceTag{};
@@ -258,12 +300,18 @@ struct Error {
     }
 };
 
+/** @brief custom reducer for computing relative error in vector fields
+
+  @todo move to its own header
+
+
+*/
 struct UError {
-    typedef Real value_type;
-    vec_view uerror;
-    vec_view ucomputed;
-    vec_view uexact;
-    mask_view_type mask;
+    typedef Real value_type; ///< required by kokkos for custom reducers
+    vec_view uerror; ///< [output] abs(computed-exact)
+    vec_view ucomputed; ///< [input] computed values with possible error
+    vec_view uexact; ///< [input] exact values
+    mask_view_type mask; ///< [input] exclude non-leaves
 
     struct VertTag{};
     struct FaceTag{};
@@ -303,31 +351,36 @@ struct UError {
     }
 };
 
-/**
-    Solves laplacian(psi) = -f on the sphere
+/** @brief Solves the Poisson equation on the sphere, \f$-\nabla^2\psi = f\f$.
+
+    Adds data fields to PolyMesh2d.
+
 */
 template <typename SeedType> class SpherePoisson : public PolyMesh2d<SeedType> {
     public:
         typedef typename SeedType::faceKind FaceKind;
-        scalar_view_type fverts;
-        scalar_view_type psiverts;
-        scalar_view_type psiexactverts;
-        scalar_view_type ffaces;
-        scalar_view_type psifaces;
-        scalar_view_type psiexactfaces;
-        scalar_view_type everts;
-        scalar_view_type efaces;
-        vec_view uverts;
-        vec_view ufaces;
-        vec_view uvertsexact;
-        vec_view ufacesexact;
-        vec_view uerrverts;
-        vec_view uerrfaces;
-        Real linf_verts;
-        Real linf_faces;
-        Real linf_uverts;
-        Real linf_ufaces;
+        scalar_view_type fverts; ///< RHS of Poisson equation at vertices
+        scalar_view_type psiverts; ///< Stream function (solution) at vertices
+        scalar_view_type psiexactverts; ///< Exact solution at vertices
+        scalar_view_type ffaces; ///< RHS of Poisson equation at faces
+        scalar_view_type psifaces; ///< Stream function (solution) at faces
+        scalar_view_type psiexactfaces; ///< Exact solution at faces
+        scalar_view_type everts; ///< error at vertices
+        scalar_view_type efaces; ///< error at faces
+        vec_view uverts; ///< velocity computed at vertices
+        vec_view ufaces; ///< velocity computed at faces
+        vec_view uvertsexact; ///< exact velocity at vertices
+        vec_view ufacesexact; ///< exact velocity at faces
+        vec_view uerrverts; ///< velocity error at vertices
+        vec_view uerrfaces; ///< velocity error at faces
+        Real linf_verts; ///< linf relative error in \f$\psi\f$ at vertices
+        Real linf_faces; ///< linf relative error in \f$\psi\f$ at faces
+        Real linf_uverts; ///< linf relative error in velocity at vertices
+        Real linf_ufaces; ///< linf relative error in velocity at faces
 
+
+        /** @brief Constructor.  Same interface as PolyMesh2d.
+        */
         SpherePoisson(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) :
             PolyMesh2d<SeedType>(nmaxverts, nmaxedges, nmaxfaces),
             fverts("f",nmaxverts), psiverts("psi",nmaxverts),
@@ -354,21 +407,49 @@ template <typename SeedType> class SpherePoisson : public PolyMesh2d<SeedType> {
             _uerrfaces = ko::create_mirror_view(uerrfaces);
         }
 
+        /** @brief Returns the average mesh spacing.
+
+        @hostfn
+
+        */
         inline Real meshSize() const {return std::sqrt(4*PI / this->faces.nLeavesHost());}
 
+        /** @brief Initializes the Poisson problem data on the mesh.
+        */
         void init() {
             ko::parallel_for(this->nvertsHost(), Init(fverts, psiexactverts, uvertsexact, this->getVertCrds()));
             ko::parallel_for(this->nfacesHost(), Init(ffaces, psiexactfaces, ufacesexact, this->getFaceCrds()));
         }
 
-        void solve() {
+        /** @brief Solves the Poisson equation
+
+
+        */
+        void solve(const int& nthreads=0) {
+            /** Set parallel team policy
+
+            */
             ko::TeamPolicy<> vertex_policy(this->nvertsHost(), ko::AUTO());
             ko::TeamPolicy<> face_policy(this->nfacesHost(), ko::AUTO());
+            if (nthreads != 0) {
+              vertex_policy = ko::TeamPolicy<>(this->nvertsHost(), nthreads);
+              face_policy = ko::TeamPolicy<>(this->nfacesHost(), nthreads);
+            }
+
+            ko::Profiling::pushRegion("poisson solve");
+            ko::Profiling::pushRegion("vertex solve");
+            /// parallel vertex solve (kernel launch)
             ko::parallel_for(vertex_policy, VertexSolve(this->getVertCrds(), this->getFaceCrds(), ffaces,
                 this->getFaceArea(), this->getFacemask(), psiverts, uverts));
+            ko::Profiling::popRegion();
+            /// parallel face solve (kernel launch)
+            ko::Profiling::pushRegion("face solve");
             ko::parallel_for(face_policy, FaceSolve(this->getFaceCrds(), ffaces, this->getFaceArea(),
                 this->getFacemask(), psifaces, ufaces));
-            /// compute error in potential
+            ko::Profiling::popRegion();
+            ko::Profiling::popRegion();
+
+            /// compute stream function error in potential
             ko::parallel_for(ko::RangePolicy<Error::VertTag>(0,this->nvertsHost()),
                 Error(everts, psiverts, psiexactverts, this->getFacemask()));
             ko::parallel_for(ko::RangePolicy<Error::FaceTag>(0,this->nfacesHost()),
@@ -393,6 +474,8 @@ template <typename SeedType> class SpherePoisson : public PolyMesh2d<SeedType> {
 
         }
 
+        /** @brief copies data from device to host
+        */
         void updateHost() const override {
             PolyMesh2d<SeedType>::updateHost();
             ko::deep_copy(_fverts, fverts);
@@ -411,10 +494,19 @@ template <typename SeedType> class SpherePoisson : public PolyMesh2d<SeedType> {
             ko::deep_copy(_uerrfaces, uerrfaces);
         }
 
+        /** @brief copies data from host to device
+
+          @note Initialization is done on the device using Init.
+        */
         void updateDevice() const override {
             PolyMesh2d<SeedType>::updateDevice();
         }
 
+
+        /** @brief Output all data to vtk
+
+          @param fname filename for vtk output
+        */
         void outputVtk(const std::string& fname) const override {
             VtkInterface<SphereGeometry,Faces<FaceKind>> vtk;
             auto ptdata = vtkSmartPointer<vtkPointData>::New();

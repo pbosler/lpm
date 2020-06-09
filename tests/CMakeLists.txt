@@ -3,6 +3,7 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_BINARY_DIR}"
                     "${VTK_INCLUDE_DIRS}"
                     "${Trilinos_INCLUDE_DIRS}"
+                    "${Trilinos_TPL_INCLUDE_DIRS}"
 )
 
 ADD_EXECUTABLE(lpmGeomTest LpmGeometryUnitTests.cpp)

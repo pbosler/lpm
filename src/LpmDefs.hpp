@@ -152,7 +152,7 @@ static timeval tic () {
   return t;
 }
 static double calc_et (const timeval& t1, const timeval& t2) {
-  static const double us = 1.0e6;
+  static constexpr double us = 1.0e6;
   return (t2.tv_sec * us + t2.tv_usec - t1.tv_sec * us - t1.tv_usec) / us;
 }
 static double toc (const timeval& t1) {
