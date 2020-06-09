@@ -22,7 +22,8 @@ struct VoronoiFace {
     static constexpr Int nverts = 10; // nverts = upper bound for this type
 };
 
-/**
+/*
+
     Each type of seed below is a initializer for the tree-based meshes employed by LPM.
 
     Required public typedefs:
@@ -38,6 +39,11 @@ struct VoronoiFace {
         nVerticesAtTreeLevel(const Int lev) : return the number of vertices in a mesh at tree depth = lev
         nFacesAtTreeLevel(const Int lev) : return the number of leaf faces in a mesh at tree depth = lev
         nEdgesAtTreeLevel(const Int nv, const Int nf): return the number of leaf edges in a mesh with nv vertices and nf faces
+*/
+
+/** @brief Seed for planar meshes of quadrilaterals, free boundary conditions.
+
+    @image html quadRectSeed.pdf "QuadRectSeed"
 */
 struct QuadRectSeed {
     static constexpr Int nverts = 9;
@@ -55,6 +61,10 @@ struct QuadRectSeed {
     static constexpr bool isDual = false;
 };
 
+/** @brief Seed for planar meshes of triangular panels, free boundary conditions
+
+   @image html triHexSeed.pdf "TriHexSeed"
+*/
 struct TriHexSeed {
     static constexpr Int nverts = 7;
     static constexpr Int nfaces = 6;
@@ -71,6 +81,10 @@ struct TriHexSeed {
     static constexpr bool isDual = false;
 };
 
+/** @brief Seed for spherical quadrilateral meshes
+
+   @image html cubedSphereSeed.pdf "CubedSphereSeed"
+*/
 struct CubedSphereSeed {
     static constexpr Int nverts = 8;
     static constexpr Int nfaces = 6;
@@ -87,6 +101,10 @@ struct CubedSphereSeed {
     static constexpr bool isDual = false;
 };
 
+/** @brief Seed for Icosahedral triangular meshes of the SphereGeometry
+
+  @image html icosTriSphereSeed.pdf "IcosTriSphereSeed"
+*/
 struct IcosTriSphereSeed {
     static constexpr Int nverts = 12;
     static constexpr Int nfaces = 20;
@@ -103,6 +121,11 @@ struct IcosTriSphereSeed {
     static constexpr bool isDual = false;
 };
 
+/** @brief Seed for use with Voronoi meshes based on an icoshedral triangularization of the sphere.
+
+  @deprecated This functionality is not supported and will be removed.
+  @todo Remove this.
+*/
 struct IcosTriDualSeed {
     static constexpr Short nverts = 20;
     static constexpr Short nfaces = 12;
@@ -119,14 +142,16 @@ struct IcosTriDualSeed {
     static constexpr bool isDual = true;
 };
 
-/**
+/** @brief A MeshSeed initializes a particle/panel mesh, and the Edges tree and Faces tree.
+
     The MeshSeed class is templated on the seed type (listed above).
 
     *** All of this class's methods execute on Host ***
 
     It provides run-time info based on the SeedType.
 
-    MeshSeed is responsible for determining the memory required to construct a mesh.
+    MeshSeed is responsible for determining the memory required to construct a mesh, for use
+    with Coords, Edges, and Faces constructors.
 */
 template <typename SeedType> struct MeshSeed {
     /// Number of coordinates (both vertices and faces) in the seed file.

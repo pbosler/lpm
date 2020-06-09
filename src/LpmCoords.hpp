@@ -25,6 +25,13 @@ template <typename Geo> class Coords {
         crd_view_type crds; ///< primary container --- a view of vectors
         n_view_type n; ///< number of vectors currently intialized
 
+
+        /** @brief Constructor.
+
+          @param nmax Maximum number of faces to allocate space.
+
+          @see MeshSeed::setMaxAllocations()
+        */
         Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), n("n") {
             _hostcrds = ko::create_mirror_view(crds);
             _nh = ko::create_mirror_view(n);
