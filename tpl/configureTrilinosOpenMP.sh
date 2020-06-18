@@ -7,7 +7,7 @@ TRILINOS_SRC=$HOME/Trilinos
 BUILD_DIR=`pwd`
 
 cmake \
--DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+-DCMAKE_BUILD_TYPE:STRING=RELEASE \
 -DTrilinos_ENABLE_Fortran:BOOL=OFF \
 -DCMAKE_INSTALL_PREFIX:PATH=${BUILD_DIR}/install \
 \
@@ -28,11 +28,13 @@ cmake \
 -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES:BOOL=OFF \
 \
 -DTrilinos_ENABLE_Teuchos:BOOL=ON \
+-DTeuchos_KOKKOS_PROFILING=ON \
 \
 -DTrilinos_ENABLE_Kokkos:BOOL=ON \
 -DTrilinos_ENABLE_KokkosCore:BOOL=ON \
 -DTrilinos_ENABLE_KokkosAlgorithms:BOOL=ON \
 -DTrilinos_ENABLE_KokkosKernels:BOOL=ON \
+-DKokkos_ENABLE_PROFILING=ON \
 -DKokkos_ENABLE_SERIAL:BOOL=ON \
 -DKokkos_ENABLE_OPENMP:BOOL=ON \
 -DKokkos_ENABLE_PTHREAD:BOOL=OFF \
