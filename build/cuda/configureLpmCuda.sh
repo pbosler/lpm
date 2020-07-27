@@ -10,13 +10,13 @@ SRC_ROOT=$HOME/lpm
 
 
 EXTRA_ARGS=$1
-export TR=/ascldap/users/pabosle/trilinos-cuda-debug/install
+export TR=/ascldap/users/pabosle/trilinos-cuda/install
 export SP=/ascldap/users/pabosle/spherepack3.2
 
 export OMPI_CXX=$TR/bin/nvcc_wrapper
 
 cmake -Wno-dev \
--D CMAKE_BUILD_TYPE:STRING="DEBUG" \
+-D CMAKE_BUILD_TYPE:STRING=RELEASE \
 -D Trilinos_ROOT=$TR \
 -D CMAKE_VERBOSE_MAKEFILE:BOOL=OFF \
 -D Spherepack_ROOT=$SP \

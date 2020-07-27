@@ -82,6 +82,9 @@ ko::initialize(argc, argv);
     gmlsParams.gmls_manifold_order = input.order;
     std::cout << gmlsParams.infoString();
 
+    typedef CubedSphereSeed seed_type;
+    //typedef IcosTriSphereSeed seed_type;
+
     Output output(gmlsParams.gmls_order, input.max_depth-2+1);
 //     std::cout << output.infoString();
     for (int i=2; i<=input.max_depth; ++i) {
@@ -89,12 +92,12 @@ ko::initialize(argc, argv);
             Build source mesh
         */
         Index nmaxverts, nmaxedges, nmaxfaces;
-        MeshSeed<IcosTriSphereSeed> icseed;
-        icseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, i);
-        PolyMesh2d<IcosTriSphereSeed> trisphere(nmaxverts, nmaxedges, nmaxfaces);
-        trisphere.treeInit(i, icseed);
-        trisphere.updateDevice();
-        ko::View<Real*[3]> srcCrds = sourceCoords<IcosTriSphereSeed>(trisphere);
+        MeshSeed<seed_type> seed;
+        seed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, i);
+        PolyMesh2d<seed_type> sphere(nmaxverts, nmaxedges, nmaxfaces);
+        sphere.treeInit(i, seed);
+        sphere.updateDevice();
+        ko::View<Real*[3]> srcCrds = sourceCoords<seed_type>(sphere);
         auto src_host = ko::create_mirror_view(srcCrds);
         ko::deep_copy(src_host, srcCrds);
 
