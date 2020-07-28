@@ -48,7 +48,7 @@ TARGET_LINK_LIBRARIES(lpmLatLonMesh lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} $
 ADD_TEST(lpmLatLonMeshTest lpmLatLonMesh)
 
 ADD_EXECUTABLE(lpmCompadre LpmCompadreTests.cpp)
-TARGET_LINK_LIBRARIES(lpmCompadre lpm compadre ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${Trilinos_TPL_LIBRARIES})
+TARGET_LINK_LIBRARIES(lpmCompadre lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${Trilinos_TPL_LIBRARIES})
 ADD_TEST(lpmCompadreTest lpmCompadre)
 
 #ADD_EXECUTABLE(lpmGaussGrid LpmGaussGridTests.cpp)
@@ -86,6 +86,10 @@ TARGET_LINK_LIBRARIES(lpmOctreeTest lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} $
 ADD_EXECUTABLE(lpmSphereVoronoiPrimitives LpmSphereVoronoiPrimitivesUnitTests.cpp)
 TARGET_LINK_LIBRARIES(lpmSphereVoronoiPrimitives lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 ADD_TEST(lpmSphereVoronoiPrimitives lpmSphereVoronoiPrimitives)
+
+ADD_EXECUTABLE(lpmKokkosKernelsTest LpmKokkosKernelsTests.cpp)
+TARGET_LINK_LIBRARIES(lpmKokkosKernelsTest lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${Trilinos_TPL_LIBRARIES})
+ADD_TEST(lpmKokkosKernelsTest lpmKokkosKernelsTest)
 
 #ADD_EXECUTABLE(lpmSphereVoronoiMesh LpmSphereVoronoiMeshUnitTests.cpp)
 #TARGET_LINK_LIBRARIES(lpmSphereVoronoiMesh lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${NETCDF_C} ${NETCDF_CXX})
