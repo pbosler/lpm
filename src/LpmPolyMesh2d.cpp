@@ -27,6 +27,7 @@ void PolyMesh2d<SeedType>::treeInit(const Int initDepth, const MeshSeed<SeedType
             }
         }
     }
+    updateDevice();
 }
 
 template <typename SeedType>

@@ -3,425 +3,319 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
-#include "LpmTimeIntegrator.hpp"
 #include "LpmKokkosUtil.hpp"
+#include "Kokkos_Core.hpp"
+#include <cmath>
 
 namespace Lpm {
 
-typedef ko::View<const Real*[3],Dev> const_vec_view;
-typedef ko::View<const Real*,Dev> const_scalar_view;
+typedef typename SphereGeometry::crd_view_type crd_view;
 typedef typename SphereGeometry::crd_view_type vec_view;
-typedef scalar_view_type scalar_view;
-typedef ko::TeamPolicy<>::member_type member_type;
+typedef typename ko::TeamPolicy<>::member_type member_type;
+
+/** Green's function kernel for the sphere.
+
+  Ref: Kimura & Okamoto 1987.
+
+*/
+template <typename VecType> KOKKOS_INLINE_FUNCTION
+void greensFn(Real& psi, const VecType& tgt_x, const VecType& src_x, const Real& src_vort, const Real src_area) {
+  const Real circ = -src_vort*src_area;
+  psi = std::log(1-SphereGeometry::dot(tgt_x,src_x)) * circ / (4*PI);
+}
 
 /**
     Biot-Savart Kernel for the sphere.
-        Computes contribution of source vortex located at xx with circulation zeta(xx) * area(xx) to tgt location x.    
-        
+        Computes contribution of source vortex located at xx with circulation zeta(xx) * area(xx) to tgt location x.
+
         u(x) = cross(x, xx)*zeta(xx)*area(xx);
 
     Ref: Kimura & Okamoto 1987.
 */
-template <typename TgtVec, typename SrcVec> KOKKOS_INLINE_FUNCTION
-void biotSavartSphere(TgtVec& u, const SrcVec& x, const SrcVec& xx, const Real& zeta, const Real& area, const Real& smoother = 0) {
-  const Real strength = - zeta * area / (4*PI * (1 - SphereGeometry::dot(x,xx) + square(smoother)));
-    ko::Tuple<Real,3> tup = SphereGeometry::cross(x, xx);
-    for (int j=0; j<3; ++j) {
-      u[j] = strength * tup[j];
-    }
+template <typename VecType> KOKKOS_INLINE_FUNCTION
+void biotSavart(ko::Tuple<Real,3>& u, const VecType& tgt_x,
+  const VecType& src_x, const Real& src_vort, const Real& src_area) {
+  u = SphereGeometry::cross(tgt_x, src_x);
+  const Real strength = -src_vort * src_area /(4*PI*(1-SphereGeometry::dot(src_x,tgt_x)));
+  for (Short j=0; j<3; ++j) {
+    u[j] *= strength;
+  }
 }
 
-/**
-    Computational kernel for || reduction over collocated point vortices (singular vortices, no smoothing).
-        The singular point is skipped by not allowing self interaction (require tgt i != src j).
-    
-    i = index of target
-    xx srclocs = coordinates of point vortices
-    zeta(xx) srcvort = vorticity of point vortices
-    area(xx) srcarea = area of point vortices
-    x tgtlocs = srclocs (collocated)
-    
+/** Stream function reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
 */
-struct BVEDirectSumCollocated {
-    typedef ko::Tuple<Real,3> value_type;
-    static constexpr Real eps = 0;
-    
-    Index i;
-    const_vec_view srclocs;
-    const_scalar_view srcvort;
-    const_scalar_view srcarea;
-    
-    KOKKOS_INLINE_FUNCTION
-    BVEDirectSumCollocated(const Index ii, const const_vec_view xx, const const_scalar_view zeta,
-        const const_scalar_view area) : 
-            i(ii), srclocs(xx), srcvort(zeta), srcarea(area) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index& j, value_type& uu) const {
-        value_type vel;
-        if (i != j) {
-            auto x = ko::subview(srclocs, i, ko::ALL());
-            auto xx = ko::subview(srclocs, j, ko::ALL());
-            biotSavartSphere(vel, x, xx, srcvort(j), srcarea(j));
-        }
-        for (int k=0; k<3; ++k) {
-            uu[k] += vel[k];
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void join(volatile value_type& dst, const volatile value_type& src) const {
-        for (int j=0; j<3; ++j) {
-            dst[j] += src[j];
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void init(value_type& uu) {
-        for (int j=0; j<3; ++j) {
-            uu[j] = 0;
-        }
-    }
+struct StreamReduceDistinct {
+  typedef Real value_type; ///< required by kokkos for custom reducers
+  Index i; ///< index of target point in tgtx view
+  crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+  crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+  scalar_view_type srcf; ///< view holding RHS (vorticity) data
+  scalar_view_type srca; ///< view holding panel areas
+  mask_view_type facemask; ///< mask to exclude divided panels from the computation.
+
+  KOKKOS_INLINE_FUNCTION
+  StreamReduceDistinct(const Index& ii, const crd_view& x, const crd_view& xx, const scalar_view_type& f,
+     const scalar_view_type& a, const mask_view_type& fm) :
+     i(ii), tgtx(x), srcx(xx), srcf(f), srca(a), facemask(fm) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& pot) const {
+      Real potential = 0;
+      if (!facemask(j)) {
+          auto mytgt = ko::subview(tgtx,i,ko::ALL());
+          auto mysrc = ko::subview(srcx,j,ko::ALL());
+          greensFn(potential, mytgt, mysrc, srcf(j), srca(j));
+      }
+      pot += potential;
+  }
 };
 
-/**
-    Computational kernel for || reduction over point vortices (singular vortices, no smoothing) whose tgt points
-        are known to be distinct from src locations a priori.
-        The singular point is skipped by definition.
-    
-    i = index of target
-    xx srclocs = coordinates of point vortices
-    zeta(xx) srcvort = vorticity of point vortices
-    area(xx) srcarea = area of point vortices
-    x tgtlocs = coordinates of evaluation points, tgtlocs(i,:) != srclocs(j,:) for all i,j
+/** Velocity reduction kernel for distinct sets of points on the sphere,
+   i.e., \f$x \ne y ~ \forall x\in\text{src_x},~y\in\text{src_y}\f$
 */
-struct BVEDirectSumDistinct {
-    typedef ko::Tuple<Real,3> value_type;
-    static constexpr Real eps = 0;
-    
-    Index i;
-    const_vec_view tgtlocs;
-    const_vec_view srclocs;
-    const_scalar_view srcvort;
-    const_scalar_view srcarea;
-    
-    KOKKOS_INLINE_FUNCTION
-    BVEDirectSumDistinct(const Index ii, const const_vec_view x, const const_vec_view xx, const const_scalar_view zeta,  
-        const const_scalar_view area) : i(ii), tgtlocs(x), srclocs(xx), srcvort(zeta), srcarea(area) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index& j, value_type& uu) const {
-        value_type vel;
-        auto x = ko::subview(tgtlocs, i, ko::ALL());
-        auto xx = ko::subview(srclocs, j, ko::ALL());
-        biotSavartSphere(vel, x, xx, srcvort(j), srcarea(j));
-        for (int k=0; k<3; ++k) {
-            uu[k] += vel[k];
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void join(volatile value_type& dst, const volatile value_type& src) const {
-        for (int j=0; j<3; ++j) {
-            dst[j] += src[j];
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void init(value_type& uu) {
-        for (int j=0; j<3; ++j) {
-            uu[j] = 0.0;
-        }
-    }
+struct VelocityReduceDistinct {
+  typedef ko::Tuple<Real,3> value_type; ///< required by kokkos for custom reducers
+  Index i; ///< index of target point in tgtx view
+  crd_view tgtx; ///< view holding coordinates of target locations (usually, vertices)
+  crd_view srcx; ///< view holding coordinates of source locations (usually, face centers)
+  scalar_view_type srcf; ///< view holding RHS (vorticity) data
+  scalar_view_type srca; ///< view holding panel areas
+  mask_view_type facemask; ///< mask to exclude divided panels from the computation.
+
+  KOKKOS_INLINE_FUNCTION
+  VelocityReduceDistinct(const Index& ii, const crd_view& x,
+    const crd_view& xx, const scalar_view_type& f, const scalar_view_type& a, const mask_view_type& fm):
+    i(ii), tgtx(x), srcx(xx), srcf(f), srca(a), facemask(fm) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& vel) const {
+      ko::Tuple<Real,3> u;
+      if (!facemask(j)) {
+          auto mytgt = ko::subview(tgtx, i, ko::ALL());
+          auto mysrc = ko::subview(srcx, j, ko::ALL());
+          biotSavart(u, mytgt, mysrc, srcf(j), srca(j));
+      }
+      vel += u;
+  }
 };
 
-/**
-    Computational kernel for || reduction over blob vortices (smoothing) whose tgt points
-        are arbitrary and possible near source points.
-        The singular point is regularized.
-    
-    i = index of target
-    xx srclocs = coordinates of point vortices
-    zeta(xx) srcvort = vorticity of point vortices
-    area(xx) srcarea = area of point vortices
-    x tgtlocs = coordinates of evaluation points, tgtlocs(i,:) != srclocs(j,:) for all i,j
+/** @brief Solves the BVE at panel vertices.
+ @device
+ @par Parallel pattern:
+ 1 thread team per target site performs two reductions -- 1 for stream function and 1 for velocity
 */
-struct BVEDirectSumSmooth {
-    typedef ko::Tuple<Real,3> value_type;
-        
-    Index i;
-    const_vec_view tgtlocs;
-    const_vec_view srclocs;
-    const_scalar_view srcvort;
-    const_scalar_view srcarea;
-    Real eps;
-    
-    KOKKOS_INLINE_FUNCTION
-    BVEDirectSumSmooth(const Index ii, const const_vec_view x, const_vec_view xx, 
-        const const_scalar_view zeta, const const_scalar_view area, const Real sm) : 
-        i(ii), tgtlocs(x), srclocs(xx), srcvort(zeta), srcarea(area), eps(sm) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index& j, value_type& uu) const {
-        value_type vel;
-        auto x = ko::subview(tgtlocs, i, ko::ALL());
-        auto xx = ko::subview(srclocs, j, ko::ALL());
-        biotSavartSphere(vel, x, xx, srcvort(j), srcarea(j), eps);
-        for (int k=0; k<3; ++k) {
-            uu[k] += vel[k];
-        }
+
+struct BVEVertexSolve {
+  scalar_view_type vertpsi; ///< [output] stream function values
+  vec_view vertu; ///< [output] velocity values
+  crd_view vertx; ///< [input] target coordinates
+  crd_view facex; ///< [input] source coordinates
+  scalar_view_type facevort; ///< [input] source vorticity
+  scalar_view_type facearea; ///< [input] source area
+  mask_view_type facemask;///< [input] source mask (prevent divided panels from contributing to sums)
+  Index nf; ///< [input] number of sources
+
+  BVEVertexSolve(scalar_view_type& psi, vec_view& u, const crd_view& vx, const crd_view& fx,
+    const scalar_view_type& zeta, const scalar_view_type& a, const mask_view_type& fm, const Index& nsrc) :
+    vertx(vx), facex(fx), facevort(zeta), facearea(a), facemask(fm), vertpsi(psi), vertu(u), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& mbr) const {
+    const Index i = mbr.league_rank();
+    Real psi;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr,nf),
+      StreamReduceDistinct(i, vertx, facex, facevort, facearea, facemask), psi);
+    vertpsi(i) = psi;
+    ko::Tuple<Real,3> u;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr,nf),
+      VelocityReduceDistinct(i, vertx, facex, facevort, facearea, facemask), u);
+    for (Short j=0; j<3; ++j) {
+      vertu(i,j) = u[j];
     }
-    
-    KOKKOS_INLINE_FUNCTION
-    void join(volatile value_type& dst, const volatile value_type& src) const {
-        for (int j=0; j<3; ++j) {
-            dst[j] += src[j];
-        }
-    }
-    
-    KOKKOS_INLINE_FUNCTION
-    void init(value_type& uu) {
-        for (int j=0; j<3; ++j) {
-            uu[j] = 0.0;
-        }
-    }
+  }
 };
 
-/**
-    Computational kernel for || evaluation of velocities at mesh vertices where mesh faces are the source points.
-        For the BVE (which is incompressible) vertices are always distinct from faces.
-    
-    physVertCrds = tgt locations in physical space
-    physFaceCrds = src locations in physical space
-    faceRelVort = src vorticity
-    faceArea = src area
-    vertVelocity = computed velocities at tgt locations
-    n = number of sources
-*/
+struct BVEVertexStreamFn {
+  scalar_view_type psi;
+  crd_view vertx;
+  crd_view facex;
+  scalar_view_type facevort;
+  scalar_view_type facearea;
+  mask_view_type facemask;
+  Index nf;
+
+  BVEVertexStreamFn(scalar_view_type& p, const crd_view& vx, const crd_view& fx, const scalar_view_type& zeta,
+    const scalar_view_type& a, const mask_view_type& fm, const Index& nsrc) : psi(p), vertx(vx), facex(fx),
+    facevort(zeta), facearea(a), facemask(fm), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& mbr) const {
+    const Index& i = mbr.league_rank();
+    Real p;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr,nf),
+      StreamReduceDistinct(i, vertx, facex, facevort, facearea, facemask),p);
+    psi(i) = p;
+  }
+};
+
 struct BVEVertexVelocity {
-    const_vec_view physVertCrds;
-    const_vec_view physFaceCrds;
-    const_scalar_view faceRelVort;
-    const_scalar_view faceArea;
-    vec_view vertVelocity;
-    Index n;
-    
-    KOKKOS_INLINE_FUNCTION
-    BVEVertexVelocity(const const_vec_view pvc, const const_vec_view pfc, const const_scalar_view zeta,
-        const const_scalar_view area, vec_view u, const Index nf) : physVertCrds(pvc), physFaceCrds(pfc),
-        faceRelVort(zeta), faceArea(area), vertVelocity(u), n(nf) {}
-        
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-        ko::Tuple<Real,3> vel;
-        const Index i = mbr.league_rank();
-        ko::parallel_reduce(ko::TeamThreadRange(mbr, n), BVEDirectSumDistinct(i, physVertCrds, physFaceCrds, faceRelVort, faceArea), vel);
-        for (int j=0; j<3; ++j) {
-            vertVelocity(i,j) = vel[j];
-        }
+  vec_view vertvel;
+  crd_view vertx;
+  crd_view facex;
+  scalar_view_type facevort;
+  scalar_view_type facearea;
+  mask_view_type facemask;
+  Index nf;
+
+  BVEVertexVelocity(vec_view& u, const crd_view& vx, const crd_view& fx, const scalar_view_type& zeta,
+    const scalar_view_type& a, const mask_view_type& fm, const Index& nsrc) : vertvel(u), vertx(vx),
+    facex(fx), facevort(zeta), facearea(a), facemask(fm), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& mbr) const {
+    const Index i = mbr.league_rank();
+    ko::Tuple<Real,3> u;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr, nf),
+      VelocityReduceDistinct(i, vertx, facex, facevort, facearea, facemask), u);
+    for (Short j=0; j<3; ++j) {
+      vertvel(i,j) = u[j];
     }
+  }
 };
 
-/**
-    Computational kernel for || evaluation of velocities at mesh faces where mesh faces are the source points.
-        Evaluation and source points are collocated.
-    
-    physFaceCrds = src locations in physical space
-    faceRelVort = src vorticity
-    faceArea = src area
-    faceVelocity = computed velocities at tgt locations
-    n = number of sources
-*/
+struct StreamReduceCollocated {
+  typedef Real value_type; ///< required by kokkos for custom reducers
+  Index i; ///< index of target coordinate vector
+  crd_view srcx; ///< collection of source coordinate vectors
+  scalar_view_type srcf; ///< source vorticity values
+  scalar_view_type srca; ///< panel areas
+  mask_view_type mask; ///< mask (excludes non-leaf faces)
+
+  KOKKOS_INLINE_FUNCTION
+  StreamReduceCollocated(const Index& ii, const crd_view& x, const scalar_view_type& f, const scalar_view_type& a,
+    const mask_view_type& m) : i(ii), srcx(x), srcf(f), srca(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& pot) const {
+      Real potential = 0;
+      if (!mask(j) && i != j) {
+          auto mtgt = ko::subview(srcx, i, ko::ALL());
+          auto msrc = ko::subview(srcx, j, ko::ALL());
+          greensFn(potential, mtgt, msrc, srcf(j), srca(j));
+      }
+      pot += potential;
+  }
+};
+
+struct VelocityReduceCollocated {
+  typedef ko::Tuple<Real,3> value_type; ///< required by kokkos for custom reducers
+  Index i; ///< index of target coordinate vector
+  crd_view srcx; ///< collection of source coordinates
+  scalar_view_type srcf; ///< source vorticity
+  scalar_view_type srca; ///< source areas
+  mask_view_type mask; ///< mask (excludes non-leaf sources)
+
+  KOKKOS_INLINE_FUNCTION
+  VelocityReduceCollocated(const Index& ii, const crd_view& x, const scalar_view_type& f, const scalar_view_type& a,
+    const mask_view_type& m) : i(ii), srcx(x), srcf(f), srca(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& vel) const {
+      ko::Tuple<Real,3> u;
+      if (!mask(j) && i != j) {
+          auto mtgt = ko::subview(srcx, i, ko::ALL());
+          auto msrc = ko::subview(srcx, j, ko::ALL());
+          biotSavart(u, mtgt, msrc, srcf(j), srca(j));
+      }
+      vel += u;
+  }
+};
+
+struct BVEFaceSolve {
+  scalar_view_type facepsi;
+  vec_view faceu;
+  crd_view facex;
+  scalar_view_type facevort;
+  scalar_view_type facearea;
+  mask_view_type facemask;
+  Index nf;
+
+  BVEFaceSolve(scalar_view_type& psi, vec_view& u, const crd_view& x,
+    const scalar_view_type& zeta, const scalar_view_type& a, const mask_view_type& fm, const Index& nsrc) :
+    facepsi(psi), faceu(u), facex(x), facevort(zeta), facearea(a), facemask(fm), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& mbr) const {
+    const Index i=mbr.league_rank();
+    Real psi;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr, nf), StreamReduceCollocated(i, facex, facevort, facearea, facemask), psi);
+    facepsi(i) = psi;
+    ko::Tuple<Real,3> u;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr, nf), VelocityReduceCollocated(i, facex, facevort, facearea, facemask), u);
+    for (Short j=0; j<3; ++j) {
+      faceu(i,j) = u[j];
+    }
+  }
+};
+
+struct BVEFaceStreamFn {
+  scalar_view_type psi;
+  crd_view facex;
+  scalar_view_type facevort;
+  scalar_view_type facearea;
+  mask_view_type facemask;
+  Index nf;
+
+  BVEFaceStreamFn(scalar_view_type& p, const crd_view& fx, const scalar_view_type& zeta, const scalar_view_type& a,
+    const mask_view_type& fm, const Index& nsrc) : psi(p), facex(fx), facevort(zeta),
+    facearea(a), facemask(fm), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& mbr) const {
+    const Index i = mbr.league_rank();
+    Real p;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr,nf),
+      StreamReduceCollocated(i, facex, facevort, facearea, facemask),p);
+    psi(i) = p;
+  }
+};
+
 struct BVEFaceVelocity {
-    const_vec_view physFaceCrds;
-    const_scalar_view faceRelVort;
-    const_scalar_view faceArea;
-    vec_view faceVelocity;
-    Index n;
-    
-    KOKKOS_INLINE_FUNCTION
-    BVEFaceVelocity(const const_vec_view pfc, const const_scalar_view zeta, const const_scalar_view area, 
-        vec_view u, const Index nf) : physFaceCrds(pfc), faceRelVort(zeta), faceArea(area), faceVelocity(u), n(nf) {}
-    
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const member_type& mbr) const {
-        ko::Tuple<Real,3> vel;
-        const Index i = mbr.league_rank();
-        ko::parallel_reduce(ko::TeamThreadRange(mbr,n), BVEDirectSumCollocated(i, physFaceCrds, faceRelVort, faceArea), vel);
-        for (int j=0; j<3; ++j) {
-            faceVelocity(i,j) = vel[j];
-        }
+  vec_view faceu;
+  crd_view facex;
+  scalar_view_type facevort;
+  scalar_view_type facearea;
+  mask_view_type facemask;
+  Index nf;
+
+  BVEFaceVelocity(vec_view& u, const crd_view& fx, const scalar_view_type& zeta, const scalar_view_type& a,
+    const mask_view_type& fm, const Index& nsrc) : faceu(u), facex(fx), facevort(zeta), facearea(a), facemask(fm), nf(nsrc) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator () (const member_type& mbr) const {
+    const Index i = mbr.league_rank();
+    ko::Tuple<Real,3> u;
+    ko::parallel_reduce(ko::TeamThreadRange(mbr, nf), VelocityReduceCollocated(i, facex, facevort, facearea, facemask), u);
+    for (Short j=0; j<3; ++j) {
+      faceu(i,j) = u[j];
     }
+  }
 };
 
-/**
-    RK4 integrator for a Lagrangian particle mesh BVE solver on the sphere.
-    
-    Position update data are inherited from LpmTimeIntegrator.hpp, RK4<3,BVEVertexVelocity, BVEFaceVelocity>.
-    
-    This class adds data for vorticity dynamics on a rotating sphere.
-    
-    vertvort = vorticity at mesh vertex particles (in/out)
-    facevort = vorticity at mesh face particles (in/out)
-    facearea = area of mesh faces (constant --- flow is incompressible)
-*/
-struct BVERK4 : public RK4<3,BVEVertexVelocity, BVEFaceVelocity> {
-    scalar_view vertvort, facevort;
-    const_scalar_view facearea;
-    Real Omega;
-    
-    
-    BVERK4(vec_view vs, scalar_view vz, vec_view vv, vec_view fs, scalar_view fz, vec_view fv,
-        const const_scalar_view fa, const Real omega) : 
-        RK4<3,BVEVertexVelocity,BVEFaceVelocity>(vs, fs, vv, fv), // parent handles vert,face crds and velocities
-        vertvort(vz), facevort(fz), facearea(fa),
-        vertvortin("vertvortin",nv), vertvortstage1("vertvortstage1", nv), vertvortstage2("vertvortstage2", nv),
-        vertvortstage3("vertvortstage3", nv), vertvortstage4("vertvortstage4", nv), 
-        facevortin("facevortin", nf), facevortstage1("facevortstage1", nf), 
-        facevortstage2("facevortstage2", nf), facevortstage3("facevortstage3", nf), facevortstage4("facevortstage4", nf),
-        Omega(omega) {}
-        
-    void timestep(const Real dt) const override {        
-        /// compute stage 1 velocity
-        ko::parallel_for(vertex_policy, BVEVertexVelocity(vertcrds, facecrds, facevort, facearea, vertstage1, nf));
-        ko::parallel_for(face_policy, BVEFaceVelocity(facecrds, facevort, facearea, facestage1, nf));
-        /// stage 1 vorticity
-        ko::parallel_for(nv, DZetaDt(vertvel, vertvortstage1, Omega));
-        ko::parallel_for(nf, DZetaDt(facevel, facevortstage1, Omega));
-        
-        /// stage2 setup
-        ko::parallel_for(nv, StageSetup(vertcrds, vertinput, vertvort, vertvortin, vertstage1, vertvortstage1, 2, dt));
-        ko::parallel_for(nf, StageSetup(facecrds, faceinput, facevort, facevortin, facestage1, facevortstage1, 2, dt));
-        /// stage 2 velocity
-        ko::parallel_for(vertex_policy, BVEVertexVelocity(vertinput, faceinput, facevortin, facearea, vertstage2, nf));
-        ko::parallel_for(face_policy, BVEFaceVelocity(faceinput, facevortin, facearea, facestage2, nf));
-        /// stage 2 vorticity
-        ko::parallel_for(nv, DZetaDt(vertstage2, vertvortstage2, Omega));
-        ko::parallel_for(nf, DZetaDt(facestage2, facevortstage2, Omega));
+struct BVEVorticityTendency {
+  scalar_view_type dzeta;
+  vec_view vel;
+  Real dt;
+  Real Omega;
 
-        /// stage 3 setup
-        ko::parallel_for(nv, StageSetup(vertcrds, vertinput, vertvort, vertvortin, vertstage2, vertvortstage2, 3, dt));
-        ko::parallel_for(nf, StageSetup(facecrds, faceinput, facevort, facevortin, facestage2, facevortstage2, 3, dt));
-        /// stage 3 velocity
-        ko::parallel_for(vertex_policy, BVEVertexVelocity(vertinput, faceinput, facevortin, facearea, vertstage3, nf));
-        ko::parallel_for(face_policy, BVEFaceVelocity(faceinput, facevortin, facearea, facestage3, nf));
-        /// stage 3 vorticity
-        ko::parallel_for(nv, DZetaDt(vertstage3, vertvortstage3, Omega));
-        ko::parallel_for(nf, DZetaDt(facestage3, facevortstage3, Omega));
-        
-        /// stage 4 setup
-        ko::parallel_for(nv, StageSetup(vertcrds, vertinput, vertvort, vertvortin, vertstage3, vertvortstage3, 4, dt));
-        ko::parallel_for(nf, StageSetup(facecrds, faceinput, facevort, facevortin, facestage3, facevortstage3, 4, dt));
-        /// stage 4 velocity
-        ko::parallel_for(vertex_policy, BVEVertexVelocity(vertinput, faceinput, facevortin, facearea, vertstage4, nf));
-        ko::parallel_for(face_policy, BVEFaceVelocity(faceinput, facevortin, facearea, facestage4, nf));
-        /// stage 4 vorticity
-        ko::parallel_for(nv, DZetaDt(vertstage4, vertvortstage4, Omega));
-        ko::parallel_for(nf, DZetaDt(facestage4, facevortstage4, Omega));
-        
-        /// Update
-        ko::parallel_for(nv, RK4Update(vertcrds, vertstage1, vertstage2, vertstage3, vertstage4, 
-            vertvort, vertvortstage1, vertvortstage2, vertvortstage3, vertvortstage4, dt));
-        ko::parallel_for(nf, RK4Update(facecrds, facestage1, facestage2, facestage3, facestage4,
-            facevort, facevortstage1, facevortstage2, facevortstage3, facevortstage4, dt));
-    } 
-    
-    /// internal
-        scalar_view_type vertvortin, vertvortstage1, vertvortstage2, vertvortstage3, vertvortstage4;
-        scalar_view_type facevortin, facevortstage1, facevortstage2, facevortstage3, facevortstage4;
-        
-        /**
-            Functor to set up the inputs to the next RK4 stage.
-            
-            crds0 : initial (t=t0) coordinates (input)
-            crdsnext : new crds for next rk stage (output)
-            zeta0 : initial (t=t0) vorticity (input)
-            zetanext : new vorticity for next rk stage (output)
-            u : velocity (input) from previous rk stage
-            dzeta : vorticity time derivative from previous rk stage
-            stageNum : integer in [1,4]
-            dt : time step
-        */
-        struct StageSetup {
-            vec_view_type crds0;
-            vec_view_type crdsnext;
-            scalar_view_type zeta0;
-            scalar_view_type zetanext;
-            vec_view_type u;
-            scalar_view_type dzeta;
-            Int stageNum;
-            Real dt;
-        
-            StageSetup(vec_view_type x0, vec_view_type xn, scalar_view_type z0, scalar_view_type zn, 
-                vec_view_type vel, scalar_view_type dz, const Int stage, const Real dt_) : 
-                crds0(x0), crdsnext(xn), zeta0(z0), zetanext(zn), u(vel), dzeta(dz),
-                stageNum(stage), dt(dt_) {}
-        
-            KOKKOS_INLINE_FUNCTION
-            void operator() (const Index i) const {
-                for (int j=0; j<3; ++j) {
-                    crdsnext(i,j) = crds0(i,j) +  dt*(stageNum == 4 ? 1 : 0.5)*u(i,j);
-                }
-                zetanext(i) = zeta0(i) + dt*(stageNum == 4 ? 1 : 0.5)*dzeta(i);
-            }
-        }; 
+  BVEVorticityTendency(scalar_view_type& dvort, const vec_view& u, const Real& timestep, const Real& rot) :
+    dzeta(dvort), vel(u), dt(timestep), Omega(rot) {}
 
-        /**
-            Functor to compute the vorticity derivative due to Coriolis force
-            
-                D\zeta/Dt = -2*Omega*w
-            
-            u : velocity (input) vector (u,v,w) in R3
-            dzeta : vorticity derivative (output)
-            Omega : rotation rate of the sphere about the z-axis
-        */    
-        struct DZetaDt {
-            vec_view_type u;
-            scalar_view_type dzeta;
-            Real Omega;
-        
-            DZetaDt(vec_view_type uu, scalar_view_type dz, const Real omg) : u(uu), dzeta(dz), Omega(omg) {}
-        
-            KOKKOS_INLINE_FUNCTION
-            void operator() (const Index i) const {
-                dzeta(i) = -2*Omega*u(i,2);
-            }
-        }; 
-        
-        /** 
-            Functor to compute the t=t0+dt solutions using previously computed stages.
-            
-            crds : in t=t0, out t=t0+dt
-            zeta : in t=t0, out t=t0+dt
-        */
-        struct RK4Update {
-            vec_view crds;
-            const_vec_view crds1;
-            const_vec_view crds2;
-            const_vec_view crds3;
-            const_vec_view crds4;
-            scalar_view zeta;
-            const_scalar_view zeta1;
-            const_scalar_view zeta2;
-            const_scalar_view zeta3;
-            const_scalar_view zeta4;
-            Real dto3;
-            Real dto6;
-            
-            RK4Update(vec_view x, const_vec_view x1, const_vec_view x2, const_vec_view x3, const_vec_view x4,
-                      scalar_view z, const_scalar_view z1, const_scalar_view z2, const_scalar_view z3, const_scalar_view z4, 
-                      const Real delt) : crds(x), crds1(x1), crds2(x2), crds3(x3), crds4(x4), zeta(z), zeta1(z1),
-                      zeta2(z2), zeta3(z3), zeta4(z4), dto3(delt/3.0), dto6(delt/6.0) {}
-            
-            KOKKOS_INLINE_FUNCTION
-            void operator() (const Index& i) const {
-                for (int j=0; j<3; ++j) {
-                    crds(i,j) += dto6*crds1(i,j) + dto3*crds2(i,j) + dto3*crds3(i,j) + dto6*crds4(i,j);
-                }
-                zeta(i) += dto6*zeta1(i) + dto3*zeta2(i) + dto3*zeta3(i) + dto6*zeta4(i);
-            }
-                        
-        };
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& i) const {
+    dzeta(i) = -2.0 * dt * vel(i,2);
+  }
 };
 
 }
