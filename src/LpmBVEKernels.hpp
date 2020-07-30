@@ -306,15 +306,15 @@ struct BVEFaceVelocity {
 struct BVEVorticityTendency {
   scalar_view_type dzeta;
   vec_view vel;
-  Real dt;
   Real Omega;
+  Real dt;
 
   BVEVorticityTendency(scalar_view_type& dvort, const vec_view& u, const Real& timestep, const Real& rot) :
     dzeta(dvort), vel(u), dt(timestep), Omega(rot) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& i) const {
-    dzeta(i) = -2.0 * dt * vel(i,2);
+    dzeta(i) = -2.0 * Omega * vel(i,2) * dt;
   }
 };
 
