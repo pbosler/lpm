@@ -10,6 +10,7 @@ add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmF
     LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
     LpmSphereVoronoiPrimitives.cpp LpmSphereVoronoiMesh.cpp
     LpmBVESphere.cpp LpmVorticityGallery.cpp LpmRK4.cpp
+    LpmPolyMesh2dVtkInterface.cpp
 )
 TARGET_LINK_LIBRARIES(lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${Trilinos_TPL_LIBRARIES})
 if (USE_SPHEREPACK)
@@ -23,6 +24,6 @@ install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hp
               LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
               LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
               LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
-              LpmRK4.hpp LpmRK4_Impl.hpp
+              LpmRK4.hpp LpmRK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)

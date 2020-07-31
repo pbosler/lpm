@@ -48,6 +48,10 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
 
         Short create_tracer(const std::string& name);
 
+        Real avg_mesh_size_radians() const;
+
+        Real avg_mesh_size_degrees() const;
+
     protected:
         typedef typename scalar_field::HostMirror scalar_host;
         typedef typename vector_field::HostMirror vector_host;

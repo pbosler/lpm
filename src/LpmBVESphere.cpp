@@ -168,6 +168,16 @@ void BVESphere<SeedType>::init_vorticity(const VorticityInitialCondition::ptr re
       this->faces.nh()));
 }
 
+template <typename SeedType>
+Real BVESphere<SeedType>::avg_mesh_size_radians() const {
+  return std::sqrt(4*PI/this->nfacesHost());
+}
+
+template <typename SeedType>
+Real BVESphere<SeedType>::avg_mesh_size_degrees() const {
+  return RAD2DEG * avg_mesh_size_radians();
+}
+
 
 /// ETI
 template class BVESphere<IcosTriSphereSeed>;

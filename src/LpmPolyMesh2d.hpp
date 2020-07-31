@@ -9,6 +9,7 @@
 #include "LpmCoords.hpp"
 #include "LpmEdges.hpp"
 #include "LpmFaces.hpp"
+#include "LpmVtkIO.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
@@ -154,7 +155,6 @@ template <typename SeedType> class PolyMesh2d {
 
         /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d instance
         virtual void outputVtk(const std::string& fname) const;
-
 
         /// @brief Copies data from host to device
         virtual void updateDevice() const;
