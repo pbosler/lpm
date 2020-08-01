@@ -169,6 +169,24 @@ void BVESphere<SeedType>::init_vorticity(const VorticityInitialCondition::ptr re
 }
 
 template <typename SeedType>
+void BVESphere<SeedType>::addFieldsToVtk(Polymesh2dVtkInterface<SeedType>& vtk) const {
+  vtk.addScalarPointData(relVortVerts, "relvort");
+  vtk.addScalarPointData(absVortVerts, "absvort");
+  vtk.addScalarPointData(streamFnVerts, "stream_fn");
+  vtk.addScalarCellData(relVortFaces, "relvort");
+  vtk.addScalarCellData(absVortFaces, "absvort");
+  vtk.addScalarCellData(streamFnFaces, "stream_fn");
+
+  vtk.addVectorPointData(velocityVerts, "velocity");
+  vtk.addVectorCellData(velocityFaces, "velocity");
+
+  for (Int k=0; k<tracer_verts.size(); ++k) {
+    vtk.addScalarPointData(tracer_verts[k]);
+    vtk.addScalarCellData(tracer_faces[k]);
+  }
+}
+
+template <typename SeedType>
 Real BVESphere<SeedType>::avg_mesh_size_radians() const {
   return std::sqrt(4*PI/this->nfacesHost());
 }

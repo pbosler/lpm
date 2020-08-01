@@ -55,6 +55,7 @@ struct QuadRectSeed {
     static constexpr Int vertex_degree = 4;
     static std::string filename() {return "quadRectSeed.dat";}
     static std::string idString() {return "QuadRectSeed";}
+    static std::string faceStr() {return "quad";}
     static Index nFacesAtTreeLevel(const Int lev);
     static Index nVerticesAtTreeLevel(const Int lev);
     static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
@@ -75,6 +76,7 @@ struct TriHexSeed {
     static constexpr Int vertex_degree = 6;
     static std::string filename() {return "triHexSeed.dat";}
     static std::string idString() {return "TriHexSeed";}
+    static std::string faceStr() {return "tri";}
     static Index nFacesAtTreeLevel(const Int lev);
     static Index nVerticesAtTreeLevel(const Int lev);
     static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
@@ -95,6 +97,7 @@ struct CubedSphereSeed {
     static constexpr Int vertex_degree = 4;
     static std::string filename() {return "cubedSphereSeed.dat";}
     static std::string idString() {return "CubedSphereSeed";}
+    static std::string faceStr() {return "quad";}
     static Index nFacesAtTreeLevel(const Int lev);
     static Index nVerticesAtTreeLevel(const Int lev);
     static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
@@ -115,6 +118,7 @@ struct IcosTriSphereSeed {
     static constexpr Int vertex_degree = 6;
     static std::string filename() {return "icosTriSphereSeed.dat";}
     static std::string idString() {return "IcosTriSphereSeed";}
+    static std::string faceStr() {return "tri";}
     static Index nFacesAtTreeLevel(const Int lev);
     static Index nVerticesAtTreeLevel(const Int lev);
     static Index nEdgesAtTreeLevel(const Index nv, const Index nf);

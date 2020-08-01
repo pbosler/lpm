@@ -25,7 +25,7 @@ template <typename SeedType> class Polymesh2dVtkInterface {
     void write(const std::string& ofname);
 
     void updatePositions();
-    void updateAreas();
+//     void updateAreas();
 
     template <typename ViewType=typename scalar_view_type::HostMirror>
     void addScalarPointData(const ViewType& s, const std::string& name="");
@@ -38,6 +38,8 @@ template <typename SeedType> class Polymesh2dVtkInterface {
 
     template <typename ViewType=typename SeedType::geo::vec_view_type::HostMirror>
     void addVectorCellData(const ViewType& s, const std::string& name="");
+
+    void addTracers(const std::vector<scalar_view_type>& vt, const std::vector<scalar_view_type>& ft);
 
   protected:
     std::shared_ptr<PolyMesh2d<SeedType>> mesh;

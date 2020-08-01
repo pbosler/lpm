@@ -57,10 +57,12 @@ void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& v
   facemask = fm;
 
   /// RK Stage 1
-  KokkosBlas::axpby(dt, vertvel, 0.0, vertx1);
+//   KokkosBlas::axpby(dt, vertvel, 0.0, vertx1);
+  KokkosBlas::scal(vertx1, dt, vertvel);
   ko::parallel_for("RK4-1 vertex vorticity", nverts, BVEVorticityTendency(vertvort1, vertvel, dt, Omega));
 
-  KokkosBlas::axpby(dt, facevel, 0.0, facex1);
+//   KokkosBlas::axpby(dt, facevel, 0.0, facex1);
+  KokkosBlas::scal(facex1, dt, facevel);
   ko::parallel_for("RK4-1 face vorticity", nfaces, BVEVorticityTendency(facevort1, facevel, dt, Omega));
 
   /// RK Stage 2

@@ -8,6 +8,8 @@
 #include "Kokkos_Core.hpp"
 #include "LpmBVEKernels.hpp"
 #include "LpmVorticityGallery.hpp"
+#include "LpmPolyMesh2dVtkInterface.hpp"
+#include "LpmPolyMesh2dVtkInterface_Impl.hpp"
 #include <vector>
 #include <sstream>
 
@@ -51,6 +53,8 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
         Real avg_mesh_size_radians() const;
 
         Real avg_mesh_size_degrees() const;
+
+        void addFieldsToVtk(Polymesh2dVtkInterface<SeedType>& vtk) const;
 
     protected:
         typedef typename scalar_field::HostMirror scalar_host;
