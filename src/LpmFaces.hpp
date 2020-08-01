@@ -218,6 +218,8 @@ template <typename FaceKind> class Faces {
         */
         inline void setAreaHost(const Index ind, const Real ar) {_hostarea(ind)= ar;}
 
+        inline Real getAreaHost(const Index& ind) const {return _hostarea(ind);}
+
         /** @brief Decreases the number of leaves by one.
 
         @hostfn

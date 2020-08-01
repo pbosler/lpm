@@ -53,7 +53,7 @@ typedef typename ko::TeamPolicy<>::member_type member_type;
 
 /// Memory spaces
 typedef ko::DefaultExecutionSpace::memory_space DevMem;
-typedef ko::HostSpace HostMem;
+typedef ko::HostSpace::memory_space HostMem;
 
 /// Devices
 typedef ko::Device<DevExe, DevMem> Dev;

@@ -24,6 +24,7 @@ namespace Lpm {
 struct PlaneGeometry {
     static constexpr Int ndim = 2;
     typedef ko::View<Real*[ndim],Dev> crd_view_type;
+    typedef ko::View<Real*[ndim],Dev> vec_view_type;
 
     template <typename V> KOKKOS_INLINE_FUNCTION
     static void setzero(V v) {
@@ -127,6 +128,7 @@ struct SphereGeometry {
     static constexpr Int ndim = 3; ///<  number of components in a position vector
 
     typedef ko::View<Real*[ndim],Dev> crd_view_type; ///< vector array type for, e.g., position and velocity
+    typedef ko::View<Real*[ndim],Dev> vec_view_type;
 
     /** \brief Returns the latitude of a point represented in Cartesian coordinates.
 

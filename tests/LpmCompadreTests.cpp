@@ -203,11 +203,11 @@ ko::initialize(argc, argv);
             ss << "gmls_icostri" << i << "_latlon" << nlon << ".m";
             std::ofstream mfile(ss.str());
             ll.writeLatLonMeshgrid(mfile);
-            ll.writeLatLonScalar(mfile, "psi", psi_host);
-            ll.writeLatLonScalar(mfile, "zeta", zeta_host);
-            ll.writeLatLonScalar(mfile, "zeta_lap", zeta_lap_host);
-            ll.writeLatLonScalar(mfile, "psi_exact", exact_psi_host);
-            ll.writeLatLonScalar(mfile, "zeta_exact", exact_zeta_host);
+//             ll.writeLatLonScalar(mfile, "psi", psi_host);
+//             ll.writeLatLonScalar(mfile, "zeta", zeta_host);
+//             ll.writeLatLonScalar(mfile, "zeta_lap", zeta_lap_host);
+//             ll.writeLatLonScalar(mfile, "psi_exact", exact_psi_host);
+//             ll.writeLatLonScalar(mfile, "zeta_exact", exact_zeta_host);
             mfile.close();
         }
     }

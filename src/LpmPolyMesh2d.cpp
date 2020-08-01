@@ -27,6 +27,7 @@ void PolyMesh2d<SeedType>::treeInit(const Int initDepth, const MeshSeed<SeedType
             }
         }
     }
+    updateDevice();
 }
 
 template <typename SeedType>
@@ -52,7 +53,6 @@ template <typename SeedType>
 void PolyMesh2d<SeedType>::updateHost() const {
     physVerts.updateHost();
     lagVerts.updateHost();
-    //edges.updateHost();
     faces.updateHost();
     physFaces.updateHost();
     lagFaces.updateHost();
@@ -74,12 +74,4 @@ template class PolyMesh2d<TriHexSeed>;
 template class PolyMesh2d<QuadRectSeed>;
 template class PolyMesh2d<IcosTriSphereSeed>;
 template class PolyMesh2d<CubedSphereSeed>;
-
-// template void PolyMesh2d<PlaneGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<TriHexSeed>& seed);
-// template void PolyMesh2d<PlaneGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<QuadRectSeed>& seed);
-// template void PolyMesh2d<SphereGeometry,TriFace>::treeInit(const Int initDepth, const MeshSeed<IcosTriSphereSeed>& seed);
-// template void PolyMesh2d<SphereGeometry,QuadFace>::treeInit(const Int initDepth, const MeshSeed<CubedSphereSeed>& seed);
-
-
-
 }

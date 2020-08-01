@@ -38,4 +38,21 @@ std::string weightName(const int ndim) {
     return result;
 }
 
+std::string& tolower(std::string& s) {
+  for (auto& c: s) {
+    c = std::tolower(c);
+  }
+  return s;
+}
+
+std::string format_strings_as_list(const char** strings, const Short n) {
+  std::stringstream ss;
+  ss << "{";
+  for (Short i=0; i<n-1; ++i) {
+    ss << strings[i] << ", ";
+  }
+  ss << strings[n-1] << "}";
+  return ss.str();
+}
+
 }

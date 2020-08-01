@@ -40,3 +40,6 @@ LpmConfig.h
 *.exe
 *.out
 *.app
+*.m
+*.csv
+*.txt

@@ -49,22 +49,26 @@ std::string indentString(const int tab_lev);
 
 std::string weightName(const int ndim);
 
-  /// Determinant of a 2x2 matrix
-  inline Real twoByTwoDeterminant(const Real a, const Real b, const Real c, const Real d) {return a*d - b*c;}
+/// Determinant of a 2x2 matrix
+inline Real twoByTwoDeterminant(const Real a, const Real b, const Real c, const Real d) {return a*d - b*c;}
 
-   /// Quadratic formula
-   void quadraticRoots(Real& r1, Real& r2, const Real a, const Real b, const Real c);
+/// Quadratic formula
+void quadraticRoots(Real& r1, Real& r2, const Real a, const Real b, const Real c);
 
 
-    /// square a scalar
-    KOKKOS_INLINE_FUNCTION
-    Real square(const Real& x) {return x*x;}
-    /// sgn function
-    KOKKOS_INLINE_FUNCTION
-    Real sign(const Real& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
-    /// cube a scalar
-    KOKKOS_INLINE_FUNCTION
-    Real cube(const Real& x) {return x*x*x;}
+/// square a scalar
+KOKKOS_INLINE_FUNCTION
+Real square(const Real& x) {return x*x;}
+/// sgn function
+KOKKOS_INLINE_FUNCTION
+Real sign(const Real& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
+/// cube a scalar
+KOKKOS_INLINE_FUNCTION
+Real cube(const Real& x) {return x*x*x;}
+
+std::string& tolower(std::string& s);
+
+std::string format_strings_as_list(const char** strings, const Short n);
 
 }
 #endif
