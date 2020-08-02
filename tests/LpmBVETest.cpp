@@ -111,7 +111,7 @@ ko::initialize(argc, argv);
 
 
   Real t;
-
+  ProgressBar progress("SolidBodyRotation test", ntimesteps);
   for (Int time_ind = 0; time_ind<ntimesteps; ++time_ind) {
     solver.advance_timestep(sphere->physVerts.crds, sphere->relVortVerts, sphere->velocityVerts,
       sphere->physFaces.crds, sphere->relVortFaces, sphere->velocityFaces, sphere->faces.area, sphere->faces.mask);
@@ -128,6 +128,8 @@ ko::initialize(argc, argv);
       SphereVelocityTangentTestFunctor(sphere->tracer_verts[0], sphere->physVerts.crds, sphere->velocityVerts));
     ko::parallel_for("BVETest: face velocity tangent", sphere->nfacesHost(),
       SphereVelocityTangentTestFunctor(sphere->tracer_faces[0], sphere->physFaces.crds, sphere->velocityFaces));
+
+    progress.update();
 
     {
       const auto relvort = sphere->relVortVerts;
