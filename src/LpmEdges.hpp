@@ -181,6 +181,13 @@ class Edges {
         inline Index getLeftHost(const Index ind) const {return _hl(ind);}
         inline Index getRightHost(const Index ind) const {return _hr(ind);}
 
+        inline edge_host_type getOrigsHost() const {return _ho;}
+        inline edge_host_type getDestsHost() const {return _hd;}
+        inline edge_host_type getLeftsHost() const {return _hl;}
+        inline edge_host_type getRightsHost() const {return _hr;}
+        inline edge_host_type getParentsHost() const {return _hp;}
+        inline edge_tree_host getKidsHost() const {return _hk;}
+
         /// Host function
         inline bool onBoundaryHost(const Index ind) const {return _hl(ind) == NULL_IND || _hr(ind) == NULL_IND;}
 

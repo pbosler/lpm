@@ -110,6 +110,13 @@ template <typename SeedType> class PolyMesh2d {
         */
         Index nvertsHost() const {return physVerts.nh();}
 
+        /** @brief Number of initialized edges
+
+        @hostfn
+        */
+        Index nedgesHost() const {return edges.nh();}
+
+
         /** @brief Number of initialized faces
 
         @hostfn

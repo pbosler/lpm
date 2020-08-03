@@ -34,6 +34,11 @@ template <typename FaceKind> class Faces {
         typedef ko::View<Index*[4]> face_tree_view;
         template <typename Geo, typename FaceType> friend struct FaceDivider;
         static constexpr Int nverts = FaceKind::nverts;
+        typedef typename face_tree_view::HostMirror face_tree_host;
+        typedef typename index_view_type::HostMirror host_index_view;
+        typedef typename vertex_view_type::HostMirror host_vertex_view;
+        typedef host_vertex_view host_edge_view;
+        typedef typename scalar_view_type::HostMirror host_scalar;
 
         mask_view_type mask; ///< non-leaf faces are masked
         vertex_view_type verts;  ///< indices to Coords on face edges, ccw order per face
@@ -67,6 +72,14 @@ template <typename FaceKind> class Faces {
             _hmask = ko::create_mirror_view(mask);
             _hlevel = ko::create_mirror_view(level);
         }
+
+        inline host_vertex_view getVertsHost() const {return _hostverts;}
+        inline host_edge_view getEdgesHost() const {return _hostedges;}
+        inline face_tree_host getKidsHost() const {return _hostkids;}
+        inline host_index_view getParentsHost() const {return _hostparent;}
+        inline host_index_view getCentersHost() const {return _hostcenters;}
+        inline typename ko::View<Int*,Dev>::HostMirror getLevelsHost() const {
+           return _hlevel;}
 
         /** @brief Copies data from host to device
         */
@@ -103,6 +116,8 @@ template <typename FaceKind> class Faces {
         @hostfn If the device has updated face areas, this function will not see it unless updateHost() is called first.
         */
         typename scalar_view_type::HostMirror getAreaHost() const {return _hostarea;}
+
+        typename mask_view_type::HostMirror getMaskHost() const {return _hmask;}
 
         /** @brief Returns the maximum number of faces allowed in memory.
         */
@@ -263,12 +278,11 @@ template <typename FaceKind> class Faces {
 //             return ko::subview(_hostverts, ind, ko::ALL());
 //         }
 //
+
+
+
     protected:
-        typedef typename face_tree_view::HostMirror face_tree_host;
-        typedef typename index_view_type::HostMirror host_index_view;
-        typedef typename vertex_view_type::HostMirror host_vertex_view;
-        typedef host_vertex_view host_edge_view;
-        typedef typename scalar_view_type::HostMirror host_scalar;
+
         host_vertex_view _hostverts;
         host_edge_view _hostedges;
         host_index_view _hostcenters;
