@@ -15,7 +15,7 @@ std::string ErrNorms<Space>::infoString(const std::string& label, const int tab_
 template <typename Space>
 void ErrNorms<Space>::compute(const SphereGeometry::crd_view_type& err,
   const SphereGeometry::crd_view_type& appx, const SphereGeometry::crd_view_type& exact, const scalar_view_type& wt) {
-  ko::parallel_for(err.extent(0), KOKKOS_LAMBDA (const Index& i) {
+  ko::parallel_for("compute vector error", err.extent(0), KOKKOS_LAMBDA (const Index& i) {
     for (Short j=0; j<err.extent(1); ++j) {
       err(i,j) = appx(i,j) - exact(i,j);
     }
@@ -27,7 +27,7 @@ template <typename Space>
 void ErrNorms<Space>::compute(const SphereGeometry::vec_view_type& err, const SphereGeometry::vec_view_type& exct,
    const scalar_view_type& wt) {
   ENormScalar rval;
-  ko::parallel_reduce(err.extent(0), KOKKOS_LAMBDA (const Index& i, ENormScalar& ll) {
+  ko::parallel_reduce("reduce error norms (vector)", err.extent(0), KOKKOS_LAMBDA (const Index& i, ENormScalar& ll) {
     auto my_err = ko::subview(err, i, ko::ALL());
     auto my_exact = ko::subview(exct, i, ko::ALL());
     const Real errmag = SphereGeometry::mag(my_err);
@@ -47,7 +47,7 @@ void ErrNorms<Space>::compute(const SphereGeometry::vec_view_type& err, const Sp
 template <typename Space>
 void ErrNorms<Space>::compute(scalar_view_type& err, const scalar_view_type& appx,
   const scalar_view_type& exact, const scalar_view_type& wt) {
-  ko::parallel_for(err.extent(0), KOKKOS_LAMBDA (const Index& i) {
+  ko::parallel_for("compute scalar error", err.extent(0), KOKKOS_LAMBDA (const Index& i) {
     err(i) = appx(i) - exact(i);
   });
   compute(err, exact, wt);
@@ -56,7 +56,7 @@ void ErrNorms<Space>::compute(scalar_view_type& err, const scalar_view_type& app
 template <typename Space>
 void ErrNorms<Space>::compute(const scalar_view_type& err, const scalar_view_type& exact, const scalar_view_type& wt) {
   ENormScalar rval;
-  ko::parallel_reduce(err.extent(0), KOKKOS_LAMBDA (const Index& i, ENormScalar& ll) {
+  ko::parallel_reduce("reduce error norms (scalar)", err.extent(0), KOKKOS_LAMBDA (const Index& i, ENormScalar& ll) {
     ll.l1num += std::abs(err(i))*wt(i);
     ll.l1denom += std::abs(exact(i))*wt(i);
     ll.l2num += square(err(i))*wt(i);
