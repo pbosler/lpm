@@ -34,6 +34,9 @@ struct Input {
 int main (int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
+
+  ko::Profiling::pushRegion("initialization");
+
   Input input(argc, argv);
   typedef CubedSphereSeed seed_type;
   //typedef IcosTriSphereSeed seed_type;
@@ -97,9 +100,12 @@ ko::initialize(argc, argv);
     vtk.write(ss.str());
   }
   {
+
+    ko::Profiling::pushRegion("initial solve");
+
     const auto facex = sphere->physFaces.crds;
     ko::View<Real*[3]> fexactvel("exact_velocity", sphere->nfacesHost());
-    ko::parallel_for(sphere->nfacesHost(), KOKKOS_LAMBDA (const Index& i) {
+    ko::parallel_for("initial face vel. err.", sphere->nfacesHost(), KOKKOS_LAMBDA (const Index& i) {
       const auto myx = ko::subview(facex,i,ko::ALL());
       fexactvel(i,0) = -Omega*myx(1);
       fexactvel(i,1) =  Omega*myx(0);
@@ -107,17 +113,25 @@ ko::initialize(argc, argv);
     });
     ErrNorms<> facevel_err(face_velocity_error, sphere->velocityFaces, fexactvel, sphere->faces.area);
     std::cout << facevel_err.infoString("velocity error at t=0");
+
+    ko::Profiling::popRegion();
   }
 
+  ko::Profiling::popRegion();
 
   Real t;
   ProgressBar progress("SolidBodyRotation test", ntimesteps);
+
+  ko::Profiling::pushRegion("main loop");
+
   for (Int time_ind = 0; time_ind<ntimesteps; ++time_ind) {
     solver.advance_timestep(sphere->physVerts.crds, sphere->relVortVerts, sphere->velocityVerts,
       sphere->physFaces.crds, sphere->relVortFaces, sphere->velocityFaces, sphere->faces.area, sphere->faces.mask);
 
     sphere->t = (time_ind+1)*dt;
     t = sphere->t;
+
+    ko::Profiling::pushRegion("post-timestep solve");
 
     ko::parallel_for("BVETest: vertex stream function", vertex_policy,
       BVEVertexStreamFn(sphere->streamFnVerts, sphere->physVerts.crds,
@@ -129,9 +143,15 @@ ko::initialize(argc, argv);
     ko::parallel_for("BVETest: face velocity tangent", sphere->nfacesHost(),
       SphereVelocityTangentTestFunctor(sphere->tracer_faces[0], sphere->physFaces.crds, sphere->velocityFaces));
 
+    ko::Profiling::popRegion();
+
     progress.update();
 
+    ko::Profiling::pushRegion("error computation");
     {
+
+      ko::Profiling::pushRegion("error at vertices");
+
       const auto relvort = sphere->relVortVerts;
       const auto absvort = sphere->absVortVerts;
       auto vorterr = sphere->tracer_verts[vorticity_err_ind];
@@ -152,8 +172,12 @@ ko::initialize(argc, argv);
           vert_position_error(i,j) = myx(j) - exactpos[j];
         }
       });
+
+      ko::Profiling::popRegion();
     }
     {
+      ko::Profiling::pushRegion("error at faces");
+
       const auto relvort = sphere->relVortFaces;
       const auto absvort = sphere->absVortFaces;
       auto vorterr = sphere->tracer_faces[vorticity_err_ind];
@@ -174,8 +198,13 @@ ko::initialize(argc, argv);
           face_position_error(i,j) = myx(j) - exactpos[j];
         }
       });
+
+      ko::Profiling::popRegion();
     }
+    ko::Profiling::popRegion();
     if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
+
+      ko::Profiling::pushRegion("vtk output");
 
       Polymesh2dVtkInterface<seed_type> vtk(sphere);
       sphere->addFieldsToVtk(vtk);
@@ -188,12 +217,16 @@ ko::initialize(argc, argv);
       ss << "tmp/" << input.case_name << seed_type::faceStr() << input.max_depth << "_dt" << dt << "_";
       ss << std::setfill('0') << std::setw(4) << time_ind+1 <<  ".vtp";
       vtk.write(ss.str());
+
+      ko::Profiling::popRegion();
     }
   }
   {
+    ko::Profiling::pushRegion("final error norms at faces");
+
     const auto facex = sphere->physFaces.crds;
     ko::View<Real*[3]> fexactvel("exact_velocity", sphere->nfacesHost());
-    ko::parallel_for(sphere->nfacesHost(), KOKKOS_LAMBDA (const Index& i) {
+    ko::parallel_for("final face vel. err.",sphere->nfacesHost(), KOKKOS_LAMBDA (const Index& i) {
       const auto myx = ko::subview(facex,i,ko::ALL());
       fexactvel(i,0) = -Omega*myx(1);
       fexactvel(i,1) =  Omega*myx(0);
@@ -205,7 +238,10 @@ ko::initialize(argc, argv);
     std::cout << facevort_err.infoString("vorticity error at t=tfinal");
     std::cout << facevel_err.infoString("velocity error at t=tfinal");
     std::cout << facepos_err.infoString("position error at t=tfinal");
+
+    ko::Profiling::popRegion();
   }
+  ko::Profiling::popRegion();
 }
 std::cout << "tests pass" << std::endl;
 ko::finalize();

@@ -42,6 +42,8 @@ struct RK4Update {
 void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& vvel,
       crd_view& fx, scalar_view_type& fzeta, vec_view& fvel, const scalar_view_type& fa, const mask_view_type& fm) {
 
+  ko::Profiling::pushRegion("BVERK4::advance_timestep");
+
   ko::TeamPolicy<> vertex_policy(nverts, ko::AUTO());
   ko::TeamPolicy<> face_policy(nfaces, ko::AUTO());
 
@@ -123,6 +125,8 @@ void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& v
   ko::parallel_for("RK4-0 face velocity", face_policy,
     BVEFaceVelocity(facevel, facex, facevort, facearea, facemask, nfaces));
 
+
+  ko::Profiling::popRegion();
 }
 
 
