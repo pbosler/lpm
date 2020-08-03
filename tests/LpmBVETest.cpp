@@ -10,6 +10,7 @@
 #include "LpmPolyMesh2dVtkInterface.hpp"
 #include "LpmPolyMesh2dVtkInterface_Impl.hpp"
 #include "LpmErrorNorms.hpp"
+#include "LpmTimer.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "KokkosBlas.hpp"
@@ -40,7 +41,10 @@ ko::initialize(argc, argv);
   Input input(argc, argv);
   typedef CubedSphereSeed seed_type;
   //typedef IcosTriSphereSeed seed_type;
-
+  Timer init_timer("initialization");
+  init_timer.start();
+  Timer total_timer("total");
+  total_timer.start();
 
   const Index tree_depth = input.max_depth;
   Index nmaxverts, nmaxedges, nmaxfaces;
@@ -87,6 +91,8 @@ ko::initialize(argc, argv);
   }
   std::cout << "\ttfinal = " << tfinal << "\n";
 
+  Timer output_timer("output");
+  output_timer.start();
   {
     std::ostringstream ss;
     Polymesh2dVtkInterface<seed_type> vtk(sphere);
@@ -99,6 +105,11 @@ ko::initialize(argc, argv);
     ss << "tmp/" << input.case_name << seed_type::faceStr() << input.max_depth << "_dt" << dt << "_" << "0000.vtp";
     vtk.write(ss.str());
   }
+  output_timer.stop();
+
+
+  Timer single_solve_timer("single solve");
+  single_solve_timer.start();
   {
 
     ko::Profiling::pushRegion("initial solve");
@@ -116,14 +127,22 @@ ko::initialize(argc, argv);
 
     ko::Profiling::popRegion();
   }
+  single_solve_timer.stop();
+
+  const Real est_solve_time = 4*ntimesteps*single_solve_timer.elapsed();
+  const Real est_total_time = est_solve_time + ntimesteps/input.output_interval*output_timer.elapsed();
+  std::cout << "estimated run time = " << est_total_time << " seconds (" << est_total_time/60 << " minutes)\n";
 
   ko::Profiling::popRegion();
 
   Real t;
-  ProgressBar progress("SolidBodyRotation test", ntimesteps);
+
+  init_timer.stop();
+
+  std::cout << init_timer.infoString();
 
   ko::Profiling::pushRegion("main loop");
-
+  ProgressBar progress("SolidBodyRotation test", ntimesteps);
   for (Int time_ind = 0; time_ind<ntimesteps; ++time_ind) {
     solver.advance_timestep(sphere->physVerts.crds, sphere->relVortVerts, sphere->velocityVerts,
       sphere->physFaces.crds, sphere->relVortFaces, sphere->velocityFaces, sphere->faces.area, sphere->faces.mask);
@@ -242,6 +261,8 @@ ko::initialize(argc, argv);
     ko::Profiling::popRegion();
   }
   ko::Profiling::popRegion();
+  total_timer.stop();
+  std::cout << total_timer.infoString();
 }
 std::cout << "tests pass" << std::endl;
 ko::finalize();
