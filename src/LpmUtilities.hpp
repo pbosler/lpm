@@ -66,6 +66,16 @@ Real sign(const Real& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
 KOKKOS_INLINE_FUNCTION
 Real cube(const Real& x) {return x*x*x;}
 
+template <typename MaskViewType>
+Index mask_count(const MaskViewType& mv) {
+  Index result;
+  ko::parallel_reduce("mask_count", mv.extent(0),
+    KOKKOS_LAMBDA (const Index& i, Index& s) {
+      if (mv(i)) ++s;
+    }, result);
+  return result;
+}
+
 std::string& tolower(std::string& s);
 
 std::string format_strings_as_list(const char** strings, const Short n);

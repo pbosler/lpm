@@ -4,6 +4,7 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
                     "${VTK_INCLUDE_DIRS}"
                     "${Trilinos_INCLUDE_DIRS}"
                     "${Trilinos_TPL_INCLUDE_DIRS}"
+                    "${NETCDF_H_PATH}"
 )
 
 ADD_EXECUTABLE(lpmGeomTest LpmGeometryUnitTests.cpp)
@@ -99,3 +100,7 @@ ADD_EXECUTABLE(lpmBVETest LpmBVETest.cpp)
 TARGET_LINK_LIBRARIES(lpmBVETest lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 ADD_TEST(lpmBVETest lpmBVETest)
 
+ADD_EXECUTABLE(lpmNetCDFTest LpmNetCDFTest.cpp)
+TARGET_LINK_LIBRARIES(lpmNetCDFTest lpm ${Trilinos_LIBRARIES} ${CMAKE_DL_LIBS}
+  ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES} ${NETCDF_C} ${NETCDF_CXX})
+ADD_TEST(lpmNetCDFTest lpmNetCDFTest)

@@ -1,7 +1,8 @@
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}"
                     "${VTK_INCLUDE_DIRS}"
                     "${Trilinos_INCLUDE_DIRS}"
-                    "${Trilinos_TPL_INCLUDE_DIRS}")
+                    "${Trilinos_TPL_INCLUDE_DIRS}"
+                    "${NETCDF_H_PATH}")
 
 add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmFaces.cpp LpmVtkIO.cpp
     LpmPolyMesh2d.cpp LpmCompadre.cpp
@@ -10,12 +11,18 @@ add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmF
     LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
     LpmSphereVoronoiPrimitives.cpp LpmSphereVoronoiMesh.cpp
     LpmBVESphere.cpp LpmVorticityGallery.cpp LpmRK4.cpp
-    LpmPolyMesh2dVtkInterface.cpp LpmTimer.cpp
+    LpmPolyMesh2dVtkInterface.cpp LpmTimer.cpp LpmNetCDF.cpp
 )
 TARGET_LINK_LIBRARIES(lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} ${Trilinos_TPL_LIBRARIES})
 if (USE_SPHEREPACK)
     message(STATUS "linking to spherepack")
     TARGET_LINK_LIBRARIES(lpm spherepack)
+endif()
+if (HAS_NETCDF)
+  MESSAGE(STATUS "linking to netcdf -- restart capability enabled")
+  TARGET_LINK_LIBRARIES(lpm ${NETCDF_C} ${NETCDF_CXX})
+else()
+  MESSAGE(STATUS "no netcdf found -- restart capability disabled")
 endif()
 
 install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
@@ -25,5 +32,6 @@ install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hp
               LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
               LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
               LpmRK4.hpp LpmRK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
+              LpmNetCDF.hpp
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)

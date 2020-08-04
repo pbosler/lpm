@@ -22,6 +22,7 @@ namespace Lpm {
         crd_view_type : View type associated with vectors in Euclidean space
 */
 struct PlaneGeometry {
+    static std::string idString() {return "PlaneGeometry";}
     static constexpr Int ndim = 2;
     typedef ko::View<Real*[ndim],Dev> crd_view_type;
     typedef ko::View<Real*[ndim],Dev> vec_view_type;
@@ -125,6 +126,7 @@ struct PlaneGeometry {
   [x0,x1,x2] with \f$ x_0^2 + x_1^2 + x_2^2 = 1 \f$.
 */
 struct SphereGeometry {
+    static std::string idString() {return "SphereGeometry";}
     static constexpr Int ndim = 3; ///<  number of components in a position vector
 
     typedef ko::View<Real*[ndim],Dev> crd_view_type; ///< vector array type for, e.g., position and velocity
