@@ -1,6 +1,9 @@
 #include "LpmPolyMesh2d.hpp"
 #include "LpmKokkosUtil.hpp"
 #include "LpmVtkIO.hpp"
+#ifdef LPM_HAVE_NETCDF
+#include "LpmNetCDF.hpp"
+#endif
 
 namespace Lpm {
 
@@ -13,6 +16,14 @@ void PolyMesh2d<SeedType>::seedInit(const MeshSeed<SeedType>& seed) {
     physFaces.initInteriorCrdsFromSeed(seed);
     lagFaces.initInteriorCrdsFromSeed(seed);
 }
+
+#ifdef LPM_HAVE_NETCDF
+template <typename SeedType>
+PolyMesh2d<SeedType>::PolyMesh2d(const PolyMeshReader& reader) :
+  physVerts(reader.getVertPhysCrdView()), lagVerts(reader.getVertLagCrdView()),
+  edges(reader), faces(reader), physFaces(reader.getFacePhysCrdView()),
+  lagFaces(reader.getFaceLagCrdView()) {updateDevice();}
+#endif
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::treeInit(const Int initDepth, const MeshSeed<SeedType>& seed) {
