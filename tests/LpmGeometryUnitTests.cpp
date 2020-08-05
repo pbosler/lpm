@@ -166,6 +166,14 @@ ko::initialize(argc, argv);
 
 
     } // END SPHERICAL TESTS
+
+    { // circle tests
+
+      const Real r2a[2] = {1.0, 0.0};
+      const Real r2b[2] = {0.0, 1.0};
+
+
+    }
 }
 std::cout << "tests pass." << std::endl;
 ko::finalize();

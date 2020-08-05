@@ -22,7 +22,9 @@ template <typename SeedType>
 PolyMesh2d<SeedType>::PolyMesh2d(const PolyMeshReader& reader) :
   physVerts(reader.getVertPhysCrdView()), lagVerts(reader.getVertLagCrdView()),
   edges(reader), faces(reader), physFaces(reader.getFacePhysCrdView()),
-  lagFaces(reader.getFaceLagCrdView()) {updateDevice();}
+  lagFaces(reader.getFaceLagCrdView()) {
+  baseTreeDepth = reader.getTreeDepth();
+  updateDevice();}
 #endif
 
 template <typename SeedType>

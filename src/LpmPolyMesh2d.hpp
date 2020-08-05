@@ -18,7 +18,7 @@ namespace Lpm {
 
 enum FieldKind {VertexField, EdgeField, FaceField};
 
-#ifdef LPM_HAVE_VTK
+#ifdef LPM_HAVE_NETCDF
   class PolyMeshReader; /// fwd. decl.
 #endif
 

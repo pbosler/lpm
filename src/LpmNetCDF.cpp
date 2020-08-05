@@ -137,6 +137,13 @@ void PolyMeshReader::fill_edge_tree(host_index_view& hv,
   }
 }
 
+Int PolyMeshReader::getTreeDepth() const {
+  const auto att = ncfile->getAtt("baseTreeDepth");
+  Int result;
+  att.getValues(&result);
+  return result;
+}
+
 void PolyMeshReader::fill_facemask(host_mask_view& hv) const {
   const auto var_it = vars.find("face_mask");
   const std::vector<size_t> start(1,0);
