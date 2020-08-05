@@ -82,6 +82,40 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
   _hnLeaves() -= 1;
 }
 
+template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
+  Coords<CircularPlaneGeometry>& crds, Coords<CircularPlaneGeometry>& lagcrds) {
+  LPM_THROW_IF(_nh()+2 > _nmax, "Edges::divide error: not enough memory.");
+  LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
+
+  // record starting state
+  const Index crd_ins_pt = crds.nh();
+  const Index edge_ins_pt = _nh();
+
+  // determine edge midpoints
+  ko::View<Real[2], Host> midpt("midpt"), lagmidpt("lagmidpt");
+  ko::View<Real[2][2],Host> endpts("endpts"), lagendpts("lagendpts");
+  for (Short i=0; i<2; ++i) {
+    endpts(0,i) = crds.getCrdComponentHost(_ho(ind), i);
+    lagendpts(0,i) = lagcrds.getCrdComponentHost(_ho(ind),i);
+    endpts(1,i) = crds.getCrdComponentHost(_hd(ind), i);
+    lagendpts(1,i) = lagcrds.getCrdComponentHost(_hd(ind),i);
+  }
+  const Real lr0 = CircularPlaneGeometry::mag(ko::subview(lagendpts,0,ko::ALL()));
+  const Real lr1 = CircularPlaneGeometry::mag(ko::subview(lagendpts,1,ko::ALL()));
+  if (fp_equiv(lr0, lr1, 10*ZERO_TOL)) {
+    CircularPlaneGeometry::radial_midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+      ko::subview(endpts,1,ko::ALL()));
+    CircularPlaneGeometry::radial_midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+      ko::subview(lagendpts,1,ko::ALL()));
+  }
+  else {
+    CircularPlaneGeometry::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+      ko::subview(endpts,1,ko::ALL()));
+    CircularPlaneGeometry::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+      ko::subview(lagendpts,1,ko::ALL()));
+  }
+}
+
 std::string Edges::infoString(const std::string& label, const short& tab_level, const bool& dump_all) const {
   std::ostringstream oss;
   const auto indent = indentString(tab_level);

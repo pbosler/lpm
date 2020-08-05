@@ -126,7 +126,7 @@ struct CircularPlaneGeometry : public PlaneGeometry {
   template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
   static void radial_midpoint(V v, const CV& a, const CV& b) {
     const Real ra = mag(a);
-    const Real rb = mab(b);
+    const Real rb = mag(b);
 
     const Real rmid = 0.5*(ra+rb);
     midpoint(v, a, b);
@@ -174,7 +174,7 @@ struct CircularPlaneGeometry : public PlaneGeometry {
 
   template <typename CV1, typename CV2> KOKKOS_INLINE_FUNCTION
   static Real polygonArea(const CV1& ctr, const CV2& verts, const Int nverts) {
-    return quad_sector_area(ko::subview(verts, 0, ko::ALL()), ko::subview(verts, 3, ko::ALL()));
+    return quad_sector_area(ko::subview(verts, 0, ko::ALL()), ko::subview(verts, 2, ko::ALL()));
   }
 };
 

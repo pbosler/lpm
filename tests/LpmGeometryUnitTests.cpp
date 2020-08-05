@@ -1,6 +1,7 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
+#include "LpmUtilities.hpp"
 #include <typeinfo>
 #include <fstream>
 #include <string>
@@ -169,9 +170,40 @@ ko::initialize(argc, argv);
 
     { // circle tests
 
-      const Real r2a[2] = {1.0, 0.0};
-      const Real r2b[2] = {0.0, 1.0};
+      const Real r2a[2] = {0.0, 1.0};
+      const Real r2b[2] = {0.0, 0.5};
+      const Real r2c[2] = {0.5, 0.0};
+      const Real r2d[2] = {1.0, 0.0};
 
+      Real cmid[2];
+      CircularPlaneGeometry::radial_midpoint(cmid, r2a, r2d);
+      printf("endpt0 = (%f, %f) has r = %f\n", r2a[0], r2a[1], CircularPlaneGeometry::mag(r2a));
+      printf("endpt1 = (%f, %f) has r = %f\n", r2d[0], r2d[1], CircularPlaneGeometry::mag(r2d));
+      printf("midpt = (%f, %f) has r = %f\n", cmid[0], cmid[1], CircularPlaneGeometry::mag(cmid));
+      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::mag(cmid), 1.0), "radial midpoint test failed.");
+
+      printf("theta_b = %f\n", CircularPlaneGeometry::theta(r2b));
+      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::theta(r2b), 0.5*PI), "theta test failed.");
+
+      printf("dtheta(b,c) = %f\n", CircularPlaneGeometry::dtheta(r2b,r2c));
+      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::dtheta(r2b,r2c), 0.5*PI), "dtheta test failed.");
+
+      const Real qsa = CircularPlaneGeometry::quad_sector_area(r2a, r2c);
+      printf("area(a,b,c,d) = %f\n", qsa);
+      LPM_THROW_IF(!fp_equiv(qsa,(0.5*(PI/2)*(square(1.0)-square(0.5)))), "sector area test faild");
+      LPM_THROW_IF(!fp_equiv(4*qsa + PI*square(0.5), PI),"unit disk area test failed.");
+
+      ko::View<Real[4][2],Host> sector("sector");
+      for (Short i=0;i<2;++i) {
+        sector(0,i) = r2a[i];
+        sector(1,i) = r2b[i];
+        sector(2,i) = r2c[i];
+        sector(3,i) = r2d[i];
+      }
+      const Real ctr[2] = {std::cos(PI/4)*3/4, std::sin(PI/4)*3/4};
+      const Real pa = CircularPlaneGeometry::polygonArea(ctr, sector, 4);
+      printf("circ. polygonArea = %f\n", pa);
+      LPM_THROW_IF(!fp_equiv(qsa,pa), "circular polygon area test failed.");
 
     }
 }

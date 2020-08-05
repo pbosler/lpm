@@ -55,6 +55,11 @@ inline Real twoByTwoDeterminant(const Real a, const Real b, const Real c, const 
 /// Quadratic formula
 void quadraticRoots(Real& r1, Real& r2, const Real a, const Real b, const Real c);
 
+/// floating point equivalence
+template <typename T> KOKKOS_INLINE_FUNCTION
+bool fp_equiv(const T& a, const T& b, const T& tol=ZERO_TOL) {
+  return std::abs(a-b) <= tol;
+}
 
 /// square a scalar
 KOKKOS_INLINE_FUNCTION

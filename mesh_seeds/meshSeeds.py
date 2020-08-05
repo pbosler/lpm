@@ -787,7 +787,7 @@ def unitDiskSeed():
   edgeLefts = np.array([0,0,0,0, 1,  1,  2, 3, 4, 4, 2, 2],dtype=int)
   edgeRights= np.array([1,2,3,4, 4, -1, -1,-1,-1, 3, 1, 2],dtype=int)
   faceVerts = np.array([[0,1,2,3], [5,0,3,4], [6,1,0,5], [7,2,1,6], [4,3,2,7]],dtype=int)
-  faceEdges = np.array([[1,2,3,0], [10,0,4,5], [11,1,10,6], [9,2,11,7], [4,2,9,8]],dtype=int)
+  faceEdges = np.array([[1,2,3,0], [10,0,4,5], [11,1,10,6], [9,2,11,7], [4,3,9,8]],dtype=int)
   faceCenters = np.array([8,9,10,11,12],dtype=int)
   edgeInteriors = None
   return xyz, edgeOrigs, edgeDests, edgeLefts, edgeRights, edgeInteriors, \
@@ -845,27 +845,47 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
         ax3.text(0.1,0.05, 'v', color='k')
 
     elif 'quad' in oname or 'Disk' in oname:
-        corners = np.array([[-1.,1.],[-1.,-1.],[1.,-1.],[1.,1.]])
-        ax2.set_aspect('equal')
-        rangle=ax2.transData.transform_angles(np.array((90,)),corners[0].reshape((1,2)))[0]
-        ax2.text(corners[1,0]-0.25,corners[1,1]+0.15,'panel-relative indexing',color='k',rotation=90,rotation_mode='anchor')
-        sq = plt.Polygon(corners, facecolor='white', edgecolor='r')
-        ax2.add_patch(sq)
+        if 'Disk' in oname:
+          corners = np.array([[-1,0], [-0.5,0], [0,0.5], [0,1]])
+          arcouter = Arc([0,0],2,2, angle=90, theta1=0, theta2=90, color='r');
+          arcinner = Arc([0,0],1,1, angle=90, theta1=0, theta2=90, color='r')
+          ax2.add_patch(arcouter)
+          ax2.add_patch(arcinner)
+          upline = Line2D([0,0],[0.5,1],color='r')
+          lline = Line2D([-1,-0.5],[0,0],color='r')
+          ax2.add_line(upline)
+          ax2.add_line(lline)
+          ctr_pos = (3*np.cos(3*np.pi/4)/4, 3*np.sin(3*np.pi/4)/4)
+          ax2.text(-1, -0.5,'panel-relative indexing',color='k')
+          emkrsxy = np.array(((-0.9, -0.2),
+                              (0.35*np.cos(3*np.pi/4), 0.325*np.sin(3*np.pi/4)),
+                              (0.1,0.75),
+                              (1.15*np.cos(3*np.pi/4), 1.15*np.sin(3*np.pi/4))))
 
-        ax3.set_aspect('equal')
-        verts = np.array(((0,0), (0,-1), (1,0), (0,1),(-1,0)))
-        ax3.text(corners[1,0]-0.25,corners[1,1]+0.15, 'vertex-relative indexing', color='k', rotation=90, rotation_mode='anchor')
 
 
-        for i in range(1,5):
+          for i in range(4):
+            ax2.text(emkrsxy[i,0], emkrsxy[i,1], 'e'+str(i+indexBase),color='r')
+        else:
+          corners = np.array([[-1.,1.],[-1.,-1.],[1.,-1.],[1.,1.]])
+          sq = plt.Polygon(corners, facecolor='white', edgecolor='r')
+          ax2.add_patch(sq)
+          ctr_pos = (0,0)
+          for i in range(4):
+            ax2.text(0.5*(corners[i,0]+corners[(i+1)%4,0]), 0.5*(corners[i,1]+corners[(i+1)%4,1]), 'e'+str(i+indexBase),color='r')
+          ax2.text(corners[1,0]-0.25,corners[1,1]+0.15,'panel-relative indexing',color='k',rotation=90,rotation_mode='anchor')
+          verts = np.array(((0,0), (0,-1), (1,0), (0,1),(-1,0)))
+          for i in range(1,5):
             eline = Line2D((verts[0,0],verts[i,0]), (verts[0,1], verts[i,1]), color='r')
             ax3.add_line(eline)
             ax3.text(0.5*(verts[0,0] + verts[i,0]) + 0.05, 0.5*(verts[0,1]+verts[i,1])+0.05, 'e'+str(i-1+indexBase), color='r')
-        ax3.plot(verts[:,0],verts[:,1],'k.',markersize=8)
-        ax3.text(0.05, 0.05, 'v',color='k')
+          ax3.plot(verts[:,0],verts[:,1],'k.',markersize=8)
+          ax3.text(0.05, 0.05, 'v',color='k')
 
-        for i in range(4):
-            ax2.text(0.5*(corners[i,0]+corners[(i+1)%4,0]), 0.5*(corners[i,1]+corners[(i+1)%4,1]), 'e'+str(i+indexBase),color='r')
+          ax3.text(corners[1,0]-0.25,corners[1,1]+0.15, 'vertex-relative indexing', color='k', rotation=90, rotation_mode='anchor')
+
+        ax2.set_aspect('equal')
+        ax3.set_aspect('equal')
 
         if 'cubic' in oname or 'Cubic' in oname:
             pts, qp, qw = refQuadCubic()
@@ -876,10 +896,10 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
                 ax2.text(pt[0]+0.01,pt[1]+0.01,'c'+str(i+indexBase), color='k')
         else:
             ax2.plot(corners[:,0],corners[:,1],'k.',markersize=8)
-            ax2.plot(0,0,'k.',markersize=8)
+            ax2.plot(ctr_pos[0], ctr_pos[1],'k.',markersize=8)
             for i in range(4):
                 ax2.text(corners[i,0]+0.01,corners[i,1]+0.01,'v'+str(i+indexBase),color='k')
-            ax2.text(0.01,0.01,'c'+str(indexBase), color='k')
+            ax2.text(ctr_pos[0]+0.01, ctr_pos[1]+0.01,'c'+str(indexBase), color='k')
 
 
 
