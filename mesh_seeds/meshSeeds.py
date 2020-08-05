@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
+from matplotlib.patches import FancyArrowPatch, Arc
 import codecs
 
 indexBase = 0
@@ -765,6 +766,33 @@ def sphereEdgeXyz(xyz, orig, dest, crossPi=False):
         result[i] /= norm
     return result
 
+def unitDiskSeed():
+  xyz = np.zeros([13,2])
+  xyz[0] = (0,1/2)
+  xyz[1] = (-1/2,0)
+  xyz[2] = (0,-1/2)
+  xyz[3] = (1/2,0)
+  xyz[4] = (1,0)
+  xyz[5] = (0,1)
+  xyz[6] = (-1,0)
+  xyz[7] = (0,-1)
+  xyz[8] = (0,0)
+  xyz[9] = (3/4*np.cos(np.pi/4), 3/4*np.sin(np.pi/4))
+  xyz[10]= (3/4*np.cos(3*np.pi/4), 3/4*np.sin(3*np.pi/4))
+  xyz[11]= (3/4*np.cos(-3*np.pi/4),3/4*np.sin(-3*np.pi/4))
+  xyz[12]= (3/4*np.cos(-np.pi/4), 3/4*np.sin(-np.pi/4))
+             #0 1 2 3  4   5   6  7  8  9 10 11
+  edgeOrigs = np.array([3,0,1,2, 3,  4,  5, 6, 7, 2, 0, 6],dtype=int)
+  edgeDests = np.array([0,1,2,3, 4,  5,  6, 7, 4, 7, 5, 1],dtype=int)
+  edgeLefts = np.array([0,0,0,0, 1,  1,  2, 3, 4, 4, 2, 2],dtype=int)
+  edgeRights= np.array([1,2,3,4, 4, -1, -1,-1,-1, 3, 1, 2],dtype=int)
+  faceVerts = np.array([[0,1,2,3], [5,0,3,4], [6,1,0,5], [7,2,1,6], [4,3,2,7]],dtype=int)
+  faceEdges = np.array([[1,2,3,0], [10,0,4,5], [11,1,10,6], [9,2,11,7], [4,2,9,8]],dtype=int)
+  faceCenters = np.array([8,9,10,11,12],dtype=int)
+  edgeInteriors = None
+  return xyz, edgeOrigs, edgeDests, edgeLefts, edgeRights, edgeInteriors, \
+  faceVerts, faceCenters, faceEdges
+
 def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges):
     m_size = 4.0
     m_width = m_size / 4.0
@@ -816,7 +844,7 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
         ax3.plot(xyz[:7,0], xyz[:7,1], 'k.',markersize=8)
         ax3.text(0.1,0.05, 'v', color='k')
 
-    elif 'quad' in oname:
+    elif 'quad' in oname or 'Disk' in oname:
         corners = np.array([[-1.,1.],[-1.,-1.],[1.,-1.],[1.,1.]])
         ax2.set_aspect('equal')
         rangle=ax2.transData.transform_angles(np.array((90,)),corners[0].reshape((1,2)))[0]
@@ -859,6 +887,10 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
     ax0.plot(xyz[:,0], xyz[:,1], 'ko', markersize=m_size)
     ax0.set(title='edges & particles') #, xlabel='x', ylabel='y')
     ax0.set_aspect('equal','box')
+    ax1.set_xlim([-1.1,1.1])
+    ax1.set_ylim([-1.1,1.1])
+    ax1.set_aspect('equal','box')
+    ax1.set(title='faces & edges' )#,xlabel='x',ylabel='y')
 
     nparticles = np.shape(xyz)[0]
     nedges = np.shape(origs)[0]
@@ -868,35 +900,30 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
     for i in range(nparticles):
         ax0.text(xyz[i,0], xyz[i,1], str(i+indexBase), color='k')
 
-    for i in range(nedges):
-        if ints is not None:
-            exy = edgeXyz(xyz, origs[i], dests[i], ints[i])
-        else:
-            exy = edgeXyz(xyz, origs[i], dests[i], None)
-        dx = exy[1:,0] - exy[0:-1,0]
-        dy = exy[1:,1] - exy[0:-1,1]
-        midpt = 0.5 * (exy[0] + exy[-1])
-        ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
-            head_length=0.05, fc='r', ec='r', length_includes_head=False)
-        ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
-        ax0.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
+    if 'Disk' not in oname:
+      for i in range(nedges):
+          if ints is not None:
+              exy = edgeXyz(xyz, origs[i], dests[i], ints[i])
+          else:
+              exy = edgeXyz(xyz, origs[i], dests[i], None)
+          midpt = 0.5 * (exy[0] + exy[-1])
+          ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+              head_length=0.05, fc='r', ec='r', length_includes_head=False)
+          ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+          ax0.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
 
-    ax1.set_aspect('equal','box')
-    ax1.set(title='faces & edges' )#,xlabel='x',ylabel='y')
-    for i in range(nedges):
-        if ints is not None:
-            exy = edgeXyz(xyz, origs[i], dests[i], ints[i])
-        else:
-            exy = edgeXyz(xyz, origs[i], dests[i], None)
-        dx = exy[1:,0] - exy[0:-1,0]
-        dy = exy[1:,1] - exy[0:-1,1]
-        midpt = 0.5 * (exy[0] + exy[-1])
-        ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
-            head_length=0.05, fc='r', ec='r', length_includes_head=False)
-        ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
-        ax1.text(midpt[0], midpt[1]+0.1, str(i+indexBase), color='r')
 
-    for i in range(nfaces):
+      for i in range(nedges):
+          if ints is not None:
+              exy = edgeXyz(xyz, origs[i], dests[i], ints[i])
+          else:
+              exy = edgeXyz(xyz, origs[i], dests[i], None)
+          midpt = 0.5 * (exy[0] + exy[-1])
+          ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+              head_length=0.05, fc='r', ec='r', length_includes_head=False)
+          ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+          ax1.text(midpt[0], midpt[1]+0.1, str(i+indexBase), color='r')
+      for i in range(nfaces):
         cntd = np.zeros(2)
         for j in range(nverts):
             cntd += xyz[faceVerts[i,j]]
@@ -907,6 +934,75 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
                 cntd += xyz[faceCenters[i]]
         cntd /= (nverts+ncenters)
         ax1.text(cntd[0], cntd[1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
+    else:
+      ctr = [0,0]
+      for i in range(4):
+        exy = edgeXyz(xyz, origs[i], dests[i], None)
+        midpt = 0.5 * (exy[0] + exy[-1])
+        mnrm = np.sqrt(np.sum(midpt.dot(midpt)))
+        midpt *= 0.5/mnrm
+#         arw = FancyArrowPatch(exy[0], midpt, connectionstyle="arc3,rad=0.25", **akw)
+        rad = 0.5
+        diam = 2*rad
+        arc1 = Arc(ctr, diam, diam, angle=i*90,theta1=0, theta2=45, color='r')
+        arc11= Arc(ctr, diam, diam, angle=i*90,theta1=0, theta2=45, color='r')
+        ax0.add_patch(arc1)
+        arwstartx = rad*np.cos((2*i+1)*np.pi/4)
+        arwstarty = rad*np.sin((2*i+1)*np.pi/4)
+        arwdx = -0.00001*rad*np.sin((2*i+1)*np.pi/4)
+        arwdy =  0.00001*rad*np.cos((2*i+1)*np.pi/4)
+        ax0.arrow(arwstartx, arwstarty, arwdx, arwdy, head_width=0.1, head_length=0.04,
+          fc='r', ec='r', length_includes_head=False)
+        arc2 = Arc(ctr, diam,diam, angle=90*i+45, theta1=0, theta2=45, color='r')
+        arc21 = Arc(ctr, diam,diam, angle=90*i+45, theta1=0, theta2=45, color='r')
+        ax0.add_patch(arc2)
+        ax0.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
+        ax1.add_patch(arc11)
+        ax1.arrow(arwstartx, arwstarty, arwdx, arwdy, head_width=0.1, head_length=0.04,
+          fc='r', ec='r', length_includes_head=False)
+        ax1.add_patch(arc21)
+        ax1.text(midpt[0], midpt[1]+0.1, str(i+indexBase), color='r')
+      for i in  [4, 9, 10, 11]:
+        exy = edgeXyz(xyz, origs[i], dests[i], None)
+        midpt = 0.5 * (exy[0] + exy[-1])
+        ax0.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+              head_length=0.05, fc='r', ec='r', length_includes_head=False)
+        ax0.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+        ax0.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
+        ax1.arrow(exy[0,0], exy[0,1], midpt[0]-exy[0,0], midpt[1]-exy[0,1], head_width=0.1,
+              head_length=0.05, fc='r', ec='r', length_includes_head=False)
+        ax1.plot([midpt[0],exy[-1,0]],[midpt[1],exy[-1,1]],'r-')
+        ax1.text(midpt[0], midpt[1]+0.1, str(i+indexBase), color='r')
+      for i in range(5,9):
+        exy = edgeXyz(xyz, origs[i], dests[i], None)
+        midpt = 0.5 * (exy[0] + exy[-1])
+        mnrm = np.sqrt(np.sum(midpt.dot(midpt)))
+        midpt /= mnrm
+#         arw = FancyArrowPatch(exy[0], midpt, connectionstyle="arc3,rad=0.25", **akw)
+        rad = 1
+        diam = 2*rad
+        arc1 = Arc(ctr, diam, diam, angle=i*90,theta1=0, theta2=45, color='r')
+        arc11= Arc(ctr, diam, diam, angle=i*90,theta1=0, theta2=45, color='r')
+        ax0.add_patch(arc1)
+        arwstartx = rad*np.cos((2*i+1)*np.pi/4)
+        arwstarty = rad*np.sin((2*i+1)*np.pi/4)
+        arwdx = -0.00001*rad*np.sin((2*i+1)*np.pi/4)
+        arwdy =  0.00001*rad*np.cos((2*i+1)*np.pi/4)
+        ax0.arrow(arwstartx, arwstarty, arwdx, arwdy, head_width=0.1, head_length=0.04,
+          fc='r', ec='r', length_includes_head=False)
+        arc2 = Arc(ctr, diam,diam, angle=90*i+45, theta1=0, theta2=45, color='r')
+        arc21 = Arc(ctr, diam,diam, angle=90*i+45, theta1=0, theta2=45, color='r')
+        ax0.add_patch(arc2)
+        ax0.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
+        ax1.add_patch(arc11)
+        ax1.arrow(arwstartx, arwstarty, arwdx, arwdy, head_width=0.1, head_length=0.04,
+          fc='r', ec='r', length_includes_head=False)
+        ax1.add_patch(arc21)
+        ax1.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
+      for i in range(nfaces):
+        ax1.text(xyz[faceCenters[i],0], xyz[faceCenters[i],1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
+
+
 
 
 
@@ -927,6 +1023,12 @@ if (__name__ == "__main__"):
     writeSeedFile("quadRectSeed.dat", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges, vertEdges=vertEdges)
     plotPlaneSeed("quadRectSeed.pdf", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
     writeNamelistFile("quadRect.namelist", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
+
+    print("unit disk seed")
+    xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges = unitDiskSeed()
+    writeSeedFile("unitDiskSeed.dat", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
+    plotPlaneSeed("unitDiskSeed.pdf", xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
+    writeNamelistFile('unitDiskSeed.namelist', xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges)
 
     print("quad cubic seed")
     xyz, origs, dests, lefts, rights, ints, faceVerts, faceCenters, faceEdges = quadCubicSeed()
