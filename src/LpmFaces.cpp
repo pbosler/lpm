@@ -81,7 +81,7 @@ std::string Faces<FaceKind>::infoString(const std::string& label, const int& tab
   if (dump_all) {
     for (Index i=0; i<_nmax; ++i) {
       if (i==_nh()) oss << "---------------------------------" << std::endl;
-      oss << ": (" << i << ") : ";
+      oss << "face(" << i << ") : ";
       oss << "verts = (";
       for (int j=0; j<FaceKind::nverts; ++j) {
         oss << _hostverts(i,j) << (j==FaceKind::nverts-1 ? ") " : ",");

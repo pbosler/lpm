@@ -78,7 +78,7 @@ std::string PolyMesh2d<SeedType>::infoString(const std::string& label, const int
   ss << physVerts.infoString(label, tab_level+1, dump_all);
   ss << edges.infoString(label, tab_level+1, dump_all);
   ss << faces.infoString(label, tab_level+1, dump_all);
-  ss << physFaces.infoString(label, tab_level+1, dump_all);
+  ss << physFaces.infoString(label + " (face_crds)", tab_level+1, dump_all);
   return ss.str();
 }
 

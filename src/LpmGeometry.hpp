@@ -175,19 +175,23 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     const Real r0 = mag(inner_cw);
     const Real r1 = mag(outer_ccw);
     assert(r1 > r0);
-    if (r0 < 10*ZERO_TOL) {
-      result = PI * square(r1);
-    }
-    else {
-      const Real dth = dtheta(outer_ccw,inner_cw);
-      result = 0.5*dth*(square(r1)-square(r0));
-    }
+
+    const Real dth = dtheta(outer_ccw,inner_cw);
+    result = 0.5*dth*(square(r1)-square(r0));
     return result;
   }
 
   template <typename CV1, typename CV2> KOKKOS_INLINE_FUNCTION
   static Real polygonArea(const CV1& ctr, const CV2& verts, const Int nverts) {
-    return quad_sector_area(ko::subview(verts, 0, ko::ALL()), ko::subview(verts, 2, ko::ALL()));
+    Real result;
+    if (mag(ctr) <= 10*ZERO_TOL) {
+      result = PI * norm2(ko::subview(verts, 0, ko::ALL()));
+    }
+    else {
+      result = quad_sector_area(ko::subview(verts, 0, ko::ALL()), ko::subview(verts, 2, ko::ALL()));
+    }
+    printf("ctr = (%f,%f), a = %f\n", ctr[0], ctr[1], result);
+    return result;
   }
 };
 
