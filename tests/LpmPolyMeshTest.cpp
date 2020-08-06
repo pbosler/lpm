@@ -45,7 +45,7 @@ ko::initialize(argc, argv);
     quadsphere.updateDevice();
 
     MeshSeed<UnitDiskSeed> udseed;
-    udseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 1);
+    udseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 0);
     PolyMesh2d<UnitDiskSeed> udisk(nmaxverts, nmaxedges, nmaxfaces);
     udisk.treeInit(0,udseed);
     udisk.outputVtk("unitdisk_test.vtk");

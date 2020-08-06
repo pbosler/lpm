@@ -75,7 +75,7 @@ template <typename SeedType>
 std::string PolyMesh2d<SeedType>::infoString(const std::string& label, const int& tab_level, const bool& dump_all) const {
   std::ostringstream ss;
   ss << "PolyMesh2d " << label << " info:\n";
-  ss << physVerts.infoString(label, tab_level+1, dump_all);
+  ss << physVerts.infoString(label + " (vert_crds)", tab_level+1, dump_all);
   ss << edges.infoString(label, tab_level+1, dump_all);
   ss << faces.infoString(label, tab_level+1, dump_all);
   ss << physFaces.infoString(label + " (face_crds)", tab_level+1, dump_all);

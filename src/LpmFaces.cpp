@@ -420,7 +420,7 @@ void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
       ko::subview(physVerts.crds, parentVertInds(0), ko::ALL()));
     const Real rnewv = 0.5*rp;
     for (Short i=0; i<4; ++i) {
-      const Real the = i*0.5*PI;
+      const Real the = ((i+1)%4)*0.5*PI;
       vertCrds(0) = rnewv*std::cos(the);
       vertCrds(1) = rnewv*std::sin(the);
       vertLagCrds(0) = rnewv*std::cos(the);
@@ -431,7 +431,7 @@ void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
 
     // create new edges
     for (Short i=0; i<4; ++i) {
-      edges.insertHost(vert_ins_pt+i, vert_ins_pt + (i+1)%4, 0, face_insert_pt+i);
+      edges.insertHost(vert_ins_pt+i, vert_ins_pt + (i+1)%4, 0, face_insert_pt+(i+1)%4+1);
     }
 
     // connect vertices & edges to new child faces

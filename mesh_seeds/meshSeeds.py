@@ -777,17 +777,17 @@ def unitDiskSeed():
   xyz[6] = (-1,0)
   xyz[7] = (0,-1)
   xyz[8] = (0,0)
-  xyz[9] = (3/4*np.cos(np.pi/4), 3/4*np.sin(np.pi/4))
-  xyz[10]= (3/4*np.cos(3*np.pi/4), 3/4*np.sin(3*np.pi/4))
-  xyz[11]= (3/4*np.cos(-3*np.pi/4),3/4*np.sin(-3*np.pi/4))
-  xyz[12]= (3/4*np.cos(-np.pi/4), 3/4*np.sin(-np.pi/4))
+  xyz[12] = (3/4*np.cos(np.pi/4), 3/4*np.sin(np.pi/4))
+  xyz[9]= (3/4*np.cos(3*np.pi/4), 3/4*np.sin(3*np.pi/4))
+  xyz[10]= (3/4*np.cos(-3*np.pi/4),3/4*np.sin(-3*np.pi/4))
+  xyz[11]= (3/4*np.cos(-np.pi/4), 3/4*np.sin(-np.pi/4))
                        #0 1 2 3  4   5   6  7  8  9 10 11
   edgeOrigs = np.array([0,1,2,3, 3,  4,  5, 6, 7, 2, 0, 6],dtype=int)
   edgeDests = np.array([1,2,3,0, 4,  5,  6, 7, 4, 7, 5, 1],dtype=int)
-  edgeLefts = np.array([0,0,0,0, 1,  1,  2, 3, 4, 4, 2, 2],dtype=int)
-  edgeRights= np.array([2,3,4,1, 4, -1, -1,-1,-1, 3, 1, 2],dtype=int)
-  faceVerts = np.array([[0,1,2,3], [5,0,3,4], [6,1,0,5], [7,2,1,6], [4,3,2,7]],dtype=int)
-  faceEdges = np.array([[1,2,3,0], [10,0,4,5], [11,1,10,6], [9,2,11,7], [4,3,9,8]],dtype=int)
+  edgeLefts = np.array([0,0,0,0, 4,  4,  1, 2, 3, 3, 1, 1],dtype=int)
+  edgeRights= np.array([1,2,3,4, 3, -1, -1,-1,-1, 2, 4, 2],dtype=int)
+  faceVerts = np.array([[0,1,2,3], [6,1,0,5], [7,2,1,6], [4,3,2,7], [5,0,3,4]],dtype=int)
+  faceEdges = np.array([[0,1,2,3], [11,0,10,6], [9,1,11,7], [4,2,9,8], [10,3,4,5]],dtype=int)
   faceCenters = np.array([8,9,10,11,12],dtype=int)
   edgeInteriors = None
   return xyz, edgeOrigs, edgeDests, edgeLefts, edgeRights, edgeInteriors, \
@@ -874,11 +874,11 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
             ax3.add_patch(es[i])
             ax3.text(f0verts[i,0], f0verts[i,1], 'v'+ str(i + indexBase), color='k')
             if i==1:
-              ax3.text(0.6*np.cos((2*i+1)*np.pi/4), 0.6*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+              ax3.text(0.6*np.cos((2*i+3)*np.pi/4), 0.6*np.sin((2*i+3)*np.pi/4), 'e'+str(i+indexBase), color='r')
             elif i == 2:
-              ax3.text(0.65*np.cos((2*i+1)*np.pi/4), 0.65*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+              ax3.text(0.65*np.cos((2*i+3)*np.pi/4), 0.65*np.sin((2*i+3)*np.pi/4), 'e'+str(i+indexBase), color='r')
             else:
-              ax3.text(0.55*np.cos((2*i+1)*np.pi/4), 0.55*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+              ax3.text(0.55*np.cos((2*i+3)*np.pi/4), 0.55*np.sin((2*i+3)*np.pi/4), 'e'+str(i+indexBase), color='r')
           ax3.text(0.05,0, str(8+indexBase), color='k')
 
         else:
