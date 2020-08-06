@@ -51,6 +51,11 @@ ko::initialize(argc, argv);
     }
 
     MeshSeed<UnitDiskSeed> udseed;
+    Real sa = 0.0;
+    for (Int i=0; i<UnitDiskSeed::nfaces; ++i) {
+      sa += udseed.faceArea(i);
+    }
+    LPM_THROW_IF(!fp_equiv(sa,PI), "unit disk surface area test failed.");
     std::cout << udseed.infoString();
     std::cout << udseed.idString() << " memory requirements (draft)" << '\n';
     std::cout << MEM_HEADER;
