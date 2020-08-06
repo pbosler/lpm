@@ -862,10 +862,25 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
                               (0.1,0.75),
                               (1.15*np.cos(3*np.pi/4), 1.15*np.sin(3*np.pi/4))))
 
-
-
           for i in range(4):
             ax2.text(emkrsxy[i,0], emkrsxy[i,1], 'e'+str(i+indexBase),color='r')
+
+          f0verts = np.array(((0,0.5), (-0.5,0), (0,-0.5), (0.5,0)))
+          es = []
+          ax3.plot(f0verts[:,0], f0verts[:,1], 'k.', markersize=8)
+          ax3.plot(0,0,'k.',markersize=8)
+          for i in range(4):
+            es.append(Arc([0,0], 1, 1, angle=90*i, theta1=0, theta2=90, color='r'))
+            ax3.add_patch(es[i])
+            ax3.text(f0verts[i,0], f0verts[i,1], 'v'+ str(i + indexBase), color='k')
+            if i==1:
+              ax3.text(0.6*np.cos((2*i+1)*np.pi/4), 0.6*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+            elif i == 2:
+              ax3.text(0.65*np.cos((2*i+1)*np.pi/4), 0.65*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+            else:
+              ax3.text(0.55*np.cos((2*i+1)*np.pi/4), 0.55*np.sin((2*i+1)*np.pi/4), 'e'+str(i+indexBase), color='r')
+          ax3.text(0.05,0, str(8+indexBase), color='k')
+
         else:
           corners = np.array([[-1.,1.],[-1.,-1.],[1.,-1.],[1.,1.]])
           sq = plt.Polygon(corners, facecolor='white', edgecolor='r')
@@ -900,9 +915,6 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
             for i in range(4):
                 ax2.text(corners[i,0]+0.01,corners[i,1]+0.01,'v'+str(i+indexBase),color='k')
             ax2.text(ctr_pos[0]+0.01, ctr_pos[1]+0.01,'c'+str(indexBase), color='k')
-
-
-
 
     ax0.plot(xyz[:,0], xyz[:,1], 'ko', markersize=m_size)
     ax0.set(title='edges & particles') #, xlabel='x', ylabel='y')
@@ -1021,11 +1033,6 @@ def plotPlaneSeed(oname, xyz, origs, dests, lefts, rights, ints, faceVerts, face
         ax1.text(midpt[0], midpt[1]+0.05, str(i+indexBase), color='r')
       for i in range(nfaces):
         ax1.text(xyz[faceCenters[i],0], xyz[faceCenters[i],1], str(i+indexBase), color='b', bbox=dict(facecolor='b', alpha=0.25))
-
-
-
-
-
 
     fig0.savefig(oname, bbox_inches='tight')
     plt.close(fig0)

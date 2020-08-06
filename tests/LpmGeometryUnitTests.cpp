@@ -186,7 +186,7 @@ ko::initialize(argc, argv);
       LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::theta(r2b), 0.5*PI), "theta test failed.");
 
       printf("dtheta(b,c) = %f\n", CircularPlaneGeometry::dtheta(r2b,r2c));
-      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::dtheta(r2b,r2c), 0.5*PI), "dtheta test failed.");
+      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::dtheta(r2a,r2c), 0.5*PI), "dtheta test failed.");
 
       const Real qsa = CircularPlaneGeometry::quad_sector_area(r2a, r2c);
       printf("area(a,b,c,d) = %f\n", qsa);
@@ -205,6 +205,12 @@ ko::initialize(argc, argv);
       printf("circ. polygonArea = %f\n", pa);
       LPM_THROW_IF(!fp_equiv(qsa,pa), "circular polygon area test failed.");
 
+      Real bc[2];
+      CircularPlaneGeometry::barycenter(bc, sector);
+      Real exbc[2] = {0.75*std::cos(PI/4), 0.75*std::sin(PI/4)};
+      printf("bc = (%f,%f); exbc = (%f,%f)\n", bc[0], bc[1], exbc[0], exbc[1]);
+      LPM_THROW_IF(!fp_equiv(bc[0], exbc[0]) || !fp_equiv(bc[1],exbc[1]),
+        "circular barycenter test failed.");
     }
 }
 std::cout << "tests pass." << std::endl;

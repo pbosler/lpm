@@ -87,4 +87,5 @@ template class PolyMesh2d<TriHexSeed>;
 template class PolyMesh2d<QuadRectSeed>;
 template class PolyMesh2d<IcosTriSphereSeed>;
 template class PolyMesh2d<CubedSphereSeed>;
+template class PolyMesh2d<UnitDiskSeed>;
 }

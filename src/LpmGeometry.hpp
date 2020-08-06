@@ -149,6 +149,19 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     return std::acos(dp/(alen*blen));
   }
 
+  template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
+  static void barycenter(V v, const CV cv, const Int n=4) {
+    const auto v0 = ko::subview(cv, 0, ko::ALL());
+    const auto v2 = ko::subview(cv, 2, ko::ALL());
+    const Real router = mag(v0);
+    const Real rinner = mag(v2);
+    const Real rmid = 0.5*(router + rinner);
+    const Real theta0 = theta(v0);
+    const Real dth = 0.5*dtheta(v0,v2);
+    v[0] = rmid * std::cos(theta0-dth);
+    v[1] = rmid * std::sin(theta0-dth);
+  }
+
   /** @brief Computes the area of the circular sector defined by a polar rectangle.
 
 @f$ A = \int_{\theta_0}^{\theta_1}\int_{r_0}^{r_1} r\,dr\,d\theta = \frac{\Delta\theta}{2}(r_1^2 - r_0^2) @f$

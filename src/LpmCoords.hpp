@@ -8,6 +8,7 @@
 #include "LpmMeshSeed.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
+#include <cassert>
 
 namespace Lpm {
 
@@ -82,7 +83,9 @@ template <typename Geo> class Coords {
     \param dim component of vector
     \return crds(ind,dim)
     */
-    inline Real getCrdComponentHost(const Index ind, const Int dim) const {return _hostcrds(ind, dim);}
+    inline Real getCrdComponentHost(const Index ind, const Int dim) const {
+      assert(ind < _nh());
+      return _hostcrds(ind, dim);}
 
     /** \brief Inserts a new coordinate to the main data container
 

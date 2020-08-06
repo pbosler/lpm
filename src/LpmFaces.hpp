@@ -156,7 +156,8 @@ template <typename FaceKind> class Faces {
     @param prt pointer to parent face
     @param ar area value of new face
     */
-    void insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
+    void insertHost(const Index ctr_ind, ko::View<Index*,Host> vertinds,
+      ko::View<Index*,Host> edgeinds, const Index prt=NULL_IND, const Real ar = 0.0);
 
     /** @brief Overwrite the children of a face
 
@@ -249,6 +250,12 @@ template <typename FaceKind> class Faces {
     */
     inline void decrementnLeaves() {_hnLeaves() -= 1;}
 
+    /** @brief Increases the face leaf count
+
+    @hostfn
+    */
+    inline void incrementnLeaves(const Short& i=1) {_hnLeaves() += i;}
+
     /** @brief Writes basic info about a Faces object's state to a string.
 
     @hostfn
@@ -318,6 +325,13 @@ template <typename Geo> struct FaceDivider<Geo, TriFace> {
 template <typename Geo> struct FaceDivider<Geo, QuadFace> {
   static void divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts,
     Edges& edges, Faces<QuadFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) ;
+};
+
+template <> struct FaceDivider<CircularPlaneGeometry,QuadFace> {
+  static void divide(const Index faceInd, Coords<CircularPlaneGeometry>& physVerts,
+    Coords<CircularPlaneGeometry>& lagVerts, Edges& edges,
+    Faces<QuadFace>& faces, Coords<CircularPlaneGeometry>& physFaces,
+    Coords<CircularPlaneGeometry>& lagFaces) ;
 };
 
 }

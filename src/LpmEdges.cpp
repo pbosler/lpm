@@ -53,6 +53,8 @@ void Edges::initFromSeed(const MeshSeed<SeedType>& seed) {
 
 
 template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds) {
+  assert(ind < _nh());
+
   LPM_THROW_IF(_nh() + 2 > _nmax, "Edges::divide error: not enough memory.");
   LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
   // record beginning state
@@ -84,6 +86,9 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
 
 template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
   Coords<CircularPlaneGeometry>& crds, Coords<CircularPlaneGeometry>& lagcrds) {
+
+  assert(ind < _nh());
+
   LPM_THROW_IF(_nh()+2 > _nmax, "Edges::divide error: not enough memory.");
   LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
 
@@ -114,6 +119,14 @@ template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
     CircularPlaneGeometry::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
       ko::subview(lagendpts,1,ko::ALL()));
   }
+  crds.insertHost(midpt);
+  lagcrds.insertHost(lagmidpt);
+
+  insertHost(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
+  insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
+  _hk(ind,0) = edge_ins_pt;
+  _hk(ind,1) = edge_ins_pt+1;
+  _hnLeaves() -= 1;
 }
 
 std::string Edges::infoString(const std::string& label, const short& tab_level, const bool& dump_all) const {
@@ -146,5 +159,6 @@ template void Edges::initFromSeed(const MeshSeed<TriHexSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<QuadRectSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<CubedSphereSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Edges::initFromSeed(const MeshSeed<UnitDiskSeed>& seed);
 
 }

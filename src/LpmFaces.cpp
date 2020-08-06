@@ -105,6 +105,7 @@ std::string Faces<FaceKind>::infoString(const std::string& label, const int& tab
 
 template <typename FaceKind>
 void Faces<FaceKind>::setKids(const Index parent, const Index* kids) {
+  assert(parent < _nh());
   for (int i=0; i<4; ++i) {
     _hostkids(parent, i) = kids[i];
   }
@@ -113,6 +114,9 @@ void Faces<FaceKind>::setKids(const Index parent, const Index* kids) {
 template <typename Geo>
 void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts,
     Edges& edges, Faces<TriFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces){
+
+  assert(faceInd < faces.nh());
+
   LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
   LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
 
@@ -246,6 +250,8 @@ template <typename Geo>
 void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVerts, Coords<Geo>& lagVerts,
   Edges& edges, Faces<QuadFace>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces)
 {
+  assert(faceInd < faces.nh());
+
   LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
   LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
 
@@ -274,10 +280,10 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
     newFaceVertInds(i,i) = parentVertInds(i);
   }
 
+  ko::View<Index[2],Host> edgekids("edgekids");
   /// loop over parent edges
   for (int i=0; i<4; ++i) {
     const Index parentEdge = parentEdgeInds(i);
-    ko::View<Index[2],Host> edgekids("edgekids");
     if (edges.hasKidsHost(parentEdge)) { // edge already divided
       edgekids(0) = edges.getEdgeKidHost(parentEdge,0);
       edgekids(1) = edges.getEdgeKidHost(parentEdge,1);
@@ -374,6 +380,206 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Coords<Geo>& physVer
   faces.decrementnLeaves();
 }
 
+
+void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
+  Coords<CircularPlaneGeometry>& physVerts, Coords<CircularPlaneGeometry>& lagVerts,
+  Edges& edges, Faces<QuadFace>& faces, Coords<CircularPlaneGeometry>& physFaces,
+  Coords<CircularPlaneGeometry>& lagFaces) {
+
+  assert(faceInd < faces.nh());
+
+  LPM_THROW_IF(faces.nMax() < faces.nh() + 4, "Faces::divide error: not enough memory.");
+  LPM_THROW_IF(faces.hasKidsHost(faceInd), "Faces::divide error: called on previously divided face.");
+
+  ko::View<Index[4][4],Host> newFaceEdgeInds("newFaceEdgeInds");
+  ko::View<Index[4][4],Host> newFaceVertInds("newFaceVertInds");
+
+  // for debugging, set to invalid value
+  for (int i=0; i<4; ++i) {
+    for (int j=0; j<4; ++j) {
+      newFaceVertInds(i,j) = NULL_IND;
+      newFaceEdgeInds(i,j) = NULL_IND;
+    }
+  }
+  /// pull data from parent
+  auto parentVertInds = ko::subview(faces._hostverts, faceInd, ko::ALL());
+  auto parentEdgeInds = ko::subview(faces._hostedges, faceInd, ko::ALL());
+
+  const Index vert_ins_pt = physVerts.nh();
+  const Index face_insert_pt = faces.nh();
+  const Index face_crd_ins_pt = physFaces.nh();
+
+  /// special case for faceInd = 0
+  if (faceInd == 0) {
+    assert(faces.getCenterIndHost(faceInd) == 0);
+    const Index edge_ins_pt = edges.nh();
+    // create new vertices
+    ko::View<Real[2],Host> vertCrds("vertCrds");
+    ko::View<Real[2],Host> vertLagCrds("vertLagCrds");
+    const Real rp = CircularPlaneGeometry::mag(
+      ko::subview(physVerts.crds, parentVertInds(0), ko::ALL()));
+    const Real rnewv = 0.5*rp;
+    for (Short i=0; i<4; ++i) {
+      const Real the = i*0.5*PI;
+      vertCrds(0) = rnewv*std::cos(the);
+      vertCrds(1) = rnewv*std::sin(the);
+      vertLagCrds(0) = rnewv*std::cos(the);
+      vertLagCrds(1) = rnewv*std::sin(the);
+      physVerts.insertHost(vertCrds);
+      lagVerts.insertHost(vertLagCrds);
+    }
+
+    // create new edges
+    for (Short i=0; i<4; ++i) {
+      edges.insertHost(vert_ins_pt+i, vert_ins_pt + (i+1)%4, 0, face_insert_pt+i);
+    }
+
+    // connect vertices & edges to new child faces
+    for (Short i=0; i<4; ++i) {
+      newFaceVertInds(i,0) = parentVertInds((i+1)%4);
+      newFaceVertInds(i,1) = vert_ins_pt + (i+1)%4;
+      newFaceVertInds(i,2) = vert_ins_pt + i;
+      newFaceVertInds(i,3) = parentVertInds(i);
+
+      newFaceEdgeInds(i,0) = edge_ins_pt + 4 + (i+1)%4;
+      newFaceEdgeInds(i,1) = edge_ins_pt + i;
+      newFaceEdgeInds(i,2) = 4 + i;
+      newFaceEdgeInds(i,3) = parentEdgeInds(i);
+    }
+
+    // create new faces & centers
+    ko::View<Real[2],Host> faceCrds("faceCrds");
+    ko::View<Real[2],Host> faceLagCrds("faceLagCrds");
+    const Real rnewf = 0.75*rp;
+    const Real newfacearea = 0.25*PI*(square(rp)-square(rnewv));
+    for (Short i=0; i<4; ++i) {
+      const Real the = 0.25*((2*i+3)%8)*PI;
+      faceCrds(0) = rnewf*std::cos(the);
+      faceCrds(1) = rnewf*std::sin(the);
+      faceLagCrds(0) = rnewf*std::cos(the);
+      faceLagCrds(1) = rnewf*std::sin(the);
+
+      physFaces.insertHost(faceCrds);
+      lagFaces.insertHost(faceLagCrds);
+
+      faces.insertHost(face_insert_pt+i, ko::subview(newFaceVertInds, i, ko::ALL()),
+        ko::subview(newFaceEdgeInds, i, ko::ALL()), 0, newfacearea);
+    }
+
+    faces.setAreaHost(0, PI*square(rnewv));
+    faces.incrementnLeaves(4);
+    /** Specal case for UnitDisk: face 0 can have more than 4 children,
+    and is never masked (it's always a leaf) even if it has kids
+    */
+    auto f0kids = ko::subview(faces.getKidsHost(), 0, ko::ALL());
+    f0kids(0) += 4;
+  }
+  else {
+    ko::View<Index[4],Host> newFaceKids("newFaceKids");
+    /// set kid indices & connect parent vertices to child faces
+    for (Short i=0; i<4; ++i) {
+      newFaceKids(i) = face_insert_pt+i;
+      newFaceVertInds(i,i) = parentVertInds(i);
+    }
+
+    /// parent edge loop
+    ko::View<Index[2],Host> edgekids("edgekids");
+    for (Short i=0; i<4; ++i) {
+      const Index parentEdge = parentEdgeInds(i);
+      if (edges.hasKidsHost(parentEdge)) {
+        edgekids(0) = edges.getEdgeKidHost(parentEdge, 0);
+        edgekids(1) = edges.getEdgeKidHost(parentEdge, 1);
+      }
+      else {
+        edgekids(0) = edges.nh();
+        edgekids(0) = edges.nh()+1;
+
+        edges.divide<CircularPlaneGeometry>(parentEdge, physVerts, lagVerts);
+      }
+
+      /// connect child faces to child edges
+      if (faces.edgeIsPositive(faceInd, i, edges)) {
+        newFaceEdgeInds(i,i) = edgekids(0);
+        edges.setLeft(edgekids(0), newFaceKids(i));
+
+        newFaceEdgeInds((i+1)%4,i) = edgekids(1);
+        edges.setLeft(edgekids(1), newFaceKids((i+1)%4));
+      }
+      else {
+        newFaceEdgeInds(i,i) = edgekids(1);
+        edges.setRight(edgekids(1), newFaceKids(i));
+
+        newFaceEdgeInds((i+1)%4,i) = edgekids(0);
+        edges.setRight(edgekids(0), newFaceKids((i+1)%4));
+      }
+      const Index c1dest = edges.getDestHost(edgekids(0));
+      newFaceVertInds(i,(i+1)%4) = c1dest;
+      newFaceVertInds((i+1)%4,i) = c1dest;
+    }
+
+    /// special case for QuadFace: parent center becomes a vertex
+    const Index parent_center_ind = faces.getCenterIndHost(faceInd);
+    ko::View<Real[2],Host> newcrd("newcrd");
+    ko::View<Real[2],Host> newlagcrd("newlagcrd");
+    for (Short i=0; i<2; ++i) {
+      newcrd(i) = physFaces.getCrdComponentHost(parent_center_ind, i);
+      newlagcrd(i) = lagFaces.getCrdComponentHost(parent_center_ind,i);
+    }
+    physVerts.insertHost(newcrd);
+    lagVerts.insertHost(newlagcrd);
+    for (Short i=0; i<4; ++i) {
+      newFaceVertInds(i,(i+2)%4) = vert_ins_pt;
+    }
+
+    /// create new interior edges
+    const Index edge_ins_pt = edges.nh();
+    edges.insertHost(newFaceVertInds(0,1), newFaceVertInds(0,2), newFaceKids(0), newFaceKids(1));
+    newFaceEdgeInds(0,1) = edge_ins_pt;
+    newFaceEdgeInds(1,3) = edge_ins_pt;
+    edges.insertHost(newFaceVertInds(2,0), newFaceVertInds(2,3), newFaceKids(3), newFaceKids(2));
+    newFaceEdgeInds(2,3) = edge_ins_pt+1;
+    newFaceEdgeInds(3,1) = edge_ins_pt+1;
+    edges.insertHost(newFaceVertInds(2,1), newFaceVertInds(2,0), newFaceKids(1), newFaceKids(2));
+    newFaceEdgeInds(1,2) = edge_ins_pt+2;
+    newFaceEdgeInds(2,0) = edge_ins_pt+2;
+    edges.insertHost(newFaceVertInds(3,1), newFaceVertInds(3,0), newFaceKids(0), newFaceKids(3));
+    newFaceEdgeInds(0,2) = edge_ins_pt+3;
+    newFaceEdgeInds(3,0) = edge_ins_pt+3;
+
+    /// create new center coordinates
+    ko::View<Real[4][2],Host> vertCrds("vertCrds");
+    ko::View<Real[4][2],Host> vertLagCrds("vertLagCrds");
+    ko::View<Real[4][2],Host> faceCrds("faceCrds");
+    ko::View<Real[4][2],Host> faceLagCrds("faceLagCrds");
+    ko::View<Real[4],Host> faceArea("faceArea");
+    for (int i=0; i<4; ++i) { // loop over child faces
+      auto ctr = ko::subview(faceCrds,i,ko::ALL());
+      auto lagctr = ko::subview(faceLagCrds,i,ko::ALL());
+      for (int j=0; j<4; ++j) { // loop over vertices
+        for (int k=0; k<2; ++k) { // loop over components
+          vertCrds(j,k) = physVerts.getCrdComponentHost(newFaceVertInds(i,j),k);
+          vertLagCrds(j,k) = lagVerts.getCrdComponentHost(newFaceVertInds(i,j),k);
+        }
+      }
+      CircularPlaneGeometry::barycenter(ctr, vertCrds, 4);
+      CircularPlaneGeometry::barycenter(lagctr, vertLagCrds,4);
+      faceArea(i) = CircularPlaneGeometry::polygonArea(ctr, vertCrds, 4);
+    }
+    for (Short i=0; i<4; ++i) {
+      physFaces.insertHost(slice(faceCrds,i));
+      lagFaces.insertHost(slice(faceLagCrds,i));
+      faces.insertHost(face_crd_ins_pt+i, ko::subview(newFaceVertInds,i,ko::ALL()),
+        ko::subview(newFaceEdgeInds,i,ko::ALL()), faceInd, faceArea(i));
+    }
+
+    /// remove parent from leaf computations
+    faces.setKidsHost(faceInd, newFaceKids);
+    faces.setAreaHost(faceInd, 0.0);
+    faces.setMask(faceInd,true);
+    faces.decrementnLeaves();
+  }
+}
+
 /// ETI
 template class Faces<TriFace>;
 template class Faces<QuadFace>;
@@ -382,10 +588,12 @@ template void Faces<TriFace>::initFromSeed(const MeshSeed<TriHexSeed>& seed);
 template void Faces<TriFace>::initFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
 template void Faces<QuadFace>::initFromSeed(const MeshSeed<QuadRectSeed>& seed);
 template void Faces<QuadFace>::initFromSeed(const MeshSeed<CubedSphereSeed>& seed);
+template void Faces<QuadFace>::initFromSeed(const MeshSeed<UnitDiskSeed>& seed);
 
 template struct FaceDivider<PlaneGeometry, TriFace>;
 template struct FaceDivider<SphereGeometry, TriFace>;
 template struct FaceDivider<PlaneGeometry, QuadFace>;
 template struct FaceDivider<SphereGeometry, QuadFace>;
+template struct FaceDivider<CircularPlaneGeometry, QuadFace>;
 
 }
