@@ -781,11 +781,11 @@ def unitDiskSeed():
   xyz[10]= (3/4*np.cos(3*np.pi/4), 3/4*np.sin(3*np.pi/4))
   xyz[11]= (3/4*np.cos(-3*np.pi/4),3/4*np.sin(-3*np.pi/4))
   xyz[12]= (3/4*np.cos(-np.pi/4), 3/4*np.sin(-np.pi/4))
-             #0 1 2 3  4   5   6  7  8  9 10 11
-  edgeOrigs = np.array([3,0,1,2, 3,  4,  5, 6, 7, 2, 0, 6],dtype=int)
-  edgeDests = np.array([0,1,2,3, 4,  5,  6, 7, 4, 7, 5, 1],dtype=int)
+                       #0 1 2 3  4   5   6  7  8  9 10 11
+  edgeOrigs = np.array([0,1,2,3, 3,  4,  5, 6, 7, 2, 0, 6],dtype=int)
+  edgeDests = np.array([1,2,3,0, 4,  5,  6, 7, 4, 7, 5, 1],dtype=int)
   edgeLefts = np.array([0,0,0,0, 1,  1,  2, 3, 4, 4, 2, 2],dtype=int)
-  edgeRights= np.array([1,2,3,4, 4, -1, -1,-1,-1, 3, 1, 2],dtype=int)
+  edgeRights= np.array([2,3,4,1, 4, -1, -1,-1,-1, 3, 1, 2],dtype=int)
   faceVerts = np.array([[0,1,2,3], [5,0,3,4], [6,1,0,5], [7,2,1,6], [4,3,2,7]],dtype=int)
   faceEdges = np.array([[1,2,3,0], [10,0,4,5], [11,1,10,6], [9,2,11,7], [4,3,9,8]],dtype=int)
   faceCenters = np.array([8,9,10,11,12],dtype=int)
