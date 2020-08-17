@@ -19,7 +19,8 @@ typedef typename ko::TeamPolicy<>::member_type member_type;
 
 */
 template <typename VecType> KOKKOS_INLINE_FUNCTION
-void greensFn(Real& psi, const VecType& tgt_x, const VecType& src_x, const Real& src_vort, const Real src_area) {
+void greensFn(Real& psi, const VecType& tgt_x, const VecType& src_x,
+  const Real& src_vort, const Real src_area) {
   const Real circ = -src_vort*src_area;
   psi = std::log(1-SphereGeometry::dot(tgt_x,src_x)) * circ / (4*PI);
 }

@@ -40,7 +40,7 @@ CompadreNeighborhoods::CompadreNeighborhoods(typename ko::View<Real*[3]>::HostMi
     // neighborhoods built on host
     auto host_neighbors = ko::create_mirror_view(neighbor_lists);
     auto host_radii = ko::create_mirror_view(neighborhood_radii);
-    point_cloud_search.generateNeighborListsFromKNNSearch(false, host_tgt_crds, host_neighbors, host_radii,
+    point_cloud_search.generate2DNeighborListsFromKNNSearch(false, host_tgt_crds, host_neighbors, host_radii,
         params.min_neighbors, params.ambient_dim, params.gmls_eps_mult);
     // copy to device
     ko::deep_copy(neighbor_lists, host_neighbors);

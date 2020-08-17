@@ -22,7 +22,9 @@ template <typename SeedType>
 PolyMesh2d<SeedType>::PolyMesh2d(const PolyMeshReader& reader) :
   physVerts(reader.getVertPhysCrdView()), lagVerts(reader.getVertLagCrdView()),
   edges(reader), faces(reader), physFaces(reader.getFacePhysCrdView()),
-  lagFaces(reader.getFaceLagCrdView()) {updateDevice();}
+  lagFaces(reader.getFaceLagCrdView()) {
+  baseTreeDepth = reader.getTreeDepth();
+  updateDevice();}
 #endif
 
 template <typename SeedType>
@@ -39,6 +41,38 @@ void PolyMesh2d<SeedType>::treeInit(const Int initDepth, const MeshSeed<SeedType
         }
     }
     updateDevice();
+}
+
+template <>
+void PolyMesh2d<UnitDiskSeed>::treeInit(const Int initDepth, const MeshSeed<UnitDiskSeed>& seed) {
+  seedInit(seed);
+  baseTreeDepth=initDepth;
+  ko::View<Real[2],Host> vcrd("vcrd");
+  const Real inner_radius = 0.5/std::pow(2,initDepth);
+  for (Short i=0; i<4; ++i) {
+    const Real the = (i+1)*0.5*PI;
+    vcrd(0) = inner_radius*std::cos(the);
+    vcrd(1) = inner_radius*std::sin(the);
+    physVerts.setCrdsHost(i,vcrd);
+    lagVerts.setCrdsHost(i,vcrd);
+  }
+  faces.setAreaHost(0, PI*square(inner_radius));
+  Index startInd = 1;
+  for (int i=0; i<initDepth; ++i) {
+    const Index stopInd = faces.nh();
+    for (Index j=startInd; j<stopInd; ++j) {
+      if (!faces.hasKidsHost(j)) {
+        divider::divide(j, physVerts, lagVerts, edges, faces, physFaces, lagFaces);
+      }
+    }
+  }
+}
+
+
+template <typename SeedType>
+void PolyMesh2d<SeedType>::reset_face_centroids() {
+  ko::parallel_for(nfacesHost(), FaceCentroidFunctor<SeedType>(physFaces.crds,
+    physVerts.crds, faces.verts));
 }
 
 template <typename SeedType>
@@ -73,10 +107,10 @@ template <typename SeedType>
 std::string PolyMesh2d<SeedType>::infoString(const std::string& label, const int& tab_level, const bool& dump_all) const {
   std::ostringstream ss;
   ss << "PolyMesh2d " << label << " info:\n";
-  ss << physVerts.infoString(label, tab_level+1, dump_all);
+  ss << physVerts.infoString(label + " (vert_crds)", tab_level+1, dump_all);
   ss << edges.infoString(label, tab_level+1, dump_all);
   ss << faces.infoString(label, tab_level+1, dump_all);
-  ss << physFaces.infoString(label, tab_level+1, dump_all);
+  ss << physFaces.infoString(label + " (face_crds)", tab_level+1, dump_all);
   return ss.str();
 }
 
@@ -85,4 +119,5 @@ template class PolyMesh2d<TriHexSeed>;
 template class PolyMesh2d<QuadRectSeed>;
 template class PolyMesh2d<IcosTriSphereSeed>;
 template class PolyMesh2d<CubedSphereSeed>;
+template class PolyMesh2d<UnitDiskSeed>;
 }

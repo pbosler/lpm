@@ -97,6 +97,7 @@ void Coords<Geo>::initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed) {
 /// ETI
 template class Coords<PlaneGeometry>;
 template class Coords<SphereGeometry>;
+template class Coords<CircularPlaneGeometry>;
 
 template void Coords<PlaneGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<TriHexSeed>& seed);
 template void Coords<PlaneGeometry>::initInteriorCrdsFromSeed(const MeshSeed<TriHexSeed>& seed);
@@ -106,5 +107,8 @@ template void Coords<SphereGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<Cu
 template void Coords<SphereGeometry>::initInteriorCrdsFromSeed(const MeshSeed<CubedSphereSeed>& seed);
 template void Coords<SphereGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
 template void Coords<SphereGeometry>::initInteriorCrdsFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Coords<CircularPlaneGeometry>::initBoundaryCrdsFromSeed(const MeshSeed<UnitDiskSeed>& seed);
+template void Coords<CircularPlaneGeometry>::initInteriorCrdsFromSeed(const MeshSeed<UnitDiskSeed>& seed);
+
 
 }

@@ -18,7 +18,7 @@ namespace Lpm {
 
 enum FieldKind {VertexField, EdgeField, FaceField};
 
-#ifdef LPM_HAVE_VTK
+#ifdef LPM_HAVE_NETCDF
   class PolyMeshReader; /// fwd. decl.
 #endif
 
@@ -151,6 +151,7 @@ template <typename SeedType> class PolyMesh2d {
     /// Lagrangian coordinates of particles at face centers
     Coords<Geo> lagFaces;
 
+    void reset_face_centroids();
 
     /** @brief Returns a pointer to the view of face coordinates
 
@@ -180,6 +181,8 @@ template <typename SeedType> class PolyMesh2d {
     virtual void updateHost() const;
 
 
+    inline Real appx_mesh_size() const {return faces.appx_mesh_size();}
+
     /** @brief Writes basic info about a PolyMesh2d instance to a string.
 
     @hostfn
@@ -192,6 +195,32 @@ template <typename SeedType> class PolyMesh2d {
     void seedInit(const MeshSeed<SeedType>& seed);
 
 
+};
+
+/** @brief Resets faces' physical coordinates to the barycenter of the polygon defined
+    by their vertices
+*/
+template <typename SeedType> struct FaceCentroidFunctor {
+  typedef typename SeedType::geo::crd_view_type crd_view;
+  crd_view face_crds;
+  crd_view vert_crds;
+  ko::View<Index*[SeedType::nfaceverts]> face_verts;
+  ko::View<Real[SeedType::nfaceverts][SeedType::geo::ndim]> local_vcrds;
+
+  FaceCentroidFunctor(crd_view& fc, const crd_view& vc,
+    const ko::View<Index*[SeedType::nfaceverts]>& fv) : face_crds(fc), vert_crds(vc),
+      face_verts(fv), local_vcrds("local_vcrds") {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& i) const {
+    for (Int j=0; j<SeedType::nfaceverts; ++j) {
+      for (Int k=0; k<SeedType::geo::ndim; ++k) {
+        local_vcrds(j,k) = vert_crds(face_verts(i,j),k);
+      }
+    }
+    auto fcrd = ko::subview(face_crds, i, ko::ALL);
+    SeedType::geo::barycenter(fcrd, local_vcrds, SeedType::nfaceverts);
+  }
 };
 
 

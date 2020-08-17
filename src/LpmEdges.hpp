@@ -10,6 +10,8 @@
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 
+#include <cassert>
+
 namespace Lpm {
 
 #ifdef LPM_HAVE_NETCDF
@@ -83,15 +85,18 @@ class Edges {
 
     */
     KOKKOS_INLINE_FUNCTION
-    bool onBoundary(const Index ind) const {return lefts(ind) == NULL_IND ||
-      rights(ind) == NULL_IND;}
+    bool onBoundary(const Index ind) const {
+      assert(ind <_nh());
+      return lefts(ind) == NULL_IND || rights(ind) == NULL_IND;}
 
 
     /** \brief Returns true if the edge has been divided.
 
     */
     KOKKOS_INLINE_FUNCTION
-    bool hasKids(const Index ind) const {return ind < n() && kids(ind, 0) > 0;}
+    bool hasKids(const Index ind) const {
+      assert(ind < nh());
+      return ind < n() && kids(ind, 0) > 0;}
 
     /** \brief Maximum number of edges allowed in memory
     */
@@ -148,6 +153,7 @@ class Edges {
       \param newleft new index of the edge's left panel
     */
     inline void setLeft(const Index ind, const Index newleft) {
+      assert(ind < _nh());
       _hl(ind) = newleft;
     }
 
@@ -159,7 +165,18 @@ class Edges {
       \param newright new index of the edge's right panel
     */
     inline void setRight(const Index ind, const Index newright) {
+      assert(ind < _nh());
       _hr(ind) = newright;
+    }
+
+    inline void setOrig(const Index ind, const Index& neworig) {
+      assert(ind <_nh());
+      _ho(ind) = neworig;
+    }
+
+    inline void setDest(const Index ind, const Index& newdest) {
+      assert(ind < _nh());
+      _hd(ind) = newdest;
     }
 
     /** Initialize a set of Edges from a MeshSeed
@@ -180,6 +197,7 @@ class Edges {
     \see divide()
     */
     inline Index getEdgeKidHost(const Index ind, const Int child) const {
+      assert(ind < _nh());
       return _hk(ind, child);}
 
     /// Host function
@@ -187,10 +205,10 @@ class Edges {
       const short& tab_level=0, const bool& dump_all=false) const;
 
     /// Host functions
-    inline Index getOrigHost(const Index ind) const {return _ho(ind);}
-    inline Index getDestHost(const Index ind) const {return _hd(ind);}
-    inline Index getLeftHost(const Index ind) const {return _hl(ind);}
-    inline Index getRightHost(const Index ind) const {return _hr(ind);}
+    inline Index getOrigHost(const Index ind) const {assert(ind<_nh()); return _ho(ind);}
+    inline Index getDestHost(const Index ind) const {assert(ind<_nh()); return _hd(ind);}
+    inline Index getLeftHost(const Index ind) const {assert(ind<_nh()); return _hl(ind);}
+    inline Index getRightHost(const Index ind) const {assert(ind<_nh()); return _hr(ind);}
 
     inline edge_host_type getOrigsHost() const {return _ho;}
     inline edge_host_type getDestsHost() const {return _hd;}
@@ -201,10 +219,12 @@ class Edges {
 
     /// Host function
     inline bool onBoundaryHost(const Index ind) const {
+      assert(ind<_nh());
       return _hl(ind) == NULL_IND || _hr(ind) == NULL_IND;}
 
     /// Host function
     inline bool hasKidsHost(const Index ind) const {
+      assert(ind<_nh());
       return ind < _nh() && _hk(ind, 0) > 0;}
 
   protected:

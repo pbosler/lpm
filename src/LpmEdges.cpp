@@ -53,6 +53,8 @@ void Edges::initFromSeed(const MeshSeed<SeedType>& seed) {
 
 
 template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds) {
+  assert(ind < _nh());
+
   LPM_THROW_IF(_nh() + 2 > _nmax, "Edges::divide error: not enough memory.");
   LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
   // record beginning state
@@ -75,6 +77,51 @@ template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, C
   crds.insertHost(midpt);
   lagcrds.insertHost(lagmidpt);
   // insert new child edges
+  insertHost(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
+  insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
+  _hk(ind,0) = edge_ins_pt;
+  _hk(ind,1) = edge_ins_pt+1;
+  _hnLeaves() -= 1;
+}
+
+template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
+  Coords<CircularPlaneGeometry>& crds, Coords<CircularPlaneGeometry>& lagcrds) {
+
+  assert(ind < _nh());
+
+  LPM_THROW_IF(_nh()+2 > _nmax, "Edges::divide error: not enough memory.");
+  LPM_THROW_IF(hasKidsHost(ind), "Edges::divide error: called on previously divided edge.");
+
+  // record starting state
+  const Index crd_ins_pt = crds.nh();
+  const Index edge_ins_pt = _nh();
+
+  // determine edge midpoints
+  ko::View<Real[2], Host> midpt("midpt"), lagmidpt("lagmidpt");
+  ko::View<Real[2][2],Host> endpts("endpts"), lagendpts("lagendpts");
+  for (Short i=0; i<2; ++i) {
+    endpts(0,i) = crds.getCrdComponentHost(_ho(ind), i);
+    lagendpts(0,i) = lagcrds.getCrdComponentHost(_ho(ind),i);
+    endpts(1,i) = crds.getCrdComponentHost(_hd(ind), i);
+    lagendpts(1,i) = lagcrds.getCrdComponentHost(_hd(ind),i);
+  }
+  const Real lr0 = CircularPlaneGeometry::mag(ko::subview(lagendpts,0,ko::ALL()));
+  const Real lr1 = CircularPlaneGeometry::mag(ko::subview(lagendpts,1,ko::ALL()));
+  if (fp_equiv(lr0, lr1, 10*ZERO_TOL)) {
+    CircularPlaneGeometry::radial_midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+      ko::subview(endpts,1,ko::ALL()));
+    CircularPlaneGeometry::radial_midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+      ko::subview(lagendpts,1,ko::ALL()));
+  }
+  else {
+    CircularPlaneGeometry::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+      ko::subview(endpts,1,ko::ALL()));
+    CircularPlaneGeometry::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+      ko::subview(lagendpts,1,ko::ALL()));
+  }
+  crds.insertHost(midpt);
+  lagcrds.insertHost(lagmidpt);
+
   insertHost(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
   insertHost(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
   _hk(ind,0) = edge_ins_pt;
@@ -112,5 +159,6 @@ template void Edges::initFromSeed(const MeshSeed<TriHexSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<QuadRectSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<CubedSphereSeed>& seed);
 template void Edges::initFromSeed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Edges::initFromSeed(const MeshSeed<UnitDiskSeed>& seed);
 
 }

@@ -1,14 +1,14 @@
 #ifndef LPM_RK4_IMPL_HPP
 #define LPM_RK4_IMPL_HPP
 
-#include "LpmRK4.hpp"
+#include "LpmBVERK4.hpp"
 #include "KokkosBlas.hpp"
 #include <cassert>
 #include "Kokkos_Core.hpp"
 
 namespace Lpm {
 
-struct RK4Update {
+struct BVERK4Update {
   static constexpr Real sixth = 1.0/6.0;
   static constexpr Real third = 1.0/3.0;
 
@@ -24,7 +24,7 @@ struct RK4Update {
   scalar_view_type vort3;
   scalar_view_type vort4;
 
-  RK4Update(crd_view& x_inout, const crd_view& xs1, const crd_view& xs2, const crd_view& xs3, const crd_view& xs4,
+  BVERK4Update(crd_view& x_inout, const crd_view& xs1, const crd_view& xs2, const crd_view& xs3, const crd_view& xs4,
     scalar_view_type zeta_inout, const scalar_view_type& zs1, const scalar_view_type& zs2, const scalar_view_type& zs3,
     const scalar_view_type& zs4 ) : x(x_inout), x1(xs1), x2(xs2), x3(xs3), x4(xs4), vort(zeta_inout),
     vort1(zs1), vort2(zs2), vort3(zs3), vort4(zs4) {}
@@ -116,9 +116,9 @@ void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& v
   ko::parallel_for("RK4-4 face vorticity", nfaces, BVEVorticityTendency(facevort4, facevel, dt, Omega));
 
   ko::parallel_for("RK4 vertex update", nverts,
-    RK4Update(vertx, vertx1, vertx2, vertx3, vertx4, vertvort, vertvort1, vertvort2, vertvort3, vertvort4));
+    BVERK4Update(vertx, vertx1, vertx2, vertx3, vertx4, vertvort, vertvort1, vertvort2, vertvort3, vertvort4));
   ko::parallel_for("RK4 face update", nfaces,
-    RK4Update(facex, facex1, facex2, facex3, facex4, facevort, facevort1, facevort2, facevort4, facevort4));
+    BVERK4Update(facex, facex1, facex2, facex3, facex4, facevort, facevort1, facevort2, facevort4, facevort4));
 
   ko::parallel_for("RK4-0 vertex velocity", vertex_policy,
     BVEVertexVelocity(vertvel, vertx, facex, facevort, facearea, facemask, nfaces));

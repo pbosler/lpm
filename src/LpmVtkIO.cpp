@@ -251,6 +251,7 @@ template class VtkInterface<PlaneGeometry, Faces<TriFace>>;
 template class VtkInterface<SphereGeometry, Faces<TriFace>>;
 template class VtkInterface<PlaneGeometry, Faces<QuadFace>>;
 template class VtkInterface<SphereGeometry, Faces<QuadFace>>;
+template class VtkInterface<CircularPlaneGeometry, Faces<QuadFace>>;
 template class Voronoi::VtkInterface<IcosTriDualSeed>;
 }
 

@@ -1,4 +1,5 @@
 #ifndef LPM_POLYMESH2D_VTK_INTERFACE_IMPL_HPP
+
 #define LPM_POLYMESH2D_VTK_INTERFACE_IMPL_HPP
 #include "LpmPolyMesh2dVtkInterface.hpp"
 #include <cassert>
@@ -20,6 +21,40 @@ Polymesh2dVtkInterface<SeedType>::Polymesh2dVtkInterface(const std::shared_ptr<P
 }
 
 template <typename SeedType>
+Polymesh2dVtkInterface<SeedType>::Polymesh2dVtkInterface(
+  const std::shared_ptr<PolyMesh2d<SeedType>>& pm, const scalar_view_type& height_field):
+  mesh(pm) {
+
+  polydata = vtkSmartPointer<vtkPolyData>::New();
+
+  auto hh = ko::create_mirror_view(height_field);
+  ko::deep_copy(hh, height_field);
+
+  const auto pts = make_points(hh);
+  const auto polys = make_cells();
+  const auto ca = make_cell_area();
+  polydata->SetPoints(pts);
+  polydata->SetPolys(polys);
+  polydata->GetCellData()->AddArray(ca);
+}
+
+template <typename SeedType>
+Polymesh2dVtkInterface<SeedType>::Polymesh2dVtkInterface(
+  const std::shared_ptr<PolyMesh2d<SeedType>>& pm,
+  const typename scalar_view_type::HostMirror& height_field):
+  mesh(pm) {
+
+  polydata = vtkSmartPointer<vtkPolyData>::New();
+
+  const auto pts = make_points(height_field);
+  const auto polys = make_cells();
+  const auto ca = make_cell_area();
+  polydata->SetPoints(pts);
+  polydata->SetPolys(polys);
+  polydata->GetCellData()->AddArray(ca);
+}
+
+template <typename SeedType>
 vtkSmartPointer<vtkPoints> Polymesh2dVtkInterface<SeedType>::make_points() const {
   auto result = vtkSmartPointer<vtkPoints>::New();
   const auto vx = mesh->physVerts.getHostCrdView();
@@ -29,6 +64,21 @@ vtkSmartPointer<vtkPoints> Polymesh2dVtkInterface<SeedType>::make_points() const
       crds[j] = vx(i,j);
     }
     result->InsertNextPoint(crds[0], crds[1], (SeedType::geo::ndim == 3 ? crds[2] : 0.0));
+  }
+  return result;
+}
+
+template <typename SeedType>
+vtkSmartPointer<vtkPoints> Polymesh2dVtkInterface<SeedType>::make_points(
+  const typename scalar_view_type::HostMirror& height_field) const {
+  auto result = vtkSmartPointer<vtkPoints>::New();
+  const auto vx = mesh->physVerts.getHostCrdView();
+  Real crds[2];
+  for (Index i=0; i<mesh->nvertsHost(); ++i) {
+    for (Short j=0; j<2; ++j) {
+      crds[j] = vx(i,j);
+    }
+    result->InsertNextPoint(crds[0], crds[1], height_field(i));
   }
   return result;
 }
@@ -120,8 +170,15 @@ void Polymesh2dVtkInterface<SeedType>::addVectorPointData(const ViewType& v, con
   pd->SetName((name.empty() ? v.label().c_str() : name.c_str()));
   pd->SetNumberOfComponents(v.extent(1));
   pd->SetNumberOfTuples(mesh->nvertsHost());
-  for (Index i=0; i<mesh->nvertsHost(); ++i) {
-    pd->InsertTuple3(i,pdata_host(i,0), pdata_host(i,1), (SeedType::geo::ndim == 3 ? pdata_host(i,2) : 0.0));
+  if (SeedType::geo::ndim == 3) {
+    for (Index i=0; i<mesh->nvertsHost(); ++i) {
+      pd->InsertTuple3(i,pdata_host(i,0), pdata_host(i,1), (SeedType::geo::ndim == 3 ? pdata_host(i,2) : 0.0));
+    }
+  }
+  else {
+    for (Index i=0; i<mesh->nvertsHost(); ++i) {
+      pd->InsertTuple2(i,pdata_host(i,0), pdata_host(i,1));
+    }
   }
   polydata->GetPointData()->AddArray(pd);
 }
@@ -154,9 +211,18 @@ void Polymesh2dVtkInterface<SeedType>::addVectorCellData(const ViewType& v, cons
   cd->SetNumberOfComponents(v.extent(1));
   cd->SetNumberOfTuples(mesh->faces.nLeavesHost());
   Index ctr = 0;
+  if (SeedType::geo::ndim == 3) {
   for (Index i=0; i<mesh->nfacesHost(); ++i) {
     if (!mesh->faces.hasKidsHost(i)) {
       cd->InsertTuple3(ctr++, cdata_host(i,0),cdata_host(i,1), (SeedType::geo::ndim == 3 ? cdata_host(i,2) : 0.0));
+    }
+  }
+  }
+  else {
+    for (Index i=0; i<mesh->nfacesHost(); ++i) {
+      if (!mesh->faces.hasKidsHost(i)) {
+        cd->InsertTuple2(ctr++, cdata_host(i,0), cdata_host(i,1));
+      }
     }
   }
   polydata->GetCellData()->AddArray(cd);

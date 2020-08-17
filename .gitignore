@@ -46,3 +46,6 @@ LpmConfig.h
 *.pdf
 *.dat
 *.namelist
+*.nc
+*.vtk
+*.vtp

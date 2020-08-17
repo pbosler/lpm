@@ -72,6 +72,8 @@ class PolyMeshReader : NcReader {
 
     PolyMeshReader(const std::string& filename) : NcReader(filename) {}
 
+    Int getTreeDepth() const;
+
     ko::View<Real**> getVertPhysCrdView() const;
     ko::View<Real**> getVertLagCrdView() const;
 
