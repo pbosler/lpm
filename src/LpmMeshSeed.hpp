@@ -193,6 +193,9 @@ template <typename SeedType> struct MeshSeed {
   MeshSeed() : scrds("seed coords"), sedges("seed edges"), sfaceverts("seed face vertices"),
     sfaceedges("seed face edges"), svertedges("seed vertex edges") {readfile();}
 
+  /// constructor. Multiplies radius of mesh.
+  MeshSeed(const Real& maxr);
+
   /// idString
   static std::string idString() {return SeedType::idString();}
 

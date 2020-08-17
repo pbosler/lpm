@@ -174,7 +174,7 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     Real result = 0.0;
     const Real r0 = mag(inner_cw);
     const Real r1 = mag(outer_ccw);
-    assert(r1 > r0);
+//     assert(r1 > r0);
 
     const Real dth = dtheta(outer_ccw,inner_cw);
     result = 0.5*dth*(square(r1)-square(r0));
@@ -190,7 +190,6 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     else {
       result = quad_sector_area(ko::subview(verts, 0, ko::ALL()), ko::subview(verts, 2, ko::ALL()));
     }
-    printf("ctr = (%f,%f), a = %f\n", ctr[0], ctr[1], result);
     return result;
   }
 };

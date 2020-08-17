@@ -2,6 +2,7 @@
 #include <sstream>
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
+#include "LpmUtilities.hpp"
 #include "LpmGeometry.hpp"
 #include "LpmCoords.hpp"
 #include "LpmEdges.hpp"
@@ -13,6 +14,7 @@ typedef ko::DefaultExecutionSpace ExeSpace;
 int main(int argc, char* argv[]) {
 ko::initialize(argc, argv);
 {
+  {
   Coords<SphereGeometry> sc4(6);
   const Real p0[3] = {0.57735026918962584,  -0.57735026918962584,  0.57735026918962584};
   const Real p1[3] = {0.57735026918962584,  -0.57735026918962584,  -0.57735026918962584};
@@ -65,6 +67,36 @@ ko::initialize(argc, argv);
   const MeshSeed<QuadRectSeed> seed;
   sedges.initFromSeed(seed);
   std::cout << sedges.infoString("QuadRectSeed");
+  }
+  {
+    const Real p0[2] = {0,0.5};
+    const Real p1[2] = {-0.5,0};
+    const Real p6[2] = {-1,0};
+
+    Coords<CircularPlaneGeometry> udcrds(8);
+    udcrds.insertHost(p0);
+    udcrds.insertHost(p1);
+    udcrds.insertHost(p6);
+    Coords<CircularPlaneGeometry> udlagcrds(8);
+    udlagcrds.insertHost(p0);
+    udlagcrds.insertHost(p1);
+    udlagcrds.insertHost(p6);
+    Edges edges(6);
+    const Index e0[4] = {0,1,0,1};
+    const Index e11[4] = {2,1,1,2};
+    edges.insertHost(e0[0], e0[1], e0[2], e0[3]);
+    edges.insertHost(e11[0], e11[1], e11[2], e11[3]);
+    edges.divide<CircularPlaneGeometry>(0, udcrds, udlagcrds);
+    std::cout << edges.infoString("edges after radial divide", 0, true);
+    Real rmidpt[2];
+    for (int i=0; i<2; ++i) rmidpt[i] = udcrds.getCrdComponentHost(3,i);
+    LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::mag(rmidpt), 0.5),
+      "error: radial midpoint did not preserve radius.");
+    edges.divide<CircularPlaneGeometry>(1, udcrds, udlagcrds);
+    std::cout << edges.infoString("edges after axial divide", 0, true);
+    std::cout << udcrds.infoString("crds after 2 divides", 0, true);
+
+  }
 
 }
 std::cout << "tests pass." << std::endl;

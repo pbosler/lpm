@@ -169,6 +169,16 @@ class Edges {
       _hr(ind) = newright;
     }
 
+    inline void setOrig(const Index ind, const Index& neworig) {
+      assert(ind <_nh());
+      _ho(ind) = neworig;
+    }
+
+    inline void setDest(const Index ind, const Index& newdest) {
+      assert(ind < _nh());
+      _hd(ind) = newdest;
+    }
+
     /** Initialize a set of Edges from a MeshSeed
 
     \hostfn

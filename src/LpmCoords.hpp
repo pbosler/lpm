@@ -111,12 +111,19 @@ template <typename Geo> class Coords {
     \param ind index of vector to be overwritten
     \param v data to write
     */
-    void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
-      LPM_THROW_IF(ind >= _nh(), "Coords::relocateHost error: index out of range.");
-      for (int i=0; i<Geo::ndim; ++i) {
-        _hostcrds(ind, i) = v(i);
+    template <typename CV>
+    void setCrdsHost(const Index ind, const CV v) {
+      assert(ind < _nh());
+      for (Short i=0; i<Geo::ndim; ++i) {
+        _hostcrds(ind,i) = v[i];
       }
     }
+//     void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
+//       LPM_THROW_IF(ind >= _nh(), "Coords::relocateHost error: index out of range.");
+//       for (int i=0; i<Geo::ndim; ++i) {
+//         _hostcrds(ind, i) = v(i);
+//       }
+//     }
 
     /** \brief Writes basic info about a Coords instance to a string.
 

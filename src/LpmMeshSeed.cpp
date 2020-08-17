@@ -8,6 +8,16 @@
 namespace Lpm {
 
 template <typename SeedType>
+MeshSeed<SeedType>::MeshSeed(const Real& maxr) : MeshSeed() {
+  for (Int i=0; i<scrds.extent(0); ++i) {
+    const auto mcrd = ko::subview(scrds, i, ko::ALL);
+    for (Int j=0; j<SeedType::geo::ndim; ++j) {
+      mcrd(j) *= maxr;
+    }
+  }
+}
+
+template <typename SeedType>
 void MeshSeed<SeedType>::readfile() {
   std::ifstream file(fullFilename());
   std::ostringstream oss;

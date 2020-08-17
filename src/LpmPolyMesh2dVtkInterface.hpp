@@ -22,6 +22,12 @@ template <typename SeedType> class Polymesh2dVtkInterface {
   public:
     Polymesh2dVtkInterface(const std::shared_ptr<PolyMesh2d<SeedType>>& pm);
 
+    Polymesh2dVtkInterface(const std::shared_ptr<PolyMesh2d<SeedType>>& pm,
+      const scalar_view_type& height_field);
+
+    Polymesh2dVtkInterface(const std::shared_ptr<PolyMesh2d<SeedType>>& pm,
+      const typename scalar_view_type::HostMirror& height_field);
+
     void write(const std::string& ofname);
 
     void updatePositions();
@@ -51,6 +57,7 @@ template <typename SeedType> class Polymesh2dVtkInterface {
     vtkSmartPointer<vtkXMLPolyDataWriter> writer;
 
     vtkSmartPointer<vtkPoints> make_points() const;
+    vtkSmartPointer<vtkPoints> make_points(const typename scalar_view_type::HostMirror& h) const;
     vtkSmartPointer<vtkCellArray> make_cells() const;
     vtkSmartPointer<vtkDoubleArray> make_cell_area() const;
 };

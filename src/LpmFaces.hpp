@@ -176,7 +176,10 @@ template <typename FaceKind> class Faces {
 
       @param ind index of face to query
     */
-    inline bool hasKidsHost(const Index ind) const {return ind < _nh() && _hostkids(ind, 0) > 0;}
+    inline bool hasKidsHost(const Index ind) const {
+      assert(ind < _nh());
+      return _hostkids(ind, 0) > 0;
+    }
 
     /** @brief Overwrite the children of a face
 
@@ -200,6 +203,20 @@ template <typename FaceKind> class Faces {
       @param relInd relative index of vertex (relative to face(ind) in Faces object); see MeshSeed
     */
     Index getVertHost(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
+
+    template <typename CV>
+    void setVertsHost(const Index& ind, const CV v) {
+      for (Short i=0; i<nverts; ++i) {
+        _hostverts(ind,i) = v[i];
+      }
+    }
+
+    template <typename CV>
+    void setEdgesHost(const Index& ind, const CV v) {
+      for (Short i=0; i<nverts; ++i) {
+        _hostedges(ind,i) = v[i];
+      }
+    }
 
      /** @brief Get a particular edge from a host
 
@@ -294,6 +311,7 @@ template <typename FaceKind> class Faces {
 //     }
 //
 
+    inline Real appx_mesh_size() const {return std::sqrt(surfAreaHost() / _hnLeaves());}
 
 
   protected:

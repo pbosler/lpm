@@ -6,6 +6,7 @@
 #include "LpmGeometry.hpp"
 #include "LpmMeshSeed.hpp"
 #include "LpmPolyMesh2d.hpp"
+#include <sstream>
 
 using namespace Lpm;
 
@@ -23,12 +24,13 @@ ko::initialize(argc, argv);
     triplane.outputVtk("triplane_test.vtk");
     triplane.updateDevice();
 
-    MeshSeed<QuadRectSeed> qrseed;
+    MeshSeed<QuadRectSeed> qrseed(4);
     qrseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 3);
     PolyMesh2d<QuadRectSeed> quadplane(nmaxverts, nmaxedges, nmaxfaces);
     quadplane.treeInit(3, qrseed);
     quadplane.outputVtk("quadplane_test.vtk");
     quadplane.updateDevice();
+    std::cout << quadplane.infoString("quadplane r = 4");
 
     MeshSeed<IcosTriSphereSeed> icseed;
     icseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 3);
@@ -44,13 +46,16 @@ ko::initialize(argc, argv);
     quadsphere.outputVtk("quadsphere_test.vtk");
     quadsphere.updateDevice();
 
+    std::ostringstream ss;
+    const Int depth = 3;
     MeshSeed<UnitDiskSeed> udseed;
-    udseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 0);
+    udseed.setMaxAllocations(nmaxverts, nmaxedges, nmaxfaces, 4);
     PolyMesh2d<UnitDiskSeed> udisk(nmaxverts, nmaxedges, nmaxfaces);
-    udisk.treeInit(0,udseed);
-    udisk.outputVtk("unitdisk_test.vtk");
+    udisk.treeInit(depth,udseed);
+    ss << "unitDisk_test"<< depth << ".vtk";
+    udisk.outputVtk(ss.str());
     udisk.updateDevice();
-    std::cout << udisk.infoString("unitdisk",0,true);
+    std::cout << udisk.infoString("unitdisk",0,false);
 }
 std::cout << "tests pass." << std::endl;
 ko::finalize();

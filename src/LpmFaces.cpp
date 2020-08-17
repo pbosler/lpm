@@ -59,6 +59,7 @@ void Faces<FaceKind>::initFromSeed(const MeshSeed<SeedType>& seed) {
   }
   _nh() = SeedType::nfaces;
   _hnLeaves() = SeedType::nfaces;
+  if (seed.idString() == "UnitDiskSeed") _hostkids(0,1) = 0;
 }
 
 template <typename FaceKind>
@@ -405,80 +406,216 @@ void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
   auto parentVertInds = ko::subview(faces._hostverts, faceInd, ko::ALL());
   auto parentEdgeInds = ko::subview(faces._hostedges, faceInd, ko::ALL());
 
-  const Index vert_ins_pt = physVerts.nh();
   const Index face_insert_pt = faces.nh();
   const Index face_crd_ins_pt = physFaces.nh();
 
+  ko::View<Index[4],Host> newFaceKids("newFaceKids");
+  for (Short i=0; i<4; ++i) {
+    newFaceKids(i) = face_insert_pt+i;
+  }
+
   /// special case for faceInd = 0
   if (faceInd == 0) {
-    assert(faces.getCenterIndHost(faceInd) == 0);
-    const Index edge_ins_pt = edges.nh();
-    // create new vertices
-    ko::View<Real[2],Host> vertCrds("vertCrds");
-    ko::View<Real[2],Host> vertLagCrds("vertLagCrds");
-    const Real rp = CircularPlaneGeometry::mag(
-      ko::subview(physVerts.crds, parentVertInds(0), ko::ALL()));
-    const Real rnewv = 0.5*rp;
-    for (Short i=0; i<4; ++i) {
-      const Real the = ((i+1)%4)*0.5*PI;
-      vertCrds(0) = rnewv*std::cos(the);
-      vertCrds(1) = rnewv*std::sin(the);
-      vertLagCrds(0) = rnewv*std::cos(the);
-      vertLagCrds(1) = rnewv*std::sin(the);
-      physVerts.insertHost(vertCrds);
-      lagVerts.insertHost(vertLagCrds);
-    }
-
-    // create new edges
-    for (Short i=0; i<4; ++i) {
-      edges.insertHost(vert_ins_pt+i, vert_ins_pt + (i+1)%4, 0, face_insert_pt+(i+1)%4+1);
-    }
-
-    // connect vertices & edges to new child faces
-    for (Short i=0; i<4; ++i) {
-      newFaceVertInds(i,0) = parentVertInds((i+1)%4);
-      newFaceVertInds(i,1) = vert_ins_pt + (i+1)%4;
-      newFaceVertInds(i,2) = vert_ins_pt + i;
-      newFaceVertInds(i,3) = parentVertInds(i);
-
-      newFaceEdgeInds(i,0) = edge_ins_pt + 4 + (i+1)%4;
-      newFaceEdgeInds(i,1) = edge_ins_pt + i;
-      newFaceEdgeInds(i,2) = 4 + i;
-      newFaceEdgeInds(i,3) = parentEdgeInds(i);
-    }
-
-    // create new faces & centers
-    ko::View<Real[2],Host> faceCrds("faceCrds");
-    ko::View<Real[2],Host> faceLagCrds("faceLagCrds");
-    const Real rnewf = 0.75*rp;
-    const Real newfacearea = 0.25*PI*(square(rp)-square(rnewv));
-    for (Short i=0; i<4; ++i) {
-      const Real the = 0.25*((2*i+3)%8)*PI;
-      faceCrds(0) = rnewf*std::cos(the);
-      faceCrds(1) = rnewf*std::sin(the);
-      faceLagCrds(0) = rnewf*std::cos(the);
-      faceLagCrds(1) = rnewf*std::sin(the);
-
-      physFaces.insertHost(faceCrds);
-      lagFaces.insertHost(faceLagCrds);
-
-      faces.insertHost(face_insert_pt+i, ko::subview(newFaceVertInds, i, ko::ALL()),
-        ko::subview(newFaceEdgeInds, i, ko::ALL()), 0, newfacearea);
-    }
-
-    faces.setAreaHost(0, PI*square(rnewv));
-    faces.incrementnLeaves(4);
-    /** Specal case for UnitDisk: face 0 can have more than 4 children,
-    and is never masked (it's always a leaf) even if it has kids
-    */
-    auto f0kids = ko::subview(faces.getKidsHost(), 0, ko::ALL());
-    f0kids(0) += 4;
+    // assert(faces.getCenterIndHost(faceInd) == 0);
+//     const Index vert_ins_pt = physVerts.nh();
+//     const Index edge_ins_pt = edges.nh();
+//
+//     /**
+//       Make new vertices at locations of 0,1,2,3; connect to parent edges
+//
+//         new vertex indices = vert_ins_pt + (0,1,2,3)
+//     */
+//     ko::View<Real[4][2],Host> special_physverts("special_physverts");
+//     ko::View<Real[4][2],Host> special_lagverts("special_lagverts");
+//     const Real r0 = CircularPlaneGeometry::mag(ko::subview(special_physverts, 0, ko::ALL));
+//     for (Short i=0; i<4; ++i) {
+//      for (Short j=0; j<2; ++j) {
+//       special_physverts(i,j) = physVerts.getCrdComponentHost(i,j);
+//       special_lagverts(i,j) = lagVerts.getCrdComponentHost(i,j);
+//      }
+//      physVerts.insertHost(ko::subview(special_physverts,i,ko::ALL));
+//      lagVerts.insertHost(ko::subview(special_lagverts,i,ko::ALL));
+//      edges.setOrig(parentEdgeInds(i), vert_ins_pt+i);
+//      edges.setDest(parentEdgeInds(i), vert_ins_pt+(i+1)%4);
+//     }
+//
+//     /**
+//       divide parent edges
+//
+//         new vertex indices = vert_ins_pt + (4,5,6,7)
+//         new edgde indices = edge_ins_pt + [(0,1), (2,3), (4,5), (6,7)]
+//     */
+//     for (Short i=0; i<4; ++i) {
+//       edges.divide<CircularPlaneGeometry>(parentEdgeInds(i), physVerts, lagVerts);
+//     }
+//
+//     /**
+//       Move vertices 0,1,2,3 to half-radius positions
+//     */
+//     for (Short i=0; i<4; ++i) {
+//       auto vcrd = ko::subview(special_physverts, i, ko::ALL);
+//       const Real the = (i+1)*0.5*PI;
+//       vcrd(0) = 0.5*r0*std::cos(the);
+//       vcrd(1) = 0.5*r0*std::sin(the);
+//       physVerts.setCrdsHost(i, vcrd);
+//       lagVerts.setCrdsHost(i, vcrd);
+//     }
+//     /**
+//       Put new vertices between new 0,1,2,3 positions
+//
+//         new vertex indices = vert_ins_pt + (8,9,10,11)
+//         these do not connect to panel 0 -- it (always) only connects to vertices 0,1,2,3
+//
+//         create new edges from vertices (0,1,2,3) to new vertex indices
+//         these edges connect to panel 0, but panel 0 does not connect to them.
+//         new edge indices = edge_ins_pt + [(8,9),(10,11),(12,13),(14,15)]
+//     */
+//     ko::View<Real[2],Host> newvertcrds("newvertcrds");
+//     for (Short i=0; i<4; ++i) {
+//       const Real the = (2*i+3)%8 * 0.25*PI;
+//       const Real rr = 0.5*r0;
+//       newvertcrds(0) = rr*std::cos(the);
+//       newvertcrds(1) = rr*std::sin(the);
+//       physVerts.insertHost(newvertcrds);
+//       lagVerts.insertHost(newvertcrds);
+//       //              orig       dest             left    right
+//       edges.insertHost(i,       vert_ins_pt+8+i,      0, face_insert_pt+2*i);
+//       edges.insertHost(vert_ins_pt+8+1,  (i+1)%4,     0, face_insert_pt+2*i+1);
+//     }
+//
+//     /**
+//       create new edges from outer radius to new inner radius
+//         new edge indices = edge_ins_pt + [(16,17,18,19,20,21,22,23)]
+//     */
+//     edges.insertHost(vert_ins_pt+8, vert_ins_pt+4, face_insert_pt+1, face_insert_pt,0); //16
+//     edges.insertHost(vert_ins_pt+1,1, face_insert_pt+1,face_insert_pt+2,0); //17
+//     edges.insertHost(vert_ins_pt+9, vert_ins_pt+5,face_insert_pt+3,face_insert_pt+2,0);//18
+//     edges.insertHost(vert_ins_pt+2, 2, face_insert_pt+3, face_insert_pt+4,0);//19
+//     edges.insertHost(vert_ins_pt+10,vert_ins_pt+6, face_insert_pt+5,face_insert_pt+4,0);//20
+//     edges.insertHost(vert_ins_pt+3,3, face_insert_pt+5, face_insert_pt+6,0);//21
+//     edges.insertHost(vert_ins_pt+11,vert_ins_pt+7,face_insert_pt+7,face_insert_pt+6,0);//22
+//     edges.insertHost(vert_ins_pt, 0, face_insert_pt+7,face_insert_pt,0);//23
+//
+//     /**
+//       create new panels around shrunken panel 0
+//
+//         new face indices = face_insert_pt + (0,1,2,3,5,6,7)
+//         new faces are all leaves with parent = 0
+//     */
+//     const Real newfacearea = 0.5*(0.25*PI)*(square(r0) - square(0.5*r0));
+//     ko::View<Index[8][4],Host> newFaceVertInds("newFaceVertInds");
+//     ko::View<Index[8][4],Host> newFaceEdgeInds("newFaceEdgeInds");
+//     {
+//     newFaceVertInds(0,0) = vert_ins_pt+4;
+//     newFaceVertInds(0,1) = vert_ins_pt+8;
+//     newFaceVertInds(0,2) = 0;
+//     newFaceVertInds(0,3) = vert_ins_pt;
+//
+//     newFaceEdgeInds(0,0) = edge_ins_pt+16;
+//     newFaceEdgeInds(0,1) = edge_ins_pt+8;
+//     newFaceEdgeInds(0,2) = edge_ins_pt+23;
+//     newFaceEdgeInds(0,3) = edge_ins_pt;
+//
+//     newFaceVertInds(1,0) = vert_ins_pt+1;
+//     newFaceVertInds(1,1) = 1;
+//     newFaceVertInds(1,2) = vert_ins_pt+8;
+//     newFaceVertInds(1,3) = vert_ins_pt+4;
+//
+//     newFaceEdgeInds(1,0) = edge_ins_pt+17;
+//     newFaceEdgeInds(1,1) = edge_ins_pt+9;
+//     newFaceEdgeInds(1,2) = edge_ins_pt+16;
+//     newFaceEdgeInds(1,3) = edge_ins_pt+1;
+//
+//     newFaceVertInds(2,0) = vert_ins_pt+5;
+//     newFaceVertInds(2,1) = vert_ins_pt+9;
+//     newFaceVertInds(2,2) = 1;
+//     newFaceVertInds(2,3) = vert_ins_pt+1;
+//
+//     newFaceEdgeInds(2,0) = edge_ins_pt+18;
+//     newFaceEdgeInds(2,1) = edge_ins_pt+10;
+//     newFaceEdgeInds(2,2) = edge_ins_pt+17;
+//     newFaceEdgeInds(2,3) = edge_ins_pt+2;
+//
+//     newFaceVertInds(3,0) = vert_ins_pt+2;
+//     newFaceVertInds(3,1) = 2;
+//     newFaceVertInds(3,2) = vert_ins_pt+9;
+//     newFaceVertInds(3,3) = vert_ins_pt+5;
+//
+//     newFaceEdgeInds(3,0) = edge_ins_pt+19;
+//     newFaceEdgeInds(3,1) = edge_ins_pt+11;
+//     newFaceEdgeInds(3,2) = edge_ins_pt+18;
+//     newFaceEdgeInds(3,3) = edge_ins_pt+3;
+//
+//     newFaceVertInds(4,0) = vert_ins_pt+6;
+//     newFaceVertInds(4,1) = vert_ins_pt+10;
+//     newFaceVertInds(4,2) = 2;
+//     newFaceVertInds(4,3) = vert_ins_pt+2;
+//
+//     newFaceEdgeInds(4,0) = edge_ins_pt+20;
+//     newFaceEdgeInds(4,1) = edge_ins_pt+12;
+//     newFaceEdgeInds(4,2) = edge_ins_pt+19;
+//     newFaceEdgeInds(4,3) = edge_ins_pt+4;
+//
+//     newFaceVertInds(5,0) = vert_ins_pt+3;
+//     newFaceVertInds(5,1) = 3;
+//     newFaceVertInds(5,2) = vert_ins_pt+10;
+//     newFaceVertInds(5,3) = vert_ins_pt+6;
+//
+//     newFaceEdgeInds(5,0) = edge_ins_pt+21;
+//     newFaceEdgeInds(5,1) = edge_ins_pt+13;
+//     newFaceEdgeInds(5,2) = edge_ins_pt+20;
+//     newFaceEdgeInds(5,3) = edge_ins_pt+5;
+//
+//     newFaceVertInds(6,0) = vert_ins_pt+7;
+//     newFaceVertInds(6,1) = vert_ins_pt+11;
+//     newFaceVertInds(6,2) = 3;
+//     newFaceVertInds(6,3) = vert_ins_pt+3;
+//
+//     newFaceEdgeInds(6,0) = edge_ins_pt+22;
+//     newFaceEdgeInds(6,1) = edge_ins_pt+14;
+//     newFaceEdgeInds(6,2) = edge_ins_pt+21;
+//     newFaceEdgeInds(6,3) = edge_ins_pt+6;
+//
+//     newFaceVertInds(7,0) = vert_ins_pt;
+//     newFaceVertInds(7,1) = 0;
+//     newFaceVertInds(7,2) = vert_ins_pt+11;
+//     newFaceVertInds(7,3) = vert_ins_pt+1;
+//
+//     newFaceEdgeInds(7,0) = edge_ins_pt+23;
+//     newFaceEdgeInds(7,1) = edge_ins_pt+15;
+//     newFaceEdgeInds(7,2) = edge_ins_pt+22;
+//     newFaceEdgeInds(7,3) = edge_ins_pt+7;
+//
+//     }
+//     for (Short i=0; i<8; ++i) {
+//       faces.insertHost(face_crd_ins_pt+i, ko::subview(newFaceVertInds,i,ko::ALL),
+//         ko::subview(newFaceEdgeInds,i,ko::ALL),0, newfacearea);
+//     }
+//     /**
+//       create new face coordinates
+//     */
+//     ko::View<Real[2],Host> fcrd("fcrd");
+//     const Real dth = 2*PI/8;
+//     const Real rf = 0.75*r0;
+//     for (Short i=0; i<8; ++i) {
+//       const Real the = 0.5*PI + dth;
+//       fcrd(0) = rf*std::cos(the);
+//       fcrd(1) = rf*std::sin(the);
+//       physFaces.insertHost(fcrd);
+//       lagFaces.insertHost(fcrd);
+//     }
+//
+//     /**
+//       set new face 0 area
+//       ensure that face 0 is always a leaf
+//     */
+//     faces.setAreaHost(0, square(0.5*r0)*PI);
+//     faces._hlevel(0) += 1;
   }
   else {
-    ko::View<Index[4],Host> newFaceKids("newFaceKids");
+
     /// set kid indices & connect parent vertices to child faces
     for (Short i=0; i<4; ++i) {
-      newFaceKids(i) = face_insert_pt+i;
       newFaceVertInds(i,i) = parentVertInds(i);
     }
 
@@ -492,7 +629,7 @@ void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
       }
       else {
         edgekids(0) = edges.nh();
-        edgekids(0) = edges.nh()+1;
+        edgekids(1) = edges.nh()+1;
 
         edges.divide<CircularPlaneGeometry>(parentEdge, physVerts, lagVerts);
       }
@@ -525,6 +662,7 @@ void FaceDivider<CircularPlaneGeometry,QuadFace>::divide(const Index faceInd,
       newcrd(i) = physFaces.getCrdComponentHost(parent_center_ind, i);
       newlagcrd(i) = lagFaces.getCrdComponentHost(parent_center_ind,i);
     }
+    const Index vert_ins_pt = physVerts.nh();
     physVerts.insertHost(newcrd);
     lagVerts.insertHost(newlagcrd);
     for (Short i=0; i<4; ++i) {

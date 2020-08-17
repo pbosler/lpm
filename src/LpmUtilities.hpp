@@ -71,6 +71,17 @@ Real sign(const Real& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
 KOKKOS_INLINE_FUNCTION
 Real cube(const Real& x) {return x*x*x;}
 
+/** safely divide by a real number
+
+  @f$ \frac{1}{x} = \lim_{\epsilon \to 0} \frac{x}{x^2 + \epsilon^2} @f$
+
+  @param x desired denominator
+  @param eps regularization parameter
+  @return @f$ \frac{x}{x^2 + \epsilon^2} @f$
+*/
+KOKKOS_INLINE_FUNCTION
+Real safe_divide(const Real& x, const Real& eps=ZERO_TOL) {return x/(square(x) + square(eps));}
+
 template <typename MaskViewType>
 Index mask_count(const MaskViewType& mv) {
   Index result;
