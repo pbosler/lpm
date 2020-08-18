@@ -82,6 +82,9 @@ template <typename SeedType> class ShallowWater : public PolyMesh2d<SeedType> {
 
     inline void set_coriolis(const Real& rot_rate) {Omega = rot_rate;}
 
+    Real total_mass() const;
+    Real total_mass_integral() const;
+
   protected:
     typedef typename scalar_field::HostMirror scalar_host;
     typedef typename vector_field::HostMirror vector_host;

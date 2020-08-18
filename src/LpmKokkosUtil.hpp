@@ -97,20 +97,28 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
   }
 };
 
-template <>
-struct reduction_identity<Tuple<Lpm::Real,3>> {
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> sum() {return Tuple<Lpm::Real,3>();}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> prod() {return Tuple<Lpm::Real,3>(1);}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> max() {return Tuple<Lpm::Real,3>(-DBL_MAX);}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> min() {return Tuple<Lpm::Real,3>(DBL_MAX);}
-};
+// template <>
+// struct reduction_identity<Tuple<Lpm::Real,3>> {
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> sum() {return Tuple<Lpm::Real,3>();}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> prod() {return Tuple<Lpm::Real,3>(1);}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> max() {return Tuple<Lpm::Real,3>(-DBL_MAX);}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,3> min() {return Tuple<Lpm::Real,3>(DBL_MAX);}
+// };
+//
+// template <>
+// struct reduction_identity<Tuple<Lpm::Real,2>> {
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> sum() {return Tuple<Lpm::Real,2>();}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> prod() {return Tuple<Lpm::Real,2>(1);}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> max() {return Tuple<Lpm::Real,2>(-DBL_MAX);}
+//   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> min() {return Tuple<Lpm::Real,2>(DBL_MIN);}
+// };
 
-template <>
-struct reduction_identity<Tuple<Lpm::Real,2>> {
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> sum() {return Tuple<Lpm::Real,2>();}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> prod() {return Tuple<Lpm::Real,2>(1);}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> max() {return Tuple<Lpm::Real,2>(-DBL_MAX);}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,2> min() {return Tuple<Lpm::Real,2>(DBL_MIN);}
+template <int ndim>
+struct reduction_identity<Tuple<Lpm::Real,ndim>> {
+  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> sum() {return Tuple<Lpm::Real,ndim>();}
+  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> prod() {return Tuple<Lpm::Real,ndim>(1);}
+  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> max() {return Tuple<Lpm::Real,ndim>(-DBL_MAX);}
+  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> min() {return Tuple<Lpm::Real,ndim>(DBL_MIN);}
 };
 
 }// namespace Kokkos
