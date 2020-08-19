@@ -2,10 +2,27 @@
 #define LPM_SWE_IMPL_HPP
 
 #include "LpmShallowWater.hpp"
-// #include "LpmSWEKernels.hpp"
+#include "LpmUtilities.hpp"
 #include <sstream>
 
 namespace Lpm {
+
+template <typename SeedType>
+std::string ShallowWater<SeedType>::infoString(const std::string& label,
+  const int& tab_level, const bool& dump_all) const {
+  std::ostringstream ss;
+  ss << PolyMesh2d<SeedType>::infoString(label, tab_level, dump_all);
+  ko::MinMaxScalar<Real> mm;
+  const auto vzeta = relVortVerts;
+  ko::parallel_reduce(this->nvertsHost(),
+    KOKKOS_LAMBDA (const Index& i, ko::MinMaxScalar<Real>& rr) {
+    if (vzeta(i) < rr.min_val) rr.min_val = vzeta(i);
+    if (vzeta(i) > rr.max_val) rr.max_val = vzeta(i);
+  }, ko::MinMax<Real>(mm));
+  ss << indentString(tab_level) << "relvortVerts (min,max) = (" << mm.min_val
+     << ", " << mm.max_val << ")\n";
+  return ss.str();
+}
 
 template <typename SeedType>
 ShallowWater<SeedType>::ShallowWater(const Index nmaxverts, const Index nmaxedges,
@@ -95,7 +112,7 @@ void ShallowWater<SeedType>::set_bottom_topography() {
 
 template <typename SeedType> template <typename ProblemType>
 void ShallowWater<SeedType>::init_problem() {
-  this->f0 = ProblemType::f;
+  this->f0 = ProblemType::f0;
   this->beta = ProblemType::beta;
   this->Omega = ProblemType::OMEGA;
 
@@ -111,13 +128,13 @@ void ShallowWater<SeedType>::init_problem() {
     const auto mcrd = ko::subview(vcrds, i, ko::ALL);
     zetav(i) = ProblemType::zeta0(mcrd);
     Qv(i) = zetav(i) + (SeedType::geo::ndim == 3 ? 2*ProblemType::OMEGA*mcrd(2) :
-       ProblemType::f + ProblemType::beta*mcrd(1));
+       ProblemType::f0 + ProblemType::beta*mcrd(1));
 
     sigmav(i) = ProblemType::sigma0(mcrd);
     sv(i) = ProblemType::sfc0(mcrd);
     sbv(i) = ProblemType::bottom_height(mcrd);
     auto uv = ko::subview(vv, i, ko::ALL);
-    ProblemType::exact_velocity(uv, mcrd, 0);
+    ProblemType::u0(uv, mcrd);
     const Real h = sv(i) - sbv(i);
     hv(i) = h;
     if (h<0) {
@@ -161,7 +178,7 @@ void ShallowWater<SeedType>::init_problem() {
       const auto mcrd = ko::subview(fcrds, i, ko::ALL);
       zetaf(i) = ProblemType::zeta0(mcrd);
       Qf(i) = zetaf(i) + (SeedType::geo::ndim == 3 ? 2*ProblemType::OMEGA*mcrd(2) :
-        ProblemType::f + ProblemType::beta*mcrd(1));
+        ProblemType::f0 + ProblemType::beta*mcrd(1));
       sigmaf(i) = ProblemType::sigma0(mcrd);
       sf(i) = ProblemType::sfc0(mcrd);
       sbf(i) = ProblemType::bottom_height(mcrd);
@@ -176,7 +193,7 @@ void ShallowWater<SeedType>::init_problem() {
         hf(i) = 0;
       }
       auto uv = ko::subview(vf, i, ko::ALL);
-      ProblemType::exact_velocity(uv, mcrd, 0);
+      ProblemType::u0(uv, mcrd);
       if (h < 0) {
         for (Short j=0; j<vf.extent(1); ++j) {
           uv(j) = 0;
@@ -226,6 +243,30 @@ void ShallowWater<SeedType>::addFieldsToVtk(Polymesh2dVtkInterface<SeedType>& vt
 //     vtk.addScalarPointData(tracer_verts[k]);
 //     vtk.addScalarCellData(tracer_faces[k]);
 //   }
+}
+
+template <typename SeedType>
+Real ShallowWater<SeedType>::total_mass() const {
+  Real m;
+  const auto local_mass = massFaces;
+  ko::parallel_reduce(this->nfacesHost(), KOKKOS_LAMBDA (const Index& i, Real& sum) {
+    sum += local_mass(i);
+  }, m);
+  return m;
+}
+
+template <typename SeedType>
+Real ShallowWater<SeedType>::total_mass_integral() const {
+  const auto local_h = depthFaces;
+  const auto local_a = this->faces.area;
+  const auto local_mask = this->faces.mask;
+  Real m;
+  ko::parallel_reduce(this->nfacesHost(), KOKKOS_LAMBDA (const Index& i, Real& sum) {
+    if (!local_mask(i)) {
+      sum += local_h(i)*local_a(i);
+    }
+  },m);
+  return m;
 }
 
 }

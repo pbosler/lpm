@@ -62,14 +62,14 @@ bool fp_equiv(const T& a, const T& b, const T& tol=ZERO_TOL) {
 }
 
 /// square a scalar
-KOKKOS_INLINE_FUNCTION
-Real square(const Real& x) {return x*x;}
+template <typename T=Real> KOKKOS_INLINE_FUNCTION
+T square(const T& x) {return x*x;}
 /// sgn function
-KOKKOS_INLINE_FUNCTION
-Real sign(const Real& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
+template <typename T=Real> KOKKOS_INLINE_FUNCTION
+T sign(const T& a) {return (a>0 ? 1 : (a < 0 ? -1 : 0));}
 /// cube a scalar
-KOKKOS_INLINE_FUNCTION
-Real cube(const Real& x) {return x*x*x;}
+template <typename T=Real> KOKKOS_INLINE_FUNCTION
+T cube(const T& x) {return x*x*x;}
 
 /** safely divide by a real number
 
@@ -79,8 +79,8 @@ Real cube(const Real& x) {return x*x*x;}
   @param eps regularization parameter
   @return @f$ \frac{x}{x^2 + \epsilon^2} @f$
 */
-KOKKOS_INLINE_FUNCTION
-Real safe_divide(const Real& x, const Real& eps=ZERO_TOL) {return x/(square(x) + square(eps));}
+template <typename T=Real> KOKKOS_INLINE_FUNCTION
+T safe_divide(const T& x, const T& eps=ZERO_TOL) {return x/(square(x) + square(eps));}
 
 template <typename MaskViewType>
 Index mask_count(const MaskViewType& mv) {

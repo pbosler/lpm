@@ -18,7 +18,7 @@ elif [ "$HOSTNAME" = "s1046231" ] ; then
   echo "hostname = $HOSTNAME"
   SRC_ROOT=$HOME/lpm
   export VTK_ROOT=/Users/pabosle/vtk-8.2.0/clang-10.0.1
-  export TR=$HOME/trilinos-serial-debug/install
+  export TR=$HOME/trilinos-serial/install
 else
     SRC_ROOT=$HOME/lpmkokkos
     export VTK_ROOT=$HOME/VTK-8.1.1
@@ -32,7 +32,7 @@ export OMPI_CXX=g++
 
 
 cmake -Wno-dev \
--D CMAKE_BUILD_TYPE:STRING="DEBUG" \
+-D CMAKE_BUILD_TYPE:STRING="RelWithDebInfo" \
 -D CMAKE_CXX_FLAGS="-g" \
 -D Trilinos_ROOT=$TR \
 -D Spherepack_ROOT=$SP \

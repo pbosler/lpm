@@ -187,7 +187,8 @@ template <typename SeedType> class PolyMesh2d {
 
     @hostfn
     */
-    std::string infoString(const std::string& label="", const int& tab_level = 0, const bool& dump_all=false) const;
+    virtual std::string infoString(const std::string& label="",
+      const int& tab_level = 0, const bool& dump_all=false) const;
 
   protected:
     typedef FaceDivider<Geo,FaceType> divider;
