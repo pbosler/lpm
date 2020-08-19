@@ -4,19 +4,19 @@
 #include "LpmConfig.h"
 #include "LpmDefs.hpp"
 #include "Kokkos_Core.hpp"
-
+#include "LpmShallowWater.hpp"
 
 namespace Lpm {
 
 
-template <int ndim=2>
+template <typename SeedType, typename ProblemType>
 class SWERK4 {
   public:
     static constexpr Real sixth = 1.0/6.0;
     static constexpr Real third = 1.0/3.0;
 
-    typedef ko::View<Real*[ndim]> crd_view;
-    typedef ko::View<Real*[ndim]> vec_view;
+    typedef typename SeedType::geo::crd_view_type crd_view;
+    typedef typename SeedType::geo::vec_view_type vec_view;
 
     crd_view vertx;
     vec_view vertvel;
@@ -45,22 +45,18 @@ class SWERK4 {
     Index nverts;
     Index nfaces;
 
-    SWERK4(const Real& timestep, const Real& fc, const Real& b, const Real& g_) : dt(timestep),
-       f0(fc), beta(b), Omega(0), g(g_) {}
+    SWERK4(const std::shared_ptr<ShallowWater<SeedType>> pm, const Real& tstep, const Real& eps) :
+      vertx(pm->physVerts.crds), vertvel(pm->velocityVerts), vertvort(pm->relVortVerts),
+      vertdiv(pm->divVerts), vertsfc(pm->surfaceHeightVerts), vertdepth(pm->depthVerts),
+      verttopo(pm->topoVerts),
+      facex(pm->physFaces.crds), facevel(pm->velocityFaces), facevort(pm->relVortFaces),
+      facediv(pm->divFaces), facesfc(pm->surfaceHeightFaces), facedepth(pm->depthFaces),
+      facetopo(pm->topoFaces), facearea(pm->faces.area), dt(tstep), f0(ProblemType::f0),
+      beta(ProblemType::beta), Omega(ProblemType::OMEGA), g(ProblemType::g), eps_pse(eps),
+      nverts(pm->nvertsHost()), nfaces(pm->nfacesHost()), facemass(pm->massFaces),
+      facemask(pm->faces.mask) {init();}
 
-    SWERK4(const Real& timestep, const Real& omg, const Real& g_) :
-      f0(0), beta(0), Omega(omg), g(g_) {}
-
-    void init(const Index& nv, const Index& nf);
-
-    template <typename ProblemType>
-    void advance_timestep(crd_view vx, vec_view& vvel,
-      scalar_view_type& vzeta, scalar_view_type& vsigma, scalar_view_type& vsfc,
-      scalar_view_type& vh, scalar_view_type& vtopo,
-      crd_view fx, vec_view& fvel, scalar_view_type& fzeta, scalar_view_type& fsigma,
-      scalar_view_type& fsfc, scalar_view_type& fh, scalar_view_type& ftopo, scalar_view_type& fa,
-      const scalar_view_type& mm, const mask_view_type& fm, const Real& pse_eps);
-
+    void advance_timestep();
 
     struct PositionUpdate {
       crd_view x;
@@ -96,9 +92,13 @@ class SWERK4 {
       }
     };
 
+    std::string infoString(const std::string& label="", const int& tab_level=0) const;
+
   protected:
     mask_view_type facemask;
     scalar_view_type facemass;
+
+    void init();
 
     crd_view vertx1;
     crd_view vertx2;
@@ -154,7 +154,6 @@ class SWERK4 {
     scalar_view_type facearea4;
     scalar_view_type faceareawork;
 
-    template <typename ProblemType>
     void update_sfc();
 
     void compute_direct_sums();

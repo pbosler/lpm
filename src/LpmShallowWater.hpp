@@ -85,6 +85,9 @@ template <typename SeedType> class ShallowWater : public PolyMesh2d<SeedType> {
     Real total_mass() const;
     Real total_mass_integral() const;
 
+    std::string infoString(const std::string& label="",
+      const int& tab_level = 0, const bool& dump_all=false) const override;
+
   protected:
     typedef typename scalar_field::HostMirror scalar_host;
     typedef typename vector_field::HostMirror vector_host;

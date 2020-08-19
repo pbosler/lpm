@@ -64,8 +64,8 @@ ko::initialize(argc, argv);
   const Real f0 = problem_type::f0;
   const Real beta = problem_type::beta;
   const Real eps = pse_eps(plane->appx_mesh_size());
-  SWERK4<2> solver(dt, f0, beta, g);
-  solver.init(plane->nvertsHost(), plane->nfacesHost());
+  SWERK4<seed_type,problem_type> solver(plane, dt, eps);
+//   std::cout << solver.infoString();
 
   Timer single_output_timer("output");
   single_output_timer.start();
@@ -83,29 +83,14 @@ ko::initialize(argc, argv);
   init_timer.stop();
   std::cout << init_timer.infoString();
 
+  std::cout << plane->infoString("plane_mesh_init", 0, (tree_depth < 3));
+
   Real t;
   const Real tfinal = input.tfinal;
   const Int ntimesteps = std::floor(tfinal/dt);
   ProgressBar progress("SWE_PlaneTest", ntimesteps);
   for (Int time_ind = 0; time_ind < ntimesteps; ++time_ind) {
-    solver.advance_timestep<problem_type>(plane->physVerts.crds,
-                            plane->velocityVerts,
-                            plane->relVortVerts,
-                            plane->divVerts,
-                            plane->surfaceHeightVerts,
-                            plane->depthVerts,
-                            plane->topoVerts,
-                            plane->physFaces.crds,
-                            plane->velocityFaces,
-                            plane->relVortFaces,
-                            plane->divFaces,
-                            plane->surfaceHeightFaces,
-                            plane->depthFaces,
-                            plane->topoFaces,
-                            plane->faces.area,
-                            plane->massFaces,
-                            plane->faces.mask,
-                            eps);
+    solver.advance_timestep();
 
     progress.update();
 
@@ -122,7 +107,7 @@ ko::initialize(argc, argv);
     }
 
   }
-
+  std::cout << plane->infoString("plane_mesh_final", 0, (tree_depth < 3));
 
   total_timer.stop();
   std::cout << total_timer.infoString();
@@ -137,7 +122,7 @@ Input::Input(int argc, char* argv[]) {
   case_name = "plane_swe_test";
   max_depth = 3;
   output_interval = 1;
-  mesh_radius = 5.0;
+  mesh_radius = 6.0;
   for (Int i=1; i<argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-d") {

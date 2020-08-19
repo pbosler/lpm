@@ -39,6 +39,7 @@ void planeSweRhsPse(ko::Tuple<Real,7>& res, const VecType& tgt_x, const Real& tg
     sqdist += square(tgt_x[k] - src_x[k]);
   }
 
+  if (sqdist > 10*ZERO_TOL) {
   const Real denom = 2*PI*sqdist;
   const Real denom2 = 2*PI*square(sqdist);
   const Real rot_strength = src_vort*src_area/denom;
@@ -65,6 +66,7 @@ void planeSweRhsPse(ko::Tuple<Real,7>& res, const VecType& tgt_x, const Real& tg
     (tgt_x[0] - src_x[0])*src_vort)*src_area/denom2;
   // laplacian(s)
   res[6] = (src_s - tgt_s) * src_area * lap_ker / square(pse_eps);
+  }
 }
 
 /**
@@ -80,7 +82,7 @@ void planeSweRhsPse(ko::Tuple<Real,7>& res, const VecType& tgt_x, const Real& tg
     index 6: laplacian(s) from PSE
 */
 struct PlanarSWEDirectSum {
-  typedef ko::View<Real*[2]> crd_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
   typedef ko::Tuple<Real,7> value_type;
   Index i; ///< index of target point
   crd_view tgtx;
@@ -114,8 +116,8 @@ struct PlanarSWEDirectSum {
 };
 
 struct PlanarSWEVertexSums {
-  typedef ko::View<Real*[2]> crd_view;
-  typedef ko::View<Real*[2]> vec_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   vec_view vertvel;
   scalar_view_type vertddot;
   scalar_view_type vertlaps;
@@ -151,8 +153,8 @@ struct PlanarSWEVertexSums {
 };
 
 struct PlanarSWEVertexRHS {
-  typedef ko::View<Real*[2]> crd_view;
-  typedef ko::View<Real*[2]> vec_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   crd_view dx;
   scalar_view_type dzeta;
   scalar_view_type dsigma;
@@ -191,7 +193,8 @@ struct PlanarSWEVertexRHS {
 
 template <typename ProblemType>
 struct PlanarSWESetVertexSfc {
-  typedef ko::View<Real*[2]> crd_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   scalar_view_type sfc;
   scalar_view_type topo;
   scalar_view_type depth;
@@ -216,7 +219,8 @@ struct PlanarSWESetVertexSfc {
 
 template <typename ProblemType>
 struct PlanarSWESetFaceSfc {
-  typedef ko::View<Real*[2]> crd_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   scalar_view_type sfc;
   scalar_view_type depth;
   scalar_view_type topo;
@@ -247,8 +251,8 @@ struct PlanarSWESetFaceSfc {
 };
 
 struct PlanarSWEFaceSums {
-  typedef ko::View<Real*[2]> crd_view;
-  typedef ko::View<Real*[2]> vec_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   vec_view facevel;
   scalar_view_type faceddot;
   scalar_view_type facelaps;
@@ -280,8 +284,8 @@ struct PlanarSWEFaceSums {
 };
 
 struct PlanarSWEFaceRHS {
-  typedef ko::View<Real*[2]> crd_view;
-  typedef ko::View<Real*[2]> vec_view;
+  typedef typename PlaneGeometry::crd_view_type crd_view;
+  typedef typename PlaneGeometry::vec_view_type vec_view;
   crd_view dx;
   scalar_view_type dzeta;
   scalar_view_type dsigma;

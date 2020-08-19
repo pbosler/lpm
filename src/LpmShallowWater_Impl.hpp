@@ -2,10 +2,27 @@
 #define LPM_SWE_IMPL_HPP
 
 #include "LpmShallowWater.hpp"
-// #include "LpmSWEKernels.hpp"
+#include "LpmUtilities.hpp"
 #include <sstream>
 
 namespace Lpm {
+
+template <typename SeedType>
+std::string ShallowWater<SeedType>::infoString(const std::string& label,
+  const int& tab_level, const bool& dump_all) const {
+  std::ostringstream ss;
+  ss << PolyMesh2d<SeedType>::infoString(label, tab_level, dump_all);
+  ko::MinMaxScalar<Real> mm;
+  const auto vzeta = relVortVerts;
+  ko::parallel_reduce(this->nvertsHost(),
+    KOKKOS_LAMBDA (const Index& i, ko::MinMaxScalar<Real>& rr) {
+    if (vzeta(i) < rr.min_val) rr.min_val = vzeta(i);
+    if (vzeta(i) > rr.max_val) rr.max_val = vzeta(i);
+  }, ko::MinMax<Real>(mm));
+  ss << indentString(tab_level) << "relvortVerts (min,max) = (" << mm.min_val
+     << ", " << mm.max_val << ")\n";
+  return ss.str();
+}
 
 template <typename SeedType>
 ShallowWater<SeedType>::ShallowWater(const Index nmaxverts, const Index nmaxedges,

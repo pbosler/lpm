@@ -4,16 +4,46 @@
 #include "LpmSWERK4.hpp"
 #include "LpmSWEKernels.hpp"
 #include "KokkosBlas.hpp"
+#include "LpmUtilities.hpp"
 
 namespace Lpm {
 
-template <int ndim>
-void SWERK4<ndim>::init(const Index& nv, const Index& nf) {
-  nverts = nv;
-  nfaces = nf;
+template <typename SeedType, typename ProblemType>
+std::string SWERK4<SeedType,ProblemType>::infoString(const std::string& label, const int& tab_level) const {
+  std::ostringstream ss;
+  ss << (label.empty() ? "SWERK4 info:\n" : label + "\n");
+  const std::string tabstr = indentString(tab_level+1);
+  ss << "vertx: (label, ext(0), ext(1)) = (" << vertx.label() << ", " << vertx.extent(0)
+     << ", " << vertx.extent(1) << ")\n";
+  ss << "vertx1: (label, ext(0), ext(1)) = (" << vertx1.label() << ", " << vertx1.extent(0)
+     << ", " << vertx1.extent(1) << ")\n";
+  ss << "vertx2: (label, ext(0), ext(1)) = (" << vertx2.label() << ", " << vertx2.extent(0)
+     << ", " << vertx2.extent(1) << ")\n";
+  ss << "vertx3: (label, ext(0), ext(1)) = (" << vertx3.label() << ", " << vertx3.extent(0)
+     << ", " << vertx3.extent(1) << ")\n";
+  ss << "vertx4: (label, ext(0), ext(1)) = (" << vertx4.label() << ", " << vertx4.extent(0)
+     << ", " << vertx4.extent(1) << ")\n";
+  ss << "vertvel: (label, ext(0), ext(1)) = (" << vertvel.label() << ", " << vertvel.extent(0)
+     << ", " << vertvel.extent(1) << ")\n";
+  ss << "facex: (label, ext(0), ext(1)) = (" << facex.label() << ", " << facex.extent(0)
+     << ", " << facex.extent(1) << ")\n";
+  ss << "facex1: (label, ext(0), ext(1)) = (" << facex1.label() << ", " << facex1.extent(0)
+     << ", " << facex1.extent(1) << ")\n";
+  ss << "facex2: (label, ext(0), ext(1)) = (" << facex2.label() << ", " << facex2.extent(0)
+     << ", " << facex2.extent(1) << ")\n";
+  ss << "facex3: (label, ext(0), ext(1)) = (" << facex3.label() << ", " << facex3.extent(0)
+     << ", " << facex3.extent(1) << ")\n";
+  ss << "facex4: (label, ext(0), ext(1)) = (" << facex4.label() << ", " << facex4.extent(0)
+     << ", " << facex4.extent(1) << ")\n";
+  ss << "facevel: (label, ext(0), ext(1)) = (" << facevel.label() << ", " << facevel.extent(0)
+     << ", " << facevel.extent(1) << ")\n";
+  return ss.str();
+}
 
-  vertex_policy = std::unique_ptr<ko::TeamPolicy<>>(new ko::TeamPolicy<>(nv, ko::AUTO()));
-  face_policy = std::unique_ptr<ko::TeamPolicy<>>(new ko::TeamPolicy<>(nv, ko::AUTO()));
+template <typename SeedType, typename ProblemType>
+void SWERK4<SeedType,ProblemType>::init() {;
+  vertex_policy = std::unique_ptr<ko::TeamPolicy<>>(new ko::TeamPolicy<>(nverts, ko::AUTO()));
+  face_policy = std::unique_ptr<ko::TeamPolicy<>>(new ko::TeamPolicy<>(nfaces, ko::AUTO()));
 
   vertx1 = crd_view("vertx1",nverts);
   vertx2 = crd_view("vertx2",nverts);
@@ -70,34 +100,8 @@ void SWERK4<ndim>::init(const Index& nv, const Index& nf) {
   faceareawork = scalar_view_type("faceareawork",nfaces);
 }
 
-template <int ndim> template <typename ProblemType>
-void SWERK4<ndim>::advance_timestep(crd_view vx, vec_view& vvel,
-  scalar_view_type& vzeta, scalar_view_type& vsigma, scalar_view_type& vsfc,
-  scalar_view_type& vh, scalar_view_type& vtopo,
-  crd_view fx, vec_view& fvel, scalar_view_type& fzeta, scalar_view_type& fsigma,
-  scalar_view_type& fsfc, scalar_view_type& fh, scalar_view_type& ftopo, scalar_view_type& fa,
-  const scalar_view_type& mm, const mask_view_type& fm, const Real& eps) {
-
-  vertx = vx;
-  vertvel = vvel;
-  vertvort = vzeta;
-  vertdiv = vsigma;
-  vertsfc = vsfc;
-  vertdepth = vh;
-  verttopo = vtopo;
-
-  facex = fx;
-  facevel = fvel;
-  facevort = fzeta;
-  facediv = fsigma;
-  facesfc = fsfc;
-  facedepth = fh;
-  facetopo = ftopo;
-  facearea = fa;
-  facemass = mm;
-  facemask = fm;
-
-  eps_pse = eps;
+template <typename SeedType, typename ProblemType>
+void SWERK4<SeedType,ProblemType>::advance_timestep() {
 
   /// RK Stage 1
   ko::parallel_for("VertexSums-RK1", *vertex_policy,
@@ -125,7 +129,7 @@ void SWERK4<ndim>::advance_timestep(crd_view vx, vec_view& vvel,
   KokkosBlas::update(1.0, facediv,  0.5, facediv1,  0.0, facedivwork);
   KokkosBlas::update(1.0, facearea, 0.5, facearea1, 0.0, faceareawork);
 
-  update_sfc<ProblemType>();
+  update_sfc();
   compute_direct_sums();
 
   ko::parallel_for("VertexRHS-RK2", nverts,
@@ -145,7 +149,7 @@ void SWERK4<ndim>::advance_timestep(crd_view vx, vec_view& vvel,
   KokkosBlas::update(1.0, facediv,  0.5, facediv2,  0.0, facedivwork);
   KokkosBlas::update(1.0, facearea, 0.5, facearea2, 0.0, faceareawork);
 
-  update_sfc<ProblemType>();
+  update_sfc();
   compute_direct_sums();
 
   ko::parallel_for("VertexRHS-RK3", nverts,
@@ -165,7 +169,7 @@ void SWERK4<ndim>::advance_timestep(crd_view vx, vec_view& vvel,
   KokkosBlas::update(1.0, facediv,  1.0, facediv3,  0.0, facedivwork);
   KokkosBlas::update(1.0, facearea, 1.0, facearea3, 0.0, faceareawork);
 
-  update_sfc<ProblemType>();
+  update_sfc();
   compute_direct_sums();
 
   ko::parallel_for("VertexRHS-RK4", nverts,
@@ -199,8 +203,8 @@ void SWERK4<ndim>::advance_timestep(crd_view vx, vec_view& vvel,
       facemass, facearea, facemask, facex));
 }
 
-template <int ndim>
-void SWERK4<ndim>::compute_direct_sums() {
+template <typename SeedType, typename ProblemType>
+void SWERK4<SeedType,ProblemType>::compute_direct_sums() {
   ko::parallel_for("VertexSums", *vertex_policy,
     PlanarSWEVertexSums(vertvel, vertddot, vertlaps, vertxwork, vertsfc,
       facexwork, facevortwork, facedivwork, faceareawork, facesfc, eps_pse));
@@ -209,8 +213,8 @@ void SWERK4<ndim>::compute_direct_sums() {
       faceareawork, facesfc, eps_pse));
 }
 
-template <int ndim> template <typename ProblemType>
-void SWERK4<ndim>::update_sfc() {
+template <typename SeedType, typename ProblemType>
+void SWERK4<SeedType,ProblemType>::update_sfc() {
   ko::parallel_for("VertexSfcUpdate", nverts,
     PlanarSWESetVertexSfc<ProblemType>(vertsfc, verttopo, verthwork, vertxwork));
   ko::parallel_for("FaceSfcUpdate", nfaces,
