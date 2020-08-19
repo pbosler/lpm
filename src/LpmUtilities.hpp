@@ -80,7 +80,7 @@ T cube(const T& x) {return x*x*x;}
   @return @f$ \frac{x}{x^2 + \epsilon^2} @f$
 */
 template <typename T=Real> KOKKOS_INLINE_FUNCTION
-T safe_divide(const T& x, const T& eps=ZERO_TOL) {return x/(square(x) + square(eps));}
+T safe_divide(const T& x, const T& eps=1E-13) {return x/(square(x) + square(eps));}
 
 template <typename MaskViewType>
 Index mask_count(const MaskViewType& mv) {

@@ -39,7 +39,8 @@ void planeSweRhsPse(ko::Tuple<Real,7>& res, const VecType& tgt_x, const Real& tg
     sqdist += square(tgt_x[k] - src_x[k]);
   }
 
-  if (sqdist > 10*ZERO_TOL) {
+  /*  if (sqdist > 10*ZERO_TOL) { (cuda doesn't like ZERO_TOL */
+  if (sqdist > 1E-12) {
   const Real denom = 2*PI*sqdist;
   const Real denom2 = 2*PI*square(sqdist);
   const Real rot_strength = src_vort*src_area/denom;
