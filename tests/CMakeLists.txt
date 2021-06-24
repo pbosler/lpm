@@ -2,8 +2,8 @@ include (CTest)
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
                     "${PROJECT_BINARY_DIR}"
                     "${VTK_INCLUDE_DIRS}"
-                    "${Trilinos_INCLUDE_DIRS}"
-                    "${Trilinos_TPL_INCLUDE_DIRS}"
+                   "${Trilinos_INCLUDE_DIRS}"
+                   "${Trilinos_TPL_INCLUDE_DIRS}"
                     "${NETCDF_H_PATH}"
 )
 

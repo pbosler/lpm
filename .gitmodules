@@ -1,0 +1,3 @@
+[submodule "ext/trilinos"]
+	path = ext/trilinos
+	url = git@github.com:trilinos/Trilinos.git

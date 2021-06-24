@@ -3,8 +3,6 @@
 .DS_Store
 
 # CMake
-*.cmake
-CMake*
 *.tcl
 Makefile
 LpmConfig.h
