@@ -1,3 +1,13 @@
 [submodule "ext/trilinos"]
 	path = ext/trilinos
 	url = git@github.com:trilinos/Trilinos.git
+[submodule "ext/hdf5"]
+	path = ext/hdf5
+	url = git@github.com:HDFGroup/hdf5.git
+	branch = 1.10/master
+[submodule "ext/netcdf-c"]
+	path = ext/netcdf-c
+	url = git@github.com:Unidata/netcdf-c.git
+[submodule "ext/netcdf-cxx4"]
+	path = ext/netcdf-cxx4
+	url = git@github.com:Unidata/netcdf-cxx4.git

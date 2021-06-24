@@ -1,6 +1,6 @@
 set (LPM_TRILINOS_SUBMODULE_PATH "" CACHE INTERNAL "")
 get_filename_component(LPM_TRILINOS_SUBMODULE_PATH
-${CMAKE_CURRENT_LIST_DIR}/../ext ABSOLUTE)
+${CMAKE_CURRENT_LIST_DIR}/../ext/trilinos ABSOLUTE)
 
 define_property(GLOBAL
   PROPERTY LPM_TRILINOS_BUILT
@@ -12,7 +12,7 @@ get_property(IS_LPM_TRILINOS_BUILT GLOBAL PROPERTY LPM_TRILINOS_BUILT SET)
 macro (LpmSetTrilinosSourceDir)
   if (NOT Trilinos_SOURCE_DIR)
     message(STATUS "Trilinos_SOURCE_DIR not specified; using submodule version.")
-    set( Trilinos_SOURCE_DIR ${LPM_TRILINOS_SUBMODULE_PATH}/trilinos CACHE STRING "Trilinos source directory")
+    set( Trilinos_SOURCE_DIR ${LPM_TRILINOS_SUBMODULE_PATH} CACHE STRING "Trilinos source directory")
 
   elseif(NOT EXISTS ${Trilinos_SOURCE_DIR})
     message(FATAL_ERROR "Error: Please specify a valid source folder for Trilinos.\n     Provided path: ${Trilinos_SOURCE_DIR}")
@@ -21,6 +21,7 @@ macro (LpmSetTrilinosSourceDir)
     if (ABS_TRILINOS_DIR STREQUAL LPM_TRILINOS_SUBMODULE_PATH)
       message(STATUS "Using Trilinos in ${Trilinos_SOURCE_DIR}\n    - User-supplied Trilinos path matches submodule path")
     else()
+      message(STATUS "Using Trilinos in ${Trilinos_SOURCE_DIR}.\n    User-supplied Trilinos versions are not guaranteed to work.")
     endif()
   endif()
   # If the variable existed, but not in the cache, set it in the cache
@@ -59,7 +60,7 @@ macro(BuildTrilinos)
     set(Kokkos_ENABLE_SERIAL TRUE CACHE BOOL "Enable serial node type")
     set(Trilinos_ENABLE_Compadre TRUE CACHE BOOL "Enable Compadre GMLS package")
     set(Trilinos_ENABLE_Zoltan2 TRUE CACHE BOOL "Enable Zoltan2 domain partitioning")
-    set(Trilinos_ENABLE_EXPLICIT_INSTANTIATION TRUE CACHE BOOL "Enable ETI for trilinos")
+    set(Trilinos_ENABLE_EXPLICIT_INSTANTIATION FALSE CACHE BOOL "ETI for trilinos")
 
     add_subdirectory(${Trilinos_SOURCE_DIR} ${Trilinos_BINARY_DIR})
 

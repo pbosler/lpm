@@ -15,6 +15,8 @@ message(STATUS "Setting policy CMP0074 to use <Package>_ROOT environmental varia
 
 include(LpmBuildTrilinos)
 LpmSetTrilinosSourceDir()
+include(LpmBuildHdf5)
+LpmSetHdf5SourceDir()
 
 function (printvar var)
     message("${var}: ${${var}}")
@@ -34,6 +36,8 @@ find_package(MPI REQUIRED)
 set(LPM_TPL_LIBRARIES_INTERNAL)
 BuildTrilinos()
 list(APPEND LPM_TPL_LIBRARIES_INTERNAL ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+BuildHdf5()
+list(APPEND LPM_TPL_LIBRARIES_INTERNAL ${HDF5_LIBRARIES})
 
 
 set(LPM_TPL_LIBRARIES ${LPM_TPL_LIBRARIES_INTERNAL} CACHE INTERNAL "")
