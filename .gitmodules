@@ -4,10 +4,16 @@
 [submodule "ext/hdf5"]
 	path = ext/hdf5
 	url = git@github.com:HDFGroup/hdf5.git
-	branch = 1.10/master
 [submodule "ext/netcdf-c"]
 	path = ext/netcdf-c
 	url = git@github.com:Unidata/netcdf-c.git
 [submodule "ext/netcdf-cxx4"]
 	path = ext/netcdf-cxx4
 	url = git@github.com:Unidata/netcdf-cxx4.git
+[submodule "ext/yaml-cpp"]
+	path = ext/yaml-cpp
+	url = git@github.com:SNLComputation/yaml-cpp.git
+[submodule "ext/vtk"]
+	path = ext/vtk
+	url = git@github.com:Kitware/VTK.git
+	branch = v8.2.0
