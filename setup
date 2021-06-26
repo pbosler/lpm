@@ -64,8 +64,6 @@ PREFIX=$PWD/$1
 #-----------------------------------------------------------------------------
 
 # Build with MPI for parallel simulations.
-# This is currently needed by the EKAT library. We can get rid of it as
-# a requirement down the line if necessary.
 MPI=ON
 
 #-----------------------------------------------------------------------------
@@ -128,6 +126,13 @@ PRECISION=double
 # Single precision.
 #PRECISION=single
 
+#-----------------------------------------------------------------------------
+#                             VTK Graphics
+#-----------------------------------------------------------------------------
+# LPM uses the vtk data model for some of its classes, to enable easy use of Paraview
+# and VTK Graphics.  If all you need is the data model, you don't need to compile the
+# VTK graphics libraries.
+USE_VTK_GRAPHICS=OFF
 
 #-----------------------------------------------------------------------------
 #                                Build type

@@ -7,7 +7,7 @@ list(APPEND CMAKE_MODULE_PATH
 project (LPM CXX Fortran)
 
 set(LPM_VERSION_MAJOR 3)
-set(LPM_VERSION_MINOR 0)
+set(LPM_VERSION_MINOR 1)
 
 set(CMAKE_CXX_STANDARD 14)
 CMAKE_POLICY(SET CMP0074 NEW)
@@ -24,7 +24,11 @@ get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
 set(CMAKE_CXX_COMPILE_FEATURES ${cxx_features})
 set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})
 
-find_package(MPI REQUIRED)
+if (HAVE_MPI)
+  find_package(MPI REQUIRED)
+else()
+  message(STATUS "Building *without* MPI")
+endif()
 
 set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS};${LPM_EXT_LIBRARIES})
 
