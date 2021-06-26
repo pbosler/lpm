@@ -13,4 +13,3 @@
 [submodule "ext/vtk"]
 	path = ext/vtk
 	url = git@github.com:Kitware/VTK.git
-	branch = v8.1.2

@@ -16,9 +16,8 @@ set(SUBMODULES_UPDATED FALSE)
 macro(update_submodules)
   if (NOT SUBMODULES_UPDATED)
     message(STATUS "Updating git submodules recursively...")
-    execute_process(COMMAND ${GIT} submodule update --init --recursive WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-    execute_process(COMMAND cd ${PROJECT_SOURCE_DIR}/ext/vtk
-                    COMMAND ${GIT} checkout -v8.1.2)
+    execute_process(COMMAND ${GIT} submodule update --init --recursive 
+                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     set(SUBMODULES_UPDATED TRUE)
   endif()
 endmacro()
@@ -298,9 +297,6 @@ if (LPM_VTK_NEEDS_BUILD)
                     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vtk
                     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/vtk
                     INSTALL_DIR ${PROJECT_BINARY_DIR}
-                    GIT_REPOSITORY git@github.com:Kitware/VTK.git
-                    GIT_TAG origin/v8.1.2
-                    GIT_SHALLOW TRUE
                     CMAKE_ARGS ${VTK_CMAKE_OPTS}
                     DEPENDS netcdf
                     LOG_CONFIGURE TRUE
