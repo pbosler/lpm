@@ -153,6 +153,8 @@ if (NOT EXISTS ${NETCDF_CXX_LIBRARY})
                              -DnetCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}
                              -DnetCDF_LIBRARIES=${NETCDF_LIBRARY}
                              -DHDF5_ROOT=${HDF5_INCLUDE_DIR}/../
+                             -DHDF5_LIBRARIES=${HDF5_LIBRARY}
+                             -DHDF5_HL_LIBRARIES=${HDF5_HL_LIBRARY}
                              )
   ExternalProject_Add(netcdf_cxx_proj
                       PREFIX ${CMAKE_CURRENT_BINARY_DIR}/netcdf-cxx4
@@ -231,7 +233,7 @@ if (LPM_TRILINOS_NEEDS_BUILD)
                           -DKokkos_ENABLE_PROFILING=ON
                           -DKokkos_ENABLE_SERIAL=ON
                           -DTrilinos_ENABLE_Compadre=ON
-                          -DTrilinos_ENABLE_Zoltan2=ON
+                          -DTrilinos_ENABLE_Zoltan2=${HAVE_MPI}
                           -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=OFF
                           -DTPL_ENABLE_Netcdf=ON
                           -DNetcdf_INCLUDE_DIRS=${NETCDF_INCLUDE_DIR}
