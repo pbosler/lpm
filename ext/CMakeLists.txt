@@ -17,6 +17,8 @@ macro(update_submodules)
   if (NOT SUBMODULES_UPDATED)
     message(STATUS "Updating git submodules recursively...")
     execute_process(COMMAND ${GIT} submodule update --init --recursive WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    execute_process(COMMAND cd ${PROJECT_SOURCE_DIR}/ext/vtk
+                    COMMAND ${GIT} checkout -v8.1.2)
     set(SUBMODULES_UPDATED TRUE)
   endif()
 endmacro()
