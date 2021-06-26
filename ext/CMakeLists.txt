@@ -263,25 +263,25 @@ printvar(LPM_EXT_LIBRARIES)
 # VTK
 #----------------------------------------------------------------------------
 
-set(LPM_VTK_LIBS vtkCommonColor-8.2
-                 vtkCommonCore-8.2
-                 vtkCommonDataModel-8.2
-                 vtkCommonExecutionModel-8.2
-                 vtkCommonMath-8.2
-                 vtkCommonMisc-8.2
-                 vtkCommonSystem-8.2
-                 vtkCommonTransforms-8.2
-                 vtkIOCore-8.2
-                 vtkIOMPIParallel-8.2
-                 vtkIONetCDF-8.2
-                 vtkIOParallel-8.2
-                 vtkIOParallelNetCDF-8.2
-                 vtkIOParallelXML-8.2
-                 vtkIOXML-8.2
-                 vtiIOXMLParser-8.2
-                 vtkjpeg-8.2
-                 vtkpng-8.2
-                 vtkNetCDF-8.2
+set(LPM_VTK_LIBS vtkCommonColor-8.1
+                 vtkCommonCore-8.1
+                 vtkCommonDataModel-8.1
+                 vtkCommonExecutionModel-8.1
+                 vtkCommonMath-8.1
+                 vtkCommonMisc-8.1
+                 vtkCommonSystem-8.1
+                 vtkCommonTransforms-8.1
+                 vtkIOCore-8.1
+                 vtkIOMPIParallel-8.1
+                 vtkIONetCDF-8.1
+                 vtkIOParallel-8.1
+                 vtkIOParallelNetCDF-8.1
+                 vtkIOParallelXML-8.1
+                 vtkIOXML-8.1
+                 vtiIOXMLParser-8.1
+                 vtkjpeg-8.1
+                 vtkpng-8.1
+                 vtkNetCDF-8.1
                  )
 
 foreach(lib ${LPM_VTK_LIBS})
