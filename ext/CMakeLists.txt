@@ -215,7 +215,7 @@ if (LPM_TRILINOS_NEEDS_BUILD)
                           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                           -DTrilinos_ENABLE_Fortran=OFF
                           -DTPL_ENABLE_MPI=${HAVE_MPI}
-                          -DTrilinos_ENABLE_OPENMP=${LPM_USE_OPENMP}
+                          -DTrilinos_ENABLE_OpenMP=${LPM_USE_OPENMP}
                           -DKokkos_ENABLE_OPENMP=${LPM_USE_OPENMP}
                           -DKokkos_ENABLE_SERIAL=ON
                           -DTPL_ENABLE_CUDA=${LPM_USE_CUDA}
