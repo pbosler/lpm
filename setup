@@ -46,9 +46,6 @@ PREFIX=$PWD/$1
 #NETCDF_INCLUDE_DIR=/path/to/netcdf-c/includes
 #NETCDF_LIBRARY_DIR=/path/to/netcdf-c/library
 #NETCDF_LIBRARY=libnetcdf.a
-#NETCDF_CXX_INCLUDE_DIR=/path/to/netcdf_cxx4/includes
-#NETCDF_CXX_LIBRARY_DIR=/path/to/netcdf_cxx4/library
-#NETCDF_CXX_LIBRARY=libnetcdf_c++4.a
 
 #YAMLCPP_INCLUDE_DIR=/path/to/yaml-cpp/includes
 #YAMLCPP_LIBRARY_DIR=/path/to/yaml-cpp/library
@@ -231,22 +228,8 @@ if [ ! "\$NETCDF_LIBRARY_DIR" = "" -o ! "\$NETCDF_INCLUDE_DIR" = "" -o ! "\$NETC
     echo "Error: NETCDF_INCLUDE_DIR must be specified for a custom NetCDF library."
     exit 1
   fi
-  if [ "\$NETCDF_CXX_INCLUDE_DIR" = "" ]; then
-    echo "Error: NETCDF_CXX_INCLUDE_DIR must be specified for a custom NetCDF library."
-    exit 1
-  fi
-  if [ "\$NETCDF_CXX_LIBRARY_DIR" = "" ]; then
-    echo "Error: NETCDF_CXX_LIBRARY_DIR must be specified for a custom NetCDF library."
-    exit 1
-  fi
-  if [ "\$NETCDF_CXX_LIBRARY" = "" ]; then
-    echo "Error: NETCDF_CXX_LIBRARY must be specified for a custom NetCDF library."
-    exit 1
-  fi
   OPTIONS="\$OPTIONS -DNETCDF_LIBRARY=\$NETCDF_LIBRARY_DIR/\$NETCDF_LIBRARY"
   OPTIONS="\$OPTIONS -DNETCDF_INCLUDE_DIR=\$NETCDF_INCLUDE_DIR"
-  OPTIONS="\$OPTIONS -DNETCDF_CXX_INCLUDE_DIR=\$NETCDF_CXX_INCLUDE_DIR"
-  OPTIONS="\$OPTIONS -DNETCDF_CXX_LIBRARY=\$NETCDF_CXX_LIBRARY_DIR/\$NETCDF_CXX_LIBRARY"
 fi
 
 # Configure yaml-cpp if needed.
