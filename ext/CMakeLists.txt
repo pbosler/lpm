@@ -257,7 +257,7 @@ list(APPEND LPM_EXT_INCLUDE_DIRS ${TRILINOS_INCLUDE_DIR})
 foreach(lib ${LPM_TRILINOS_LIBS})
   set(LPM_EXT_LIBRARIES ${lib};${LPM_EXT_LIBRARIES})
 endforeach()
-printvar(LPM_EXT_LIBRARIES)
+
 
 #----------------------------------------------------------------------------
 # VTK
@@ -342,3 +342,9 @@ if (LPM_VTK_NEEDS_BUILD)
   endforeach()
 
 endif()
+foreach(lib ${LPM_VTK_LIBS})
+  set(LPM_EXT_LIBRARIES ${lib};${LPM_EXT_LIBRARIES})
+endforeach()
+
+
+printvar(LPM_EXT_LIBRARIES)
