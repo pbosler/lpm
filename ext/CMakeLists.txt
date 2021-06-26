@@ -89,9 +89,7 @@ set(LPM_EXT_LIBRARIES hdf5_hl;hdf5;${LPM_EXT_LIBRARIES})
 #----------------------------------------------------------------------------
 
 add_library(netcdf STATIC IMPORTED GLOBAL)
-add_library(netcdf_c++4 STATIC IMPORTED GLOBAL)
 set_target_properties(netcdf PROPERTIES IMPORTED_LOCATION ${NETCDF_LIBRARY})
-set_target_properties(netcdf_c++4 PROPERTIES IMPORTED_LOCATION ${NETCDF_CXX_LIBRARY})
 
 if (NOT EXISTS ${NETCDF_LIBRARY})
   update_submodules()
