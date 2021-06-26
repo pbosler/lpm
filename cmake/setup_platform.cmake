@@ -38,23 +38,23 @@ macro(setup_platform)
   endif()
 
   # Do we have graphics (OpenGL)?
-  set(LPM_USE_VTK_GRAPHICS FALSE)
-  if (USE_VTK_GRAPHICS)
-    find_package(OpenGL QUIET)
-    if (OPENGL_FOUND)
-      set(LPM_USE_VTK_GRAPHICS TRUE)
-    else()
+  if (LPM_USE_VTK_GRAPHICS)
+    find_package(OpenGL)
+    if (NOT OPENGL_FOUND)
       message(FATAL_ERROR "Error: vtk graphics requested, but OpenGL is not found.")
     endif()
   endif()
 
-  # Node type
-  if (DEVICE STREQUAL "CUDA")
+  # Device type
+  if (LPM_DEVICE STREQUAL "CUDA")
+    find_package(CUDAToolkit)
+    if (NOT CUDAToolkit_FOUND)
+      message(FATAL_ERROR "Device = CUDA but CUDAToolkit is not found.")
+    endif()
     set(LPM_USE_CUDA TRUE)
   else()
     set(LPM_USE_CUDA FALSE)
   endif()
-  set(LPM_DEVICE_ARCH ${DEVICE_ARCH})
 
   include(GNUInstallDirs)
 

@@ -203,6 +203,9 @@ fi
 if [ "\$VERBOSE" = "ON" ]; then
   OPTIONS="\$OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"
 fi
+if [ "\$USE_VTK_GRAPHICS" = "ON" ]; then
+  OPTIONS="\$OPTIONS -DLPM_USE_VTK_GRAPHICS=ON"
+fi
 
 # Configure HDF5 if needed.
 if [ ! "\$HDF5_LIBRARY_DIR" = "" -o ! "\$HDF5_INCLUDE_DIR" = "" -o ! "\$HDF5_LIBRARY" = "" -o ! "\$HDF5_HL_LIBRARY" = "" ]; then

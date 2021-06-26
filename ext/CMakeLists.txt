@@ -486,8 +486,11 @@ endforeach()
 #----------------------------------------------------------------------------
 # Add all external libraries to the build system
 #----------------------------------------------------------------------------
-set(LPM_LIBRARIES ${LPM_EXT_LIBRARIES};${LPM_LIBRARIES} PARENT_SCOPE)
+set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS};${LPM_EXT_LIBRARIES})
+set(LPM_EXT_LIBRARIES ${LPM_EXT_LIBRARIES} PARENT_SCOPE)
 list(REMOVE_DUPLICATES LPM_EXT_INCLUDE_DIRS)
+set(LPM_EXT_INCLUDE_DIRS ${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
+set(LPM_LIBRARIES ${LPM_EXT_LIBRARIES};${LPM_LIBRARIES} PARENT_SCOPE)
 set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
 
 #----------------------------------------------------------------------------
