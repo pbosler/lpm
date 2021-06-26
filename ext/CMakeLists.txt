@@ -259,3 +259,86 @@ foreach(lib ${LPM_TRILINOS_LIBS})
 endforeach()
 printvar(LPM_EXT_LIBRARIES)
 
+#----------------------------------------------------------------------------
+# VTK
+#----------------------------------------------------------------------------
+
+set(LPM_VTK_LIBS vtkCommonColor-8.2
+                 vtkCommonCore-8.2
+                 vtkCommonDataModel-8.2
+                 vtkCommonExecutionModel-8.2
+                 vtkCommonMath-8.2
+                 vtkCommonMisc-8.2
+                 vtkCommonSystem-8.2
+                 vtkCommonTransforms-8.2
+                 vtkIOCore-8.2
+                 vtkIOMPIParallel-8.2
+                 vtkIONetCDF-8.2
+                 vtkIOParallel-8.2
+                 vtkIOParallelNetCDF-8.2
+                 vtkIOParallelXML-8.2
+                 vtkIOXML-8.2
+                 vtiIOXMLParser-8.2
+                 vtkjpeg-8.2
+                 vtkpng-8.2
+                 vtkNetCDF-8.2
+                 )
+
+foreach(lib ${LPM_VTK_LIBS})
+  add_library(${lib} STATIC IMPORTED GLOBAL)
+endforeach()
+
+foreach(lib ${LPM_VTK_LIBS})
+  set_target_properties(${lib} PROPERTIES IMPORTED_LOCATION "${VTK_LIBRARY_DIR}/lib${lib}.a")
+endforeach()
+
+set(LPM_VTK_NEEDS_BUILD FALSE)
+foreach(lib ${LPM_VTK_LIBS})
+  if (NOT EXISTS "${VTK_LIBRARY_DIR}/lib${lib}.a")
+    set(LPM_VTK_NEEDS_BUILD TRUE)
+    break()
+  endif()
+endforeach()
+
+if (LPM_VTK_NEEDS_BUILD)
+  update_submodules()
+
+  set(VTK_CMAKE_OPTS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                     -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
+                     -DBUILD_SHARED_LIBS=OFF
+                     -DCMAKE_BUILD_TYPE=RelWithDebInfo
+                     -DBUILD_DOCUMENTATION=OFF
+                     -DBUILD_EXAMPLES=OFF
+                     -DBUILD_TESTING=OFF
+                     -DVTK_Group_MPI=ON
+                     -DVTK_Group_Rendering=${LPM_USE_VTK_GRAPHICS}
+                     -DVTK_Group_StandAlone=ON
+                     -DVTK_USE_LARGE_DATA=OFF
+                     -DVTK_WRAP_JAVA=OFF
+                     -DVTK_WRAP_PYTHON=OFF
+                     -DVTK_PYTHON_VERSION=3
+                     )
+
+  if (NOT LPM_USE_VTK_GRAPHICS)
+    list(APPEND VTK_CMAKE_OPTS -DVTK_RENDERING_BACKEND=None)
+  endif()
+
+  ExternalProject_Add(vtk_proj
+                    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/vtk
+                    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vtk
+                    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/vtk
+                    INSTALL_DIR ${PROJECT_BINARY_DIR}
+                    GIT_REPOSITORY git@github.com:Kitware/VTK.git
+                    GIT_TAG origin/v8.1.2
+                    GIT_SHALLOW TRUE
+                    CMAKE_ARGS ${VTK_CMAKE_OPTS}
+                    DEPENDS netcdf
+                    LOG_CONFIGURE TRUE
+                    LOG_BUILD TRUE
+                    LOG_INSTALL TRUE)
+  foreach(lib ${LPM_VTK_LIBS})
+    add_dependencies(${lib} vtk_proj)
+  endforeach()
+
+endif()

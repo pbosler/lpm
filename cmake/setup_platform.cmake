@@ -37,6 +37,14 @@ macro(setup_platform)
     set(HAVE_GIT TRUE)
   endif()
 
+  # Do we have graphics (OpenGL)?
+  find_package(OpenGL QUIET)
+  if (OPENGL_FOUND)
+    set(LPM_USE_VTK_GRAPHICS TRUE)
+  else()
+    set(LPM_USE_VTK_GRAPHICS FALSE)
+  endif()
+
   if (DEVICE STREQUAL "CUDA")
     set(LPM_USE_CUDA TRUE)
   else()

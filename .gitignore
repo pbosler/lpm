@@ -39,8 +39,6 @@ LpmConfig.h
 *.exe
 *.out
 *.app
-*.m
-*.csv
 *.pdf
 *.dat
 *.namelist
