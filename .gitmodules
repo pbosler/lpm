@@ -7,9 +7,6 @@
 [submodule "ext/netcdf-c"]
 	path = ext/netcdf-c
 	url = git@github.com:Unidata/netcdf-c.git
-[submodule "ext/netcdf-cxx4"]
-	path = ext/netcdf-cxx4
-	url = git@github.com:Unidata/netcdf-cxx4.git
 [submodule "ext/yaml-cpp"]
 	path = ext/yaml-cpp
 	url = git@github.com:SNLComputation/yaml-cpp.git

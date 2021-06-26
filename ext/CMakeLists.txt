@@ -139,39 +139,6 @@ list(APPEND LPM_EXT_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
 set(LPM_EXT_LIBRARIES netcdf;${LPM_EXT_LIBRARIES})
 
 #----------------------------------------------------------------------------
-# netCDF c++
-#----------------------------------------------------------------------------
-if (NOT EXISTS ${NETCDF_CXX_LIBRARY})
-  update_submodules()
-
-  set(NETCDF_CXX_CMAKE_OPTS  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                             -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
-                             -DBUILD_SHARED_LIBS=OFF
-                             -DENABLE_DOXYGEN=OFF
-                             -DNCXX_ENABLE_TESTS=OFF
-                             -DnetCDF_INCLUDE_DIR=${NETCDF_INCLUDE_DIR}
-                             -DnetCDF_LIBRARIES=${NETCDF_LIBRARY}
-                             -DHDF5_ROOT=${HDF5_INCLUDE_DIR}/../
-                             -DHDF5_LIBRARIES=${HDF5_LIBRARY}
-                             -DHDF5_HL_LIBRARIES=${HDF5_HL_LIBRARY}
-                             )
-  ExternalProject_Add(netcdf_cxx_proj
-                      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/netcdf-cxx4
-                      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/netcdf-cxx4
-                      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/netcdf-cxx4
-                      INSTALL_DIR ${PROJECT_BINARY_DIR}
-                      CMAKE_ARGS ${NETCDF_CXX_CMAKE_OPTS}
-                      DEPENDS hdf5 netcdf
-                      LOG_CONFIGURE TRUE
-                      LOG_BUILD TRUE
-                      LOG_INSTALL TRUE)
-  add_dependencies(netcdf_c++4 netcdf_cxx_proj)
-endif()
-list(APPEND LPM_EXT_INCLUDE_DIRS ${NETCDF_CXX_INCLUDE_DIR})
-set(LPM_EXT_LIBRARIES netcdf_c++4;${LPM_EXT_LIBRARIES})
-
-#----------------------------------------------------------------------------
 # Trilinos
 #----------------------------------------------------------------------------
 
