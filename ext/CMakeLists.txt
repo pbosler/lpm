@@ -249,12 +249,14 @@ if (LPM_TRILINOS_NEEDS_BUILD)
                           -DTrilinos_ENABLE_KokkosKernels=ON
                           -DKokkos_ENABLE_PROFILING=ON
                           -DKokkos_ENABLE_SERIAL=ON
+                          -DKokkos_ENABLE_CUDA=${LPM_USE_CUDA}
+                          -DKokkos_ARCH_${LPM_DEVICE_ARCH}=ON
                           -DTrilinos_ENABLE_Compadre=ON
                           -DTrilinos_ENABLE_Zoltan2=${HAVE_MPI}
                           -DTrilinos_ENABLE_EXPLICIT_INSTANTIATION=OFF
                           -DTPL_ENABLE_Netcdf=ON
                           -DNetcdf_INCLUDE_DIRS=${NETCDF_INCLUDE_DIR}
-                          -DNetcdf_LIBRARY_DIRS=${NETCDF_LIBRARY}/../
+                          -DNetcdf_LIBRARY_DIRS=${NETCDF_LIBRARY_DIR}
                           -DTeuchos_KOKKOS_PROFILING=ON
                           )
 

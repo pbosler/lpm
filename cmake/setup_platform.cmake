@@ -48,11 +48,13 @@ macro(setup_platform)
     endif()
   endif()
 
+  # Node type
   if (DEVICE STREQUAL "CUDA")
     set(LPM_USE_CUDA TRUE)
   else()
     set(LPM_USE_CUDA FALSE)
   endif()
+  set(LPM_DEVICE_ARCH ${DEVICE_ARCH})
 
   include(GNUInstallDirs)
 
