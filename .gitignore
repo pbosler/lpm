@@ -35,13 +35,12 @@ LpmConfig.h
 *.a
 *.lib
 
-# Executables
+# binaries
 *.exe
 *.out
 *.app
 *.m
 *.csv
-*.txt
 *.pdf
 *.dat
 *.namelist

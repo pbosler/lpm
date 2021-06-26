@@ -5,6 +5,17 @@ macro(setup_platform)
     set(LINUX ON)
   endif()
 
+  # do we have openmp?
+  find_package(OpenMP)
+  if (OpenMP-NOTFOUND)
+    set(LPM_USE_OPENMP FALSE)
+  else()
+    set(LPM_USE_OPENMP TRUE)
+  endif()
+  if (APPLE)
+    set(LPM_USE_OPENMP FALSE)
+  endif()
+
   # Do we have bash?
   find_program(BASH bash)
   if (BASH STREQUAL "BASH_NOTFOUND")
@@ -24,6 +35,12 @@ macro(setup_platform)
     set(HAVE_GIT FALSE)
   else()
     set(HAVE_GIT TRUE)
+  endif()
+
+  if (DEVICE STREQUAL "CUDA")
+    set(LPM_USE_CUDA TRUE)
+  else()
+    set(LPM_USE_CUDA FALSE)
   endif()
 
   include(GNUInstallDirs)
