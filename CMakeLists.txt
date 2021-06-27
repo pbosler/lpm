@@ -76,8 +76,7 @@ if (LPM_DEVICE STREQUAL CUDA)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
 endif()
 
-include_directories("${PROJECT_BINARY_DIR}")
-include_directories("${PROJECT_BINARY_DIR}/include")
+include_directories("${PROJECT_BINARY_DIR}" "${PROJECT_BINARY_DIR}/include" ${LPM_INCLUDE_DIRS})
 include(GNUInstallDirs)
 link_directories("${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 

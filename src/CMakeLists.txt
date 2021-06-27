@@ -9,7 +9,7 @@ include_directories("${PROJECT_SOURCE_DIR}/src"
                     )
 
 add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmFaces.cpp
-# LpmVtkIO.cpp
+ LpmVtkIO.cpp
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
