@@ -201,7 +201,6 @@ if (${HAVE_MPI})
                                 tpetrainout
                                 xpetra-sup
                                 xpetra
-                                xpetrainout
                                 zoltan
                                 zoltan2
                                 )
@@ -297,9 +296,6 @@ set(LPM_VTK_LIBS  vtkCommonColor-8.1
                   vtkCommonTransforms-8.1
                   vtkDICOMParser-8.1
                   vtkDomainsChemistry-8.1
-                  vtkDomainsParallelChemistry-8.1
-                  vtkdoubleconversion-8.1
-                  vtkexodusII-8.1
                   vtkexpat-8.1
                   vtkFiltersCore-8.1
                   vtkFiltersExtraction-8.1
@@ -331,7 +327,6 @@ set(LPM_VTK_LIBS  vtkCommonColor-8.1
                   vtkjpeg-8.1
                   vtkjsoncpp-8.1
                   vtklz4-8.1
-                  vtklzma-8.1
                   vtkmetaio-8.1
                   vtkNetCDF-8.1
                   vtkParallelCore-8.1
@@ -341,7 +336,6 @@ set(LPM_VTK_LIBS  vtkCommonColor-8.1
                   vtksys-8.1
                   vtktiff-8.1
                   vtkverdict-8.1
-                  vtkz-8.1
                  )
 
 if (LPM_USE_VTK_GRAPHICS)
