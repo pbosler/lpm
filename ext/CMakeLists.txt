@@ -467,7 +467,6 @@ if (LPM_VTK_NEEDS_BUILD)
                     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/vtk
                     INSTALL_DIR ${PROJECT_BINARY_DIR}
                     CMAKE_ARGS ${VTK_CMAKE_OPTS}
-                    DEPENDS netcdf
                     BUILD_COMMAND ${MAKE} -j
                     INSTALL_COMMAND ${MAKE} install
                     LOG_CONFIGURE TRUE
@@ -503,6 +502,9 @@ if (${HDF5_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built hdf5
 endif()
 if (${NETCDF_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built netcdf
   install(FILES ${NETCDF_LIBRARY} DESTINATION lib)
+endif()
+if (${YAMLCPP_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built yamlcpp
+  install(FILES ${YAMLCPP_LIBRARY} DESTINATION lib)
 endif()
 if (LPM_TRILINOS_NEEDS_BUILD) # we built trilinos
   foreach(lib ${LPM_TRILINOS_LIBS})
