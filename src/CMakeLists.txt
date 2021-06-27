@@ -1,4 +1,7 @@
-include_directories("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}"
+include_directories("${PROJECT_SOURCE_DIR}/src"
+                    "${PROJECT_BINARY_DIR}"
+                    "${CMAKE_CURRENT_BINARY_DIR}"
+                    "${LPM_INCLUDE_DIRS}"
 #                    "${VTK_INCLUDE_DIRS}"
 #                   "${Trilinos_INCLUDE_DIRS}"
 #                   "${Trilinos_TPL_INCLUDE_DIRS}"
@@ -16,9 +19,11 @@ add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmF
 #    LpmPolyMesh2dVtkInterface.cpp LpmTimer.cpp LpmNetCDF.cpp
 #    LpmSWEGallery.cpp
 )
+add_dependencies(lpm update_version_info netcdf ${LPM_TRILINOS_LIBS} ${LPM_VTK_LIBS} yaml-cpp)
 target_link_libraries(lpm
 #      ${VTK_LIBRARIES}
       ${CMAKE_DL_LIBS}
+      ${LPM_LIBRARIES}
       #${Trilinos_LIBRARIES}
       #${Trilinos_TPL_LIBRARIES}
       )

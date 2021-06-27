@@ -223,6 +223,7 @@ foreach(lib ${LPM_TRILINOS_LIBS})
 endforeach()
 endif()
 
+set(LPM_TRILINOS_LIBS ${LPM_TRILINOS_LIBS} PARENT_SCOPE)
 
 if (LPM_TRILINOS_NEEDS_BUILD)
   update_submodules()
@@ -420,6 +421,7 @@ if (LPM_USE_VTK_GRAPHICS)
     endforeach()
 endif()
 
+set(LPM_VTK_LIBS ${LPM_VTK_LIBS} PARENT_SCOPE)
 
 foreach(lib ${LPM_VTK_LIBS})
   add_library(${lib} STATIC IMPORTED GLOBAL)
