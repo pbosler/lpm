@@ -31,14 +31,44 @@ else()
   message(STATUS "Building *without* MPI")
 endif()
 
+# Build dependencies if necessary
 add_subdirectory(ext)
 
-#ADD_SUBDIRECTORY (src)
-#ADD_SUBDIRECTORY (tests)
-#ADD_SUBDIRECTORY (examples)
+# If we're building on a GPU, set the C++ compiler appropriately.
+if (LPM_DEVICE STREQUAL CUDA)
+  if (HAVE_MPI)
+    set(ENV{OMPI_CXX_COMPILER} "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
+  else()
+    set(CMAKE_CXX_COMPILER "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
+  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
+endif()
+
+include_directories("${PROJECT_BINARY_DIR}")
+include_directories("${PROJECT_BINARY_DIR}/include")
+include(GNUInstallDirs)
+link_directories("${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+
+add_subdirectory(src)
+add_subdirectory(tests)
+add_subdirectory(examples)
 
 configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
 
+# Generate a blank lpm_version.cpp file
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMENT "Generating initial lpm_version.cpp ..."
+)
+
+# update lpm version info
+add_custom_target(update_version_info ALL
+  COMMAND ${BASH} ${PROJECT_SOURCE_DIR}/tools/update_version_info.sh ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMENT "Updating lpm version info ..."
+)
+
 #INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}")# "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include" "${NETCDF_H_PATH}")
 
+include(CTest)
 enable_testing()
