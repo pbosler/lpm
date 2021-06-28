@@ -1,7 +1,19 @@
 #!/bin/bash
 
-TR=$HOME/trilinos-lpm
-#TR=$HOME/trilinos-lpm-debug
+module purge
+module load cmake/3.19.3
+module load git
+module load gcc/7.2.0
+module load openmpi/2.1.2/gcc/7.2.0
+module load openblas/0.2.20/gcc/7.2.0
+module unload python
+module load python/3.7.3
+module load hdf5/1.10.1/openmpi/2.1.2/gcc/7.2.0
+module load netcdf/4.4.1.1/openmpi/2.1.2/gcc/7.2.0
+module load yamlcpp
+
+TR=/ascldap/users/pabosle/trilinos-lpm
+#TR=/ascldap/users/pabosle/trilinos-lpm-debug
 
 export HDF5_INCLUDE_DIR=$HDF5_ROOT/include
 export HDF5_LIBRARY_DIR=$HDF5_ROOT/lib
