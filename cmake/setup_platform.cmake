@@ -78,7 +78,6 @@ macro(setup_platform)
     message(STATUS "Building hdf5 library: ${HDF5_LIBRARY}.")
   endif()
 
-  get_filename_component(HDF5_LIBRARY_DIR ${HDF5_LIBRARY} DIRECTORY)
   if (HDF5_HL_LIBRARY)
     if (NOT EXISTS ${HDF5_HL_LIBRARY})
       message(FATAL_ERROR "Couldn't find high-level hdf5 library at ${HDF5_HL_LIBRARY}.")
@@ -88,6 +87,9 @@ macro(setup_platform)
     set(HDF5_HL_LIBRARY "${HDF5_LIBRARY_DIR}/libhdf5_hl.a")
     message(STATUS "Building high-level hdf5 library: ${HDF5_HL_LIBRARY}.")
   endif()
+
+  get_filename_component(HDF5_LIBRARY_DIR ${HDF5_LIBRARY} DIRECTORY)
+  get_filename_component(HDF5_HL_LIBRARY_DIR ${HDF5_HL_LIBRARY} DIRECTORY)
 
   if (NETCDF_INCLUDE_DIR)
     if (NOT EXISTS ${NETCDF_INCLUDE_DIR})
@@ -175,6 +177,9 @@ macro(setup_platform)
     message(STATUS "Building vtk libraries in: ${VTK_LIBRARY_DIR}.\n       Please be patient; vtk can take a long time to build.")
     set(LPM_VTK_NEEDS_BUILD TRUE)
   endif()
+
+  set(LPM_LIBRARY_DIRS ${HDF5_LIBRARY_DIR};${HDF5_HL_LIBRARY_DIR};${NETCDF_LIBRARY_DIR};${YAMLCPP_LIBRARY_DIR})
+  set(LPM_INCLUDE_DIRS ${HDF5_INCLUDE_DIR};${TRILINOS_INCLUDE_DIR};${VTK_INCLUDE_DIR};${LPM_INCLUDE_DIRS})
 
   # Certain tools (e.g. patch) require TMPDIR to be defined. If it is not,
   # we do so here.

@@ -2,16 +2,17 @@
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
 #include "LpmUtilities.hpp"
+#include "lpm_assert.hpp"
+#include "catch.hpp"
 #include <typeinfo>
 #include <fstream>
 #include <string>
 
 using namespace Lpm;
 
-int main(int argc, char* argv[]) {
-ko::initialize(argc, argv);
-{
-    { //PLANAR TESTS
+TEST_CASE("lpm_geometry", "") {
+
+    SECTION("planar tests") {
     const Real r2a[2] = {1.0, 0.0};
     const Real r2b[2] = {2.0, 1.0};
     const Real r2c[2] = {-1.0, -10.0};
@@ -89,14 +90,17 @@ ko::initialize(argc, argv);
     // copy results to host
     ko::deep_copy(host_result, result);
     prarr("barycenter", host_result.data(), 2);
-    LPM_THROW_IF( (host_result(0) != 2.0/3.0 || host_result(1) != -3), "barycenter error\n");
+    REQUIRE( host_result(0) == 2.0/3.0 );
+    REQUIRE( host_result(1) == -3);
+
+
     ko::deep_copy(host_scalar, scalar_result);
-    LPM_THROW_IF( host_scalar() != 2, "dot product error.\n");
+    REQUIRE( host_scalar() == 2 );
     PlaneGeometry::normalize(host_result);
-    LPM_THROW_IF( PlaneGeometry::mag(host_result) != 1, "normalize error.");
+    REQUIRE( PlaneGeometry::mag(host_result) == 1);
     } // END PLANAR TESTS
 
-    { // SPHERICAL TESTS
+    SECTION("spherical tests") { // SPHERICAL TESTS
 
     const Real p0[3] = {0.57735026918962584,-0.57735026918962584,0.57735026918962584};
     const Real p1[3] = {0.57735026918962584,-0.57735026918962584,-0.57735026918962584};
@@ -121,7 +125,7 @@ ko::initialize(argc, argv);
     std::cout << "colat(p4) = " << colat4 << "\n";
     const Real colattest = std::abs(colat4 + lat4 - 0.5*PI);
     std::cout << "abs(colat + lat - pi/2) = " << colattest << "\n";
-    LPM_THROW_IF(colattest > ZERO_TOL, "colatitude + latitude != pi/2");
+    REQUIRE(colattest < ZERO_TOL);
 
     for (int i=0; i<3; ++i) {
         ha[i] = p0[i];
@@ -168,7 +172,7 @@ ko::initialize(argc, argv);
 
     } // END SPHERICAL TESTS
 
-    { // circle tests
+    SECTION("circle tests") { // circle tests
 
       const Real r2a[2] = {0.0, 1.0};
       const Real r2b[2] = {0.0, 0.5};
@@ -180,18 +184,18 @@ ko::initialize(argc, argv);
       printf("endpt0 = (%f, %f) has r = %f\n", r2a[0], r2a[1], CircularPlaneGeometry::mag(r2a));
       printf("endpt1 = (%f, %f) has r = %f\n", r2d[0], r2d[1], CircularPlaneGeometry::mag(r2d));
       printf("midpt = (%f, %f) has r = %f\n", cmid[0], cmid[1], CircularPlaneGeometry::mag(cmid));
-      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::mag(cmid), 1.0), "radial midpoint test failed.");
+      REQUIRE(fp_equiv(CircularPlaneGeometry::mag(cmid), 1.0));
 
       printf("theta_b = %f\n", CircularPlaneGeometry::theta(r2b));
-      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::theta(r2b), 0.5*PI), "theta test failed.");
+      REQUIRE(fp_equiv(CircularPlaneGeometry::theta(r2b), 0.5*PI));
 
       printf("dtheta(b,c) = %f\n", CircularPlaneGeometry::dtheta(r2b,r2c));
-      LPM_THROW_IF(!fp_equiv(CircularPlaneGeometry::dtheta(r2a,r2c), 0.5*PI), "dtheta test failed.");
+      REQUIRE(fp_equiv(CircularPlaneGeometry::dtheta(r2a,r2c), 0.5*PI));
 
       const Real qsa = CircularPlaneGeometry::quad_sector_area(r2a, r2c);
       printf("area(a,b,c,d) = %f\n", qsa);
-      LPM_THROW_IF(!fp_equiv(qsa,(0.5*(PI/2)*(square(1.0)-square(0.5)))), "sector area test faild");
-      LPM_THROW_IF(!fp_equiv(4*qsa + PI*square(0.5), PI),"unit disk area test failed.");
+      REQUIRE(fp_equiv(qsa,(0.5*(PI/2)*(square(1.0)-square(0.5)))));
+      REQUIRE(fp_equiv(4*qsa + PI*square(0.5), PI));
 
       ko::View<Real[4][2],Host> sector("sector");
       for (Short i=0;i<2;++i) {
@@ -203,19 +207,15 @@ ko::initialize(argc, argv);
       const Real ctr[2] = {std::cos(PI/4)*3/4, std::sin(PI/4)*3/4};
       const Real pa = CircularPlaneGeometry::polygonArea(ctr, sector, 4);
       printf("circ. polygonArea = %f\n", pa);
-      LPM_THROW_IF(!fp_equiv(qsa,pa), "circular polygon area test failed.");
+      REQUIRE(fp_equiv(qsa,pa));
 
       Real bc[2];
       CircularPlaneGeometry::barycenter(bc, sector);
       Real exbc[2] = {0.75*std::cos(PI/4), 0.75*std::sin(PI/4)};
       printf("bc = (%f,%f); exbc = (%f,%f)\n", bc[0], bc[1], exbc[0], exbc[1]);
-      LPM_THROW_IF(!fp_equiv(bc[0], exbc[0]) || !fp_equiv(bc[1],exbc[1]),
-        "circular barycenter test failed.");
+      REQUIRE(fp_equiv(bc[0], exbc[0]));
+      REQUIRE( fp_equiv(bc[1],exbc[1]));
     }
-}
-std::cout << "tests pass." << std::endl;
-ko::finalize();
-return 0;
 }
 
 

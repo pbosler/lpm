@@ -1,16 +1,21 @@
-#include (CTest)
-#INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
-#                    "${PROJECT_BINARY_DIR}"
-#                    "${VTK_INCLUDE_DIRS}"
-##                   "${Trilinos_INCLUDE_DIRS}"
-##                   "${Trilinos_TPL_INCLUDE_DIRS}"
-##                    "${NETCDF_H_PATH}"
-#)
-#
-#ADD_EXECUTABLE(lpmGeomTest LpmGeometryUnitTests.cpp)
-#TARGET_LINK_LIBRARIES(lpmGeomTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmGeom lpmGeomTest)
-#
+enable_testing()
+
+#######################
+###    THREADING    ###
+#######################
+
+if (LPM_USE_CUDA)
+  set (DEFAULT_MAX_THREADS 1)
+else ()
+  set (DEFAULT_MAX_THREADS 16)
+endif ()
+
+set (LPM_TEST_MAX_RANKS 4 CACHE STRING "Max number of ranks for tests")
+set (LPM_TEST_MAX_THREADS ${DEFAULT_MAX_THREADS} CACHE STRING "Max number of threads for tests")
+set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
+
+CreateUnitTest(geometry_test lpm_geometry_tests.cpp)
+
 #ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmCoords lpmCoordsTest)

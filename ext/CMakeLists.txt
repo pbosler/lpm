@@ -22,6 +22,10 @@ macro(update_submodules)
   endif()
 endmacro()
 
+#----------------------------------------------------------------------------
+# Catch2 test framework
+#----------------------------------------------------------------------------
+list(APPEND LPM_EXT_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 
 #----------------------------------------------------------------------------
 # HDF5 parallel I/O library, dependency of netCDF
@@ -29,7 +33,7 @@ endmacro()
 
 find_package(ZLIB REQUIRED)
 set(LPM_EXT_LIBRARIES ${ZLIB_LIBRARIES};${LPM_EXT_LIBRARIES})
-set(LPM_EXT_INCLUDE_DIRS ${LPM_EXT_INCLUDE_DIRS};${ZLIB_INCLUDE_DIRS})
+list(APPEND LPM_EXT_INCLUDE_DIRS ${ZLIB_INCLUDE_DIRS})
 
 #handle user-supplied hdf5
 if (HDF5_LIBRARY MATCHES ".so")
@@ -83,7 +87,7 @@ if (NOT EXISTS ${HDF5_LIBRARY})
    message(FATAL_ERROR "could not find hdf5 library; ${HDF5_LIBRARY}")
  endif()
 endif()
-set(LPM_EXT_INCLUDE_DIRS ${HDF5_INCLUDE_DIR};${LPM_EXT_INCLUDE_DIRS})
+list(APPEND LPM_EXT_INCLUDE_DIRS ${HDF5_INCLUDE_DIR})
 set(LPM_EXT_LIBRARIES hdf5_hl;hdf5;${LPM_EXT_LIBRARIES})
 
 #----------------------------------------------------------------------------
@@ -446,7 +450,9 @@ if (LPM_VTK_NEEDS_BUILD)
                      -DBUILD_TESTING=OFF
                      -DVTK_Group_MPI=ON
                      -DVTK_Group_Rendering=${LPM_USE_VTK_GRAPHICS}
-                     -DVTK_Group_StandAlone=ON
+                     -DVTK_Group_StandAlone=OFF
+                     -DVTK_Group_Imaging=OFF
+                     -DVTK_Group_Web=OFF
                      -DVTK_USE_LARGE_DATA=OFF
                      -DVTK_WRAP_JAVA=OFF
                      -DVTK_WRAP_PYTHON=OFF
@@ -455,6 +461,9 @@ if (LPM_VTK_NEEDS_BUILD)
 
   if (NOT LPM_USE_VTK_GRAPHICS)
     list(APPEND VTK_CMAKE_OPTS -DVTK_RENDERING_BACKEND=None)
+  else()
+    # this supresses some CMake warnings when 2 different versions of GL are found.
+    list(APPEND VTK_CMAKE_OPTS -DOpenGL_GL_PREFERENCE=GLVND)
   endif()
 
   ExternalProject_Add(vtk_proj

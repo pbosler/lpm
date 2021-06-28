@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD 14)
 CMAKE_POLICY(SET CMP0074 NEW)
 message(STATUS "Setting policy CMP0074 to use <Package>_ROOT environmental variables")
 
-# Tools for CMake debugging
+# Tools for CMake repetitive tasks & debugging
 include(cmake_helpers)
 
 # Set all installation folders for third-party libraries, and figure out which
@@ -31,8 +31,13 @@ set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})
 # handle MPI
 if (HAVE_MPI)
   find_package(MPI REQUIRED)
+  if (NOT MPI_FOUND)
+    message(FATAL_ERROR "Error: cannot find MPI")
+  endif()
+  set(LPM_USE_MPI ON)
 else()
   message(STATUS "Building *without* MPI")
+  set(LPM_USE_MPI OFF)
 endif()
 
 # handle OpenMP
@@ -76,13 +81,7 @@ if (LPM_DEVICE STREQUAL CUDA)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
 endif()
 
-include_directories("${PROJECT_BINARY_DIR}" "${PROJECT_BINARY_DIR}/include" ${LPM_INCLUDE_DIRS})
-include(GNUInstallDirs)
-link_directories("${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-
-add_subdirectory(src)
-add_subdirectory(tests)
-add_subdirectory(examples)
+set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${PROJECT_BINARY_DIR};${PROJECT_SOURCE_DIR}/src)
 
 configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
 
@@ -99,7 +98,17 @@ add_custom_target(update_version_info ALL
   COMMENT "Updating lpm version info ..."
 )
 
+include(GNUInstallDirs)
+
+add_subdirectory(src)
+set(LPM_LIBRARIES lpm;${LPM_LIBRARIES})
+add_subdirectory(tests)
+add_subdirectory(examples)
+
+
+
+
 #INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}")# "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include" "${NETCDF_H_PATH}")
 
 include(CTest)
-enable_testing()
+

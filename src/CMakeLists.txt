@@ -1,15 +1,11 @@
-include_directories("${PROJECT_SOURCE_DIR}/src"
-                    "${PROJECT_BINARY_DIR}"
-                    "${CMAKE_CURRENT_BINARY_DIR}"
-                    "${LPM_INCLUDE_DIRS}"
-#                    "${VTK_INCLUDE_DIRS}"
-#                   "${Trilinos_INCLUDE_DIRS}"
-#                   "${Trilinos_TPL_INCLUDE_DIRS}"
-#                    "${NETCDF_H_PATH}"
-                    )
+include_directories("${LPM_INCLUDE_DIRS}")
 
-add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmFaces.cpp
- LpmVtkIO.cpp
+add_library(lpm LpmUtilities.cpp
+                LpmCoords.cpp
+                LpmMeshSeed.cpp
+                LpmEdges.cpp
+                LpmFaces.cpp
+                LpmVtkIO.cpp
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
@@ -18,24 +14,18 @@ add_library(lpm LpmUtilities.cpp LpmCoords.cpp LpmMeshSeed.cpp LpmEdges.cpp LpmF
 #    LpmBVESphere.cpp LpmVorticityGallery.cpp LpmBVERK4.cpp
 #    LpmPolyMesh2dVtkInterface.cpp LpmTimer.cpp LpmNetCDF.cpp
 #    LpmSWEGallery.cpp
-)
-add_dependencies(lpm update_version_info netcdf ${LPM_TRILINOS_LIBS} ${LPM_VTK_LIBS} yaml-cpp)
-target_link_libraries(lpm
-#      ${VTK_LIBRARIES}
-      ${CMAKE_DL_LIBS}
-      ${LPM_LIBRARIES}
-      #${Trilinos_LIBRARIES}
-      #${Trilinos_TPL_LIBRARIES}
-      )
+                )
+add_dependencies(lpm update_version_info
+                     netcdf
+                     ${LPM_TRILINOS_LIBS}
+                     ${LPM_VTK_LIBS}
+                     yaml-cpp
+                     )
+
+target_link_libraries(lpm ${LPM_LIBRARIES})
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
 #    target_link_libraries(lpm spherepack)
-#endif()
-#if (LPM_HAS_NETCDF)
-#  message(STATUS "linking to netcdf -- restart capability enabled")
-#  target_link_libraries(lpm ${NETCDF_C} ${NETCDF_CXX})
-#else()
-#  message(STATUS "no netcdf found -- restart capability disabled")
 #endif()
 
 install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
@@ -48,3 +38,21 @@ install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hp
               LpmNetCDF.hpp LpmSWEGallery.hpp
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)
+
+###########################################
+###       Testing micro-libraries       ###
+###########################################
+
+# Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
+# unit test don't have to all rebuild the same file.
+add_library(lpm_test_main lpm_catch_main.cpp)
+target_link_libraries(lpm_test_main PUBLIC lpm)
+target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
+install(TARGETS lpm_test_main
+        EXPORT LpmTargets
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/ext/catch2/include
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
