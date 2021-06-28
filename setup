@@ -203,6 +203,9 @@ GENERATOR="Unix Makefiles"
 OPTIONS=""
 if [ "\$MPI" = "ON" ]; then
   OPTIONS="-DHAVE_MPI=ON"
+else
+  echo "Error: non-MPI builds are not supported yet."
+  exit 1
 fi
 if [ "\$VERBOSE" = "ON" ]; then
   OPTIONS="\$OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"

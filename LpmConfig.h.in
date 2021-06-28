@@ -2,9 +2,6 @@
 #ifndef LPM_CONFIG_H
 #define LPM_CONFIG_H
 
-#define LPM_VERSION_MAJOR @LPM_VERSION_MAJOR@
-#define LPM_VERSION_MINOR @LPM_VERSION_MINOR@
-
 #cmakedefine LPM_USE_MPI
 #cmakedefine LPM_USE_VTK_GRAPHICS
 #cmakedefine LPM_USE_CUDA

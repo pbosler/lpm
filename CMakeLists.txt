@@ -9,6 +9,7 @@ project (LPM CXX Fortran)
 # Set LPM version metadata
 set(LPM_VERSION_MAJOR 3)
 set(LPM_VERSION_MINOR 1)
+set(LPM_VERSION_PATCH 0)
 
 # Set c++ standard and env variable policy
 set(CMAKE_CXX_STANDARD 14)

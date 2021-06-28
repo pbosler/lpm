@@ -58,6 +58,8 @@ if (NOT EXISTS ${SPDLOG_LIBRARY})
           )
   add_dependencies(spdlog spdlog_proj)
 endif()
+list(APPEND LPM_EXT_INCLUDE_DIRS ${SPDLOG_INCLUDE_DIR})
+set(LPM_EXT_LIBRARIES spdlog;${LPM_EXT_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # HDF5 parallel I/O library, dependency of netCDF

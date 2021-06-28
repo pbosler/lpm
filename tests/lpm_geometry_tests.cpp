@@ -2,7 +2,6 @@
 #include "LpmDefs.hpp"
 #include "LpmGeometry.hpp"
 #include "LpmUtilities.hpp"
-#include "lpm_assert.hpp"
 #include "catch.hpp"
 #include <typeinfo>
 #include <fstream>

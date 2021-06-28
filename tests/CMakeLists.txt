@@ -16,6 +16,20 @@ set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
 
 CreateUnitTest(geometry_test lpm_geometry_tests.cpp)
 
+CreateUnitTest(mpi_comm_test lpm_comm_tests.cpp
+  MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
+  MPI_EXTRA_ARGS "--oversubscribe")
+
+CreateUnitTest(logger_test lpm_logger_tests.cpp)
+
+CreateUnitTest(mpi_logger mpi_log_rank0_only.cpp
+  MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
+  MPI_EXTRA_ARGS "--oversubscribe")
+
+CreateUnitTest(multicomponent_logger multicomponent_log_test.cpp
+  MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
+  MPI_EXTRA_ARGS "--oversubscribe")
+
 #ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmCoords lpmCoordsTest)

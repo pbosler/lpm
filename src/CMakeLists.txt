@@ -6,6 +6,7 @@ add_library(lpm LpmUtilities.cpp
                 LpmEdges.cpp
                 LpmFaces.cpp
                 LpmVtkIO.cpp
+                lpm_comm.cpp
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
@@ -29,7 +30,9 @@ target_link_libraries(lpm ${LPM_LIBRARIES})
 #    target_link_libraries(lpm spherepack)
 #endif()
 
-install(FILES LpmConfig.h LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
+install(FILES LpmConfig.h
+              lpm_comm.hpp
+              LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
               LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
               LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
               LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp

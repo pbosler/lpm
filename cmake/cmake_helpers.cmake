@@ -198,8 +198,6 @@ function(CreateUnitTest target_name target_sources)
     set(invokeExec "./${target_name}")
   endif()
 
-  printvar(invokeExec)
-
   foreach (NRANKS RANGE ${MPI_START_RANK} ${MPI_END_RANK} ${MPI_INCREMENT})
     foreach (NTHREADS RANGE ${THREAD_START} ${THREAD_END} ${THREAD_INCREMENT})
       # Create the test name
@@ -215,7 +213,6 @@ function(CreateUnitTest target_name target_sources)
         add_test(NAME ${FULL_TEST_NAME}
                  COMMAND sh -c "${lpmtest_MPI_EXEC_NAME} ${lpmtest_MPI_NP_FLAG} ${NRANKS} ${lpmtest_MPI_EXTRA_ARGS} ${invokeExec}")
       else()
-        printvar(FULL_TEST_NAME)
         add_test(NAME ${FULL_TEST_NAME}
                  COMMAND sh -c "${invokeExec}")
       endif()
