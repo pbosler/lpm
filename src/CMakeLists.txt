@@ -20,6 +20,7 @@ add_dependencies(lpm update_version_info
                      ${LPM_TRILINOS_LIBS}
                      ${LPM_VTK_LIBS}
                      yaml-cpp
+                     spdlog
                      )
 
 target_link_libraries(lpm ${LPM_LIBRARIES})

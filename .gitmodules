@@ -13,3 +13,6 @@
 [submodule "ext/vtk"]
 	path = ext/vtk
 	url = git@github.com:Kitware/VTK.git
+[submodule "ext/spdlog"]
+	path = ext/spdlog
+	url = git@github.com:gabime/spdlog.git

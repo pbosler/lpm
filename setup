@@ -54,6 +54,10 @@ PREFIX=$PWD/$1
 #VTK_INCLUDE_DIR=/path/to/vtk/includes
 #VTK_LIBRARY_DIR=/path/to/vtk/libraries
 
+#SPDLOG_INCLUDE_DIR=/path/to/spdlog/includes
+#SPDLOG_LIBRARY_DIR=/path/to/spdlog/library
+#SPDLOG_LIBRARY=libspdlog.a
+
 #TRILINOS_INCLUDE_DIR=/path/to/trilinos/includes
 #TRILINOS_TPL_INCLUDE_DIR=/path/to/trilinos/tpl/includes
 #TRILINOS_LIBRARY_DIR=/path/to/trilinos/libraries
@@ -232,6 +236,10 @@ if [ ! "\$NETCDF_LIBRARY_DIR" = "" -o ! "\$NETCDF_INCLUDE_DIR" = "" -o ! "\$NETC
     echo "Error: NETCDF_LIBRARY must be specified for a custom NetCDF library."
     exit 1
   fi
+  if [ "\$NETCDF_LIBRARY_DIR" = "" ]; then
+    echo "Error: NETCDF_LIBRARY_DIR must be specified for a custom NetCDF library."
+    exit 1
+  fi
   if [ "\$NETCDF_INCLUDE_DIR" = "" ]; then
     echo "Error: NETCDF_INCLUDE_DIR must be specified for a custom NetCDF library."
     exit 1
@@ -246,12 +254,34 @@ if [ ! "\$YAMLCPP_LIBRARY_DIR" = "" -o ! "\$YAMLCPP_INCLUDE_DIR" = "" -o ! "\$YA
     echo "Error: YAMLCPP_LIBRARY must be specified for a custom yaml-cpp library."
     exit 1
   fi
+  if [ "\$YAMLCPP_LIBRARY_DIR" = "" ]; then
+    echo "Error: YAMLCPP_LIBRARY_DIR must be specified for a custom yaml-cpp library."
+    exit 1
+  fi
   if [ "\$YAMLCPP_INCLUDE_DIR" = "" ]; then
     echo "Error: YAMLCPP_INCLUDE_DIR must be specified for a custom yaml-cpp library."
     exit 1
   fi
   OPTIONS="\$OPTIONS -DYAMLCPP_LIBRARY=\$YAMLCPP_LIBRARY_DIR/\$YAMLCPP_LIBRARY"
   OPTIONS="\$OPTIONS -DYAMLCPP_INCLUDE_DIR=\$YAMLCPP_INCLUDE_DIR"
+fi
+
+# Configure spdlog if needed
+if [ ! "\$SPDLOG_LIBRARY_DIR" = "" -o ! "\$SPDLOG_INCLUDE_DIR" = "" -o ! "\$SPDLOG_LIBRARY" = "" ]; then
+  if [ "\$SPDLOG_LIBRARY" = "" ]; then
+    echo "Error: SPDLOG_LIBRARY must be specified for a custom spdlog library."
+    exit 1
+  fi
+  if [ "\$SPDLOG_LIBRARY_DIR" = "" ]; then
+    echo "Error: SPDLOG_LIBRARY_DIR must be specified for a custom spdlog library."
+    exit 1
+  fi
+  if [ "\$SPDLOG_INCLUDE_DIR" = "" ]; then
+    echo "Error: SPDLOG_INCLUDE_DIR must be specified for a custom spdlog library."
+    exit 1
+  fi
+  OPTIONS="\$OPTIONS -DSPDLOG_LIBRARY=\$SPDLOG_LIBRARY_DIR/\$SPDLOG_LIBRARY"
+  OPTIONS="\$OPTIONS -DSPDLOG_INCLUDE_DIR=\${SPDLOG_INCLUDE_DIR}"
 fi
 
 # Configure Trilinos if needed

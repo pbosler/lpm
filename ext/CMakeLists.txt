@@ -28,6 +28,38 @@ endmacro()
 list(APPEND LPM_EXT_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 
 #----------------------------------------------------------------------------
+# spdlog logging utilities
+#----------------------------------------------------------------------------
+
+add_library(spdlog STATIC IMPORTED GLOBAL)
+set_target_properties(spdlog PROPERTIES IMPORTED_LOCATION ${SPDLOG_LIBRARY})
+
+if (NOT EXISTS ${SPDLOG_LIBRARY})
+  set(SPDLOG_CMAKE_OPTS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
+                      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+                      -DBUILD_SHARED_LIBS=OFF
+                      -DSPDLOG_BUILD_EXAMPLES=OFF
+                      -DSPDLOG_BUILD_TESTS=OFF
+                      -DSPDLOG_INSTALL=ON
+                      )
+
+  ExternalProject_Add(spdlog_proj
+          PREFIX ${CMAKE_CURRENT_BINARY_DIR}/spdlog
+          SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
+          BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/spdlog
+          INSTALL_DIR ${PROJECT_BINARY_DIR}
+          CMAKE_ARGS ${SPDLOG_CMAKE_OPTS}
+          BUILD_COMMAND ${MAKE} -j
+          LOG_CONFIGURE TRUE
+          LOG_BUILD TRUE
+          LOG_INSTALL TRUE
+          )
+  add_dependencies(spdlog spdlog_proj)
+endif()
+
+#----------------------------------------------------------------------------
 # HDF5 parallel I/O library, dependency of netCDF
 #----------------------------------------------------------------------------
 
