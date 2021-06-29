@@ -9,6 +9,7 @@ add_library(lpm
 #                LpmVtkIO.cpp
                 lpm_comm.cpp
                 lpm_mesh_seed.cpp
+                lpm_coords.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
 
@@ -40,6 +41,7 @@ install(FILES LpmConfig.h
               lpm_logger.hpp
               lpm_geometry.hpp
               lpm_mesh_seed.hpp
+              lpm_coords.hpp
               util/lpm_math_util.hpp
               util/lpm_floating_point_util.hpp
               util/lpm_string_util.hpp

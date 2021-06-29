@@ -2,10 +2,10 @@
 #define LPM_COORDS_HPP
 
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmUtilities.hpp"
-#include "LpmGeometry.hpp"
-#include "LpmMeshSeed.hpp"
+#include "lpm_assert.hpp"
+#include "util/lpm_math_util.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_mesh_seed.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 #include <cassert>
@@ -50,17 +50,19 @@ template <typename Geo> class Coords {
     /**
       Copy data from host to device.
     */
-    void updateDevice() const {
+    void update_device() const {
       ko::deep_copy(crds, _hostcrds);
       ko::deep_copy(n, _nh);
     }
 
     /** Copy data from device to host.
     */
-    void updateHost() const {
+    void update_host() const {
       ko::deep_copy(_hostcrds, crds);
       ko::deep_copy(_nh, n);
     }
+
+    Real max_radius() const;
 
 
     /** \brief Number of coordinates initialized.
@@ -73,7 +75,7 @@ template <typename Geo> class Coords {
 
     /// \brief maximum number of coordinate vectors allowed in memory
     KOKKOS_INLINE_FUNCTION
-    Index nMax() const { return crds.extent(0);}
+    Index n_max() const { return crds.extent(0);}
 
     /** \brief Get specfied component (e.g., 0, 1, 2) from a particular coordinate vector
 
@@ -83,8 +85,8 @@ template <typename Geo> class Coords {
     \param dim component of vector
     \return crds(ind,dim)
     */
-    inline Real getCrdComponentHost(const Index ind, const Int dim) const {
-      assert(ind < _nh());
+    inline Real get_crd_component_host(const Index ind, const Int dim) const {
+      LPM_ASSERT(ind < _nh());
       return _hostcrds(ind, dim);}
 
     /** \brief Inserts a new coordinate to the main data container
@@ -94,8 +96,8 @@ template <typename Geo> class Coords {
     @param v position vector to add
     */
     template <typename CV>
-    void insertHost(const CV v) {
-      LPM_THROW_IF(_nmax < _nh() + 1, "Coords::insert error: not enough memory.");
+    void insert_host(const CV v) {
+      LPM_REQUIRE_MSG(_nmax >= _nh() + 1, "Coords::insert error: not enough memory.");
       for (int i=0; i<Geo::ndim; ++i) {
         _hostcrds(_nh(), i) = v[i];
       }
@@ -112,14 +114,14 @@ template <typename Geo> class Coords {
     \param v data to write
     */
     template <typename CV>
-    void setCrdsHost(const Index ind, const CV v) {
-      assert(ind < _nh());
+    void set_crds_host(const Index ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (Short i=0; i<Geo::ndim; ++i) {
         _hostcrds(ind,i) = v[i];
       }
     }
 //     void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
-//       LPM_THROW_IF(ind >= _nh(), "Coords::relocateHost error: index out of range.");
+//       LPM_REQUIRE_MSG(ind < _nh(), "Coords::relocateHost error: index out of range.");
 //       for (int i=0; i<Geo::ndim; ++i) {
 //         _hostcrds(ind, i) = v(i);
 //       }
@@ -131,24 +133,22 @@ template <typename Geo> class Coords {
 
     \param label name of instance
     */
-    std::string infoString(const std::string& label, const short& tab_level=0, const bool& dump_all=false) const;
+    std::string info_string(const std::string& label, const short& tab_level=0, const bool& dump_all=false) const;
 
     /** \brief Initializes a random set of coordinates.
 
     \hostfn
     */
-    void initRandom(const Real max_range=1.0, const Int ss=0);
+    void init_random(const Real max_range=1.0, const Int ss=0);
 
-    /**  \brief Initializes a coordinate on a panel boundary (i.e., a vertex).
-
-    \todo consider renaming to avoid conflict with domain boundary
+    /**  \brief Initializes a coordinate on a panel edge (i.e., a vertex or a edge-interior point (high-order methods only)).
 
     \hostfn
 
     \param seed MeshSeed used for particle/panel initializaiton
     */
     template <typename SeedType>
-    void initBoundaryCrdsFromSeed(const MeshSeed<SeedType>& seed);
+    void init_edge_crds_from_seed(const MeshSeed<SeedType>& seed);
 
     /** \brief Initializes a coordinate on a panel interior
 
@@ -157,7 +157,7 @@ template <typename Geo> class Coords {
       \hostfn
     */
     template <typename SeedType>
-    void initInteriorCrdsFromSeed(const MeshSeed<SeedType>& seed);
+    void init_interior_crds_from_seed(const MeshSeed<SeedType>& seed);
 
     /** \brief Output all data to a stream, writing it in matlab format.
 
@@ -166,13 +166,13 @@ template <typename Geo> class Coords {
     \param os stream to write data (typically, an open .m file)
     \param name name for coordinate array
     */
-    void writeMatlab(std::ostream& os, const std::string& name) const;
+    void write_matlab(std::ostream& os, const std::string& name) const;
 
     /** \brief return a reference to the primary data container's host mirror
 
     \hostfn
     */
-    typename crd_view_type::HostMirror getHostCrdView() {return _hostcrds;}
+    typename crd_view_type::HostMirror get_host_crd_view() {return _hostcrds;}
   protected:
     typename crd_view_type::HostMirror _hostcrds; ///< host view of primary data
     Index _nmax; ///< maximum number of coordinates allowed in memory
