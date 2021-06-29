@@ -1,12 +1,16 @@
 include_directories("${LPM_INCLUDE_DIRS}")
 
-add_library(lpm LpmUtilities.cpp
-                LpmCoords.cpp
-                LpmMeshSeed.cpp
-                LpmEdges.cpp
-                LpmFaces.cpp
-                LpmVtkIO.cpp
+add_library(lpm
+#                LpmUtilities.cpp
+#                LpmCoords.cpp
+#                LpmMeshSeed.cpp
+#                LpmEdges.cpp
+#                LpmFaces.cpp
+#                LpmVtkIO.cpp
+                lpm_progress_bar.cpp
                 lpm_comm.cpp
+                util/lpm_string_util.cpp
+                lpm_mesh_seed.cpp
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
@@ -32,7 +36,14 @@ target_link_libraries(lpm ${LPM_LIBRARIES})
 
 install(FILES LpmConfig.h
               lpm_comm.hpp
-              LpmDefs.hpp LpmUtilities.hpp LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
+              lpm_logger.hpp
+              util/lpm_math_util.hpp
+              util/lpm_floating_point_util.hpp
+              util/lpm_string_util.hpp
+              util/lpm_tuple.hpp
+              util/lpm_timer.hpp
+              lpm_geometry.hpp
+              LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
               LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
               LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
               LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp

@@ -30,6 +30,8 @@ CreateUnitTest(multicomponent_logger multicomponent_log_test.cpp
   MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
   MPI_EXTRA_ARGS "--oversubscribe")
 
+#CreateUnitTest(mesh_seed lpm_mesh_seed_tests.cpp)
+
 #ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmCoords lpmCoordsTest)
