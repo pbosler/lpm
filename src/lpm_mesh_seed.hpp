@@ -1,9 +1,7 @@
 #ifndef LPM_MESH_SEED_HPP
 #define LPM_MESH_SEED_HPP
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmUtilities.hpp"
-#include "LpmGeometry.hpp"
+#include "lpm_geometry.hpp"
 #include <string>
 
 #include "Kokkos_Core.hpp"
@@ -35,10 +33,10 @@ struct VoronoiFace {
     nfaceverts : number of vertices per face
   Required static methods:
     filename : return the filename with seed data produced by meshSeeds.py
-    idString : return the name of the seed (used for console output, debugging, etc.)
-    nVerticesAtTreeLevel(const Int lev) : return the number of vertices in a mesh at tree depth = lev
-    nFacesAtTreeLevel(const Int lev) : return the number of leaf faces in a mesh at tree depth = lev
-    nEdgesAtTreeLevel(const Int nv, const Int nf): return the number of leaf edges in a mesh with nv vertices and nf faces
+    id_string : return the name of the seed (used for console output, debugging, etc.)
+    n_vertices_at_tree_level(const Int lev) : return the number of vertices in a mesh at tree depth = lev
+    n_faces_at_tree_level(const Int lev) : return the number of leaf faces in a mesh at tree depth = lev
+    n_edges_at_tree_level(const Int nv, const Int nf): return the number of leaf edges in a mesh with nv vertices and nf faces
 */
 
 /** @brief Seed for planar meshes of quadrilaterals, free boundary conditions.
@@ -54,12 +52,11 @@ struct QuadRectSeed {
   static constexpr Int nfaceverts = 4;
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "quadRectSeed.dat";}
-  static std::string idString() {return "QuadRectSeed";}
-  static std::string faceStr() {return "quad";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
-  static constexpr bool isDual = false;
+  static std::string id_string() {return "QuadRectSeed";}
+  static std::string face_str() {return "quad";}
+  static Index n_faces_at_tree_level(const Int lev);
+  static Index n_vertices_at_tree_level(const Int lev);
+  static Index n_edges_at_tree_level(const Index nv, const Index nf);
 };
 
 /** @brief Seed for planar meshes of triangular panels, free boundary conditions
@@ -75,12 +72,11 @@ struct TriHexSeed {
   static constexpr Int nfaceverts = 3;
   static constexpr Int vertex_degree = 6;
   static std::string filename() {return "triHexSeed.dat";}
-  static std::string idString() {return "TriHexSeed";}
-  static std::string faceStr() {return "tri";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
-  static constexpr bool isDual = false;
+  static std::string id_string() {return "TriHexSeed";}
+  static std::string face_str() {return "tri";}
+  static Index n_faces_at_tree_level(const Int lev);
+  static Index n_vertices_at_tree_level(const Int lev);
+  static Index n_edges_at_tree_level(const Index nv, const Index nf);
 };
 
 /** @brief Seed for planar meshes of the unit circle
@@ -96,12 +92,11 @@ struct UnitDiskSeed {
   static constexpr Int nfaceverts = 4;
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "unitDiskSeed.dat";}
-  static std::string idString() {return "UnitDiskSeed";}
-  static std::string faceStr() {return "quad";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Int nv, const Index nf);
-  static constexpr bool isDual = false;
+  static std::string id_string() {return "UnitDiskSeed";}
+  static std::string face_str() {return "quad";}
+  static Index n_faces_at_tree_level(const Int lev);
+  static Index n_vertices_at_tree_level(const Int lev);
+  static Index n_edges_at_tree_level(const Int nv, const Index nf);
 };
 
 /** @brief Seed for spherical quadrilateral meshes
@@ -117,12 +112,11 @@ struct CubedSphereSeed {
   static constexpr Int nfaceverts = 4;
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "cubedSphereSeed.dat";}
-  static std::string idString() {return "CubedSphereSeed";}
-  static std::string faceStr() {return "quad";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
-  static constexpr bool isDual = false;
+  static std::string id_string() {return "CubedSphereSeed";}
+  static std::string face_str() {return "quad";}
+  static Index n_faces_at_tree_level(const Int lev);
+  static Index n_vertices_at_tree_level(const Int lev);
+  static Index n_edges_at_tree_level(const Index nv, const Index nf);
 };
 
 /** @brief Seed for Icosahedral triangular meshes of the SphereGeometry
@@ -138,33 +132,11 @@ struct IcosTriSphereSeed {
   static constexpr Int nfaceverts = 3;
   static constexpr Int vertex_degree = 6;
   static std::string filename() {return "icosTriSphereSeed.dat";}
-  static std::string idString() {return "IcosTriSphereSeed";}
-  static std::string faceStr() {return "tri";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
-  static constexpr bool isDual = false;
-};
-
-/** @brief Seed for use with Voronoi meshes based on an icoshedral triangularization of the sphere.
-
-  @deprecated This functionality is not supported and will be removed.
-  @todo Remove this.
-*/
-struct IcosTriDualSeed {
-  static constexpr Short nverts = 20;
-  static constexpr Short nfaces = 12;
-  static constexpr Short nedges = 30;
-  typedef SphereGeometry geo;
-  typedef VoronoiFace faceKind;
-  static constexpr Short nfaceverts = 5;
-  static constexpr Int vertex_degree = 3;
-  static std::string filename() {return "icosTriDualSeed.dat";}
-  static std::string idString() {return "IcosTriDualSeed";}
-  static Index nFacesAtTreeLevel(const Int lev);
-  static Index nVerticesAtTreeLevel(const Int lev);
-  static Index nEdgesAtTreeLevel(const Index nv, const Index nf);
-  static constexpr bool isDual = true;
+  static std::string id_string() {return "IcosTriSphereSeed";}
+  static std::string face_str() {return "tri";}
+  static Index n_faces_at_tree_level(const Int lev);
+  static Index n_vertices_at_tree_level(const Int lev);
+  static Index n_edges_at_tree_level(const Index nv, const Index nf);
 };
 
 /** @brief A MeshSeed initializes a particle/panel mesh, and the Edges tree and Faces tree.
@@ -183,41 +155,41 @@ template <typename SeedType> struct MeshSeed {
   static constexpr Int ncrds = SeedType::nverts + SeedType::nfaces;
 
   /// Host views to load data read from file
-  ko::View<Real[ncrds][SeedType::geo::ndim],Host> scrds;
-  ko::View<Index[SeedType::nedges][8],Host> sedges;
-  ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceverts;
-  ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> sfaceedges;
-  ko::View<Index[SeedType::nverts][SeedType::vertex_degree],Host> svertedges;
+  ko::View<Real[ncrds][SeedType::geo::ndim],Host> seed_crds;
+  ko::View<Index[SeedType::nedges][8],Host> seed_edges;
+  ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> seed_face_verts;
+  ko::View<Index[SeedType::nfaces][SeedType::nfaceverts],Host> seed_face_edges;
+  ko::View<Index[SeedType::nverts][SeedType::vertex_degree],Host> seed_vert_edges;
 
   /// constructor.  Automatically reads data file.
-  MeshSeed() : scrds("seed coords"), sedges("seed edges"), sfaceverts("seed face vertices"),
-    sfaceedges("seed face edges"), svertedges("seed vertex edges") {readfile();}
+  MeshSeed() : seed_crds("seed coords"), seed_edges("seed edges"), seed_face_verts("seed face vertices"),
+    seed_face_edges("seed face edges"), seed_vert_edges("seed vertex edges") {read_file();}
 
   /// constructor. Multiplies radius of mesh.
   MeshSeed(const Real& maxr);
 
-  /// idString
-  static std::string idString() {return SeedType::idString();}
+  /// id_string
+  static std::string id_string() {return SeedType::id_string();}
 
   /// Concatenates directory info with SeedType::filename()
-  std::string fullFilename() const;
+  std::string full_filename() const;
 
   /** Return the required memory allocations for a mesh tree of depth = lev
     nboundary = n vertices in a typical mesh (only different for high-order meshes, which are not implemented yet)
     nedges = n edges required by the mesh tree
     nfaces = n faces required by the mesh tree
   */
-  void setMaxAllocations(Index& nboundary, Index& nedges, Index& nfaces, const Int lev) const;
+  void set_max_allocations(Index& nboundary, Index& nedges, Index& nfaces, const Int lev) const;
 
   /// Return runtime info about this object
-  std::string infoString() const;
+  std::string info_string() const;
 
   /// Compute & return the area of the seed's initial faces.
-  Real faceArea(const Int ind) const;
+  Real face_area(const Int ind) const;
 
   protected:
     /// Read data file.
-    void readfile();
+    void read_file();
 
   private:
 

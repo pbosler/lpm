@@ -7,10 +7,11 @@ add_library(lpm
 #                LpmEdges.cpp
 #                LpmFaces.cpp
 #                LpmVtkIO.cpp
-                lpm_progress_bar.cpp
                 lpm_comm.cpp
-                util/lpm_string_util.cpp
                 lpm_mesh_seed.cpp
+                util/lpm_string_util.cpp
+                util/lpm_progress_bar.cpp
+
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
@@ -37,12 +38,14 @@ target_link_libraries(lpm ${LPM_LIBRARIES})
 install(FILES LpmConfig.h
               lpm_comm.hpp
               lpm_logger.hpp
+              lpm_geometry.hpp
+              lpm_mesh_seed.hpp
               util/lpm_math_util.hpp
               util/lpm_floating_point_util.hpp
               util/lpm_string_util.hpp
               util/lpm_tuple.hpp
               util/lpm_timer.hpp
-              lpm_geometry.hpp
+              util/lpm_progress_bar.hpp
               LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
               LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
               LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
