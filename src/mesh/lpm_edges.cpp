@@ -1,4 +1,5 @@
 #include "lpm_edges.hpp"
+#include <algorithm>
 #include "util/lpm_floating_point_util.hpp"
 
 #ifdef LPM_HAVE_NETCDF
@@ -51,83 +52,117 @@ void Edges::init_from_seed(const MeshSeed<SeedType>& seed) {
   _hn_leaves() = SeedType::nedges;
 }
 
+template <typename CoordsType>
+void Edges::divide(const Index edge_idx, Vertices<CoordsType>& verts) {
+  using Geo = typename CoordsType::crds_geometry_type;
+  LPM_ASSERT(edge_idx < _nh());
+  LPM_REQUIRE_MSG(_nh()+2 <= _nmax, "Edges::divide error, not enough memory.");
+  LPM_ASSERT(!has_kids_host(edge_idx));
 
-template <typename Geo> void Edges::divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds) {
-  LPM_ASSERT(ind < _nh());
+  // record state on entry
+  const Index verts_insert_idx = verts.nh();
+  const Index edges_insert_idx = _nh();
 
-  LPM_REQUIRE_MSG(_nh() + 2 <= _nmax, "Edges::divide error: not enough memory.");
-  LPM_REQUIRE_MSG(!has_kids_host(ind), "Edges::divide error: called on previously divided edge.");
-  // record beginning state
-  const Index crd_ins_pt = crds.nh();
-  const Index edge_ins_pt = _nh();
-
-  // determine edge midpoints
-  ko::View<Real[Geo::ndim], Host> midpt("midpt"), lagmidpt("lagmidpt");
-  ko::View<Real[2][Geo::ndim], Host> endpts("endpts"), lagendpts("lagendpts");
+  // determine parent edge midpoint
+  ko::View<Real[Geo::ndim],Host> midpt("midpt");
+  ko::View<Real[Geo::ndim],Host> lag_midpt("lag_midpt");
+  ko::View<Real[2][Geo::ndim],Host> endpts("parent_endpts");
+  ko::View<Real[2][Geo::ndim],Host> lag_endpts("parent_lag_endpts");
+  const Index orig_crd_idx = verts.crd_inds(_ho(edge_idx));
+  const Index dest_crd_idx = verts.crd_inds(_hd(edge_idx));
   for (int i=0; i<Geo::ndim; ++i) {
-    endpts(0,i) = crds.get_crd_component_host(_ho(ind), i);
-    lagendpts(0,i) = lagcrds.get_crd_component_host(_ho(ind), i);
-    endpts(1,i) = crds.get_crd_component_host(_hd(ind), i);
-    lagendpts(1,i) = lagcrds.get_crd_component_host(_hd(ind), i);
+    endpts(0,i) = verts.phys_crds->get_crd_component_host(orig_crd_idx, i);
+    lag_endpts(0,i) = verts.lag_crds->get_crd_component_host(orig_crd_idx, i);
+    endpts(1,i) = verts.phys_crds->get_crd_component_host(dest_crd_idx, i);
+    lag_endpts(1,i) = verts.phys_crds->get_crd_component_host(dest_crd_idx, i);
   }
-
-  Geo::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()), ko::subview(endpts, 1, ko::ALL()));
-  Geo::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()), ko::subview(lagendpts, 1, ko::ALL()));
-  // insert new midpoint to Coords
-  crds.insert_host(midpt);
-  lagcrds.insert_host(lagmidpt);
+  Geo::midpoint(midpt, ko::subview(endpts, 0, ko::ALL), ko::subview(endpts, 1, ko::ALL));
+  Geo::midpoint(lag_midpt, ko::subview(lag_endpts, 0, ko::ALL), ko::subview(lag_endpts, 1, ko::ALL));
+  // insert new midpoint to vertices
+  verts.insert_host(midpt, lag_midpt);
   // insert new child edges
-  insert_host(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
-  insert_host(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
-  _hk(ind,0) = edge_ins_pt;
-  _hk(ind,1) = edge_ins_pt+1;
-  _hn_leaves() -= 1;
+  this->insert_host(_ho(edge_idx), verts_insert_idx, _hl(edge_idx), _hr(edge_idx), edge_idx);
+  this->insert_host(verts_insert_idx, _hd(edge_idx), _hl(edge_idx), _hr(edge_idx), edge_idx);
+  _hk(edge_idx, 0) = edges_insert_idx;
+  _hk(edge_idx, 1) = edges_insert_idx+1;
+  _hn_leaves()--;
+
+  if (verts.verts_are_dual()) {
+    // replace parent edge with children at vertices
+    Int parent_idx_at_orig = constants::NULL_IND;
+    Int parent_idx_at_dest = constants::NULL_IND;
+    for (int e=0; e<constants::MAX_VERTEX_DEGREE; ++e) {
+      if (verts.edges(_ho(edge_idx), e) == edge_idx) {
+        parent_idx_at_orig = e;
+      }
+      if (verts.edges(_hd(edge_idx), e) == edge_idx) {
+        parent_idx_at_dest = e;
+      }
+      if ( (parent_idx_at_orig != constants::NULL_IND) and
+           (parent_idx_at_dest != constants::NULL_IND)) {
+        break;
+      }
+    }
+
+    LPM_ASSERT( (parent_idx_at_orig != constants::NULL_IND) and
+                (parent_idx_at_dest != constants::NULL_IND) );
+
+    verts.edges(_ho(edge_idx), parent_idx_at_orig) = edges_insert_idx;
+    verts.edges(_hd(edge_idx), parent_idx_at_dest) = edges_insert_idx+1;
+
+    // record edges at new vertex
+    verts.edges(verts_insert_idx, 0) = edges_insert_idx;
+    verts.edges(verts_insert_idx, 1) = edges_insert_idx+1;
+  }
+
 }
 
-template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
-  Coords<CircularPlaneGeometry>& crds, Coords<CircularPlaneGeometry>& lagcrds) {
 
-  assert(ind < _nh());
 
-  LPM_REQUIRE_MSG(_nh()+2 <= _nmax, "Edges::divide error: not enough memory.");
-  LPM_REQUIRE_MSG(!has_kids_host(ind), "Edges::divide error: called on previously divided edge.");
-
-  // record starting state
-  const Index crd_ins_pt = crds.nh();
-  const Index edge_ins_pt = _nh();
-
-  // determine edge midpoints
-  ko::View<Real[2], Host> midpt("midpt"), lagmidpt("lagmidpt");
-  ko::View<Real[2][2],Host> endpts("endpts"), lagendpts("lagendpts");
-  for (Short i=0; i<2; ++i) {
-    endpts(0,i) = crds.get_crd_component_host(_ho(ind), i);
-    lagendpts(0,i) = lagcrds.get_crd_component_host(_ho(ind),i);
-    endpts(1,i) = crds.get_crd_component_host(_hd(ind), i);
-    lagendpts(1,i) = lagcrds.get_crd_component_host(_hd(ind),i);
-  }
-  const Real lr0 = CircularPlaneGeometry::mag(ko::subview(lagendpts,0,ko::ALL()));
-  const Real lr1 = CircularPlaneGeometry::mag(ko::subview(lagendpts,1,ko::ALL()));
-  if (FloatingPoint<Real>::equiv(lr0, lr1, 10*constants::ZERO_TOL)) {
-    CircularPlaneGeometry::radial_midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
-      ko::subview(endpts,1,ko::ALL()));
-    CircularPlaneGeometry::radial_midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
-      ko::subview(lagendpts,1,ko::ALL()));
-  }
-  else {
-    CircularPlaneGeometry::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
-      ko::subview(endpts,1,ko::ALL()));
-    CircularPlaneGeometry::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
-      ko::subview(lagendpts,1,ko::ALL()));
-  }
-  crds.insert_host(midpt);
-  lagcrds.insert_host(lagmidpt);
-
-  insert_host(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
-  insert_host(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
-  _hk(ind,0) = edge_ins_pt;
-  _hk(ind,1) = edge_ins_pt+1;
-  _hn_leaves() -= 1;
-}
+// template <> void Edges::divide<CircularPlaneGeometry>(const Index ind,
+//   Coords<CircularPlaneGeometry>& crds, Coords<CircularPlaneGeometry>& lagcrds) {
+//
+//   assert(ind < _nh());
+//
+//   LPM_REQUIRE_MSG(_nh()+2 <= _nmax, "Edges::divide error: not enough memory.");
+//   LPM_REQUIRE_MSG(!has_kids_host(ind), "Edges::divide error: called on previously divided edge.");
+//
+//   // record starting state
+//   const Index crd_ins_pt = crds.nh();
+//   const Index edge_ins_pt = _nh();
+//
+//   // determine edge midpoints
+//   ko::View<Real[2], Host> midpt("midpt"), lagmidpt("lagmidpt");
+//   ko::View<Real[2][2],Host> endpts("endpts"), lagendpts("lagendpts");
+//   for (Short i=0; i<2; ++i) {
+//     endpts(0,i) = crds.get_crd_component_host(_ho(ind), i);
+//     lagendpts(0,i) = lagcrds.get_crd_component_host(_ho(ind),i);
+//     endpts(1,i) = crds.get_crd_component_host(_hd(ind), i);
+//     lagendpts(1,i) = lagcrds.get_crd_component_host(_hd(ind),i);
+//   }
+//   const Real lr0 = CircularPlaneGeometry::mag(ko::subview(lagendpts,0,ko::ALL()));
+//   const Real lr1 = CircularPlaneGeometry::mag(ko::subview(lagendpts,1,ko::ALL()));
+//   if (FloatingPoint<Real>::equiv(lr0, lr1, 10*constants::ZERO_TOL)) {
+//     CircularPlaneGeometry::radial_midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+//       ko::subview(endpts,1,ko::ALL()));
+//     CircularPlaneGeometry::radial_midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+//       ko::subview(lagendpts,1,ko::ALL()));
+//   }
+//   else {
+//     CircularPlaneGeometry::midpoint(midpt, ko::subview(endpts, 0, ko::ALL()),
+//       ko::subview(endpts,1,ko::ALL()));
+//     CircularPlaneGeometry::midpoint(lagmidpt, ko::subview(lagendpts, 0, ko::ALL()),
+//       ko::subview(lagendpts,1,ko::ALL()));
+//   }
+//   crds.insert_host(midpt);
+//   lagcrds.insert_host(lagmidpt);
+//
+//   insert_host(_ho(ind), crd_ins_pt, _hl(ind), _hr(ind), ind);
+//   insert_host(crd_ins_pt, _hd(ind), _hl(ind), _hr(ind), ind);
+//   _hk(ind,0) = edge_ins_pt;
+//   _hk(ind,1) = edge_ins_pt+1;
+//   _hn_leaves() -= 1;
+// }
 
 std::string Edges::info_string(const std::string& label, const short& tab_level, const bool& dump_all) const {
   std::ostringstream oss;
@@ -151,9 +186,9 @@ std::string Edges::info_string(const std::string& label, const short& tab_level,
 }
 
 /// ETI
-template void Edges::divide<PlaneGeometry>(const Index ind, Coords<PlaneGeometry>& crds, Coords<PlaneGeometry>& lagcrds);
+template void Edges::divide<Coords<PlaneGeometry>>(const Index ind, Vertices<Coords<PlaneGeometry>>& verts);
 
-template void Edges::divide<SphereGeometry>(const Index ind, Coords<SphereGeometry>& crds, Coords<SphereGeometry>& lagcrds);
+template void Edges::divide<Coords<SphereGeometry>>(const Index ind, Vertices<Coords<SphereGeometry>>& verts);
 
 template void Edges::init_from_seed(const MeshSeed<TriHexSeed>& seed);
 template void Edges::init_from_seed(const MeshSeed<QuadRectSeed>& seed);

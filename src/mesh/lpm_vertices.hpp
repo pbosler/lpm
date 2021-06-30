@@ -50,11 +50,28 @@ class Vertices {
       ko::deep_copy(_nh, n);
     }
 
-    bool verts_are_dual() const {return edges.extent(0) > 0; }
+    inline bool verts_are_dual() const {return edges.extent(0) > 0; }
 
     void insert_host(const Index crd_idx);
 
     void insert_host(const Index crd_idx, const std::vector<Index>& edge_list);
+
+    template <typename PtViewType>
+    void insert_host(const PtViewType physcrd, const PtViewType lagcrd) {
+      const Index crd_insert_idx = phys_crds->nh();
+      phys_crds->insert_host(physcrd);
+      lag_crds->insert_host(lagcrd);
+      this->insert_host(crd_insert_idx);
+    }
+
+    template <typename PtViewType>
+    void insert_host(const PtViewType physcrd, const PtViewType lagcrd,
+      const std::vector<Index>& edge_list) {
+      const Index crd_insert_idx = phys_crds->nh();
+      phys_crds->insert_host(physcrd);
+      lag_crds->insert_host(lagcrd);
+      this->insert_host(crd_insert_idx, edge_list);
+    }
 
     void set_edges_host(const Index vert_idx, const std::vector<Index>& edge_list);
 

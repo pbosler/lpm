@@ -2,11 +2,12 @@
 #define LPM_EDGES_HPP
 
 #include "LpmConfig.h"
+#include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_mesh_seed.hpp"
-#include "lpm_assert.hpp"
+#include "mesh/lpm_vertices.hpp"
 #include "util/lpm_string_util.hpp"
 
 #include "Kokkos_Core.hpp"
@@ -133,17 +134,17 @@ class Edges {
     A new midpoint is added to both sets of Coords.
     The second child has index n+1 is the 1th index child of the parent, and shares its destination vertex.
 
-    @todo assert(n==child(ind,0))
-    @todo assert(n+1==child(ind,1))
-    @todo assert(orig(n) == orig(ind))
-    @todo assert(dest(n+1) == dest(ind))
+    @todo LPM_ASSERT(n==child(ind,0))
+    @todo LPM_ASSERT(n+1==child(ind,1))
+    @todo LPM_ASSERT(orig(n) == orig(ind))
+    @todo LPM_ASSERT(dest(n+1) == dest(ind))
 
     \param ind index of edge to be divided
     \param crds physical coordinates of edge vertices
     \param lagcrds Lagrangian coordinates of edge vertices
     */
-    template <typename Geo>
-    void divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds);
+    template<typename CoordsType>
+    void divide(const Index edge_idx, Vertices<CoordsType>& verts);
 
     /** \brief Overwrite the left panel of an edge
 
@@ -197,7 +198,7 @@ class Edges {
     \see divide()
     */
     inline Index kid_host(const Index ind, const Int child) const {
-      assert(ind < _nh());
+      LPM_ASSERT(ind < _nh());
       return _hk(ind, child);}
 
     /// Host function
@@ -205,17 +206,18 @@ class Edges {
       const short& tab_level=0, const bool& dump_all=false) const;
 
     /// Host functions
-    inline Index get_orig_host(const Index ind) const {assert(ind<_nh()); return _ho(ind);}
-    inline Index get_dest_host(const Index ind) const {assert(ind<_nh()); return _hd(ind);}
-    inline Index get_left_host(const Index ind) const {assert(ind<_nh()); return _hl(ind);}
-    inline Index get_right_host(const Index ind) const {assert(ind<_nh()); return _hr(ind);}
+    inline Index orig_host(const Index ind) const {LPM_ASSERT(ind<_nh()); return _ho(ind);}
+    inline Index dest_host(const Index ind) const {LPM_ASSERT(ind<_nh()); return _hd(ind);}
+    inline Index left_host(const Index ind) const {LPM_ASSERT(ind<_nh()); return _hl(ind);}
+    inline Index right_host(const Index ind) const {LPM_ASSERT(ind<_nh()); return _hr(ind);}
+    inline Index parent_host(const Index ind) const {LPM_ASSERT(ind<_nh()); return _hp(ind);}
 
-    inline edge_host_type get_origs_host() const {return _ho;}
-    inline edge_host_type get_dests_host() const {return _hd;}
-    inline edge_host_type get_lefts_host() const {return _hl;}
-    inline edge_host_type get_rights_host() const {return _hr;}
-    inline edge_host_type get_parents_host() const {return _hp;}
-    inline edge_tree_host get_kids_host() const {return _hk;}
+    inline edge_host_type origs_host() const {return _ho;}
+    inline edge_host_type dests_host() const {return _hd;}
+    inline edge_host_type lefts_host() const {return _hl;}
+    inline edge_host_type rights_host() const {return _hr;}
+    inline edge_host_type parents_host() const {return _hp;}
+    inline edge_tree_host kids_host() const {return _hk;}
 
     /// Host function
     inline bool on_boundary_host(const Index ind) const {
@@ -226,6 +228,9 @@ class Edges {
     inline bool has_kids_host(const Index ind) const {
       LPM_ASSERT(ind<_nh());
       return ind < _nh() && _hk(ind, 0) > 0;}
+
+
+    inline Index n_leaves_host() const {return _hn_leaves();}
 
   protected:
     edge_host_type _ho;

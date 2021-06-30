@@ -22,6 +22,7 @@ Templated on Geometry Type (e.g., SphereGeometry, PlaneGeometry).
 */
 template <typename Geo> class Coords {
   public:
+    typedef Geo crds_geometry_type;
     typedef typename Geo::crd_view_type crd_view_type; ///< basic array type defined from Geometry type
     crd_view_type crds; ///< primary container --- a view of vectors
     n_view_type n; ///< number of vectors currently intialized

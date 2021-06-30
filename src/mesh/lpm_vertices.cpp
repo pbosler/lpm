@@ -28,6 +28,7 @@ template <typename CoordsType>
 void Vertices<CoordsType>::set_edges_host(const Index vert_idx, const std::vector<Index>& edge_list) {
   LPM_ASSERT(vert_idx < _nh());
   LPM_ASSERT(edge_list.size() <= edges.extent(1));
+  LPM_ASSERT(this->verts_are_dual());
   for (int e=0; e<edge_list.size(); ++e) {
     edges(vert_idx,e) = edge_list[e];
   }
