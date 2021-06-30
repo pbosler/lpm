@@ -15,10 +15,6 @@
 
 namespace Lpm {
 
-#ifdef LPM_HAVE_NETCDF
-  class PolyMeshReader; /// fwd decl.
-#endif
-
 /** @brief Edges of panels connect Coords to Faces
 
   Each edge has an origin vertex and a destination vertex (in Coords), a left face and a right face (in Faces).
@@ -63,11 +59,6 @@ class Edges {
       _nh() = 0;
       _hn_leaves() = 0;
     }
-
-#ifdef LPM_HAVE_NETCDF
-  Edges(const PolyMeshReader& reader);
-#endif
-
 
     /** \brief Copies edge data from host to device.
     */

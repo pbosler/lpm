@@ -5,7 +5,7 @@
 #include "lpm_assert.hpp"
 #include "util/lpm_math_util.hpp"
 #include "lpm_geometry.hpp"
-#include "lpm_mesh_seed.hpp"
+#include "mesh/lpm_mesh_seed.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 #include <cassert>

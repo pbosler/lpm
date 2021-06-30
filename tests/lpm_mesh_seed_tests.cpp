@@ -3,7 +3,7 @@
 #include <iomanip>
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
-#include "lpm_mesh_seed.hpp"
+#include "mesh/lpm_mesh_seed.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "util/lpm_floating_point_util.hpp"
