@@ -11,6 +11,7 @@ add_library(lpm
                 lpm_mesh_seed.cpp
                 lpm_coords.cpp
                 mesh/lpm_vertices.cpp
+                mesh/lpm_edges.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
 
@@ -44,6 +45,7 @@ install(FILES LpmConfig.h
               lpm_mesh_seed.hpp
               lpm_coords.hpp
               mesh/lpm_vertices.hpp
+              mesh/lpm_edges.hpp
               util/lpm_math_util.hpp
               util/lpm_floating_point_util.hpp
               util/lpm_string_util.hpp

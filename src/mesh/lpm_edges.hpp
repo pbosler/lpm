@@ -1,0 +1,243 @@
+#ifndef LPM_EDGES_HPP
+#define LPM_EDGES_HPP
+
+#include "LpmConfig.h"
+#include "lpm_constants.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_coords.hpp"
+#include "lpm_mesh_seed.hpp"
+#include "lpm_assert.hpp"
+#include "util/lpm_string_util.hpp"
+
+#include "Kokkos_Core.hpp"
+#include "Kokkos_View.hpp"
+
+namespace Lpm {
+
+#ifdef LPM_HAVE_NETCDF
+  class PolyMeshReader; /// fwd decl.
+#endif
+
+/** @brief Edges of panels connect Coords to Faces
+
+  Each edge has an origin vertex and a destination vertex (in Coords), a left face and a right face (in Faces).
+
+  This class stores arrays that define a collection of edges.
+
+  @warning  Modifications are only allowed on host.
+  All device functions are read-only and const.
+*/
+class Edges {
+  public:
+    typedef ko::View<Index*> edge_view_type; ///< type to hold pointers (array indices) to other mesh objects
+    typedef typename edge_view_type::HostMirror edge_host_type;
+    typedef ko::View<Index*[2]> edge_tree_view; ///< Edge division results in a binary tree; this holds its data
+    typedef typename edge_tree_view::HostMirror edge_tree_host;
+
+    edge_view_type origs; ///< pointers to edge origin vertices
+    edge_view_type dests; ///< pointers to edge destination vertices
+    edge_view_type lefts; ///< pointers to edges' left faces
+    edge_view_type rights; ///< pointers to edges' right faces
+    edge_view_type parent; ///< pointers to parent edges
+    edge_tree_view kids; ///< pointers to child edges
+    n_view_type n; ///< number of initialized edges
+    n_view_type n_leaves; ///< number of leaf edges
+
+
+
+    /** @brief Constructor.
+
+      @param nmax Maximum number of edges to allocate space.
+      @see MeshSeed::setMaxAllocations()
+    */
+    Edges(const Index nmax) : origs("origs", nmax), dests("dests", nmax), lefts("lefts", nmax), rights("rights", nmax), parent("parent",nmax), kids("kids", nmax), n("n"), _nmax(nmax), n_leaves("nLeaves") {
+      _nh = ko::create_mirror_view(n);
+      _ho = ko::create_mirror_view(origs);
+      _hd = ko::create_mirror_view(dests);
+      _hl = ko::create_mirror_view(lefts);
+      _hr = ko::create_mirror_view(rights);
+      _hp = ko::create_mirror_view(parent);
+      _hk = ko::create_mirror_view(kids);
+      _hn_leaves = ko::create_mirror_view(n_leaves);
+      _nh() = 0;
+      _hn_leaves() = 0;
+    }
+
+#ifdef LPM_HAVE_NETCDF
+  Edges(const PolyMeshReader& reader);
+#endif
+
+
+    /** \brief Copies edge data from host to device.
+    */
+    void update_device() const {
+      ko::deep_copy(origs, _ho);
+      ko::deep_copy(dests, _hd);
+      ko::deep_copy(lefts, _hl);
+      ko::deep_copy(rights, _hr);
+      ko::deep_copy(parent, _hp);
+      ko::deep_copy(kids, _hk);
+      ko::deep_copy(n, _nh);
+      ko::deep_copy(n_leaves, _hn_leaves);
+    }
+
+    /** \brief Returns true if the edge is on the boundary of the domain
+
+    */
+    KOKKOS_INLINE_FUNCTION
+    bool on_boundary(const Index ind) const {
+      LPM_KERNEL_ASSERT(ind < n());
+      return lefts(ind) == constants::NULL_IND || rights(ind) == constants::NULL_IND;}
+
+
+    /** \brief Returns true if the edge has been divided.
+
+    */
+    KOKKOS_INLINE_FUNCTION
+    bool has_kids(const Index ind) const {
+      LPM_KERNEL_ASSERT(ind < n());
+      return ind < n() && kids(ind, 0) > 0;}
+
+    /** \brief Maximum number of edges allowed in memory
+    */
+    KOKKOS_INLINE_FUNCTION
+    Index n_max() const {return origs.extent(0);}
+
+    /** Number of initialized edges.
+
+    \hostfn
+    */
+    inline Index nh() const {return _nh();}
+
+    /** Inserts a new edge into the data structure.
+
+    \hostfn
+
+    \param o index of origin vertex for new edge
+    \param d index of destination vertex for new edge
+    \param l index of left panel for new edge
+    \param r index of right panel for new edge
+    \param prt index of parent edge
+    */
+    void insert_host(const Index o, const Index d, const Index l, const Index r,
+      const Index prt=constants::NULL_IND);
+
+    /** \brief Divides an edge, creating two children
+
+    \hostfn
+
+
+    Child edges have same left/right panels as parent edge.
+
+    The first child, whose index will be n is the 0th index child of the parent, and shares its origin vertex.
+    A new midpoint is added to both sets of Coords.
+    The second child has index n+1 is the 1th index child of the parent, and shares its destination vertex.
+
+    @todo assert(n==child(ind,0))
+    @todo assert(n+1==child(ind,1))
+    @todo assert(orig(n) == orig(ind))
+    @todo assert(dest(n+1) == dest(ind))
+
+    \param ind index of edge to be divided
+    \param crds physical coordinates of edge vertices
+    \param lagcrds Lagrangian coordinates of edge vertices
+    */
+    template <typename Geo>
+    void divide(const Index ind, Coords<Geo>& crds, Coords<Geo>& lagcrds);
+
+    /** \brief Overwrite the left panel of an edge
+
+      \hostfn
+
+      \param ind edge whose face needs updating
+      \param newleft new index of the edge's left panel
+    */
+    inline void set_left(const Index ind, const Index newleft) {
+      LPM_ASSERT(ind < _nh());
+      _hl(ind) = newleft;
+    }
+
+    /** \brief Overwrite the right panel of an edge
+
+      \hostfn
+
+      \param ind edge whose face needs updating
+      \param newright new index of the edge's right panel
+    */
+    inline void set_right(const Index ind, const Index newright) {
+      LPM_ASSERT(ind < _nh());
+      _hr(ind) = newright;
+    }
+
+    inline void set_orig(const Index ind, const Index& neworig) {
+      LPM_ASSERT(ind <_nh());
+      _ho(ind) = neworig;
+    }
+
+    inline void set_dest(const Index ind, const Index& newdest) {
+      LPM_ASSERT(ind < _nh());
+      _hd(ind) = newdest;
+    }
+
+    /** Initialize a set of Edges from a MeshSeed
+
+    \hostfn
+
+    \param seed MeshSeed
+    */
+    template <typename SeedType>
+    void init_from_seed(const MeshSeed<SeedType>& seed);
+
+    /** Return the requested child (0 or 1) of an edge.
+
+    \hostfn
+
+    \param ind index of edge whose child is needed
+    \param child either 0 or 1, to represent the first or second child
+    \see divide()
+    */
+    inline Index kid_host(const Index ind, const Int child) const {
+      assert(ind < _nh());
+      return _hk(ind, child);}
+
+    /// Host function
+    std::string info_string(const std::string& label,
+      const short& tab_level=0, const bool& dump_all=false) const;
+
+    /// Host functions
+    inline Index get_orig_host(const Index ind) const {assert(ind<_nh()); return _ho(ind);}
+    inline Index get_dest_host(const Index ind) const {assert(ind<_nh()); return _hd(ind);}
+    inline Index get_left_host(const Index ind) const {assert(ind<_nh()); return _hl(ind);}
+    inline Index get_right_host(const Index ind) const {assert(ind<_nh()); return _hr(ind);}
+
+    inline edge_host_type get_origs_host() const {return _ho;}
+    inline edge_host_type get_dests_host() const {return _hd;}
+    inline edge_host_type get_lefts_host() const {return _hl;}
+    inline edge_host_type get_rights_host() const {return _hr;}
+    inline edge_host_type get_parents_host() const {return _hp;}
+    inline edge_tree_host get_kids_host() const {return _hk;}
+
+    /// Host function
+    inline bool on_boundary_host(const Index ind) const {
+      LPM_ASSERT(ind<_nh());
+      return _hl(ind) == constants::NULL_IND || _hr(ind) == constants::NULL_IND;}
+
+    /// Host function
+    inline bool has_kids_host(const Index ind) const {
+      LPM_ASSERT(ind<_nh());
+      return ind < _nh() && _hk(ind, 0) > 0;}
+
+  protected:
+    edge_host_type _ho;
+    edge_host_type _hd;
+    edge_host_type _hl;
+    edge_host_type _hr;
+    edge_host_type _hp;
+    edge_tree_host _hk;
+    ko::View<Index>::HostMirror _nh;
+    ko::View<Index>::HostMirror _hn_leaves;
+    Index _nmax;
+};
+
+}
+#endif

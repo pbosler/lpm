@@ -36,6 +36,8 @@ CreateUnitTest(coords_test lpm_coords_test.cpp)
 
 CreateUnitTest(vertices_test lpm_vertices_tests.cpp)
 
+CreateUnitTest(edges_test lpm_edges_tests.cpp)
+
 #ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmCoords lpmCoordsTest)
