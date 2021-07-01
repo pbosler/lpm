@@ -6,6 +6,7 @@
 #include "lpm_constants.hpp"
 
 #include <vector>
+#include <memory>
 
 namespace Lpm {
 
