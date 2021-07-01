@@ -193,7 +193,7 @@ class Edges {
       return _hk(ind, child);}
 
     /// Host function
-    std::string info_string(const std::string& label,
+    std::string info_string(const std::string& label="",
       const short& tab_level=0, const bool& dump_all=false) const;
 
     /// Host functions

@@ -34,6 +34,10 @@ class Vertices {
       }
     }
 
+    Vertices(const Index nmax, std::shared_ptr<CoordsType> pcrds,
+        std::shared_ptr<CoordsType> lcrds);
+
+
     Index n_max() const {return crd_inds.extent(0); }
 
     Index nh() const {return _nh();}
@@ -59,6 +63,8 @@ class Vertices {
     template <typename PtViewType>
     void insert_host(const PtViewType physcrd, const PtViewType lagcrd) {
       const Index crd_insert_idx = phys_crds->nh();
+      LPM_ASSERT(phys_crds);
+      LPM_ASSERT(lag_crds);
       phys_crds->insert_host(physcrd);
       lag_crds->insert_host(lagcrd);
       this->insert_host(crd_insert_idx);
@@ -67,6 +73,8 @@ class Vertices {
     template <typename PtViewType>
     void insert_host(const PtViewType physcrd, const PtViewType lagcrd,
       const std::vector<Index>& edge_list) {
+      LPM_ASSERT(phys_crds);
+      LPM_ASSERT(lag_crds);
       const Index crd_insert_idx = phys_crds->nh();
       phys_crds->insert_host(physcrd);
       lag_crds->insert_host(lagcrd);

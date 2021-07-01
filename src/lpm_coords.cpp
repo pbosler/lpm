@@ -77,8 +77,8 @@ Real Coords<Geo>::max_radius() const {
 }
 
 template <typename Geo> template <typename SeedType>
-void Coords<Geo>::init_edge_crds_from_seed(const MeshSeed<SeedType>& seed) {
-  LPM_REQUIRE_MSG(_nmax >= SeedType::nverts, "coords::init_edge_crds_from_seed memory limit error");
+void Coords<Geo>::init_vert_crds_from_seed(const MeshSeed<SeedType>& seed) {
+  LPM_REQUIRE_MSG(_nmax >= SeedType::nverts, "coords::init_vert_crds_from_seed memory limit error");
   for (int i=0; i<SeedType::nverts; ++i) {
     for (int j=0; j<Geo::ndim; ++j) {
       _hostcrds(i,j) = seed.seed_crds(i,j);
@@ -103,15 +103,15 @@ template class Coords<PlaneGeometry>;
 template class Coords<SphereGeometry>;
 template class Coords<CircularPlaneGeometry>;
 
-template void Coords<PlaneGeometry>::init_edge_crds_from_seed(const MeshSeed<TriHexSeed>& seed);
+template void Coords<PlaneGeometry>::init_vert_crds_from_seed(const MeshSeed<TriHexSeed>& seed);
 template void Coords<PlaneGeometry>::init_interior_crds_from_seed(const MeshSeed<TriHexSeed>& seed);
-template void Coords<PlaneGeometry>::init_edge_crds_from_seed(const MeshSeed<QuadRectSeed>& seed);
+template void Coords<PlaneGeometry>::init_vert_crds_from_seed(const MeshSeed<QuadRectSeed>& seed);
 template void Coords<PlaneGeometry>::init_interior_crds_from_seed(const MeshSeed<QuadRectSeed>& seed);
-template void Coords<SphereGeometry>::init_edge_crds_from_seed(const MeshSeed<CubedSphereSeed>& seed);
+template void Coords<SphereGeometry>::init_vert_crds_from_seed(const MeshSeed<CubedSphereSeed>& seed);
 template void Coords<SphereGeometry>::init_interior_crds_from_seed(const MeshSeed<CubedSphereSeed>& seed);
-template void Coords<SphereGeometry>::init_edge_crds_from_seed(const MeshSeed<IcosTriSphereSeed>& seed);
+template void Coords<SphereGeometry>::init_vert_crds_from_seed(const MeshSeed<IcosTriSphereSeed>& seed);
 template void Coords<SphereGeometry>::init_interior_crds_from_seed(const MeshSeed<IcosTriSphereSeed>& seed);
-template void Coords<CircularPlaneGeometry>::init_edge_crds_from_seed(const MeshSeed<UnitDiskSeed>& seed);
+template void Coords<CircularPlaneGeometry>::init_vert_crds_from_seed(const MeshSeed<UnitDiskSeed>& seed);
 template void Coords<CircularPlaneGeometry>::init_interior_crds_from_seed(const MeshSeed<UnitDiskSeed>& seed);
 
 

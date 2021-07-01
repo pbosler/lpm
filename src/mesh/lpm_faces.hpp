@@ -162,7 +162,7 @@ template <typename FaceKind, typename Geo> class Faces {
       @param ind index of face to query
     */
     inline bool has_kids_host(const Index ind) const {
-      assert(ind < _nh());
+      LPM_ASSERT(ind < _nh());
       return _hostkids(ind, 0) > 0;
     }
 
@@ -264,7 +264,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     @param label name for Faces object
     */
-    std::string info_string(const std::string& label, const int& tab_level=0, const bool& dump_all=false) const;
+    std::string info_string(const std::string& label="", const int& tab_level=0, const bool& dump_all=false) const;
 
     /** @brief Initialize a collection of Faces from a MeshSeed
 
@@ -311,17 +311,17 @@ template <typename FaceKind, typename Geo> class Faces {
 
 template <typename Geo, typename FaceType> struct FaceDivider {
   static void divide(const Index faceInd, Vertices<Coords<Geo>>& verts,
-    Edges& edges, Faces<FaceType, Geo>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) {}
+    Edges& edges, Faces<FaceType, Geo>& faces) {}
 };
 
 template <typename Geo> struct FaceDivider<Geo, TriFace> {
   static void divide(const Index faceInd, Vertices<Coords<Geo>>& verts,
-    Edges& edges, Faces<TriFace,Geo>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) ;
+    Edges& edges, Faces<TriFace,Geo>& faces) ;
 };
 
 template <typename Geo> struct FaceDivider<Geo, QuadFace> {
   static void divide(const Index faceInd, Vertices<Coords<Geo>>& verts,
-    Edges& edges, Faces<QuadFace, Geo>& faces, Coords<Geo>& physFaces, Coords<Geo>& lagFaces) ;
+    Edges& edges, Faces<QuadFace, Geo>& faces);
 };
 
 // template <> struct FaceDivider<CircularPlaneGeometry,QuadFace> {

@@ -64,7 +64,7 @@ TEST_CASE("lpm coords", "") {
 
     MeshSeed<QuadRectSeed> seed;
     Coords<PlaneGeometry> qr(9);
-    qr.init_edge_crds_from_seed(seed);
+    qr.init_vert_crds_from_seed(seed);
     logger.info(qr.info_string(seed.id_string()));
     Coords<PlaneGeometry> qri(6);
     qri.init_interior_crds_from_seed(seed);

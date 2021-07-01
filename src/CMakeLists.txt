@@ -1,17 +1,15 @@
 include_directories("${LPM_INCLUDE_DIRS}")
 
 add_library(lpm
-#                LpmUtilities.cpp
-#                LpmCoords.cpp
-#                LpmMeshSeed.cpp
-#                LpmEdges.cpp
 #                LpmFaces.cpp
 #                LpmVtkIO.cpp
                 lpm_comm.cpp
-                lpm_mesh_seed.cpp
                 lpm_coords.cpp
+                mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
+                mesh/lpm_faces.cpp
+                lpm_vtk_io.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
 
@@ -42,10 +40,12 @@ install(FILES LpmConfig.h
               lpm_comm.hpp
               lpm_logger.hpp
               lpm_geometry.hpp
-              lpm_mesh_seed.hpp
               lpm_coords.hpp
+              lpm_vtk_io.hpp
+              mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
+              mesh/lpm_faces.hpp
               util/lpm_math_util.hpp
               util/lpm_floating_point_util.hpp
               util/lpm_string_util.hpp

@@ -149,7 +149,7 @@ template <typename Geo> class Coords {
     \param seed MeshSeed used for particle/panel initializaiton
     */
     template <typename SeedType>
-    void init_edge_crds_from_seed(const MeshSeed<SeedType>& seed);
+    void init_vert_crds_from_seed(const MeshSeed<SeedType>& seed);
 
     /** \brief Initializes a coordinate on a panel interior
 

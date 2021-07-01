@@ -14,6 +14,26 @@ void Vertices<CoordsType>::insert_host(const Index crd_idx) {
 }
 
 template <typename CoordsType>
+Vertices<CoordsType>::Vertices(const Index nmax, std::shared_ptr<CoordsType> pcrds,
+  std::shared_ptr<CoordsType> lcrds) :
+    crd_inds("vert_crd_inds", nmax),
+    n("n"),
+    phys_crds(pcrds),
+    lag_crds(lcrds) {
+    _nh = ko::create_mirror_view(n);
+    _nh() = pcrds->nh();
+    _host_crd_inds = ko::create_mirror_view(crd_inds);
+    for (Index i=0; i<pcrds->nh(); ++i) {
+      _host_crd_inds(i) = i;
+    }
+    for (Index i=pcrds->nh(); i<nmax; ++i) {
+      _host_crd_inds(i) = constants::NULL_IND;
+    }
+    ko::deep_copy(crd_inds, _host_crd_inds);
+}
+
+
+template <typename CoordsType>
 void Vertices<CoordsType>::insert_host(const Index crd_idx, const std::vector<Index>& edge_list) {
   LPM_ASSERT(edge_list.size() <= edges.extent(1));
   LPM_REQUIRE(n_max() >= _nh()+1);
