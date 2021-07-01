@@ -20,7 +20,7 @@ TEST_CASE ("faces test", "[mesh]") {
 
   Comm comm;
 
-  Logger<> logger("faces_test", Log::level::debug, comm);
+  Logger<> logger("faces_test", Log::level::info, comm);
 
   SECTION("triangle, plane") {
     using coords_type = Coords<PlaneGeometry>;
@@ -150,53 +150,64 @@ TEST_CASE ("faces test", "[mesh]") {
                 }
             }
         }
-        logger.info("Sphere surface area = {}; |area - 4*pi| = {}", csfaces.surface_area_host(),
+        logger.info("cubed sphere surface area = {}; |area - 4*pi| = {}", csfaces.surface_area_host(),
           abs(csfaces.surface_area_host() - 4*constants::PI));
         REQUIRE(FloatingPoint<Real>::equiv(csfaces.surface_area_host(), 4*constants::PI,
           1.5*constants::ZERO_TOL));
 
         VtkInterface<SphereGeometry, QuadFace> vtk;
         auto pd = vtk.toVtkPolyData(csfaces, csedges, csverts);
-        std::cout << "vtk data conversion done." << std::endl;
+        logger.debug("vtk data conversion done.");
         vtk.writePolyData("cs_test.vtk", pd);
     }
-//
-//   SECTION("tri, sphere") {
-//         const MeshSeed<IcosTriSphereSeed> seed;
-//         Index nmaxverts;
-//         Index nmaxfaces;
-//         Index nmaxedges;
-//         const int maxlev = 5;
-//         seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
-//
-//         Coords<SphereGeometry> icvertcrds(nmaxverts);
-//         Coords<SphereGeometry> icvertlagcrds(nmaxverts);
-//         Coords<SphereGeometry> icfacecrds(nmaxfaces);
-//         Coords<SphereGeometry> icfacelagcrds(nmaxfaces);
-//         Edges icedges(nmaxedges);
-//         Faces<TriFace> icfaces(nmaxfaces);
-//         icvertcrds.init_vert_crds_from_seed(seed);
-//         icvertlagcrds.init_vert_crds_from_seed(seed);
-//         icfacecrds.init_interior_crds_from_seed(seed);
-//         icfacelagcrds.init_interior_crds_from_seed(seed);
-//         icfaces.init_from_seed(seed);
-//         icedges.init_from_seed(seed);
-//         typedef FaceDivider<SphereGeometry,TriFace> icdiv;
-//         for (int i=0; i<maxlev; ++i) {
-//             const Index stopInd = icfaces.nh();
-//             for (Index j=0; j<stopInd; ++j) {
-//                 if (!icfaces.has_kidsHost(j)) {
-//                     icdiv::divide(j, icvertcrds, icvertlagcrds, icedges, icfaces, icfacecrds, icfacelagcrds);
-//                 }
-//             }
-//         }
-//         std::cout << "ICT sphere surf area = " << icfaces.surfAreaHost() << std::endl;
-//         VtkInterface<SphereGeometry, Faces<TriFace>> vtk;
-//         std::cout << "writing vtk output." << std::endl;
-//         vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(icfaces, icedges, icfacecrds, icvertcrds);
-//         std::cout << "conversion to vtk polydata complete." << std::endl;
-//         vtk.writePolyData("ic_test.vtk", pd);
-//         std::cout << "tests pass." << std::endl;
-//     }
-// }
+
+  SECTION("tri, sphere") {
+        const MeshSeed<IcosTriSphereSeed> seed;
+        Index nmaxverts;
+        Index nmaxfaces;
+        Index nmaxedges;
+        const int maxlev = 5;
+        seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
+
+        using coords_type = Coords<SphereGeometry>;
+
+        auto icvertcrds = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
+        auto icvertlagcrds = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
+        icvertcrds->init_vert_crds_from_seed(seed);
+        icvertlagcrds->init_vert_crds_from_seed(seed);
+        Vertices<coords_type> icverts(nmaxverts, icvertcrds, icvertlagcrds);
+
+        Edges icedges(nmaxedges);
+
+        auto icfacecrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
+        auto icfacelagcrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
+        icfacecrds->init_interior_crds_from_seed(seed);
+        icfacelagcrds->init_interior_crds_from_seed(seed);
+        Faces<TriFace,SphereGeometry> icfaces(nmaxfaces, icfacecrds, icfacelagcrds);
+
+        icfaces.init_from_seed(seed);
+        icedges.init_from_seed(seed);
+        typedef FaceDivider<SphereGeometry,TriFace> icdiv;
+        for (int i=0; i<maxlev; ++i) {
+            const Index stopInd = icfaces.nh();
+            for (Index j=0; j<stopInd; ++j) {
+                if (!icfaces.has_kids_host(j)) {
+                    icdiv::divide(j, icverts, icedges, icfaces);
+                }
+            }
+        }
+
+        logger.info("icos. tri. sphere surface area = {}; |area - 4*pi| = {}", icfaces.surface_area_host(),
+          abs(icfaces.surface_area_host() - 4*constants::PI));
+
+        REQUIRE(FloatingPoint<Real>::equiv(icfaces.surface_area_host(), 4*constants::PI,
+          31*constants::ZERO_TOL));
+
+        VtkInterface<SphereGeometry, TriFace> vtk;
+        logger.debug("writing vtk output.");
+        vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(icfaces, icedges, icverts);
+        logger.debug("conversion to vtk polydata complete.");
+        vtk.writePolyData("ic_test.vtk", pd);
+    }
 }
+

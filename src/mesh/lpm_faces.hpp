@@ -55,9 +55,18 @@ template <typename FaceKind, typename Geo> class Faces {
       @param nmax Maximum number of faces to allocate space.
       @see MeshSeed::setMaxAllocations()
     */
-    Faces(const Index nmax) : verts("faceverts", nmax), edges("faceedges", nmax), crd_inds("crd_inds",nmax),
-      parent("parent", nmax), kids("kids", nmax), n("n"), _nmax(nmax), area("area", nmax), n_leaves("n_leaves"),
-      mask("mask",nmax), level("level",nmax) {
+    explicit Faces(const Index nmax) :
+      verts("faceverts", nmax),
+      edges("faceedges", nmax),
+      crd_inds("crd_inds",nmax),
+      parent("parent", nmax),
+      kids("kids", nmax),
+      n("n"),
+      _nmax(nmax),
+      area("area", nmax),
+      n_leaves("n_leaves"),
+      mask("mask",nmax),
+      level("level",nmax) {
       _hostverts = ko::create_mirror_view(verts);
       _hostedges = ko::create_mirror_view(edges);
       _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -71,6 +80,35 @@ template <typename FaceKind, typename Geo> class Faces {
       _hmask = ko::create_mirror_view(mask);
       _hlevel = ko::create_mirror_view(level);
     }
+
+    Faces(const Index nmax, std::shared_ptr<Coords<Geo>> pcrds,
+                            std::shared_ptr<Coords<Geo>> lcrds) :
+      verts("faceverts", nmax),
+      edges("faceedges", nmax),
+      crd_inds("crd_inds",nmax),
+      parent("parent", nmax),
+      kids("kids", nmax),
+      n("n"),
+      _nmax(nmax),
+      area("area", nmax),
+      n_leaves("n_leaves"),
+      mask("mask",nmax),
+      level("level",nmax),
+      phys_crds(pcrds),
+      lag_crds(lcrds) {
+        _hostverts = ko::create_mirror_view(verts);
+        _hostedges = ko::create_mirror_view(edges);
+        _host_crd_inds = ko::create_mirror_view(crd_inds);
+        _hostparent = ko::create_mirror_view(parent);
+        _hostkids = ko::create_mirror_view(kids);
+        _nh = ko::create_mirror_view(n);
+        _hostarea = ko::create_mirror_view(area);
+        _hn_leaves = ko::create_mirror_view(n_leaves);
+        _nh() = 0;
+        _hn_leaves() = 0;
+        _hmask = ko::create_mirror_view(mask);
+        _hlevel = ko::create_mirror_view(level);
+      }
 
 #ifdef LPM_HAVE_NETCDF
   Faces(const PolyMeshReader& reader);

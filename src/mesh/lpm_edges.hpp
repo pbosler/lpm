@@ -47,7 +47,7 @@ class Edges {
       @param nmax Maximum number of edges to allocate space.
       @see MeshSeed::setMaxAllocations()
     */
-    Edges(const Index nmax) : origs("origs", nmax), dests("dests", nmax), lefts("lefts", nmax), rights("rights", nmax), parent("parent",nmax), kids("kids", nmax), n("n"), _nmax(nmax), n_leaves("nLeaves") {
+    explicit Edges(const Index nmax) : origs("origs", nmax), dests("dests", nmax), lefts("lefts", nmax), rights("rights", nmax), parent("parent",nmax), kids("kids", nmax), n("n"), _nmax(nmax), n_leaves("nLeaves") {
       _nh = ko::create_mirror_view(n);
       _ho = ko::create_mirror_view(origs);
       _hd = ko::create_mirror_view(dests);

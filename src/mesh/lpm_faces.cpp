@@ -245,8 +245,6 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Vertices<Coords<Geo>
   LPM_REQUIRE_MSG(faces.n_max() >= faces.nh() + 4, "Faces::divide error: not enough memory.");
   LPM_REQUIRE_MSG(!faces.has_kids_host(faceInd), "Faces::divide error: called on previously divided face.");
 
-  std::cout << "DEBUG " << faces.info_string("dividing face " + std::to_string(faceInd), 0, true);
-
   ko::View<Index[4][4], Host> new_face_edge_inds("new_face_edge_inds");  // (child face index, edge index)
   ko::View<Index[4][4], Host> new_face_vert_inds("new_face_vert_inds");  // (child face index, vertex index)
 
