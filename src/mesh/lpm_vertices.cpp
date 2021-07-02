@@ -64,7 +64,12 @@ std::string Vertices<CoordsType>::info_string(const std::string& label, const in
   ss << tabstr << "n_max() = " << n_max() << "\n";
   ss << tabstr << "nh() = " << nh() << "\n";
   ss << tabstr << "verts_are_dual() = " << std::boolalpha << verts_are_dual() << "\n";
-  ss << phys_crds->info_string(label, tab_level+1, dump_all);
+  if (phys_crds) {
+    ss << tabstr << phys_crds->info_string(label, tab_level+1, dump_all);
+  }
+  else {
+    ss << tabstr << "phys_crds = NULL\n";
+  }
 //   ss << lag_crds->info_string(label, tab_level+1, dump_all);
   return ss.str();
 }
