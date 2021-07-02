@@ -5,7 +5,7 @@
 #include "lpm_logger.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
-#include "lpm_vtk_io.hpp"
+#include "vtk/lpm_vtk_io.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"

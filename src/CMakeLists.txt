@@ -10,7 +10,7 @@ add_library(lpm
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
-                lpm_vtk_io.cpp
+                vtk/lpm_vtk_io.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
 
