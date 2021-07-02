@@ -92,7 +92,8 @@ class Vertices {
 
     std::shared_ptr<CoordsType> lag_crds;
 
-    std::string info_string(const int tab_level=0) const;
+    std::string info_string(const std::string& label="", const int tab_level=0,
+      const bool dump_all = false) const;
 
   private:
     typename n_view_type::HostMirror _nh;

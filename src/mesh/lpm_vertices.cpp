@@ -55,14 +55,17 @@ void Vertices<CoordsType>::set_edges_host(const Index vert_idx, const std::vecto
 }
 
 template <typename CoordsType>
-std::string Vertices<CoordsType>::info_string(const int tab_level) const {
+std::string Vertices<CoordsType>::info_string(const std::string& label, const int tab_level,
+  const bool dump_all) const {
   std::ostringstream ss;
   auto tabstr = indent_string(tab_level);
-  ss << tabstr << "Vertices info:\n";
+  ss << tabstr << "Vertices info (" << label << "):\n";
   tabstr += "\t";
   ss << tabstr << "n_max() = " << n_max() << "\n";
   ss << tabstr << "nh() = " << nh() << "\n";
   ss << tabstr << "verts_are_dual() = " << std::boolalpha << verts_are_dual() << "\n";
+  ss << phys_crds->info_string(label, tab_level+1, dump_all);
+//   ss << lag_crds->info_string(label, tab_level+1, dump_all);
   return ss.str();
 }
 

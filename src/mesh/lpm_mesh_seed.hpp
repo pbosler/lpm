@@ -187,6 +187,8 @@ template <typename SeedType> struct MeshSeed {
   /// Compute & return the area of the seed's initial faces.
   Real face_area(const Int ind) const;
 
+  Real total_area() const;
+
   protected:
     /// Read data file.
     void read_file();

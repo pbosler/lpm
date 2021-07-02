@@ -2,25 +2,18 @@
 #define LPM_POLYMESH_2D_HPP
 
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmUtilities.hpp"
-#include "LpmGeometry.hpp"
-#include "LpmMeshSeed.hpp"
-#include "LpmCoords.hpp"
-#include "LpmEdges.hpp"
-#include "LpmFaces.hpp"
-#include "LpmVtkIO.hpp"
-
+#include "mesh/lpm_mesh_seed.hpp"
+#include "mesh/lpm_vertices.hpp"
+#include "mesh/lpm_edges.hpp"
+#include "mesh/lpm_faces.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
+
+#include <memory>
 
 namespace Lpm {
 
 enum FieldKind {VertexField, EdgeField, FaceField};
-
-#ifdef LPM_HAVE_NETCDF
-  class PolyMeshReader; /// fwd. decl.
-#endif
 
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
 
@@ -33,6 +26,8 @@ template <typename SeedType> class PolyMesh2d {
   public:
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
+  typedef Coords<Geo> coords_type;
+  typedef std::shared_ptr<Coords<Geo>> coords_ptr;
 
   /** @brief Constructor.  Allocates memory for a PolyMesh2d instance.
 
@@ -43,12 +38,15 @@ template <typename SeedType> class PolyMesh2d {
     @see MeshSeed::setMaxAllocations()
   */
   PolyMesh2d(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) :
-    physVerts(nmaxverts), lagVerts(nmaxverts), edges(nmaxedges), faces(nmaxfaces),
-    physFaces(nmaxfaces), lagFaces(nmaxfaces) {}
+    vertices(nmaxverts),
+    edges(nmaxedges),
+    faces(nmaxfaces) {
+      vertices.phys_crds = coords_ptr(new coords_type(nmaxverts));
+      vertices.lag_crds = coords_ptr(new coords_type(nmaxverts));
+      faces.phys_crds = coords_ptr(new coords_type(nmaxfaces));
+      faces.lag_crds = coords_ptr(new coords_type(nmaxfaces));
+    }
 
-#ifdef LPM_HAVE_NETCDF
-  PolyMesh2d(const PolyMeshReader& reader);
-#endif
 
     /// Destructor
     virtual ~PolyMesh2d() {}
@@ -57,28 +55,30 @@ template <typename SeedType> class PolyMesh2d {
 
       Adaptive refinement adds to this level.
     */
-    Int baseTreeDepth;
+    Int base_tree_depth;
 
     /** @brief Return a subview of all initialized vertices' physical coordinates
 
       @device
     */
-    typename Coords<Geo>::crd_view_type getVertCrds() const {
-      return typename Coords<Geo>::crd_view_type(physVerts.crds, std::make_pair(0,physVerts.nh()), ko::ALL());}
+    auto get_vert_crds() const {
+      return ko::subview(vertices.phys_crds->crds,
+         std::make_pair(0, vertices.nh()), ko::ALL());}
 
 
     /** @brief Return a subview of all initialized face particles' physical coordinates
 
     @device
     */
-    typename Coords<Geo>::crd_view_type getFaceCrds() const {
-      return typename Coords<Geo>::crd_view_type(physFaces.crds, std::make_pair(0,faces.nh()), ko::ALL());}
+    auto get_face_crds() const {
+      return ko::subview(faces.phys_crds->crds,
+        std::make_pair(0,faces.nh()), ko::ALL());}
 
     /** @brief Return a view face masks; leaves of the face tree are not masked. Internal nodes are masked.
 
       @device
     */
-    mask_view_type getFacemask() const {
+    mask_view_type faces_mask() const {
       return mask_view_type(faces.mask, std::make_pair(0,faces.nh()));}
 
 
@@ -88,14 +88,15 @@ template <typename SeedType> class PolyMesh2d {
 
     @hostfn
     */
-    typename mask_view_type::HostMirror getFacemaskHost() const {return ko::create_mirror_view(faces.mask);}
+    typename mask_view_type::HostMirror faces_mask_host() const {
+      return faces.leaf_mask_host();}
 
 
     /** @brief Return a subview of all initialized face areas
 
       @device
     */
-    scalar_view_type getFaceArea() const {
+    scalar_view_type faces_area() const {
       return scalar_view_type(faces.area, std::make_pair(0,faces.nh()));}
 
 
@@ -104,52 +105,43 @@ template <typename SeedType> class PolyMesh2d {
     @device
     */
     KOKKOS_INLINE_FUNCTION
-    Index nverts() const {return physVerts.n();}
+    Index n_vertices() const {return vertices.n();}
 
     /** @brief Number of initialized faces
 
     @device
     */
     KOKKOS_INLINE_FUNCTION
-    Index nfaces() const {return faces.n();}
+    Index n_faces() const {return faces.n();}
 
 
     /** @brief Number of initialized vertices
 
     @hostfn
     */
-    Index nvertsHost() const {return physVerts.nh();}
+    Index n_vertices_host() const {return vertices.nh();}
 
     /** @brief Number of initialized edges
 
     @hostfn
     */
-    Index nedgesHost() const {return edges.nh();}
+    Index n_edges_host() const {return edges.nh();}
 
 
     /** @brief Number of initialized faces
 
     @hostfn
     */
-    Index nfacesHost() const {return faces.nh();}
+    Index n_faces_host() const {return faces.nh();}
 
-    /// Physical coordinates of panel vertices
-    Coords<Geo> physVerts;
-    /// Lagrangian coordinates of panel vertices
-    Coords<Geo> lagVerts;
-
-    /// Panel Edges
+    // mesh topology & coordinates
+    Vertices<Coords<Geo>> vertices;
     Edges edges;
+    Faces<FaceType, Geo> faces;
 
-
-    /// Panels (Faces)
-    Faces<FaceType> faces;
-
-    /// Physical coordinates of particles at face centers
-    Coords<Geo> physFaces;
-
-    /// Lagrangian coordinates of particles at face centers
-    Coords<Geo> lagFaces;
+    Real surface_area_host() const {
+      return faces.surface_area_host();
+    }
 
     void reset_face_centroids();
 
@@ -158,7 +150,8 @@ template <typename SeedType> class PolyMesh2d {
     @hostfn
 
     */
-    typename Coords<Geo>::crd_view_type::HostMirror getFaceCrdsHost() {return physFaces.getHostCrdView();}
+    typename Coords<Geo>::crd_view_type::HostMirror faces_phys_crds() {
+      return faces.phys_crds->get_host_crd_view();}
 
 
     /** @brief Starting with a MeshSeed, uniformly refines each panel until the desired level of initial refinement is reached.
@@ -168,17 +161,17 @@ template <typename SeedType> class PolyMesh2d {
     @param initDepth Max depth of initially refined mesh
     @param seed Mesh seed used to initialize particles and panels
     */
-    void treeInit(const Int initDepth, const MeshSeed<SeedType>& seed);
+    void tree_init(const Int initDepth, const MeshSeed<SeedType>& seed);
 
 
     /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d instance
-    virtual void outputVtk(const std::string& fname) const;
+    virtual void output_vtk(const std::string& fname) const;
 
     /// @brief Copies data from host to device
-    virtual void updateDevice() const;
+    virtual void update_device() const;
 
     /// @brief Copies data from device to host
-    virtual void updateHost() const;
+    virtual void update_host() const;
 
 
     inline Real appx_mesh_size() const {return faces.appx_mesh_size();}
@@ -187,13 +180,13 @@ template <typename SeedType> class PolyMesh2d {
 
     @hostfn
     */
-    virtual std::string infoString(const std::string& label="",
+    virtual std::string info_string(const std::string& label="",
       const int& tab_level = 0, const bool& dump_all=false) const;
 
   protected:
     typedef FaceDivider<Geo,FaceType> divider;
 
-    void seedInit(const MeshSeed<SeedType>& seed);
+    void seed_init(const MeshSeed<SeedType>& seed);
 
 
 };
@@ -205,21 +198,28 @@ template <typename SeedType> struct FaceCentroidFunctor {
   typedef typename SeedType::geo::crd_view_type crd_view;
   crd_view face_crds;
   crd_view vert_crds;
+  index_view_type face_crd_inds;
+  index_view_type vert_crd_inds;
   ko::View<Index*[SeedType::nfaceverts]> face_verts;
   ko::View<Real[SeedType::nfaceverts][SeedType::geo::ndim]> local_vcrds;
 
-  FaceCentroidFunctor(crd_view& fc, const crd_view& vc,
-    const ko::View<Index*[SeedType::nfaceverts]>& fv) : face_crds(fc), vert_crds(vc),
-      face_verts(fv), local_vcrds("local_vcrds") {}
+  FaceCentroidFunctor(crd_view fc, const index_view_type fi, const crd_view vc,
+    const index_view_type vi, const ko::View<Index*[SeedType::nfaceverts]>& fv) :
+      face_crds(fc),
+      face_crd_inds(fi),
+      vert_crds(vc),
+      vert_crd_inds(vi),
+      face_verts(fv),
+      local_vcrds("local_vcrds") {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& i) const {
     for (Int j=0; j<SeedType::nfaceverts; ++j) {
       for (Int k=0; k<SeedType::geo::ndim; ++k) {
-        local_vcrds(j,k) = vert_crds(face_verts(i,j),k);
+        local_vcrds(j,k) = vert_crds(vert_crd_inds(face_verts(i,j)),k);
       }
     }
-    auto fcrd = ko::subview(face_crds, i, ko::ALL);
+    auto fcrd = ko::subview(face_crds, face_crd_inds(i), ko::ALL);
     SeedType::geo::barycenter(fcrd, local_vcrds, SeedType::nfaceverts);
   }
 };
@@ -233,22 +233,22 @@ template <typename SeedType> struct FaceCentroidFunctor {
   @param pm PolyMesh2d mesh used as data source
 */
 template <typename SeedType>
-ko::View<Real*[3]> sourceCoords(const PolyMesh2d<SeedType>& pm) {
+ko::View<Real*[3]> source_coords(const PolyMesh2d<SeedType>& pm) {
   const Index nv = pm.nvertsHost();
   const Index nl = pm.faces.nLeavesHost();
   ko::View<Real*[3]> result("source_coords", nv + nl);
   ko::parallel_for(nv, KOKKOS_LAMBDA (int i) {
     for (int j=0; j<3; ++j) {
-      result(i,j) = pm.physVerts.crds(i,j);
+      result(i,j) = pm.vertices.phys_crds->crds(i,j);
     }
   });
   ko::parallel_for(1, KOKKOS_LAMBDA (int i) {
     Int offset = nv;
     for (int j=0; j<pm.nfaces(); ++j) {
       if (!pm.faces.mask(j)) {
-        result(offset,0) = pm.physFaces.crds(j,0);
-        result(offset,1) = pm.physFaces.crds(j,1);
-        result(offset++,2) = pm.physFaces.crds(j,2);
+        result(offset,0) = pm.faces.phys_crds->crds(j,0);
+        result(offset,1) = pm.faces.phys_crds->crds(j,1);
+        result(offset++,2) = pm.faces.phys_crds->crds(j,2);
       }
     }
   });

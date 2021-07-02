@@ -124,7 +124,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     /** @brief Copies data from host to device
     */
-    void updateDevice() const {
+    void update_device() const {
       ko::deep_copy(verts, _hostverts);
       ko::deep_copy(edges, _hostedges);
       ko::deep_copy(crd_inds, _host_crd_inds);
@@ -135,12 +135,16 @@ template <typename FaceKind, typename Geo> class Faces {
       ko::deep_copy(n_leaves, _hn_leaves);
       ko::deep_copy(mask, _hmask);
       ko::deep_copy(level, _hlevel);
+      phys_crds->update_device();
+      lag_crds->update_device();
     }
 
     /** @brief Copies data from device to Host
     */
     void update_host() const {
       ko::deep_copy(_hostarea, area);
+      phys_crds->update_host();
+      lag_crds->update_host();
     }
 
 

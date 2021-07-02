@@ -9,6 +9,7 @@ add_library(lpm
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
+                mesh/lpm_polymesh2d.cpp
                 lpm_vtk_io.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
@@ -46,6 +47,7 @@ install(FILES LpmConfig.h
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
+              mesh/lpm_polymesh2d.hpp
               util/lpm_math_util.hpp
               util/lpm_floating_point_util.hpp
               util/lpm_string_util.hpp

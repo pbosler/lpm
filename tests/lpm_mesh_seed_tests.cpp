@@ -6,6 +6,7 @@
 #include "mesh/lpm_mesh_seed.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
+#include "lpm_constants.hpp"
 #include "util/lpm_floating_point_util.hpp"
 #include "catch.hpp"
 
@@ -50,32 +51,38 @@ bool seed_test(const MeshSeed<SeedType>& seed, const Comm& comm) {
 
 TEST_CASE( "mesh_seed", "") {
 
-    Comm comm;
+  Comm comm;
 
+  SECTION("QuadRectSeed") {
     MeshSeed<QuadRectSeed> qrseed;
     bool pass = seed_test(qrseed, comm);
     REQUIRE( pass );
+    REQUIRE(qrseed.total_area() == 4);
+  }
 
+  SECTION("TriHexSeed") {
     MeshSeed<TriHexSeed> thseed;
-    pass = seed_test(thseed, comm);
+    bool pass = seed_test(thseed, comm);
     REQUIRE( pass );
+    REQUIRE(FloatingPoint<Real>::equiv(thseed.total_area(), 2.59807621135331512,
+      constants::ZERO_TOL));
+  }
 
+  SECTION("CubedSphereSeed") {
     MeshSeed<CubedSphereSeed> csseed;
-    pass = seed_test(csseed, comm);
+    bool pass = seed_test(csseed, comm);
     REQUIRE (pass);
+    REQUIRE(FloatingPoint<Real>::equiv(csseed.total_area(), 4*constants::PI,
+      constants::ZERO_TOL));
+  }
 
-    MeshSeed<UnitDiskSeed> udseed;
-    pass = seed_test(udseed, comm);
-    REQUIRE(pass);
-    Real sa = 0.0;
-    for (Int i=0; i<UnitDiskSeed::nfaces; ++i) {
-      sa += udseed.face_area(i);
-    }
-    REQUIRE(FloatingPoint<Real>::equiv(sa, constants::PI));
-
+  SECTION("IcosTriSphereSeed") {
     MeshSeed<IcosTriSphereSeed> icseed;
-    pass = seed_test(icseed, comm);
+    bool pass = seed_test(icseed, comm);
     REQUIRE(pass);
+    REQUIRE(FloatingPoint<Real>::equiv(icseed.total_area(), 4*constants::PI,
+      constants::ZERO_TOL));
+  }
 
 
 }

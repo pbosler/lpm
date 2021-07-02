@@ -40,26 +40,8 @@ CreateUnitTest(edges_test lpm_edges_tests.cpp)
 
 CreateUnitTest(faces_test lpm_faces_tests.cpp)
 
-#ADD_EXECUTABLE(lpmCoordsTest LpmCoordsUnitTest.cpp)
-#TARGET_LINK_LIBRARIES(lpmCoordsTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmCoords lpmCoordsTest)
-#
-#ADD_EXECUTABLE(lpmEdgesTest LpmEdgesUnitTest.cpp)
-#TARGET_LINK_LIBRARIES(lpmEdgesTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmEdges lpmEdgesTest)
-#
-#ADD_EXECUTABLE(lpmFacesTest LpmFacesUnitTests.cpp)
-#TARGET_LINK_LIBRARIES(lpmFacesTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmFaces lpmFacesTest)
-#
-#ADD_EXECUTABLE(lpmMeshSeedTest LpmMeshSeedUnitTest.cpp)
-#TARGET_LINK_LIBRARIES(lpmMeshSeedTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmMeshSeed lpmMeshSeedTest)
-#
-#ADD_EXECUTABLE(lpmPolyMeshTest LpmPolyMeshTest.cpp)
-#TARGET_LINK_LIBRARIES(lpmPolyMeshTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
-#ADD_TEST(lpmPolyMeshTest lpmPolyMeshTest)
-#
+CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)

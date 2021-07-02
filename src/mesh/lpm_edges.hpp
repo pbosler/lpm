@@ -73,6 +73,9 @@ class Edges {
       ko::deep_copy(n_leaves, _hn_leaves);
     }
 
+    // currently, edges are used only the host (for AMR).
+    void update_host() const {}
+
     /** \brief Returns true if the edge is on the boundary of the domain
 
     */

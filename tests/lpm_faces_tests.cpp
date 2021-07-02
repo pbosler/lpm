@@ -77,7 +77,7 @@ TEST_CASE ("faces test", "[mesh]") {
     logger.info("tri hex faces:\n {}", plane_tri.info_string("divide face 0"));
 
 
-    plane_tri.updateDevice();
+    plane_tri.update_device();
     std::cout << "face tree:" << std::endl;
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
         printf("------------Parallel region------------\n");

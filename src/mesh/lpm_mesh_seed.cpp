@@ -271,6 +271,7 @@ std::string MeshSeed<SeedType>::info_string() const {
     }
     ss << "\n";
   }
+  ss << "\t" << "total_area() = " << total_area() << "\n";
   return ss.str();
 }
 
@@ -299,6 +300,16 @@ Real MeshSeed<SeedType>::face_area(const Int ind) const {
   }
   return SeedType::geo::polygon_area(ctrcrds, vertcrds, SeedType::nfaceverts);
 }
+
+template <typename SeedType>
+Real MeshSeed<SeedType>::total_area() const {
+  Real result = 0;
+  for (int i=0; i<SeedType::nfaces; ++i) {
+    result += face_area(i);
+  }
+  return result;
+}
+
 
 Index QuadRectSeed::n_vertices_at_tree_level(const Int lev) {
   Index result = 3;
@@ -371,27 +382,9 @@ Index IcosTriSphereSeed::n_edges_at_tree_level(const Index nv, const Index nf) {
   return nv + nf - 2;
 }
 
-// Index IcosTriDualSeed::n_faces_at_tree_level(const Int lev) {
-//   return Voronoi::nfacesAtUniformRefinementLevel(12, lev);
-// }
-//
-// Index IcosTriDualSeed::n_vertices_at_tree_level(const Int lev) {
-//   return Voronoi::nvertsAtUniformRefinementLevel(12, lev);
-// }
-//
-// Index IcosTriDualSeed::n_edges_at_tree_level(const Index nv, const Index nf) {
-//   return nf + nv - 2;
-// }
-
-
-
-
 /// ETI
 template struct MeshSeed<QuadRectSeed>;
 template struct MeshSeed<TriHexSeed>;
 template struct MeshSeed<IcosTriSphereSeed>;
 template struct MeshSeed<CubedSphereSeed>;
-// template struct MeshSeed<IcosTriDualSeed>;
-template struct MeshSeed<UnitDiskSeed>;
-
 }
