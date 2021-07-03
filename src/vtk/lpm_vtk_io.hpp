@@ -10,6 +10,7 @@
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
+#include "mesh/lpm_polymesh2d.hpp"
 
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
@@ -21,8 +22,56 @@
 #include "vtkPolyDataWriter.h"
 #include "vtkPointData.h"
 #include "vtkCellData.h"
+#include "vtkXMLPolyDataWriter.h"
+#include "vtkDoubleArray.h"
+
+#include <memory>
 
 namespace Lpm {
+
+template <typename SeedType> class VtkPolymeshInterface {
+  public:
+    VtkPolymeshInterface(const std::shared_ptr<PolyMesh2d<SeedType>> pm);
+
+    VtkPolymeshInterface(const std::shared_ptr<PolyMesh2d<SeedType>> pm,
+      const typename scalar_view_type::HostMirror height_field);
+
+    void write(const std::string& ofilename);
+
+    void update_positions();
+
+    template <typename VT=typename scalar_view_type::HostMirror>
+    void add_scalar_point_data(const VT s, const std::string& name="");
+
+    template <typename VT=typename SeedType::geo::vec_view_type::HostMirror>
+    void add_vector_point_data(const VT v, const std::string& name="");
+
+    template <typename VT=typename scalar_view_type::HostMirror>
+    void add_scalar_cell_data(const VT s, const std::string& name="");
+
+    template <typename VT=typename SeedType::geo::vec_view_type::HostMirror>
+    void add_vector_cell_data(const VT v, const std::string& name="");
+
+    void add_tracers(const std::vector<scalar_view_type>& point_tracers,
+      const std::vector<scalar_view_type>& cell_tracers);
+
+  protected:
+    std::shared_ptr<PolyMesh2d<SeedType>> mesh_;
+
+    vtkSmartPointer<vtkPolyData> polydata_;
+    vtkSmartPointer<vtkPointData> pointdata_;
+    vtkSmartPointer<vtkCellData> celldata_;
+
+    vtkSmartPointer<vtkXMLPolyDataWriter> writer_;
+
+    vtkSmartPointer<vtkPoints> make_points() const;
+    vtkSmartPointer<vtkPoints> make_points(const typename scalar_view_type::HostMirror height) const;
+    vtkSmartPointer<vtkCellArray> make_cells() const;
+    vtkSmartPointer<vtkDoubleArray> make_cell_area() const;
+
+
+};
+
 
 template <typename Geo, typename FaceKind> class VtkInterface {
     public:

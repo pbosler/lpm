@@ -229,7 +229,7 @@ template <typename FaceKind, typename Geo> class Faces {
       @param ind index of face
       @param relInd relative index of vertex (relative to face(ind) in Faces object); see MeshSeed
     */
-    Index vert_host(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
+    Index verts_host(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
 
     template <typename CV>
     void set_verts_host(const Index& ind, const CV v) {

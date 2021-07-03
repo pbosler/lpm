@@ -375,6 +375,7 @@ set(LPM_VTK_LIBS  vtkCommonColor-8.1
                   vtksys-8.1
                   vtktiff-8.1
                   vtkverdict-8.1
+                  vtkzlib-8.1
                  )
 
 if (LPM_USE_VTK_GRAPHICS)
@@ -492,6 +493,7 @@ if (LPM_VTK_NEEDS_BUILD)
                      -DVTK_WRAP_JAVA=OFF
                      -DVTK_WRAP_PYTHON=OFF
                      -DVTK_PYTHON_VERSION=3
+                     -DVTK_USE_SYSTEM_ZLIB=OFF
                      )
 
   if (NOT LPM_USE_VTK_GRAPHICS)

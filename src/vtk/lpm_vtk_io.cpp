@@ -1,4 +1,5 @@
 #include "lpm_vtk_io.hpp"
+#include "lpm_vtk_io_impl.hpp"
 #include "vtkDoubleArray.h"
 #include "vtkIntArray.h"
 #include "vtkPoints.h"
@@ -25,7 +26,7 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FaceKind>::toVtkPolyData(const Fa
         if (!faces.has_kids_host(i)) {
             polys->InsertNextCell(FaceKind::nverts);
             for (int j=0; j<FaceKind::nverts; ++j) {
-                polys->InsertCellPoint(faces.vert_host(i,j));
+                polys->InsertCellPoint(faces.verts_host(i,j));
             }
         }
     }
@@ -150,6 +151,9 @@ template class VtkInterface<PlaneGeometry, TriFace>;
 template class VtkInterface<SphereGeometry,TriFace>;
 template class VtkInterface<PlaneGeometry, QuadFace>;
 template class VtkInterface<SphereGeometry, QuadFace>;
-
+template class VtkPolymeshInterface<CubedSphereSeed>;
+template class VtkPolymeshInterface<IcosTriSphereSeed>;
+template class VtkPolymeshInterface<QuadRectSeed>;
+template class VtkPolymeshInterface<TriHexSeed>;
 }
 
