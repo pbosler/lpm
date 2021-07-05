@@ -1,18 +1,34 @@
 include_directories("${LPM_INCLUDE_DIRS}")
 
+# Generate a blank lpm_version.cpp file
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMENT "Generating initial lpm_version.cpp ..."
+)
+
+# update lpm version info
+add_custom_target(update_version_info ALL
+  COMMAND ${BASH} ${PROJECT_SOURCE_DIR}/tools/update_version_info.sh ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+  COMMENT "Updating lpm version info ..."
+)
+
 add_library(lpm
-#                LpmFaces.cpp
-#                LpmVtkIO.cpp
+                ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
+                lpm_field.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
                 vtk/lpm_vtk_io.cpp
+                netcdf/lpm_netcdf.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
+                util/ekat_string_utils.cpp
+                util/ekat_assert.cpp
 
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
@@ -54,6 +70,9 @@ install(FILES LpmConfig.h
               util/lpm_tuple.hpp
               util/lpm_timer.hpp
               util/lpm_progress_bar.hpp
+              util/ekat_rational_constant.hpp
+              util/ekat_scaling_factor.hpp
+              util/ekat_units.hpp
               LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
               LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
               LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp

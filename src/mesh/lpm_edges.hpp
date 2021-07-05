@@ -15,6 +15,8 @@
 
 namespace Lpm {
 
+template <typename Geo> class NcWriter;
+
 /** @brief Edges of panels connect Coords to Faces
 
   Each edge has an origin vertex and a destination vertex (in Coords), a left face and a right face (in Faces).
@@ -30,6 +32,9 @@ class Edges {
     typedef typename edge_view_type::HostMirror edge_host_type;
     typedef ko::View<Index*[2]> edge_tree_view; ///< Edge division results in a binary tree; this holds its data
     typedef typename edge_tree_view::HostMirror edge_tree_host;
+
+    template <typename Geo>
+    friend class NcWriter;
 
     edge_view_type origs; ///< pointers to edge origin vertices
     edge_view_type dests; ///< pointers to edge destination vertices

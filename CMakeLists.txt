@@ -86,19 +86,6 @@ set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${PROJECT_BINARY_DIR};${PROJECT_SOURCE_
 
 configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
 
-# Generate a blank lpm_version.cpp file
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Generating initial lpm_version.cpp ..."
-)
-
-# update lpm version info
-add_custom_target(update_version_info ALL
-  COMMAND ${BASH} ${PROJECT_SOURCE_DIR}/tools/update_version_info.sh ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Updating lpm version info ..."
-)
-
 include(GNUInstallDirs)
 
 add_subdirectory(src)

@@ -13,8 +13,6 @@
 
 namespace Lpm {
 
-enum FieldKind {VertexField, EdgeField, FaceField};
-
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
 
   Provides a single access point for a collection of:

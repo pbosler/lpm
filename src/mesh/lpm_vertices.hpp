@@ -86,6 +86,8 @@ class Vertices {
 
     index_view_type crd_inds;
 
+    typename index_view_type::HostMirror host_crd_inds() const {return _host_crd_inds;}
+
     ko::View<Index**, Host> edges;
 
     std::shared_ptr<CoordsType> phys_crds;
