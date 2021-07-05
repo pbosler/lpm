@@ -20,6 +20,7 @@ template <FieldLocation FL>
 struct ScalarField {
   static constexpr int ndim = 1;
   scalar_view_type view;
+  typename scalar_view_type::HostMirror hview;
 
   ScalarField(const std::string& mname,
               const Index nmax,
@@ -33,11 +34,20 @@ struct ScalarField {
       metadata.emplace("name", mname);
       metadata.emplace("location", field_loc_string(FL));
       metadata.emplace("units", ekat::units::to_string(u));
+      hview = ko::create_mirror_view(view);
     }
 
   std::string name;
   ekat::units::Units units;
   metadata_type metadata;
+
+  void update_device() {
+    ko::deep_copy(view, hview);
+  }
+
+  void update_host() {
+    ko::deep_copy(hview, view);
+  }
 
   std::string info_string(const int tab_level=0) const;
 };
@@ -47,6 +57,7 @@ template <typename Geo, FieldLocation FL>
 struct VectorField {
   static constexpr int ndim = Geo::ndim;
   typename Geo::vec_view_type view;
+  typename Geo::vec_view_type::HostMirror hview;
 
   VectorField(const std::string& mname,
               const Index nmax,
@@ -60,11 +71,20 @@ struct VectorField {
       metadata.emplace("name", mname);
       metadata.emplace("location", field_loc_string(FL));
       metadata.emplace("units", ekat::units::to_string(u));
+      hview = ko::create_mirror_view(view);
     }
 
   std::string name;
   ekat::units::Units units;
   metadata_type metadata;
+
+  void update_device() {
+    ko::deep_copy(view, hview);
+  }
+
+  void update_host() {
+    ko::deep_copy(hview, view);
+  }
 
   std::string info_string(const int tab_level=0) const;
 };

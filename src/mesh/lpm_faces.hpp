@@ -13,6 +13,8 @@
 
 namespace Lpm {
 
+template <typename Geo> class NcWriter; // fwd decl
+
 /** @brief Faces define panels.  Connected to Coords and Edges.
 
 Most faces have only vertices (define by two sets of Coords, one physical, one Lagrangian)
@@ -38,6 +40,8 @@ template <typename FaceKind, typename Geo> class Faces {
     typedef typename vertex_view_type::HostMirror host_vertex_view;
     typedef host_vertex_view host_edge_view;
     typedef typename scalar_view_type::HostMirror host_scalar;
+
+    friend class NcWriter<Geo>;
 
     mask_view_type mask; ///< non-leaf faces are masked
     vertex_view_type verts;  ///< indices to Coords on face edges, ccw order per face

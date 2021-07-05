@@ -55,15 +55,6 @@ void NcWriter<Geo>::define_coord_dim() {
   n_nc_dims++;
 }
 
-template <typename Geo> template <typename FaceType>
-void NcWriter<Geo>::define_faces(const Faces<FaceType, Geo>& faces) {
-  LPM_ASSERT(ncid != NC_EBADID);
-  LPM_REQUIRE_MSG(faces_dimid == NC_EBADID, "faces dimension already defined.");
-  int retval = nc_def_dim(ncid, "faces", faces.nh(), &faces_dimid);
-  CHECK_NCERR(retval);
-  n_nc_dims++;
-}
-
 template <typename Geo> template <FieldLocation FL>
 void NcWriter<Geo>::define_scalar_field(const ScalarField<FL>& s) {
   LPM_ASSERT(ncid != NC_EBADID);
@@ -171,6 +162,220 @@ void NcWriter<Geo>::define_edges(const Edges& edges) {
 
 }
 
+template <typename Geo> template <typename FaceType>
+void NcWriter<Geo>::define_faces(const Faces<FaceType, Geo>& faces) {
+  LPM_ASSERT(ncid != NC_EBADID);
+  LPM_REQUIRE_MSG(faces_dimid == NC_EBADID, "faces dimension already defined.");
+  LPM_REQUIRE(facekind_dimid == NC_EBADID);
+  LPM_REQUIRE(coord_dimid != NC_EBADID);
+  int retval = nc_def_dim(ncid, "faces", faces.nh(), &faces_dimid);
+  CHECK_NCERR(retval);
+  n_nc_dims++;
+
+  retval = nc_def_dim(ncid, "four", 4, &four_dimid);
+  CHECK_NCERR(retval);
+  n_nc_dims++;
+
+  retval = nc_def_dim(ncid, "facekind", FaceType::nverts, &facekind_dimid);
+  CHECK_NCERR(retval);
+  n_nc_dims++;
+
+  const auto nmaxfaces = faces.n_max();
+  const auto nfaces = faces.nh();
+  const auto nleaves = faces.n_leaves_host();
+
+  int mask_varid = NC_EBADID;
+  int verts_varid = NC_EBADID;
+  int edges_varid = NC_EBADID;
+  int phys_crd_varid = NC_EBADID;
+  int lag_crd_varid = NC_EBADID;
+  int level_varid = NC_EBADID;
+  int parents_varid = NC_EBADID;
+  int kids_varid = NC_EBADID;
+  int area_varid = NC_EBADID;
+  int crd_inds_varid = NC_EBADID;
+
+  retval = nc_def_var(ncid, "faces.mask", NC_UBYTE, 1, &faces_dimid, &mask_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.mask", mask_varid);
+
+  const int vert_and_edge_dims[2] = {faces_dimid, facekind_dimid};
+  retval = nc_def_var(ncid, "faces.vertices", nc_index_type::value, 2, vert_and_edge_dims, &verts_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.vertices", verts_varid);
+
+  retval = nc_def_var(ncid, "faces.edges", nc_index_type::value, 2, vert_and_edge_dims,
+    &edges_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.edges", edges_varid);
+
+  retval = nc_def_var(ncid, "faces.crd_inds", nc_index_type::value, 1, &faces_dimid, &crd_inds_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.crd_inds", nc_index_type::value, 1, &faces_dimid, &crd_inds_varid);
+
+  retval = nc_def_var(ncid, "faces.level", NC_INT, 1, &faces_dimid, &level_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.level", level_varid);
+
+  retval = nc_def_var(ncid, "faces.parent", nc_index_type::value, 1, &faces_dimid, &parents_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.parent", parents_varid);
+
+  const int kid_dims[2] = {faces_dimid, four_dimid};
+  retval = nc_def_var(ncid, "faces.kids", nc_index_type::value, 2, kid_dims, &kids_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.kids", kids_varid);
+  retval = nc_put_att(ncid, kids_varid, "n_leaves", nc_index_type::value, 1, &nleaves);
+  CHECK_NCERR(retval);
+  retval = nc_put_att(ncid, kids_varid, "n_max", nc_index_type::value, 1, &nmaxfaces);
+  CHECK_NCERR(retval);
+
+  const int pcrd_dims[3] = {time_dimid, faces_dimid, coord_dimid};
+  retval = nc_def_var(ncid, "faces.phys_crds", nc_real_type::value, 3, pcrd_dims, &phys_crd_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.phys_crds", phys_crd_varid);
+
+  const int lcrd_dims[2] = {faces_dimid, coord_dimid};
+  retval = nc_def_var(ncid, "faces.lag_crds", nc_real_type::value, 2, lcrd_dims,
+    &lag_crd_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.lag_crds", lag_crd_varid);
+
+  retval = nc_def_var(ncid, "faces.area", nc_real_type::value, 1, &faces_dimid, &area_varid);
+  CHECK_NCERR(retval);
+  name_varid_map.emplace("faces.area", area_varid);
+
+  for (size_t i=0; i<nfaces; ++i) {
+    const size_t mask_idx = i;
+    const uint_fast8_t mask_val = (faces._hmask(i) ? 1 : 0);
+    retval = nc_put_var1(ncid, mask_varid, &mask_idx, &mask_val);
+    CHECK_NCERR(retval);
+    for (size_t j=0; j<4; ++j) {
+      const size_t kids_idx[2] = {i,j};
+      retval = nc_put_var1(ncid, kids_varid, kids_idx, &faces._hostkids(i,j));
+      CHECK_NCERR(retval);
+    }
+    for (size_t j=0; j<FaceType::nverts; ++j) {
+      const size_t vert_and_edge_idx[2] = {i,j};
+      retval = nc_put_var1(ncid, verts_varid, vert_and_edge_idx, &faces._hostverts(i,j));
+      CHECK_NCERR(retval);
+      retval = nc_put_var1(ncid, edges_varid, vert_and_edge_dims, &faces._hostedges(i,j));
+    }
+    for (size_t j=0; j<Geo::ndim; ++j) {
+      const size_t pcrd_idx[3] = {0, i, j};
+      const size_t lcrd_idx[2] = {i,j};
+      const Real pcrd_val = faces.phys_crds->get_crd_component_host(i,j);
+      const Real lcrd_val = faces.lag_crds->get_crd_component_host(i,j);
+      retval = nc_put_var1(ncid, phys_crd_varid, pcrd_idx, &pcrd_val);
+      CHECK_NCERR(retval);
+      retval = nc_put_var1(ncid, lag_crd_varid, lcrd_idx, &lcrd_val);
+      CHECK_NCERR(retval);
+    }
+  }
+
+  const size_t start = 0;
+  const size_t count = nfaces;
+  retval = nc_put_vara(ncid, crd_inds_varid, &start, &count, faces._host_crd_inds.data());
+  CHECK_NCERR(retval);
+  retval = nc_put_vara(ncid, parents_varid, &start, &count, faces._hostparent.data());
+  CHECK_NCERR(retval);
+  retval = nc_put_vara(ncid, area_varid, &start, &count, faces._hostarea.data());
+  CHECK_NCERR(retval);
+  retval = nc_put_vara(ncid, level_varid, &start, &count, faces._hlevel.data());
+  CHECK_NCERR(retval);
+
+}
+
+template <typename Geo>
+void NcWriter<Geo>::update_crds(const size_t time_idx, const int varid, const Coords<Geo>& crds) {
+  LPM_ASSERT(ncid != NC_EBADID);
+  LPM_REQUIRE(varid != NC_EBADID);
+  LPM_REQUIRE_MSG(time_idx < n_timesteps(), "time variable must be defined before adding timestep data.");
+
+  for (size_t i=0; i<crds.nh(); ++i) {
+    for (size_t j=0; j<Geo::ndim; ++j) {
+      const size_t idx[3] = {time_idx, i, j};
+      const Real crd_val = crds.get_crd_component_host(i,j);
+      int retval = nc_put_var1(ncid, varid, idx, &crd_val);
+      CHECK_NCERR(retval);
+    }
+  }
+}
+
+template <typename Geo>
+void NcWriter<Geo>::update_particle_phys_crds(const size_t time_idx, const Coords<Geo>& pcrds) {
+  //TODO after particle class is defined
+}
+
+template <typename Geo>
+void NcWriter<Geo>::update_vertex_phys_crds(const size_t time_idx, const Vertices<Coords<Geo>>& verts) {
+  update_crds(time_idx, name_varid_map.at("vertices.phys_crds"), *(verts.crds));
+}
+
+template <typename Geo> template <FieldLocation FL>
+void NcWriter<Geo>::put_scalar_field(const std::string& name, const size_t time_idx, const ScalarField<FL>& s) {
+  const int varid = name_varid_map.at(name);
+  const size_t start[2] = {time_idx, 0};
+  size_t count[2];
+  count[0] = 1;
+  switch (FL) {
+    case (ParticleField) : {
+      count[1] = n_particles();
+      break;
+    }
+    case( VertexField ) : {
+      count[1] = n_vertices();
+      break;
+    }
+    case( EdgeField ) : {
+      count[1] = n_edges();
+      break;
+    }
+    case( FaceField ) : {
+      count[1] = n_faces();
+      break;
+    }
+  }
+  int retval = nc_put_vara(ncid, varid, start, count, s.hview.data());
+  CHECK_NCERR(retval);
+}
+
+template <typename Geo> template <FieldLocation FL>
+void NcWriter<Geo>::put_vector_field(const std::string& name, const size_t time_idx, const VectorField<Geo,FL>& v) {
+  const int varid = name_varid_map.at(name);
+  Index n_entries;
+  switch (FL) {
+    case (ParticleField) : {
+      n_entries = n_particles();
+      break;
+    }
+    case( VertexField ) : {
+      n_entries = n_vertices();
+      break;
+    }
+    case( EdgeField ) : {
+      n_entries = n_edges();
+      break;
+    }
+    case( FaceField ) : {
+      n_entries = n_faces();
+      break;
+    }
+  }
+  for (size_t i=0; i<n_entries; ++v) {
+    for (size_t j=0; j<Geo::ndim; ++j) {
+      const size_t idx[3] = {time_idx, i, j};
+      int retval = nc_put_var1(ncid, varid, idx, v.hview(i,j));
+      CHECK_NCERR(retval);
+    }
+  }
+}
+
+template <typename Geo> template <typename FaceType>
+void NcWriter<Geo>::update_face_phys_crds(const size_t time_idx, const Faces<FaceType, Geo>& faces) {
+  update_crds(time_idx, name_varid_map.at("faces.phys_crds"), *(faces.phys_crds));
+}
+
 template <typename Geo>
 void NcWriter<Geo>::define_vertices(const Vertices<Coords<Geo>>& vertices) {
   LPM_ASSERT(ncid != NC_EBADID);
@@ -211,14 +416,14 @@ void NcWriter<Geo>::define_vertices(const Vertices<Coords<Geo>>& vertices) {
   }
   {
     int varid = NC_EBADID;
-    const int m_ndims = 3;
-    const int dimids[3] = {time_dimid, vertices_dimid, coord_dimid};
+    const int m_ndims = 2;
+    const int dimids[2] = {vertices_dimid, coord_dimid};
     retval = nc_def_var(ncid, "vertices.lag_crds", nc_real_type::value, m_ndims, &dimids, &varid);
     CHECK_NCERR(retval);
     name_varid_map.emplace("vertices.lag_crds", varid);
     for (size_t i=0; i<nverts; ++i) {
       for (size_t j=0; j<Geo::ndim; ++j) {
-        const size_t idx[3] = {0, i, j};
+        const size_t idx[2] = {i, j};
         const Real crd_val = vertices.lag_crds->get_crd_component_host(h_inds(i),j);
         retval = nc_put_var1(ncid, varid, &idx, &crd_val);
         CHECK_NCERR(retval);
@@ -673,3 +878,4 @@ bool has_nc_file_extension(const std::string& filename) {
 // }
 
 }
+

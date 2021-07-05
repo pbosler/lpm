@@ -67,6 +67,7 @@ class NcWriter {
       coord_dimid(NC_EBADID),
       two_dimid(NC_EBADID),
       four_dimid(NC_EBADID),
+      facekind_dimid(NC_EBADID),
       n_nc_dims(0),
       name_varid_map() {
       LPM_REQUIRE_MSG(has_nc_file_extension(filename), "NcWriter error: filename '"
@@ -104,15 +105,15 @@ class NcWriter {
 
     Index n_faces() const;
 
-    void put_vertices(const Vertices<Coords<Geo>>& vertices);
+    void update_particle_phys_crds(const size_t time_idx, const Coords<Geo>& pcrds);
 
-    void put_edges(const Edges& edges);
+    void update_vertex_phys_crds(const size_t time_idx, const Vertices<Coords<Geo>>& verts);
 
-    template <typename FaceKind>
-    void put_faces(const Faces<FaceKind, Geo>& faces);
+    template <typename FaceType>
+    void update_face_phys_crds(const size_t time_idx, const Faces<FaceType,Geo>& faces);
 
     template <typename SeedType>
-    void put_polymesh(const std::shared_ptr<PolyMesh2d<SeedType>>& mesh);
+    void define_polymesh(const PolyMesh2d<SeedType>& pm);
 
     template <FieldLocation FL>
     void define_scalar_field(const ScalarField<FL>& s);
@@ -121,11 +122,11 @@ class NcWriter {
     void define_vector_field(const VectorField<Geo, FL>& v);
 
     template <FieldLocation FL>
-    void put_scalar_field(const std::string& field_name, const Int time_idx,
+    void put_scalar_field(const std::string& field_name, const size_t time_idx,
       const ScalarField<FL>& s);
 
     template <FieldLocation FL>
-    void put_vector_field(const std::string& field_name, const Int time_idx,
+    void put_vector_field(const std::string& field_name, const size_t time_idx,
       const VectorField<Geo, FL>& v);
 
   protected:
@@ -135,6 +136,8 @@ class NcWriter {
     void open();
 
     void close();
+
+    void update_crds(const size_t time_idx, const int varid, const Coords<Geo>& crds);
 
     void define_time_dim();
 
@@ -147,6 +150,7 @@ class NcWriter {
     int vertices_dimid;
     int edges_dimid;
     int faces_dimid;
+    int facekind_dimid;
     int coord_dimid;
     int n_nc_dims;
     int two_dimid;
