@@ -36,7 +36,8 @@ struct NcInt64 {
 bool has_nc_file_extension(const std::string& filename);
 
 // decodes integer return values to error codes
-std::string nc_handle_errcode(const int& ec);
+std::string nc_handle_errcode(const int& ec, const std::string& file, const std::string& fn,
+  const int& line);
 
 // index type in netCDF namespace
 typedef std::conditional<std::is_same<int,Index>::value,
@@ -47,7 +48,7 @@ typedef std::conditional<std::is_same<double,Real>::value,
   NcDouble, NcFloat>::type nc_real_type;
 
 #define CHECK_NCERR(ec) \
-  if (ec != NC_NOERR) handle_errcode(ec, __FILE__, __FUNCTION__, __LINE__)
+  if (ec != NC_NOERR) nc_handle_errcode(ec, __FILE__, __FUNCTION__, __LINE__)
 
 /// key-value pairs for metadata attributes
 typedef std::pair<std::string, std::string> text_att_type;
@@ -56,7 +57,7 @@ template <typename Geo>
 class NcWriter {
   public:
 
-    NcWriter(const std::string& filename) :
+    explicit NcWriter(const std::string& filename) :
       fname(filename),
       ncid(NC_EBADID),
       time_dimid(NC_EBADID),
@@ -81,7 +82,7 @@ class NcWriter {
 
     void define_file_attribute(const text_att_type& att_pair) const;
 
-    std::string info_string(const int& tab_level = 0) const;
+    std::string info_string(const int tab_level = 0) const;
 
     void define_particles_dim(const Index np);
 
@@ -113,7 +114,7 @@ class NcWriter {
     void update_face_phys_crds(const size_t time_idx, const Faces<FaceType,Geo>& faces);
 
     template <typename SeedType>
-    void define_polymesh(const PolyMesh2d<SeedType>& pm);
+    void define_polymesh(const PolyMesh2d<SeedType>& mesh);
 
     template <FieldLocation FL>
     void define_scalar_field(const ScalarField<FL>& s);

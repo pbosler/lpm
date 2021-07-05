@@ -23,8 +23,8 @@ add_library(lpm
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
-                vtk/lpm_vtk_io.cpp
                 netcdf/lpm_netcdf.cpp
+                vtk/lpm_vtk_io.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
@@ -73,6 +73,8 @@ install(FILES LpmConfig.h
               util/ekat_rational_constant.hpp
               util/ekat_scaling_factor.hpp
               util/ekat_units.hpp
+              netcdf/lpm_netcdf.hpp
+              netcdf/lpm_netcdf_impl.hpp
               LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
               LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
               LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp

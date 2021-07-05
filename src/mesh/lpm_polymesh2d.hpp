@@ -22,6 +22,7 @@ namespace Lpm {
 */
 template <typename SeedType> class PolyMesh2d {
   public:
+  typedef SeedType seed_type;
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
   typedef Coords<Geo> coords_type;

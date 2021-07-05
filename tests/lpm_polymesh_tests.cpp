@@ -8,6 +8,8 @@
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "util/lpm_floating_point_util.hpp"
+#include "netcdf/lpm_netcdf.hpp"
+#include "netcdf/lpm_netcdf_impl.hpp"
 #include "lpm_constants.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "catch.hpp"
@@ -131,4 +133,30 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     vtk.write("cubed_sphere_vtk_test.vtp");
   }
 
+}
+
+TEST_CASE("polymesh/netcdf", "[mesh]") {
+
+  Comm comm;
+
+  Logger<> logger("faces_test", Log::level::info, comm);
+
+  const int tree_lev = 3;
+
+  MeshSeed<CubedSphereSeed> csseed;
+  Index nmaxverts;
+  Index nmaxedges;
+  Index nmaxfaces;
+  csseed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, tree_lev);
+  auto quadsphere = std::shared_ptr<PolyMesh2d<CubedSphereSeed>>(new
+    PolyMesh2d<CubedSphereSeed>(nmaxverts, nmaxedges, nmaxfaces));
+  quadsphere->tree_init(tree_lev, csseed);
+
+  SECTION("NcWriter") {
+    NcWriter<SphereGeometry> ncwriter("polymesh_netcdf_test.nc");
+
+    ncwriter.define_polymesh(*quadsphere);
+
+    logger.info(ncwriter.info_string());
+  }
 }
