@@ -10,6 +10,8 @@
 
 namespace Lpm {
 
+template <typename Geo> class NcWriter;
+class PolymeshReader;
 
 /** @brief class for recording information stored at vertices in a mesh with
 vertices, edges, and faces.
@@ -34,6 +36,11 @@ class Vertices {
         ko::deep_copy(edges, constants::NULL_IND);
       }
     }
+
+    template <typename Geo>
+    friend class NcWriter;
+
+    friend class PolymeshReader;
 
     Vertices(const Index nmax, std::shared_ptr<CoordsType> pcrds,
         std::shared_ptr<CoordsType> lcrds);
@@ -87,6 +94,8 @@ class Vertices {
     index_view_type crd_inds;
 
     typename index_view_type::HostMirror host_crd_inds() const {return _host_crd_inds;}
+
+    Index host_crd_ind(const Index i) const {return _host_crd_inds(i);}
 
     ko::View<Index**, Host> edges;
 

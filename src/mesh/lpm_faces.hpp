@@ -14,6 +14,7 @@
 namespace Lpm {
 
 template <typename Geo> class NcWriter; // fwd decl
+class PolymeshReader;
 
 /** @brief Faces define panels.  Connected to Coords and Edges.
 
@@ -42,6 +43,7 @@ template <typename FaceKind, typename Geo> class Faces {
     typedef typename scalar_view_type::HostMirror host_scalar;
 
     friend class NcWriter<Geo>;
+    friend class PolymeshReader;
 
     mask_view_type mask; ///< non-leaf faces are masked
     vertex_view_type verts;  ///< indices to Coords on face edges, ccw order per face
@@ -233,7 +235,13 @@ template <typename FaceKind, typename Geo> class Faces {
       @param ind index of face
       @param relInd relative index of vertex (relative to face(ind) in Faces object); see MeshSeed
     */
-    Index verts_host(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
+    Index vert_host(const Index ind, const Int relInd) const {return _hostverts(ind, relInd);}
+
+    Index parent_host(const Index ind) const {return _hostparent(ind);}
+
+    Index level_host(const Index idx) const {return _hlevel(idx);}
+
+    Index kid_host(const Index idx, const Int kid) const {return _hostkids(idx, kid);}
 
     template <typename CV>
     void set_verts_host(const Index& ind, const CV v) {

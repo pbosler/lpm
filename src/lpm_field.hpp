@@ -10,7 +10,11 @@
 
 namespace Lpm {
 
+// define the locations where field data "live" in the sense of numerical methods
 enum FieldLocation {ParticleField, VertexField, EdgeField, FaceField};
+
+// repeat the enums here to facilitate range-based iteration over the enum
+static const FieldLocation AllFieldLocs[] = {ParticleField, VertexField, EdgeField, FaceField};
 
 typedef std::map<std::string, std::string> metadata_type;
 

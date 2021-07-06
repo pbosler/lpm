@@ -72,7 +72,7 @@ vtkSmartPointer<vtkCellArray> VtkPolymeshInterface<SeedType>::make_cells() const
     if (!mesh_->faces.has_kids_host(i)) {
       result->InsertNextCell(SeedType::nfaceverts);
       for (Short j=0; j<SeedType::nfaceverts; ++j) {
-        result->InsertCellPoint(mesh_->faces.verts_host(i,j));
+        result->InsertCellPoint(mesh_->faces.vert_host(i,j));
       }
     }
   }

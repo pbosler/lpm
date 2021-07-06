@@ -16,6 +16,7 @@
 namespace Lpm {
 
 template <typename Geo> class NcWriter;
+class PolymeshReader;
 
 /** @brief Edges of panels connect Coords to Faces
 
@@ -35,6 +36,8 @@ class Edges {
 
     template <typename Geo>
     friend class NcWriter;
+
+    friend class PolymeshReader;
 
     edge_view_type origs; ///< pointers to edge origin vertices
     edge_view_type dests; ///< pointers to edge destination vertices
@@ -78,7 +81,7 @@ class Edges {
       ko::deep_copy(n_leaves, _hn_leaves);
     }
 
-    // currently, edges are used only the host (for AMR).
+    // currently, edges are modified only the host (for AMR).
     void update_host() const {}
 
     /** \brief Returns true if the edge is on the boundary of the domain

@@ -106,6 +106,8 @@ class NcWriter {
 
     Index n_faces() const;
 
+    void add_time_value(const Real t) const;
+
     void update_particle_phys_crds(const size_t time_idx, const Coords<Geo>& pcrds);
 
     void update_vertex_phys_crds(const size_t time_idx, const Vertices<Coords<Geo>>& verts);
@@ -123,12 +125,10 @@ class NcWriter {
     void define_vector_field(const VectorField<Geo, FL>& v);
 
     template <FieldLocation FL>
-    void put_scalar_field(const std::string& field_name, const size_t time_idx,
-      const ScalarField<FL>& s);
+    void put_scalar_field(const size_t time_idx, const ScalarField<FL>& s);
 
     template <FieldLocation FL>
-    void put_vector_field(const std::string& field_name, const size_t time_idx,
-      const VectorField<Geo, FL>& v);
+    void put_vector_field(const size_t time_idx, const VectorField<Geo, FL>& v);
 
   protected:
     void handle_errcode(const int& ec, const std::string& file="",
@@ -160,69 +160,99 @@ class NcWriter {
     std::map<std::string, int> name_varid_map;
 };
 
-// class NcReader {
-//   public:
-//     typedef typename ko::View<Index*>::HostMirror host_index_view;
-//     typedef typename scalar_view_type::HostMirror host_scalar_view;
-//     typedef typename ko::View<Real**>::HostMirror host_vector_view;
-//
-//     NcReader(const std::string& filename);
-//
-//   protected:
-//     std::string fname;
-//     std::unique_ptr<const netCDF::NcFile> ncfile;
-//
-//     std::multimap<std::string, netCDF::NcDim> dims;
-//     std::multimap<std::string, netCDF::NcVar> vars;
-//     std::multimap<std::string, netCDF::NcGroupAtt> atts;
-//
+class NcReader {
+  public:
+    typedef typename ko::View<Index*>::HostMirror host_index_view;
+    typedef typename scalar_view_type::HostMirror host_scalar_view;
+    typedef typename ko::View<Real**>::HostMirror host_vector_view;
+
+    explicit NcReader(const std::string& full_filename) :
+      fname(full_filename),
+      name_varid_map(),
+      name_dimid_map() {
+      nc_open(full_filename.c_str(), NC_NOWRITE, &ncid);
+      inq_dims();
+      inq_vars();
+    }
+
+    virtual ~NcReader() {nc_close(ncid);}
+
+    Int n_timesteps() const;
+
+    virtual std::string info_string(const int tab_level=0) const;
+  protected:
+    void inq_dims();
+    void inq_vars();
+
+    int ncid;
+    int ndims;
+    int nvars;
+    std::string fname;
+    int time_dimid;
+    int time_varid;
+
+    std::map<std::string, int> name_dimid_map;
+    std::map<std::string, int> name_varid_map;
+
 //     ko::View<Real**> getCrdView(const netCDF::NcVar& crd_var) const;
 //     void fill_host_index_view(host_index_view& hv, const netCDF::NcVar& ind_var) const;
 //     void fill_host_scalar_view(host_scalar_view& hv, const netCDF::NcVar& fvar) const;
 //     void fill_host_vector_view(host_vector_view& hv, const netCDF::NcVar& fvar) const;
-// };
-//
-// class PolyMeshReader : NcReader {
-//   public:
-//     typedef typename ko::View<Index*>::HostMirror host_index_view;
-//     typedef typename mask_view_type::HostMirror host_mask_view;
-//     typedef typename ko::View<Index*[3]>::HostMirror host_topo_view_tri;
-//     typedef typename ko::View<Index*[4]>::HostMirror host_topo_view_quad;
-//
-//     PolyMeshReader(const std::string& filename) : NcReader(filename) {}
-//
-//     Int getTreeDepth() const;
-//
-//     ko::View<Real**> getVertPhysCrdView() const;
-//     ko::View<Real**> getVertLagCrdView() const;
-//
-//     Index nEdges() const;
-//     void fill_origs(host_index_view& hv) const;
-//     void fill_dests(host_index_view& hv) const;
-//     void fill_lefts(host_index_view& hv) const;
-//     void fill_rights(host_index_view& hv) const;
-//     void fill_edge_tree(host_index_view& hv,
-//       typename ko::View<Index*[2]>::HostMirror& hk, Index& nleaves) const;
-//
-//
-//     Index nFaces() const;
-//     void fill_facemask(host_mask_view& hv) const;
-//     void fill_face_connectivity(host_topo_view_tri& faceverts,
-//       host_topo_view_tri& faceedges) const;
-//     void fill_face_connectivity(host_topo_view_quad& faceverts,
-//       host_topo_view_quad& faceedges) const;
-//     void fill_face_centers(host_index_view& hv) const;
-//     void fill_face_levels(host_index_view& hv) const;
-//     void fill_face_tree(host_index_view& hp,
-//       typename ko::View<Index*[4]>::HostMirror& hk, Index& nleaves) const;
-//     void fill_face_area(typename scalar_view_type::HostMirror& hv) const;
-//
-//     ko::View<Real**> getFacePhysCrdView() const;
-//     ko::View<Real**> getFaceLagCrdView() const;
-//
-//
-//
-// };
+};
+
+class PolymeshReader : public NcReader {
+  public:
+    explicit PolymeshReader(const std::string& full_filename) :
+      NcReader(full_filename),
+      vertices_dimid(NC_EBADID),
+      edges_dimid(NC_EBADID),
+      faces_dimid(NC_EBADID),
+      facekind_dimid(NC_EBADID)
+      {
+        init_dims();
+      }
+
+    virtual ~PolymeshReader() {}
+
+    Index n_vertices() const;
+
+    Index n_edges() const;
+
+    Index n_faces() const;
+
+    template <typename SeedType>
+    std::shared_ptr<PolyMesh2d<SeedType>> init_polymesh();
+
+    std::string info_string(const int tab_level=0) const override;
+
+  protected:
+    Index nmaxverts;
+    Index nmaxedges;
+    Index nmaxfaces;
+    Int base_tree_depth;
+
+    void init_dims();
+
+    template <typename Geo>
+    void fill_vertices(Vertices<Coords<Geo>>& verts);
+
+    void fill_edges(Edges& edges);
+
+    template <typename FaceType, typename Geo>
+    void fill_faces(Faces<FaceType, Geo>& faces);
+
+    template <typename Geo>
+    void fill_crds(Coords<Geo>& vert_phys_crds, Coords<Geo>& vert_lag_crds,
+        Coords<Geo>& face_phys_crds, Coords<Geo>& face_lag_crds);
+
+
+    int vertices_dimid;
+    int edges_dimid;
+    int faces_dimid;
+    int facekind_dimid;
+};
+
+
 
 }// namespace Lpm
 #endif

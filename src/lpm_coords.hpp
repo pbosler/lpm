@@ -12,6 +12,9 @@
 
 namespace Lpm {
 
+template <typename Geo> class NcWriter;
+class PolymeshReader;
+
 /** \brief Coords class handles arrays of vectors in \f$\mathbb{R}^d\f$, where \f$d=2,3\f$.
 Templated on Geometry Type (e.g., SphereGeometry, PlaneGeometry).
 
@@ -27,6 +30,9 @@ template <typename Geo> class Coords {
     crd_view_type crds; ///< primary container --- a view of vectors in spatial coordinates
     n_view_type n; ///< number of vectors currently intialized
 
+    friend class NcWriter<Geo>;
+
+    friend class PolymeshReader;
 
     /** @brief Constructor.
 
@@ -121,6 +127,7 @@ template <typename Geo> class Coords {
         _hostcrds(ind,i) = v[i];
       }
     }
+
 //     void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
 //       LPM_REQUIRE_MSG(ind < _nh(), "Coords::relocateHost error: index out of range.");
 //       for (int i=0; i<Geo::ndim; ++i) {

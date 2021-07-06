@@ -26,7 +26,7 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FaceKind>::toVtkPolyData(const Fa
         if (!faces.has_kids_host(i)) {
             polys->InsertNextCell(FaceKind::nverts);
             for (int j=0; j<FaceKind::nverts; ++j) {
-                polys->InsertCellPoint(faces.verts_host(i,j));
+                polys->InsertCellPoint(faces.vert_host(i,j));
             }
         }
     }
