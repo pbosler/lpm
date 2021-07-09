@@ -97,6 +97,7 @@ std::string Faces<FaceKind,Geo>::info_string(const std::string& label, const int
     oss << phys_crds->info_string("faces.phys_crds", tab_level+1, dump_all);
   }
   oss << bigidnt << "total area = " << std::setprecision(18) << surface_area_host() << std::endl;
+  oss << bigidnt << "avg. mesh size = " << appx_mesh_size() << std::endl;
   oss << phys_crds->info_string(label, tab_level+1, dump_all);
 //   oss << lag_crds->info_string(label, tab_level+1, dump_all);
   return oss.str();

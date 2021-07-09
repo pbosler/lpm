@@ -139,19 +139,22 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 
 TEST_CASE("polymesh/netcdf", "[mesh]") {
 
+  // typedef CubedSphereSeed seed_type;
+  typedef IcosTriSphereSeed seed_type;
+
   Comm comm;
 
-  Logger<> logger("faces_test", Log::level::info, comm);
+  Logger<> logger("polymesh/netcdf test", Log::level::info, comm);
 
   const int tree_lev = 3;
 
-  MeshSeed<CubedSphereSeed> csseed;
+  MeshSeed<seed_type> csseed;
   Index nmaxverts;
   Index nmaxedges;
   Index nmaxfaces;
   csseed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, tree_lev);
-  auto quadsphere = std::shared_ptr<PolyMesh2d<CubedSphereSeed>>(new
-    PolyMesh2d<CubedSphereSeed>(nmaxverts, nmaxedges, nmaxfaces));
+  auto quadsphere = std::shared_ptr<PolyMesh2d<seed_type>>(new
+    PolyMesh2d<seed_type>(nmaxverts, nmaxedges, nmaxfaces));
   quadsphere->tree_init(tree_lev, csseed);
 
   ScalarField<FaceField> ones("ones", nmaxfaces, ekat::units::Units::nondimensional());
@@ -161,7 +164,7 @@ TEST_CASE("polymesh/netcdf", "[mesh]") {
   ko::deep_copy(twos.hview, 2.0);
 
   REQUIRE(FloatingPoint<Real>::equiv(quadsphere->faces.surface_area_host(),
-    4*constants::PI, 10*constants::ZERO_TOL));
+    4*constants::PI, 20*constants::ZERO_TOL));
 
   SECTION("NcWriter") {
     NcWriter<SphereGeometry> ncwriter("polymesh_netcdf_test.nc");
@@ -179,7 +182,7 @@ TEST_CASE("polymesh/netcdf", "[mesh]") {
 
     PolymeshReader ncreader("polymesh_netcdf_test.nc");
 
-    auto mesh = ncreader.init_polymesh<CubedSphereSeed>();
+    auto mesh = ncreader.init_polymesh<seed_type>();
     logger.info(ncreader.info_string());
 
     REQUIRE(mesh);
@@ -224,7 +227,7 @@ TEST_CASE("polymesh/netcdf", "[mesh]") {
       REQUIRE(FloatingPoint<Real>::equiv(quadsphere->faces.area_host(i),
         mesh->faces.area_host(i)));
       REQUIRE(quadsphere->faces.level_host(i) == mesh->faces.level_host(i));
-      for (Index j=0; j<CubedSphereSeed::faceKind::nverts; ++j) {
+      for (Index j=0; j<seed_type::faceKind::nverts; ++j) {
         REQUIRE(quadsphere->faces.vert_host(i,j) == mesh->faces.vert_host(i,j));
         REQUIRE(quadsphere->faces.edge_host(i,j) == mesh->faces.edge_host(i,j));
       }
