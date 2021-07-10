@@ -7,7 +7,7 @@
 #include <limits>
 #include <cfloat>
 /**
-Kokkos-related utilities
+Kokkos-array subclass for reductions
 */
 namespace Kokkos {
 
