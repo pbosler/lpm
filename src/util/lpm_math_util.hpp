@@ -127,8 +127,6 @@ T cube(const T& x) {
   return x*x*x;
 }
 
-
-
 } // namespace Lpm
 
 #endif
