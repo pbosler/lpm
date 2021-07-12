@@ -40,7 +40,7 @@ template <typename SeedType>
 vtkSmartPointer<vtkPoints> VtkPolymeshInterface<SeedType>::make_points() const {
   auto result = vtkSmartPointer<vtkPoints>::New();
   const auto vert_crd_view = mesh_->vertices.phys_crds->get_host_crd_view();
-  Real crds[2];
+  Real crds[3];
   for (Index i=0; i<mesh_->n_vertices_host(); ++i) {
     for (Short j=0; j<SeedType::geo::ndim; ++j) {
       crds[j] = vert_crd_view(i,j);
