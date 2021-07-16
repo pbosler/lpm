@@ -1,0 +1,59 @@
+# This builds a Docker image with LPM's third-party libraries pre-built
+# and installed in /opt/lpm. It must be run from LPM's top-level source
+# directory.
+FROM ubuntu:20.10
+
+# Process build-time arguments.
+ARG BUILD_TYPE=Debug
+ARG PRECISION=double
+
+# We build LPM in /lpm
+WORKDIR /lpm
+COPY ext ext
+COPY src src
+COPY tests tests
+COPY scripts scripts
+COPY examples examples
+COPY doc doc
+COPY mesh_seeds mesh_seeds
+COPY cmake cmake
+COPY tools tools
+COPY CMakeLists.txt setup ./
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  autoconf \
+  clang-format \
+  cmake \
+  libopenmpi-dev \
+  gcc \
+  g++ \
+  git \
+  make \
+  pkg-config \
+  zlib1g-dev \
+  ca-certificates \
+  && rm -rf /var/lib/apt/lists/* && \
+  ls -R cmake/ && \
+  ./setup build && \
+  cd build && \
+  cmake \
+    -DCMAKE_INSTALL_PREFIX=/opt/lpm \
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+    -DCMAKE_CXX_COMPILER=mpicxx \
+    -DCMAKE_C_COMPILER=mpicc \
+    -DLPM_PRECISION=$PRECISION \
+    -DLPM_DEVICE=CPU \
+    -DLPM_DEVICE_ARCH=HSW \
+    -DLPM_PACK_SIZE=$PACK_SIZE \
+    -DLPM_ENABLE_DRIVER=ON \
+    -G "Unix Makefiles" \
+    .. && \
+  make -j && \
+  make install && \
+  rm -rf * && \
+  rm -rf /opt/lpm/bin && \
+  rm -rf /opt/lpm/include && \
+  rm -f /opt/lpm/lib/liblpm*
+
+LABEL maintainer='Peter A. Bosler <pabosle@sandia.gov>'
+LABEL description='Ubuntu with LPM third-party libraries'

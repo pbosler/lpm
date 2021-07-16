@@ -1,0 +1,78 @@
+name: auto_test
+
+# This action is triggered:
+# 1. when someone creates a pull request for a merge to the main branch
+# 2. when changes are merged into the main branch (via a pull request)
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Below are jobs, each of which runs sequentially.
+jobs:
+  # This job builds LPM and runs our test suite.
+  build:
+    # A build matrix storing all desired configurations.
+    strategy:
+      matrix:
+        os: [ubuntu-latest] #, macos-latest]
+        build-type: [Debug, RelWithDebInfo]
+        fp-precision: [single, double]
+
+    runs-on: ${{ matrix.os }}
+
+    # Pre-fab container with third-party libs installed.
+    container: pbosler/lpm-tpl:${{ matrix.build-type }}-${{ matrix.fp-precision }}
+
+    # Environment variables
+    env:
+      CC: mpicc
+      CXX: mpicxx
+
+    # Steps for building and running tests.
+    steps:
+    - name: Checking out repository
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        submodules: recursive
+
+    - name: Configuring lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        ./setup build
+        cd build
+        cmake \
+          -DCMAKE_INSTALL_PREFIX=`pwd`/build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_CXX_COMPILER=mpicxx \
+          -DCMAKE_C_COMPILER=mpicc \
+          -DLPM_PRECISION={ matrix.fp-precision }} \
+          -DLPM_DEVICE=CPU \
+          -DLPM_DEVICE_ARCH=HSW \
+          -DYAMLCPP_LIBRARY=/opt/lpm/lib/libyaml-cpp.a \
+          -DYAMLCPP_INCLUDE_DIR=/opt/lpm/include \
+          -DHDF5_LIBRARY=/opt/lpm/lib/libhdf5.a} \
+          -DHDF5_HL_LIBRARY=/opt/lpm/lib/libhdf5_hl.a \
+          -DHDF5_INCLUDE_DIR=/opt/lpm/include \
+          -DNETCDF_LIBRARY=/opt/lpm/lib/libnetcdf.a \
+          -DNETCDF_INCLUDE_DIR=/opt/lpm/include \
+          -DOPENBLAS_LIBRARY=/opt/lpm/lib/libopenblas.a \
+          -G "Unix Makefiles" \
+          ..
+
+    - name: Building lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make -j
+
+    - name: Running tests (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        ctest -V
+
+    - name: Installing lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make install
+
