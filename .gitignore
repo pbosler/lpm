@@ -3,8 +3,6 @@
 .DS_Store
 
 # CMake
-*.cmake
-CMake*
 *.tcl
 Makefile
 LpmConfig.h
@@ -37,13 +35,10 @@ LpmConfig.h
 *.a
 *.lib
 
-# Executables
+# binaries
 *.exe
 *.out
 *.app
-*.m
-*.csv
-*.txt
 *.pdf
 *.dat
 *.namelist

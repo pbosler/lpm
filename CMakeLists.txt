@@ -1,109 +1,102 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 
-project (LPM)
+# Point CMake to our .cmake files
+set( LPM_CMAKE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake CACHE INTERNAL "")
+list(APPEND CMAKE_MODULE_PATH ${LPM_CMAKE_PATH})
 
+project (LPM CXX Fortran)
+
+# Set LPM version metadata
 set(LPM_VERSION_MAJOR 3)
-set(LPM_VERSION_MINOR 0)
+set(LPM_VERSION_MINOR 1)
+set(LPM_VERSION_PATCH 0)
 
-set(CMAKE_CXX_STANDARD 11)
+# Set c++ standard and env variable policy
+set(CMAKE_CXX_STANDARD 14)
 CMAKE_POLICY(SET CMP0074 NEW)
-MESSAGE(STATUS "Setting policy CMP0074 to use <Package>_ROOT environmental variables")
+message(STATUS "Setting policy CMP0074 to use <Package>_ROOT environmental variables")
 
-function (printvar var)
-    message("${var}: ${${var}}")
-endfunction()
+# Tools for CMake repetitive tasks & debugging
+include(cmake_helpers)
 
-function (list2str list str)
-    string(REPLACE ";" " " tmp "${list}")
-    set(${str} ${tmp} PARENT_SCOPE)
-endfunction()
+# Set all installation folders for third-party libraries, and figure out which
+# ones have to be built.
+include(setup_platform)
+setup_platform()
 
+# explicitly loading c++ features is necessary for some platforms
 get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
 set(CMAKE_CXX_COMPILE_FEATURES ${cxx_features})
 set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})
 
-find_package(MPI REQUIRED)
-FIND_PACKAGE(VTK REQUIRED HINTS $ENV{VTK_ROOT})
-if (VTK_FOUND)
-    option (LPM_HAVE_VTK "Located VTK libraries." ON)
-    message ("VTK Found. Details:")
-    printvar(VTK_INCLUDE_DIRS)
-    printvar(VTK_LIBRARIES)
-endif()
-
-find_path(NETCDF_H_PATH "netcdf.h" HINTS $ENV{NETCDF_ROOT}/include)
-printvar(NETCDF_H_PATH)
-find_library(NETCDF_C netcdf HINTS ${NETCDF_H_PATH}/../lib)
-printvar(NETCDF_C)
-find_library(NETCDF_CXX netcdf_c++4 HINTS ${NETCDF_H_PATH}/../lib)
-printvar(NETCDF_CXX)
-
-set(HAS_NETCDF CACHE BOOL FALSE)
-if (NETCDF_H_PATH)
-  if (NETCDF_C)
-    if (NETCDF_CXX)
-      set(HAS_NETCDF TRUE)
-      option(LPM_HAVE_NETCDF "netcdf libraries found" ON)
-    endif()
+# handle MPI
+if (HAVE_MPI)
+  find_package(MPI REQUIRED)
+  if (NOT MPI_FOUND)
+    message(FATAL_ERROR "Error: cannot find MPI")
   endif()
-endif()
-printvar(HAS_NETCDF)
-
-if (LPM_ENABLE_DEBUG OR ${CMAKE_BUILD_TYPE} STREQUAL "DEBUG")
-    option(LPM_ENABLE_DEBUG "Enable thorough debugging checks." ON)
-endif()
-
-FIND_PACKAGE(Trilinos REQUIRED HINTS ${Trilinos_ROOT})
-if (Trilinos_FOUND)
-  message("Trilinos found. Details:")
-  printvar(Trilinos_INCLUDE_DIRS)
-  printvar(Trilinos_LIBRARIES)
-  printvar(Trilinos_TPL_INCLUDE_DIRS)
-  printvar(Trilinos_TPL_LIBRARIES)
-endif()
-
-find_package(CUDA QUIET)
-if (${CUDA_FOUND})
-  # Cuda found, but it's possible trilinos was not built with cuda support.
-  execute_process(COMMAND ${CMAKE_CXX_COMPILER} "--nvcc-wrapper-show"
-    RESULT_VARIABLE WRAPS_NVCC
-    OUTPUT_VARIABLE WRAPS_NVCC_OUT1
-    ERROR_QUIET)
-
-  if (DEFINED ENV{OMPI_CXX})
-    execute_process(COMMAND $ENV{OMPI_CXX} "--nvcc-wrapper-show"
-    RESULT_VARIABLE WRAPS_NVCC
-    OUTPUT_VARIABLE WRAPS_NVCC_OUT2
-    ERROR_QUIET)
-  endif()
-
-  string(FIND "${WRAPS_NVCC_OUT1} ${WRAPS_NVCC_OUT2}" "nvcc" pos)
-  if (${pos} GREATER -1)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
-    option (LPM_HAVE_CUDA "LPM build with cuda support." ON)
-    message(STATUS "Cuda enabled!")
-  else ()
-    message(STATUS "Cuda was found, but the C++ compiler is not nvcc_wrapper.  Building without cuda.")
-  endif()
-endif()
-
-set(USE_SPHEREPACK CACHE BOOL FALSE)
-if (Spherepack_ROOT)
-    set(USE_SPHEREPACK TRUE)
-    option(LPM_HAVE_SPHEREPACK "Located Spherepack library." ON)
-    message("Looking for Spherepack at ${Spherepack_ROOT}")
-    ADD_LIBRARY(spherepack STATIC IMPORTED GLOBAL)
-    SET_TARGET_PROPERTIES(spherepack PROPERTIES IMPORTED_LOCATION ${Spherepack_ROOT}/lib/libspherepack.a)
+  set(LPM_USE_MPI ON)
 else()
-    Message(STATUS "Spherepack not found.")
+  message(STATUS "Building *without* MPI")
+  set(LPM_USE_MPI OFF)
 endif()
 
-ADD_SUBDIRECTORY (src)
-ADD_SUBDIRECTORY (tests)
-ADD_SUBDIRECTORY (examples)
+# handle OpenMP
+if (LPM_USE_OPENMP)
+  if (OPENMP_FOUND)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    message(STATUS "OpenMP is enabled")
+  endif()
+else()
+  message(STATUS "OpenMP is disabled.")
+endif()
 
-CONFIGURE_FILE("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
+# Write basic configure info to console
+message(STATUS "Configuring for device: ${LPM_DEVICE} (${LPM_DEVICE_ARCH})")
+message(STATUS "Configuring with build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Generating project files in build directory: ${PROJECT_BINARY_DIR}")
 
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}" "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include" "${NETCDF_H_PATH}")
+# Floating point precision
+if (LPM_PRECISION STREQUAL "single")
+  set(LPM_REAL_TYPE "float")
+  set(LPM_DOUBLE_PRECISION 0)
+elseif(LPM_PRECISION STREQUAL "double")
+  set(LPM_REAL_TYPE "double")
+  set(LPM_DOUBLE_PRECISION 1)
+else()
+  message(FATAL_ERROR "Invalid LPM_PRECISION: ${LPM_PRECISION} (use 'single' or 'double')")
+endif()
 
-ENABLE_TESTING()
+# Build dependencies if necessary
+add_subdirectory(ext)
+
+# If we're building on a GPU, set the C++ compiler appropriately.
+if (LPM_DEVICE STREQUAL CUDA)
+  if (HAVE_MPI)
+    set(ENV{OMPI_CXX_COMPILER} "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
+  else()
+    set(CMAKE_CXX_COMPILER "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
+  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
+endif()
+
+set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${PROJECT_BINARY_DIR};${PROJECT_SOURCE_DIR}/src)
+
+configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmConfig.h" @ONLY)
+
+include(GNUInstallDirs)
+
+add_subdirectory(src)
+set(LPM_LIBRARIES lpm;${LPM_LIBRARIES})
+add_subdirectory(tests)
+add_subdirectory(examples)
+
+
+
+
+#INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}")# "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include" "${NETCDF_H_PATH}")
+
+include(CTest)
+

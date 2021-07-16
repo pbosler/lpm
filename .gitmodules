@@ -1,0 +1,18 @@
+[submodule "ext/trilinos"]
+	path = ext/trilinos
+	url = git@github.com:trilinos/Trilinos.git
+[submodule "ext/hdf5"]
+	path = ext/hdf5
+	url = git@github.com:HDFGroup/hdf5.git
+[submodule "ext/netcdf-c"]
+	path = ext/netcdf-c
+	url = git@github.com:Unidata/netcdf-c.git
+[submodule "ext/yaml-cpp"]
+	path = ext/yaml-cpp
+	url = git@github.com:SNLComputation/yaml-cpp.git
+[submodule "ext/vtk"]
+	path = ext/vtk
+	url = git@github.com:Kitware/VTK.git
+[submodule "ext/spdlog"]
+	path = ext/spdlog
+	url = git@github.com:gabime/spdlog.git
