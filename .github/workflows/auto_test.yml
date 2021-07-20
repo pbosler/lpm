@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
-        fp-precision: [double, single]
+        fp-precision: [double] #, single]
 
     runs-on: ${{ matrix.os }}
 
