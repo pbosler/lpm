@@ -2,20 +2,24 @@
 #ifndef LPM_CONFIG_H
 #define LPM_CONFIG_H
 
-#define LPM_VERSION_MAJOR @LPM_VERSION_MAJOR@
-#define LPM_VERSION_MINOR @LPM_VERSION_MINOR@
-
-#cmakedefine LPM_HAVE_VTK
-#cmakedefine LPM_HAVE_CUDA
+#cmakedefine LPM_USE_MPI
+#cmakedefine LPM_USE_VTK_GRAPHICS
+#cmakedefine LPM_USE_CUDA
 #cmakedefine LPM_HAVE_SPHEREPACK
-#cmakedefine LPM_ENABLE_DEBUG
-#cmakedefine LPM_HAVE_NETCDF
+#cmakedefine LPM_DOUBLE_PRECISION
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 
 namespace Lpm {
+
+  const char* version();
+
+  const char* revision();
+
+  bool has_uncomitted_changes();
+
 	typedef int Index;
-	typedef double Real;
+	typedef @LPM_REAL_TYPE@ Real;
 	typedef int Int;
 	typedef unsigned Uint;
 	typedef short Short;

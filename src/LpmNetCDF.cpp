@@ -84,7 +84,7 @@ void NcReader::fill_host_scalar_view(host_scalar_view& hv,
 
 void NcReader::fill_host_vector_view(host_vector_view& hv,
   const netCDF::NcVar& fvar) const {
-  const Int ndim = dims.find("crd_dim")->second.getSize();
+  const auto ndim = dims.find("crd_dim")->second.getSize();
   std::vector<size_t> ind(2,0);
   const std::vector<size_t> count = {1,ndim};
   for (Index i=0; i<hv.extent(0); ++i) {
@@ -155,7 +155,7 @@ void PolyMeshReader::fill_face_connectivity(host_topo_view_tri& faceverts,
   host_topo_view_tri& faceedges) const {
   const auto vit = vars.find("face_verts");
   const auto eit = vars.find("face_edges");
-  const Int nfaceverts = dims.find("nfaceverts")->second.getSize();
+  const auto nfaceverts = dims.find("nfaceverts")->second.getSize();
 
   assert(nfaceverts == 3);
 
@@ -180,7 +180,7 @@ void PolyMeshReader::fill_face_connectivity(host_topo_view_quad& faceverts,
   host_topo_view_quad& faceedges) const {
   const auto vit = vars.find("face_verts");
   const auto eit = vars.find("face_edges");
-  const Int nfaceverts = dims.find("nfaceverts")->second.getSize();
+  const auto nfaceverts = dims.find("nfaceverts")->second.getSize();
 
   assert(nfaceverts == 4);
 
