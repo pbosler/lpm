@@ -30,16 +30,16 @@ set(CMAKE_CXX_COMPILE_FEATURES ${cxx_features})
 set(GLOBAL PROPERTY CMAKE_C_COMPILE_FEATURES ${cxx_features})
 
 # handle MPI
-if (HAVE_MPI)
+#if (HAVE_MPI)
   find_package(MPI REQUIRED)
   if (NOT MPI_FOUND)
     message(FATAL_ERROR "Error: cannot find MPI")
   endif()
   set(LPM_USE_MPI ON)
-else()
-  message(STATUS "Building *without* MPI")
-  set(LPM_USE_MPI OFF)
-endif()
+#else()
+#  message(STATUS "Building *without* MPI")
+#  set(LPM_USE_MPI OFF)
+#endif()
 
 # handle OpenMP
 if (LPM_USE_OPENMP)
