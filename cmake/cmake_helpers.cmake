@@ -195,7 +195,7 @@ function(CreateUnitTest target_name target_sources)
       set (lpmtest_MPI_EXEC_NAME "mpiexec")
     endif()
     if ("${lpmtest_MPI_NP_FLAG}" STREQUAL "")
-      set (lpmtest_MPI_NP_FLAG ${mpi_allow_root} "-n")
+      set (lpmtest_MPI_NP_FLAG "${mpi_allow_root} -n")
     endif()
   endif()
 
