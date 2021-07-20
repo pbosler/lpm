@@ -65,7 +65,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
-          -DLPM_PRECISION={{ matrix.fp-precision }} \
+          -DLPM_PRECISION=${{ matrix.fp-precision }} \
           -DLPM_DEVICE=CPU \
           -DLPM_DEVICE_ARCH=AMDAVX \
           -DYAMLCPP_LIBRARY_DIR=/yaml-cpp \
