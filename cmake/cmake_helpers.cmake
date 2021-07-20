@@ -75,7 +75,7 @@ function(CreateUnitTest target_name target_sources)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
-  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES})
+  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS})
 
   if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
     target_link_libraries(${target_name} PUBLIC lpm_test_main)
