@@ -88,13 +88,15 @@ configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmCo
 
 include(GNUInstallDirs)
 
+printvar(LPM_LIBRARIES)
+
+
 add_subdirectory(src)
 set(LPM_LIBRARIES lpm;${LPM_LIBRARIES})
 add_subdirectory(tests)
 add_subdirectory(examples)
 
 
-printvar(LPM_LIBRARIES)
 
 include(CTest)
 
