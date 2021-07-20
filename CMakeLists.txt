@@ -94,9 +94,7 @@ add_subdirectory(tests)
 add_subdirectory(examples)
 
 
-
-
-#INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src" "${PROJECT_BINARY_DIR}")# "${VTK_INCLUDE_DIRS}" "${Kokkos_ROOT}/include" "${NETCDF_H_PATH}")
+printvar(LPM_LIBRARIES)
 
 include(CTest)
 

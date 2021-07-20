@@ -65,6 +65,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
+          -DCMAKE_VERBOSE_MAKEFILE=ON \
           -DLPM_PRECISION=${{ matrix.fp-precision }} \
           -DLPM_DEVICE=CPU \
           -DLPM_DEVICE_ARCH=AMDAVX \
