@@ -22,10 +22,7 @@ TAG=$BUILD_TYPE-$PRECISION
 
 # Build the image locally.
 cp Dockerfile.ext ../Dockerfile
-docker build -t lpm-tpl:$TAG --network=host \
-  --build-arg BUILD_TYPE=$BUILD_TYPE \
-  --build-arg PRECISION=$PRECISION \
-  ..
+docker build -t lpm-tpl:$TAG --network=host ..
 rm ../Dockerfile
 
 # Tag the image.
