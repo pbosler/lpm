@@ -93,7 +93,7 @@ install(TARGETS lpm DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main lpm_catch_main.cpp)
-target_link_libraries(lpm_test_main PUBLIC lpm)
+target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS})
 target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets

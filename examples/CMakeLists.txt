@@ -1,10 +1,3 @@
-#INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/src"
-#                    "${PROJECT_BINARY_DIR}"
-#                    "${VTK_INCLUDE_DIRS}"
-##                   "${Trilinos_INCLUDE_DIRS}"
-##                   "${Trilinos_TPL_INCLUDE_DIRS}"
-#)
-
 add_executable(sphere_mesh_init sphere_mesh_init.cpp)
 target_include_directories(sphere_mesh_init PUBLIC
         ${LPM_INCLUDE_DIRS}
