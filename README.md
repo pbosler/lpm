@@ -4,6 +4,8 @@ This file contains several algorithms for computing solutions to PDEs using Lagr
 
 ## Build / install
 
+[![auto_test](https://github.com/pbosler/lpm/actions/workflows/auto_test.yml/badge.svg?branch=main)](https://github.com/pbosler/lpm/actions/workflows/auto_test.yml)
+
 LPM uses the CMake build system, and a script `lpm/setup` generates the CMake commands for you. From the `lpm` root directory, run:
 
 - `setup <build_dir>` This creates a script, `config.sh` in the `<build_dir>` directory.
