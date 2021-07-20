@@ -17,8 +17,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest] #, macos-latest]
-        build-type: [Debug, RelWithDebInfo]
-        fp-precision: [single, double]
+        build-type: [Debug] #, RelWithDebInfo]
+        fp-precision: [double], #, single]
 
     runs-on: ${{ matrix.os }}
 
@@ -84,7 +84,7 @@ jobs:
           -DTRILINOS_LIBRARY_DIR=/trilinos/lib \
           -DTRILINOS_TPL_INCLUDE_DIR=/trilinos/include \
           -DTRILINOS_TPL_LIBRARY_DIR=/trilinos/lib \
-          -DVTK_INCLUDE_DIR=/vtk/include \
+          -DVTK_INCLUDE_DIR=/vtk/include/vtk-8.1 \
           -DVTK_LIBRARY_DIR=/vtk/lib \
           -G "Unix Makefiles" \
           ..
