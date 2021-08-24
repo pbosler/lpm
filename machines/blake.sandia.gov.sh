@@ -11,6 +11,7 @@ module load python/3.7.3
 module load hdf5/1.10.1/openmpi/2.1.2/gcc/7.2.0
 module load netcdf/4.4.1.1/openmpi/2.1.2/gcc/7.2.0
 module load yamlcpp
+module load boost/1.72.0/gcc/7.2.0
 
 TR=/ascldap/users/pabosle/trilinos-lpm
 #TR=/ascldap/users/pabosle/trilinos-lpm-debug
@@ -26,6 +27,9 @@ export NETCDF_LIBRARY=libnetcdf.a
 
 export VTK_INCLUDE_DIR=$VTK_ROOT/include/vtk-8.1
 export VTK_LIBRARY_DIR=$VTK_ROOT/lib
+
+export BOOST_INCLUDE_DIR=$BOOST_ROOT/include
+export BOOST_LIBRARY_DIR=$BOOST_ROOT/lib
 
 export TRILINOS_INCLUDE_DIR=$TR/include
 export TRILINOS_LIBRARY_DIR=$TR/lib

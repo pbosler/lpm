@@ -16,3 +16,6 @@
 [submodule "ext/spdlog"]
 	path = ext/spdlog
 	url = git@github.com:gabime/spdlog.git
+[submodule "ext/boost"]
+	path = ext/boost
+	url = git@github.com:boostorg/boost.git
