@@ -2,7 +2,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
 #include "util/lpm_string_util.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include <iomanip>
 
 namespace Lpm {

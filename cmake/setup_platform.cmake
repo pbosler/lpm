@@ -146,6 +146,7 @@ macro(setup_platform)
     message(STATUS "Building boost at: ${BOOST_LIBRARY_DIR}.\n   Please be patient; boost can take a long time to build.")
     set(LPM_NEEDS_BOOST_BUILD TRUE)
   endif()
+  set(LPM_USE_BOOST ON)
 
   if (TRILINOS_INCLUDE_DIR)
     if (NOT EXISTS ${TRILINOS_INCLUDE_DIR})

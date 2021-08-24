@@ -9,7 +9,7 @@
 #include "lpm_field.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
 #include "lpm_constants.hpp"

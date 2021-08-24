@@ -1,7 +1,7 @@
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
 #include "lpm_assert.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "util/lpm_string_util.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_comm.hpp"

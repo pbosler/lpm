@@ -10,7 +10,7 @@
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
 #include <memory>
 

@@ -3,7 +3,7 @@
 
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
-#include "util/lpm_math_util.hpp"
+#include "util/lpm_math.hpp"
 #include "lpm_geometry.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "Kokkos_Core.hpp"

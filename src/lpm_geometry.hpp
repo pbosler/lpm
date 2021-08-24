@@ -4,7 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
-#include "util/lpm_math_util.hpp"
+#include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include <cassert>

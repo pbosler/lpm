@@ -7,7 +7,7 @@
 #include "lpm_coords.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
 
 using namespace Lpm;
@@ -102,34 +102,5 @@ TEST_CASE("edges test", "[mesh]")  {
     sedges.init_from_seed(seed);
     logger.info("seed_init:\n{}", sedges.info_string("QuadRectSeed"));
   }
-//   SECTION("CircularPlaneGeometry") {
-//     const Real p0[2] = {0,0.5};
-//     const Real p1[2] = {-0.5,0};
-//     const Real p6[2] = {-1,0};
-//
-//     Coords<CircularPlaneGeometry> udcrds(8);
-//     udcrds.insert_host(p0);
-//     udcrds.insert_host(p1);
-//     udcrds.insert_host(p6);
-//     Coords<CircularPlaneGeometry> udlagcrds(8);
-//     udlagcrds.insert_host(p0);
-//     udlagcrds.insert_host(p1);
-//     udlagcrds.insert_host(p6);
-//     Edges edges(6);
-//     const Index e0[4] = {0,1,0,1};
-//     const Index e11[4] = {2,1,1,2};
-//     edges.insert_host(e0[0], e0[1], e0[2], e0[3]);
-//     edges.insert_host(e11[0], e11[1], e11[2], e11[3]);
-//     edges.divide<CircularPlaneGeometry>(0, udcrds, udlagcrds);
-//     std::cout << edges.info_string("edges after radial divide", 0, true);
-//     Real rmidpt[2];
-//     for (int i=0; i<2; ++i) rmidpt[i] = udcrds.get_crd_component_host(3,i);
-//     REQUIRE(FloatingPoint<Real>::equiv(CircularPlaneGeometry::mag(rmidpt), 0.5));
-//
-//     edges.divide<CircularPlaneGeometry>(1, udcrds, udlagcrds);
-//     std::cout << edges.info_string("edges after axial divide", 0, true);
-//     std::cout << udcrds.info_string("crds after 2 divides", 0, true);
-//
-//   }
 
 }

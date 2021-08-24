@@ -18,6 +18,7 @@ add_library(lpm
                 lpm_comm.cpp
                 lpm_coords.cpp
                 lpm_field.cpp
+                lpm_bve_sphere.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
@@ -59,6 +60,7 @@ install(FILES LpmConfig.h
               lpm_geometry.hpp
               lpm_coords.hpp
               lpm_vtk_io.hpp
+              lpm_bve_sphere.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
@@ -75,14 +77,6 @@ install(FILES LpmConfig.h
               util/ekat_units.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
-              LpmCoords.hpp LpmEdges.hpp LpmFaces.hpp
-              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
-              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
-              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
-              LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
-              LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
-              LpmBVERK4.hpp LpmBVERK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
-              LpmNetCDF.hpp LpmSWEGallery.hpp
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)
 

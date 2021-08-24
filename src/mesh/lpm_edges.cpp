@@ -1,6 +1,6 @@
 #include "lpm_edges.hpp"
 #include <algorithm>
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 
 #ifdef LPM_HAVE_NETCDF
 #include "LpmNetCDF.hpp"

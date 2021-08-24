@@ -1,83 +1,105 @@
 #ifndef LPM_BVE_SPHERE_HPP
 #define LPM_BVE_SPHERE_HPP
+
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmUtilities.hpp"
-#include "LpmPolyMesh2d.hpp"
-#include "LpmGeometry.hpp"
+#include "lpm_geometry.hpp"
+#include "mesh/lpm_mesh_seed.hpp"
+#include "mesh/lpm_polymesh2d.hpp"
+#include "vtk/lpm_vtk_io.hpp"
+#include "vtk/lpm_vtk_io_impl.hpp"
+
 #include "Kokkos_Core.hpp"
-#include "LpmBVEKernels.hpp"
-#include "LpmVorticityGallery.hpp"
-#include "LpmPolyMesh2dVtkInterface.hpp"
-#include "LpmPolyMesh2dVtkInterface_Impl.hpp"
+
 #include <vector>
 #include <sstream>
 
 namespace Lpm {
 
+/** @brief Barotropic Vorticity Equation Solver: meshed particles class
+
+
+*/
 template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
     public:
+        static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
+          "Spherical mesh seed required.");
+
         typedef scalar_view_type scalar_field;
         typedef ko::View<Real*[3],Dev> vector_field;
+        typedef SeedType seed_type;
+        typedef typename SeedType::geo Geo;
+        typedef typename SeedType::faceKind FaceType;
+        typedef Coords<Geo> coords_type;
+        typedef std::shared_ptr<Coords<Geo>> coords_ptr;
 
-        scalar_field relVortVerts;
-        scalar_field absVortVerts;
-        scalar_field streamFnVerts;
-        vector_field velocityVerts;
+        scalar_field rel_vort_verts; /// relative vorticity, passive particles [1/time]
+        scalar_field abs_vort_verts; /// absolute vorticity, passive particles [1/time]
+        scalar_field stream_fn_verts; /// stream function, passive particles [length^2/time]
+        vector_field velocity_verts; /// velocity, passive particles [length/time]
 
-        scalar_field relVortFaces;
-        scalar_field absVortFaces;
-        scalar_field streamFnFaces;
-        vector_field velocityFaces;
-        n_view_type ntracers;
+        scalar_field rel_vort_faces;  /// relative vorticity, active particles
+        scalar_field abs_vort_faces;  /// absolute vorticity, active particles
+        scalar_field stream_fn_faces; /// stream function, active particles
+        vector_field velocity_faces; /// velocity, active particles
+        n_view_type ntracers; /// number of passive tracers
 
-        Real Omega;
-        Real t;
+        Real Omega; /// background rotation rate of sphere about positive z-axis
+        Real t; /// time
 
-        std::vector<scalar_field> tracer_verts;
-        std::vector<scalar_field> tracer_faces;
+        std::vector<scalar_field> tracer_verts; /// passive tracers at passive particles
+        std::vector<scalar_field> tracer_faces; /// passive tracers at active particles
 
+        /** @brief Constructor.  Allocates memory; does not initialize problem data.
+
+          @param [in] nmaxverts: number of vertices to should be allocate
+          @param [in] nmaxedges: number of edges to allocate
+          @param [in] nmaxfaces: number of faces to allocate
+          @param [in] nq: number of passive tracers to allocate
+        */
         BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const Int nq=0);
 
-        void init_vorticity(const VorticityInitialCondition::ptr relvort);
+        /** @breif Initialize vorticity on all particles.
 
-        void outputVtk(const std::string& fname) const override;
+          @param relvort: relative vorticity functor.
+        */
+        template <typename VorticityInitialCondition>
+        void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
-        void updateDevice() const override;
-        void updateHost() const override;
+        void update_device() const override;
+
+        void update_host() const override;
 
         void set_omega(const Real& omg);
-
-        Short create_tracer(const std::string& name);
 
         Real avg_mesh_size_radians() const;
 
         Real avg_mesh_size_degrees() const;
-
-        void addFieldsToVtk(Polymesh2dVtkInterface<SeedType>& vtk) const;
 
     protected:
         typedef typename scalar_field::HostMirror scalar_host;
         typedef typename vector_field::HostMirror vector_host;
         typedef typename n_view_type::HostMirror n_host;
 
-        n_host _hostntracers;
+        n_host _host_ntracers;
 
-        scalar_host _hostRelVortVerts;
-        scalar_host _hostAbsVortVerts;
-        scalar_host _hostStreamFnVerts;
-        vector_host _hostVelocityVerts;
+        scalar_host _host_rel_vort_verts;
+        scalar_host _host_abs_vort_verts;
+        scalar_host _host_stream_fn_verts;
+        vector_host _host_velocity_verts;
 
-        scalar_host _hostRelVortFaces;
-        scalar_host _hostAbsVortFaces;
-        scalar_host _hostStreamFnFaces;
-        vector_host _hostVelocityFaces;
+        scalar_host _host_rel_vort_faces;
+        scalar_host _host_abs_vort_faces;
+        scalar_host _host_stream_fn_faces;
+        vector_host _host_velocity_faces;
 
-        std::vector<scalar_host> _hostTracerVerts;
-        std::vector<scalar_host> _hostTracerFaces;
+        std::vector<scalar_host> _host_tracer_verts;
+        std::vector<scalar_host> _host_tracer_faces;
 
         bool omg_set;
 };
+
+template <typename SeedType>
+void output_vtk(const std::shared_ptr<BVESphere<SeedType>> bve, const std::string& fname);
 
 }
 #endif

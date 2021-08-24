@@ -3,6 +3,10 @@
 
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
+#ifdef LPM_USE_BOOST
+#include "boost/math/special_functions/bessel.hpp"
+#include "boost/math/special_functions/legendre.hpp"
+#endif
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -33,6 +37,24 @@ using std::max;
 using std::max_element;
 #endif
 using std::abs;
+
+#ifdef LPM_USE_BOOST
+KOKKOS_INLINE_FUNCTION
+Real cyl_bessel_j(const int j, const Real x) {
+  return boost::math::cyl_bessel_j<int, Real>(j, x);
+}
+
+KOKKOS_INLINE_FUNCTION
+Real legendre_p(const int l, const Real z) {
+  return boost::math::legendre_p<Real>(l, z);
+}
+
+KOKKOS_INLINE_FUNCTION
+Real legendre_p(const int l, const int m, const Real z) {
+  return boost::math::legendre_p<Real>(l,m,z);
+}
+#endif
+
 
 /// Inverse tangent with quadrant information, but with output range in [0, 2*pi) instead of (-pi, pi]
 KOKKOS_INLINE_FUNCTION
@@ -81,7 +103,7 @@ template <typename T> KOKKOS_INLINE_FUNCTION
 void quadratic_roots(T& r1, T& r2, const T a, const T b, const T c) {
   static_assert(std::is_floating_point<T>::value, "quadratic formula: floating point type required.");
   const T two_a = 2*a;
-  const T discrim = b*b - 4*a*c;
+  T discrim = b*b - 4*a*c;
   if (abs(discrim) <= constants::ZERO_TOL) {
     discrim = 0;
   }

@@ -34,6 +34,8 @@ CreateUnitTest(mesh_seed lpm_mesh_seed_tests.cpp)
 
 CreateUnitTest(coords_test lpm_coords_test.cpp)
 
+CreateUnitTest(math_test lpm_math_tests.cpp)
+
 CreateUnitTest(vertices_test lpm_vertices_tests.cpp)
 
 CreateUnitTest(edges_test lpm_edges_tests.cpp)

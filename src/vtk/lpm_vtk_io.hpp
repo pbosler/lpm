@@ -36,6 +36,8 @@ template <typename SeedType> class VtkPolymeshInterface {
     VtkPolymeshInterface(const std::shared_ptr<PolyMesh2d<SeedType>> pm,
       const typename scalar_view_type::HostMirror height_field);
 
+    VtkPolymeshInterface(const PolyMesh2d<SeedType>* pm);
+
     void write(const std::string& ofilename);
 
     void update_positions();
