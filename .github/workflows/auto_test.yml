@@ -1,0 +1,109 @@
+name: auto_test
+
+# This action is triggered:
+# 1. when someone creates a pull request for a merge to the main branch
+# 2. when changes are merged into the main branch (via a pull request)
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Below are jobs, each of which runs sequentially.
+jobs:
+  # This job builds LPM and runs our test suite.
+  build:
+    # A build matrix storing all desired configurations.
+    strategy:
+      matrix:
+        os: [ubuntu-latest] #, macos-latest]
+        build-type: [Debug, RelWithDebInfo]
+        fp-precision: [double] #, single]
+
+    runs-on: ${{ matrix.os }}
+
+    # Pre-fab container with third-party libs installed.
+    container: pbosler/lpm-tpl:latest
+
+    # Environment variables
+    env:
+      CC: mpicc
+      CXX: mpicxx
+      YAMLCPP_LIBRARY_DIR: /yaml-cpp/lib
+      YAMLCPP_INCLUDE_DIR: /yaml-cpp/include
+      YAMLCPP_LIBRARY: /yaml-cpp/lib/libyaml-cpp.a
+      HDF5_LIBRARY_DIR: /hdf5/lib
+      HDF5_INCLUDE_DIR: /hdf5/include
+      HDF5_LIBRARY: /hdf5/lib/libhdf5.a
+      HDF5_HL_LIBRARY: /hdf5/lib/libhdf5_hl.a
+      NETCDF_INCLUDE_DIR: /netcdf-c/include
+      NETCDF_LIBRARY_DIR: /netcdf-c/lib
+      NETCDF_LIBRARY: /netcdf-c/lib/libnetcdf.a
+      SPDLOG_LIBRARY_DIR: /spdlog/lib
+      SPDLOG_INCLUDE_DIR: /spdlog/include
+      SPDLOG_LIBRARY: /spdlog/lib/libspdlog.a
+      TRILINOS_INCLUDE_DIR: /trilinos/include
+      TRILINOS_LIBRARY_DIR: /trilinos/lib
+      TRILINOS_TPL_INCLUDE_DIR: /trilinos/include
+      TRILINOS_TPL_LIBRARY_DIR: /trilinos/lib
+      VTK_INCLUDE_DIR: /vtk/include
+      VTK_LIBRARY_DIR: /vtk/lib
+      DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
+      DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
+
+    # Steps for building and running tests.
+    steps:
+    - name: Checking out repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Configuring lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        ./setup build
+        cd build
+        cmake \
+          -DCMAKE_INSTALL_PREFIX=`pwd`/build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+          -DCMAKE_CXX_COMPILER=mpicxx \
+          -DCMAKE_C_COMPILER=mpicc \
+          -DCMAKE_VERBOSE_MAKEFILE=ON \
+          -DLPM_PRECISION=${{ matrix.fp-precision }} \
+          -DLPM_DEVICE=CPU \
+          -DLPM_DEVICE_ARCH=AMDAVX \
+          -DYAMLCPP_LIBRARY_DIR=/yaml-cpp \
+          -DYAMLCPP_LIBRARY=/yaml-cpp/lib/libyaml-cpp.a \
+          -DYAMLCPP_INCLUDE_DIR=/yaml-cpp/include \
+          -DHDF5_LIBRARY_DIR=/hdf5/lib \
+          -DHDF5_LIBRARY=/hdf5/lib/libhdf5.a \
+          -DHDF5_HL_LIBRARY=/hdf5/lib/libhdf5_hl.a \
+          -DHDF5_INCLUDE_DIR=/hdf5/include \
+          -DNETCDF_LIBRARY=/netcdf-c/lib/libnetcdf.a \
+          -DNETCDF_INCLUDE_DIR=/netcdf-c/include \
+          -DSPDLOG_LIBRARY_DIR=/spdlog/lib \
+          -DSPDLOG_INCLUDE_DIR=/spdlog/include \
+          -DSPDLOG_LIBRARY=/spdlog/lib/libspdlog.a \
+          -DTRILINOS_INCLUDE_DIR=/trilinos/include \
+          -DTRILINOS_LIBRARY_DIR=/trilinos/lib \
+          -DTRILINOS_TPL_INCLUDE_DIR=/trilinos/include \
+          -DTRILINOS_TPL_LIBRARY_DIR=/trilinos/lib \
+          -DVTK_INCLUDE_DIR=/vtk/include/vtk-8.1 \
+          -DVTK_LIBRARY_DIR=/vtk/lib \
+          -G "Unix Makefiles" \
+          ..
+
+    - name: Building lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make -j
+
+    - name: Running tests (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        ctest -V
+
+    - name: Installing lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+      run: |
+        cd build
+        make install
+

@@ -54,13 +54,12 @@ target_link_libraries(lpm ${LPM_LIBRARIES})
 #    target_link_libraries(lpm spherepack)
 #endif()
 
-install(FILES LpmConfig.h
+install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_comm.hpp
               lpm_logger.hpp
               lpm_geometry.hpp
               lpm_coords.hpp
-              lpm_vtk_io.hpp
-              lpm_bve_sphere.hpp
+              vtk/lpm_vtk_io.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
@@ -77,6 +76,13 @@ install(FILES LpmConfig.h
               util/ekat_units.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
+#              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
+#              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
+#              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
+#              LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
+#              LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
+#              LpmBVERK4.hpp LpmBVERK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
+#              LpmNetCDF.hpp LpmSWEGallery.hpp
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)
 
@@ -87,13 +93,13 @@ install(TARGETS lpm DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main lpm_catch_main.cpp)
-target_link_libraries(lpm_test_main PUBLIC lpm)
+target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS})
 target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/ext/catch2/include
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/ext/catch2/include/catch.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/catch2/)
 

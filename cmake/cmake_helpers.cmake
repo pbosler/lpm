@@ -75,7 +75,7 @@ function(CreateUnitTest target_name target_sources)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
-  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES})
+  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS})
 
   if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
     target_link_libraries(${target_name} PUBLIC lpm_test_main)
@@ -105,6 +105,17 @@ function(CreateUnitTest target_name target_sources)
   endif()
   if (NUM_THREAD_ARGS GREATER 3)
     message(FATAL_ERROR "Too many thread arguments for ${target_name}")
+  endif()
+
+  ###### DANGER ##### #### #### #### #### #### #### #### #### #### #### #### ####
+  # OpenMPI prohibits running as root by default, for good reasons.  But, if you need
+  # to run tests with OpenMPI from a docker image, you have to run as root.
+  #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+  set(mpi_allow_root "")
+  if ($ENV{DOCKER_ALLOW_MPI_RUN_AS_ROOT})
+    if ($ENV{DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM})
+      set(mpi_allow_root "--allow-run-as-root")
+    endif()
   endif()
 
   set(MPI_START_RANK 1)
@@ -184,7 +195,7 @@ function(CreateUnitTest target_name target_sources)
       set (lpmtest_MPI_EXEC_NAME "mpiexec")
     endif()
     if ("${lpmtest_MPI_NP_FLAG}" STREQUAL "")
-      set (lpmtest_MPI_NP_FLAG "-n")
+      set (lpmtest_MPI_NP_FLAG "${mpi_allow_root} -n")
     endif()
   endif()
 
