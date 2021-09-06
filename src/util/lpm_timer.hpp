@@ -2,9 +2,13 @@
 #define LPM_TIMER_HPP
 
 #include "LpmConfig.h"
-
+#ifdef LPM_USE_MPI
+#include <mpi.h>
+#endif
+#include "Kokkos_Core.hpp"
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <string>
 
 namespace Lpm {
 
@@ -24,21 +28,29 @@ static double toc (const timeval& t1) {
   gettimeofday(&t, 0);
   return calc_et(t1, t);
 }
-static double get_memusage () {
-  static const double scale = 1.0 / (1 << 10); // Memory in MB.
-  rusage ru;
-  getrusage(RUSAGE_SELF, &ru);
-  return ru.ru_maxrss*scale;
-}
-static void print_times (const std::string& name, const double* const parts,
-                         const int nparts) {
-  double total = 0; for (int i = 0; i < nparts; ++i) total += parts[i];
-  printf("%20s %1.3e s %7.1f MB", name.c_str(), total, get_memusage());
-  for (int i = 0; i < nparts; ++i) printf(" %1.3e s", parts[i]);
-  printf("\n");
-}
-static void print_times (const std::string& name, const double total) {
-   printf("%20s %1.3e s %5.1f MB\n", name.c_str(), total, get_memusage());
+
+#ifdef LPM_USE_MPI
+
+struct Timer {
+    Timer(const std::string& name="") : _name(name), _start(0), _end(0) {}
+
+    inline void start() {_start = MPI_Wtime();}
+
+    inline void stop() {_end = MPI_Wtime(); _elap = _end - _start;}
+
+    inline Real elapsed() const {return _elap;}
+
+    std::string info_string() const;
+
+  private:
+    Real _start;
+    Real _end;
+    Real _elap;
+    std::string _name;
+
+};
+
+#endif // MPI
 
 } // namespace Lpm
 

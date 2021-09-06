@@ -30,6 +30,7 @@ add_library(lpm
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
+                util/lpm_timer.cpp
 
 #    LpmPolyMesh2d.cpp LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
@@ -76,6 +77,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/ekat_units.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
+
 #              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
 #              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
 #              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp

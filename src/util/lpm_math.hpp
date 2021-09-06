@@ -119,6 +119,13 @@ void quadratic_roots(T& r1, T& r2, const T a, const T b, const T c) {
   }
 }
 
+/// square a scalar
+template <typename T=Real> KOKKOS_INLINE_FUNCTION
+T square(const T& x) {
+  static_assert(std::is_arithmetic<T>::value, "square: arithmetic type required.");
+  return x*x;
+}
+
 /** safely divide by a real number
 
   @f$ \frac{1}{x} = \lim_{\epsilon \to 0} \frac{x}{x^2 + \epsilon^2} @f$
@@ -130,12 +137,7 @@ void quadratic_roots(T& r1, T& r2, const T a, const T b, const T c) {
 template <typename T=Real> KOKKOS_INLINE_FUNCTION
 T safe_divide(const T& x, const T& eps=1E-13) {return x/(square(x) + square(eps));}
 
-/// square a scalar
-template <typename T=Real> KOKKOS_INLINE_FUNCTION
-T square(const T& x) {
-  static_assert(std::is_arithmetic<T>::value, "square: arithmetic type required.");
-  return x*x;
-}
+
 /// sgn function
 template <typename T=Real> KOKKOS_INLINE_FUNCTION
 T sign(const T& a) {
