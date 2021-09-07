@@ -3,12 +3,14 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_sphere_functions.hpp"
 #include "lpm_bve_sphere.hpp"
 #include "lpm_bve_sphere_impl.hpp"
 #include "lpm_bve_sphere_kernels.hpp"
 #include "lpm_vorticity_gallery.hpp"
 // #include "lpm_bve_rk4.hpp"
 #include "util/lpm_timer.hpp"
+#include "util/lpm_filename.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "vtk/lpm_vtk_io.hpp"
@@ -79,38 +81,80 @@ int main (int argc, char* argv[]) {
     Index nmaxfaces;
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
 
-    /** Build the particle/panel mesh
-      */
+    /**
+    Build the particle/panel mesh
+    */
+    const std::vector<std::string> tracer_names = {"u_dot_x",
+      "vorticity_error"};
     auto sphere = std::shared_ptr<BVESphere<seed_type>>(new
-      BVESphere<seed_type>(nmaxverts, nmaxedges, nmaxfaces));
+      BVESphere<seed_type>(nmaxverts, nmaxedges, nmaxfaces, tracer_names));
     sphere->tree_init(input.init_depth, seed);
     sphere->update_device();
 
     sphere->set_omega(0);
     SolidBodyRotation relvort;
     sphere->init_vorticity(relvort);
-
+    sphere->init_velocity();
+    sphere->init_stream_fn();
     logger.info(sphere->info_string());
+    const Real cr = courant_number(input.dt, sphere->appx_mesh_size());
+    if (cr > 0.5 ) {
+      logger.warn("courant number {} exceeds 0.5", cr);
+    }
+    else {
+      logger.info("courant number: {}", cr);
+    }
 
-//
-//     const auto dotprod_ind = sphere->create_tracer("u dot x");
-//     ko::parallel_for(sphere->nvertsHost(), SphereVelocityTangentTestFunctor(sphere->tracer_verts[0],
-//       sphere->physVerts.crds, sphere->velocityVerts));
-//     ko::parallel_for(sphere->nfacesHost(), SphereVelocityTangentTestFunctor(sphere->tracer_faces[0],
-//       sphere->physFaces.crds, sphere->velocityFaces));
-//     const auto vorticity_err_ind = sphere->create_tracer("abs(vorticity_error)");
-//
-//     logger.info("courant number: {}", courant_number(input.dt, sphere->appx_mesh_size());
-//
-//     ko::View<Real*[3]> vert_velocity_error("vertex_velocity_error", sphere->nvertsHost());
-//     ko::View<Real*[3]> face_velocity_error("face_velocity_error", sphere->nfacesHost());
-//     ko::View<Real*[3]> vert_position_error("vertex_position_error", sphere->nvertsHost());
-//     ko::View<Real*[3]> face_position_error("face_position_error", sphere->nfacesHost());
-//
-//     const Real tfinal = input.tfinal;
-//     const Int ntimesteps = std::floor(tfinal/input.dt);
-//     const Real dt = tfinal/ntimesteps;
-//     const Real Omega = 2*PI;
+    ko::View<Real*[3]> vert_velocity_error("vertex_velocity_error", sphere->n_vertices_host());
+    ko::View<Real*[3]> face_velocity_error("face_velocity_error", sphere->n_faces_host());
+    ko::View<Real*[3]> vert_position_error("vertex_position_error", sphere->n_vertices_host());
+    ko::View<Real*[3]> face_position_error("face_position_error", sphere->n_faces_host());
+    ko::View<Real*> vert_streamfn_error("vertex_streamfn_error", sphere->n_vertices_host());
+    ko::View<Real*> face_streamfn_error("face_streamfn_error", sphere->n_faces_host());
+
+    const auto vertx = sphere->vertices.phys_crds->crds;
+    const auto facex = sphere->faces.phys_crds->crds;
+    const auto vert_vel = sphere->velocity_verts;
+    const auto face_vel = sphere->velocity_faces;
+    const auto OMG = SolidBodyRotation::OMEGA;
+    const auto vert_absvort = sphere->abs_vort_verts;
+    const auto face_absvort = sphere->abs_vort_faces;
+    const auto vert_relvort = sphere->rel_vort_verts;
+    const auto face_relvort = sphere->rel_vort_faces;
+
+    Kokkos::parallel_for(sphere->n_vertices_host(), KOKKOS_LAMBDA (const Index i) {
+      const auto mxyz = Kokkos::subview(vertx, i, Kokkos::ALL);
+      const auto muvw = Kokkos::subview(vert_vel, i, Kokkos::ALL);
+      vert_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
+      vert_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
+      vert_velocity_error(i, 2) = -muvw(2);
+    });
+
+    Kokkos::parallel_for(sphere->n_faces_host(), KOKKOS_LAMBDA (const Index i) {
+      const auto mxyz = Kokkos::subview(facex, i, Kokkos::ALL);
+      const auto muvw = Kokkos::subview(face_vel, i, Kokkos::ALL);
+      face_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
+      face_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
+      face_velocity_error(i, 2) = -muvw(2);
+    });
+
+    BaseFilename<seed_type> fname(input.case_name, input.init_depth, input.dt);
+
+    {
+      int frame = 0;
+      const std::string vtkfname = fname(frame) + fname.vtk_suffix();
+      logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
+      VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+      vtk.add_vector_point_data(vert_velocity_error, "velocity_error");
+      vtk.add_vector_cell_data(face_velocity_error, "velocity_error");
+      vtk.write(vtkfname);
+    }
+
+
+    const Real tfinal = input.tfinal;
+    const Int ntimesteps = std::floor(tfinal/input.dt);
+    const Real dt = tfinal/ntimesteps;
+    const Real Omega = 2*constants::PI;
 //     BVERK4 solver(dt, Omega);
 //     solver.init(sphere->nvertsHost(), sphere->nfacesHost());
 //     auto vertex_policy = ko::TeamPolicy<>(solver.nverts, ko::AUTO());

@@ -58,12 +58,26 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
         */
         BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const Int nq=0);
 
+         /** @brief Constructor.  Allocates memory; does not initialize problem data.
+
+          @param [in] nmaxverts: number of vertices to should be allocate
+          @param [in] nmaxedges: number of edges to allocate
+          @param [in] nmaxfaces: number of faces to allocate
+          @param [in] tracers names of passive tracers to allocate
+        */
+        BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const
+          std::vector<std::string>& tracers);
+
         /** @breif Initialize vorticity on all particles.
 
           @param relvort: relative vorticity functor.
         */
         template <typename VorticityInitialCondition>
         void init_vorticity(const VorticityInitialCondition& vorticity_fn);
+
+        void init_velocity();
+
+        void init_stream_fn();
 
         void update_device() const override;
 
@@ -99,7 +113,7 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
 };
 
 template <typename SeedType>
-void output_vtk(const std::shared_ptr<BVESphere<SeedType>> bve, const std::string& fname);
+VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<SeedType>> bve);
 
 }
 #endif

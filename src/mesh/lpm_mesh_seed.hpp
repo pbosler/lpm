@@ -53,6 +53,7 @@ struct QuadRectSeed {
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "quadRectSeed.dat";}
   static std::string id_string() {return "QuadRectSeed";}
+  static std::string id() {return "qrect";}
   static std::string face_str() {return "quad";}
   static Index n_faces_at_tree_level(const Int lev);
   static Index n_vertices_at_tree_level(const Int lev);
@@ -73,6 +74,7 @@ struct TriHexSeed {
   static constexpr Int vertex_degree = 6;
   static std::string filename() {return "triHexSeed.dat";}
   static std::string id_string() {return "TriHexSeed";}
+  static std::string id() {return "trihex";}
   static std::string face_str() {return "tri";}
   static Index n_faces_at_tree_level(const Int lev);
   static Index n_vertices_at_tree_level(const Int lev);
@@ -93,6 +95,7 @@ struct UnitDiskSeed {
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "unitDiskSeed.dat";}
   static std::string id_string() {return "UnitDiskSeed";}
+  static std::string id() {return "disk";}
   static std::string face_str() {return "quad";}
   static Index n_faces_at_tree_level(const Int lev);
   static Index n_vertices_at_tree_level(const Int lev);
@@ -113,6 +116,7 @@ struct CubedSphereSeed {
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "cubedSphereSeed.dat";}
   static std::string id_string() {return "CubedSphereSeed";}
+  static std::string id() {return "cbsph";}
   static std::string face_str() {return "quad";}
   static Index n_faces_at_tree_level(const Int lev);
   static Index n_vertices_at_tree_level(const Int lev);
@@ -134,6 +138,7 @@ struct IcosTriSphereSeed {
   static std::string filename() {return "icosTriSphereSeed.dat";}
   static std::string id_string() {return "IcosTriSphereSeed";}
   static std::string face_str() {return "tri";}
+  static std::string id() {return "icosph";}
   static Index n_faces_at_tree_level(const Int lev);
   static Index n_vertices_at_tree_level(const Int lev);
   static Index n_edges_at_tree_level(const Index nv, const Index nf);

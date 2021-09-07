@@ -8,5 +8,4 @@ namespace Lpm {
 template class BVESphere<IcosTriSphereSeed>;
 template class BVESphere<CubedSphereSeed>;
 
-template void output_vtk(const std::shared_ptr<BVESphere<CubedSphereSeed>>, const std::string& fname);
 }

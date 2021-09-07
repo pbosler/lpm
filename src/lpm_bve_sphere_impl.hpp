@@ -1,5 +1,6 @@
 #include "lpm_bve_sphere.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_bve_sphere_kernels.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
@@ -49,6 +50,46 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges, con
     }
   }
 
+template <typename SeedType>
+BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const std::vector<std::string>& tracers) :
+  PolyMesh2d<SeedType>(nmaxverts, nmaxedges, nmaxfaces),
+  rel_vort_verts("rel_vort_verts", nmaxverts),
+  abs_vort_verts("abs_vort_verts",nmaxverts),
+  stream_fn_verts("stream_fn_verts", nmaxverts),
+  velocity_verts("velocity_verts", nmaxverts),
+  rel_vort_faces("rel_vort_faces", nmaxfaces),
+  abs_vort_faces("abs_vort_faces", nmaxfaces),
+  stream_fn_faces("stream_fn_faces", nmaxfaces),
+  velocity_faces("velocity_faces", nmaxfaces),
+  ntracers("ntracers"),
+  tracer_verts(tracers.size()), _host_tracer_verts(tracers.size()),
+  tracer_faces(tracers.size()), _host_tracer_faces(tracers.size()),
+  Omega(2*constants::PI),
+  omg_set(false)
+  {
+    const int nq = tracers.size();
+    ntracers() = nq;
+    _host_ntracers = ko::create_mirror_view(ntracers);
+    _host_ntracers() = nq;
+    _host_rel_vort_verts = ko::create_mirror_view(rel_vort_verts);
+    _host_abs_vort_verts = ko::create_mirror_view(abs_vort_verts);
+    _host_stream_fn_verts = ko::create_mirror_view(stream_fn_verts);
+    _host_velocity_verts = ko::create_mirror_view(velocity_verts);
+    _host_rel_vort_faces = ko::create_mirror_view(rel_vort_faces);
+    _host_abs_vort_faces = ko::create_mirror_view(abs_vort_faces);
+    _host_stream_fn_faces = ko::create_mirror_view(stream_fn_faces);
+    _host_velocity_faces = ko::create_mirror_view(velocity_faces);
+
+    std::ostringstream ss;
+    for (int k=0; k<tracers.size(); ++k) {
+      tracer_verts[k] = scalar_field(tracers[k], nmaxverts);
+      tracer_faces[k] = scalar_field(tracers[k], nmaxfaces);
+      ss.str("");
+      _host_tracer_verts[k] = ko::create_mirror_view(tracer_verts[k]);
+      _host_tracer_faces[k] = ko::create_mirror_view(tracer_faces[k]);
+    }
+  }
+
 
 template <typename SeedType>
 void BVESphere<SeedType>::update_device() const {
@@ -81,8 +122,9 @@ void BVESphere<SeedType>::update_host() const {
 }
 
 template <typename SeedType>
-void output_vtk(const std::shared_ptr<BVESphere<SeedType>> bve, const std::string& fname) {
-    VtkPolymeshInterface<SeedType> vtk(bve);
+VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<SeedType>> bve) {
+    std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(bve);
+    VtkPolymeshInterface<SeedType> vtk(base_ptr);
     vtk.add_scalar_point_data(bve->rel_vort_verts, "rel_vort");
     vtk.add_scalar_point_data(bve->abs_vort_verts, "abs_vort");
     vtk.add_scalar_point_data(bve->stream_fn_verts, "stream_fn");
@@ -97,7 +139,7 @@ void output_vtk(const std::shared_ptr<BVESphere<SeedType>> bve, const std::strin
       vtk.add_scalar_point_data(bve->tracer_verts[i], bve->tracer_verts[i].label());
       vtk.add_scalar_cell_data(bve->tracer_faces[i], bve->tracer_faces[i].label());
     }
-    vtk.write(fname);
+    return vtk;
 }
 
 template <typename SeedType>
@@ -150,5 +192,44 @@ void BVESphere<SeedType>::init_vorticity(const VorticityInitialCondition& vortic
   Kokkos::deep_copy(_host_abs_vort_verts, abs_vort_verts);
   Kokkos::deep_copy(_host_abs_vort_faces, abs_vort_faces);
 }
+
+template <typename SeedType>
+void BVESphere<SeedType>::init_velocity() {
+  ko::TeamPolicy<> vertex_policy(this->n_vertices_host(), ko::AUTO());
+  ko::TeamPolicy<> face_policy(this->n_faces_host(), ko::AUTO());
+
+  Kokkos::Profiling::pushRegion("BVESphere::init_velocity");
+
+  Kokkos::parallel_for("BVESphere::init_velocity_vertices", vertex_policy,
+    BVEVertexVelocity(velocity_verts, this->vertices.phys_crds->crds,
+      this->faces.phys_crds->crds, rel_vort_faces, this->faces.area, this->faces.mask,
+      this->n_faces_host()));
+
+  Kokkos::parallel_for("BVESphere::init_velocity_faces", face_policy,
+    BVEFaceVelocity(velocity_faces, this->faces.phys_crds->crds, rel_vort_faces,
+    this->faces.area, this->faces.mask, this->n_faces_host()));
+
+  Kokkos::Profiling::popRegion();
+}
+
+template <typename SeedType>
+void BVESphere<SeedType>::init_stream_fn() {
+  ko::TeamPolicy<> vertex_policy(this->n_vertices_host(), ko::AUTO());
+  ko::TeamPolicy<> face_policy(this->n_faces_host(), ko::AUTO());
+
+  Kokkos::Profiling::pushRegion("BVESphere::init_stream_fn");
+
+  Kokkos::parallel_for("BVESphere::init_stream_fn_vertices", vertex_policy,
+    BVEVertexStreamFn(stream_fn_verts, this->vertices.phys_crds->crds,
+      this->faces.phys_crds->crds, rel_vort_faces, this->faces.area,
+      this->faces.mask, this->n_faces_host()));
+
+  Kokkos::parallel_for("BVESphere::init_stream_fn_faces", face_policy,
+    BVEFaceStreamFn(stream_fn_faces, this->faces.phys_crds->crds,
+      rel_vort_faces, this->faces.area, this->faces.mask, this->n_faces_host()));
+
+  Kokkos::Profiling::popRegion();
+}
+
 
 }
