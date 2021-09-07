@@ -8,7 +8,8 @@
 #include "lpm_bve_sphere_impl.hpp"
 #include "lpm_bve_sphere_kernels.hpp"
 #include "lpm_vorticity_gallery.hpp"
-// #include "lpm_bve_rk4.hpp"
+#include "lpm_bve_rk4.hpp"
+#include "lpm_bve_rk4_impl.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_filename.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
@@ -55,10 +56,9 @@ int main (int argc, char* argv[]) {
 
   Input input(argc, argv);
   if (input.help_and_exit) {
+    std::cout << input.usage();
     return 1;
   }
-
-  logger.info(input.usage());
   logger.info(input.info_string());
 
   ko::initialize(argc, argv);
@@ -109,8 +109,8 @@ int main (int argc, char* argv[]) {
     ko::View<Real*[3]> face_velocity_error("face_velocity_error", sphere->n_faces_host());
     ko::View<Real*[3]> vert_position_error("vertex_position_error", sphere->n_vertices_host());
     ko::View<Real*[3]> face_position_error("face_position_error", sphere->n_faces_host());
-    ko::View<Real*> vert_streamfn_error("vertex_streamfn_error", sphere->n_vertices_host());
-    ko::View<Real*> face_streamfn_error("face_streamfn_error", sphere->n_faces_host());
+    ko::View<Real*> vert_stream_fn_error("vertex_streamfn_error", sphere->n_vertices_host());
+    ko::View<Real*> face_stream_fn_error("face_streamfn_error", sphere->n_faces_host());
 
     const auto vertx = sphere->vertices.phys_crds->crds;
     const auto facex = sphere->faces.phys_crds->crds;
@@ -121,6 +121,8 @@ int main (int argc, char* argv[]) {
     const auto face_absvort = sphere->abs_vort_faces;
     const auto vert_relvort = sphere->rel_vort_verts;
     const auto face_relvort = sphere->rel_vort_faces;
+    const auto vert_stream_fn = sphere->stream_fn_verts;
+    const auto face_stream_fn = sphere->stream_fn_faces;
 
     Kokkos::parallel_for(sphere->n_vertices_host(), KOKKOS_LAMBDA (const Index i) {
       const auto mxyz = Kokkos::subview(vertx, i, Kokkos::ALL);
@@ -128,6 +130,7 @@ int main (int argc, char* argv[]) {
       vert_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
       vert_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
       vert_velocity_error(i, 2) = -muvw(2);
+      vert_stream_fn_error(i) = vert_stream_fn(i) - 2*constants::PI*mxyz(2);
     });
 
     Kokkos::parallel_for(sphere->n_faces_host(), KOKKOS_LAMBDA (const Index i) {
@@ -136,6 +139,7 @@ int main (int argc, char* argv[]) {
       face_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
       face_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
       face_velocity_error(i, 2) = -muvw(2);
+      face_stream_fn_error(i) = face_stream_fn(i) - 2*constants::PI*mxyz(2);
     });
 
     BaseFilename<seed_type> fname(input.case_name, input.init_depth, input.dt);
@@ -145,8 +149,12 @@ int main (int argc, char* argv[]) {
       const std::string vtkfname = fname(frame) + fname.vtk_suffix();
       logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
       VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+      vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
+      vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
       vtk.add_vector_point_data(vert_velocity_error, "velocity_error");
       vtk.add_vector_cell_data(face_velocity_error, "velocity_error");
+      vtk.add_vector_point_data(vert_position_error, "position_error");
+      vtk.add_vector_cell_data(face_position_error, "position_error");
       vtk.write(vtkfname);
     }
 
@@ -154,44 +162,8 @@ int main (int argc, char* argv[]) {
     const Real tfinal = input.tfinal;
     const Int ntimesteps = std::floor(tfinal/input.dt);
     const Real dt = tfinal/ntimesteps;
-    const Real Omega = 2*constants::PI;
-//     BVERK4 solver(dt, Omega);
-//     solver.init(sphere->nvertsHost(), sphere->nfacesHost());
-//     auto vertex_policy = ko::TeamPolicy<>(solver.nverts, ko::AUTO());
-//     auto face_policy = ko::TeamPolicy<>(solver.nfaces, ko::AUTO());
-//     const Real dlam = sphere->avg_mesh_size_radians();
-//     const Real cr = courant_number(dt, dlam);
-//     std::cout << "Solid body rotation test\n";
-//     std::cout << sphere->infoString();
-//     std::cout << "\tavg mesh size = " << RAD2DEG * dlam << " degrees\n";
-//     std::cout << "\tdt = " << dt << "\n";
-//     std::cout << "\tcr. = " << cr << "\n";
-//     if (cr > 0.5) {
-//       std::ostringstream ss;
-//       ss << "** warning ** cr = " << cr << " ; usually cr <= 0.5 is required.\n";
-//       std::cout << ss.str();
-//     }
-//     std::cout << "\ttfinal = " << tfinal << "\n";
-//
-//     Timer output_timer("output");
-//     output_timer.start();
-//     {
-//       std::ostringstream ss;
-//       Polymesh2dVtkInterface<seed_type> vtk(sphere);
-//       sphere->addFieldsToVtk(vtk);
-//       vtk.addVectorPointData(vert_velocity_error);
-//       vtk.addVectorPointData(vert_position_error);
-//       vtk.addVectorCellData(face_velocity_error);
-//       vtk.addVectorCellData(face_position_error);
-//
-//       ss << "tmp/" << input.case_name << seed_type::faceStr() << input.init_depth << "_dt" << dt << "_" << "0000.vtp";
-//       vtk.write(ss.str());
-//     }
-//     output_timer.stop();
-//
-//
-//     Timer single_solve_timer("single solve");
-//     single_solve_timer.start();
+    BVERK4 solver(dt, sphere);
+
 //     {
 //
 //       ko::Profiling::pushRegion("initial solve");
@@ -389,7 +361,7 @@ std::string Input::usage() const {
     "whose exact solution is known, then computes error.\n" <<
     "output is written the mesh to data files in 2 formats: \n\tVTK's .vtp format and the NetCDF4 .nc format.\n";
   ss << "\t" << "optional arguments:\n";
-  ss << "\t   " << "-o [output_filename_root] (default: unif_)\n";
+  ss << "\t   " << "-o [output_filename_root] (default: bve_test)\n";
   ss << "\t   " << "-d [nonnegative integer] (default: 3); defines the initial depth of the uniform mesh's face quadtree.\n";
   ss << "\t   " << "-dt [positive real number] (default: 0.01) time step size.\n";
   ss << "\t   " << "-tf [positive real number] (default: 1.0) final time of simulation.\n";

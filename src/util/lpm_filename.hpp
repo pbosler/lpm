@@ -33,7 +33,7 @@ struct BaseFilename {
 
   static std::string dt_str(const Real dt) {
     std::ostringstream ss;
-    ss << "_dt" << std::setprecision(dt_digits);
+    ss << "_dt" << std::setprecision(dt_digits) << dt;
     return ss.str();
   }
 

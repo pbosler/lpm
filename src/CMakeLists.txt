@@ -15,10 +15,11 @@ add_custom_target(update_version_info ALL
 
 add_library(lpm
                 ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+                lpm_bve_sphere.cpp
+                lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
                 lpm_field.cpp
-                lpm_bve_sphere.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp

@@ -1,9 +1,9 @@
 #ifndef LPM_RK4_IMPL_HPP
 #define LPM_RK4_IMPL_HPP
 
-#include "LpmBVERK4.hpp"
+#include "lpm_bve_rk4.hpp"
+#include "lpm_assert.hpp"
 #include "KokkosBlas.hpp"
-#include <cassert>
 #include "Kokkos_Core.hpp"
 
 namespace Lpm {
@@ -38,6 +38,18 @@ struct BVERK4Update {
   }
 };
 
+template <typename SeedType>
+void advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph) {
+  return advance_timestep(sph->vertices.phys_crds->crds,
+    sph->rel_vort_verts,
+    sph->velocity_verts,
+    sph->faces.phys_crds->crds,
+    sph->rel_vort_faces,
+    sph->velocity_faces,
+    sph->faces.area,
+    sph->faces.mash);
+}
+
 
 void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& vvel,
       crd_view& fx, scalar_view_type& fzeta, vec_view& fvel, const scalar_view_type& fa, const mask_view_type& fm) {
@@ -59,11 +71,9 @@ void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& v
   facemask = fm;
 
   /// RK Stage 1
-//   KokkosBlas::axpby(dt, vertvel, 0.0, vertx1);
   KokkosBlas::scal(vertx1, dt, vertvel);
   ko::parallel_for("RK4-1 vertex vorticity", nverts, BVEVorticityTendency(vertvort1, vertvel, dt, Omega));
 
-//   KokkosBlas::axpby(dt, facevel, 0.0, facex1);
   KokkosBlas::scal(facex1, dt, facevel);
   ko::parallel_for("RK4-1 face vorticity", nfaces, BVEVorticityTendency(facevort1, facevel, dt, Omega));
 
