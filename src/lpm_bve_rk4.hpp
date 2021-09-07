@@ -44,10 +44,8 @@ class BVERK4 {
     bool is_initialized;
 
     void advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& vvel,
-      crd_view& fx, scalar_view_type& fzeta, vec_view& fvel, const scalar_view_type& fa, const mask_view_type& fm);
-
-
-
+      crd_view& fx, scalar_view_type& fzeta, vec_view& fvel,
+      const scalar_view_type& fa, const mask_view_type& fm);
 
     scalar_view_type facearea;
     mask_view_type facemask;

@@ -3,6 +3,7 @@
 
 #include "lpm_bve_rk4.hpp"
 #include "lpm_assert.hpp"
+#include "lpm_bve_sphere_kernels.hpp"
 #include "KokkosBlas.hpp"
 #include "Kokkos_Core.hpp"
 
@@ -11,6 +12,8 @@ namespace Lpm {
 struct BVERK4Update {
   static constexpr Real sixth = 1.0/6.0;
   static constexpr Real third = 1.0/3.0;
+
+  typedef typename BVERK4::crd_view crd_view;
 
   crd_view x;
   crd_view x1;
@@ -39,7 +42,7 @@ struct BVERK4Update {
 };
 
 template <typename SeedType>
-void advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph) {
+void BVERK4::advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph) {
   return advance_timestep(sph->vertices.phys_crds->crds,
     sph->rel_vort_verts,
     sph->velocity_verts,
@@ -47,7 +50,7 @@ void advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph) {
     sph->rel_vort_faces,
     sph->velocity_faces,
     sph->faces.area,
-    sph->faces.mash);
+    sph->faces.mask);
 }
 
 

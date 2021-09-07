@@ -147,7 +147,9 @@ USE_VTK_GRAPHICS=OFF
 # Choose one of the following.
 
 # Debug executable (debugging symbols, no optimization).
-BUILD_TYPE=Debug
+# BUILD_TYPE=Debug
+
+BUILD_TYPE=RelWithDebInfo
 
 # Release executable (No symbols, optimization).
 #BUILD_TYPE=Release

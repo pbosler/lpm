@@ -19,6 +19,7 @@ add_library(lpm
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
+                lpm_error.cpp
                 lpm_field.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
