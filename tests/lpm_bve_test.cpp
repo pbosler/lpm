@@ -166,7 +166,7 @@ int main (int argc, char* argv[]) {
 
 
     int frame = 0;
-    {
+    if (input.output_interval > 0) {
       /**
       Output initial data
       */
@@ -261,19 +261,21 @@ int main (int argc, char* argv[]) {
 
       ko::Profiling::popRegion();
 
-      if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
-        ko::Profiling::pushRegion("vtk output");
+      if (input.output_interval > 0) {
+        if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
+          ko::Profiling::pushRegion("vtk output");
 
-        const std::string vtkfname = fname(++frame) + fname.vtk_suffix();
-        VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
-        vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
-        vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
-        vtk.add_vector_point_data(vert_velocity_error, "velocity_error");
-        vtk.add_vector_cell_data(face_velocity_error, "velocity_error");
-        vtk.add_vector_point_data(vert_position_error, "position_error");
-        vtk.add_vector_cell_data(face_position_error, "position_error");
-        vtk.write(vtkfname);
-        ko::Profiling::popRegion();
+          const std::string vtkfname = fname(++frame) + fname.vtk_suffix();
+          VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+          vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
+          vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
+          vtk.add_vector_point_data(vert_velocity_error, "velocity_error");
+          vtk.add_vector_cell_data(face_velocity_error, "velocity_error");
+          vtk.add_vector_point_data(vert_position_error, "position_error");
+          vtk.add_vector_cell_data(face_position_error, "position_error");
+          vtk.write(vtkfname);
+          ko::Profiling::popRegion();
+        }
       }
 
         progress.update();
@@ -311,10 +313,10 @@ return 0;
 
 Input::Input(int argc, char* argv[]) {
   dt = 0.01;
-  tfinal = 1.0;
+  tfinal = 0.03;
   case_name = "bve_test";
   init_depth = 3;
-  output_interval = 1;
+  output_interval = 0;
   help_and_exit = false;
   for (Int i=1; i<argc; ++i) {
     const std::string& token = argv[i];
