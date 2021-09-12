@@ -2,16 +2,16 @@
 #define LPM_RK4_HPP
 
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "Kokkos_Core.hpp"
-#include "LpmKokkosUtil.hpp"
-#include "LpmBVEKernels.hpp"
-#include "LpmGeometry.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_bve_sphere.hpp"
 
 namespace Lpm {
 
 class BVERK4 {
   public :
+    typedef SphereGeometry::crd_view_type crd_view;
+    typedef SphereGeometry::vec_view_type vec_view;
+
     crd_view vertx;
     scalar_view_type vertvort;
     vec_view vertvel;
@@ -26,15 +26,27 @@ class BVERK4 {
     Index nverts;
     Index nfaces;
 
-    BVERK4(const Real& timestep, const Real& omg) : dt(timestep), Omega(omg), nverts(0), nfaces(0) {}
+    template <typename SeedType>
+    BVERK4(const Real timestep, std::shared_ptr<BVESphere<SeedType>> sph) :
+      dt(timestep),
+      Omega(sph->Omega),
+      nverts(sph->n_vertices_host()),
+      nfaces(sph->n_faces_host()),
+      is_initialized(false) { init(sph->n_vertices_host(), sph->n_faces_host()); }
 
-    void init(const Index& nv, const Index& nf);
+    template <typename SeedType>
+    void advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph);
 
-    void advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& vvel,
-      crd_view& fx, scalar_view_type& fzeta, vec_view& fvel, const scalar_view_type& fa, const mask_view_type& fm);
-
+    void init(const Index nv, const Index nf);
 
   protected:
+
+    bool is_initialized;
+
+    void advance_timestep(crd_view& vx, scalar_view_type& vzeta, vec_view& vvel,
+      crd_view& fx, scalar_view_type& fzeta, vec_view& fvel,
+      const scalar_view_type& fa, const mask_view_type& fm);
+
     scalar_view_type facearea;
     mask_view_type facemask;
 

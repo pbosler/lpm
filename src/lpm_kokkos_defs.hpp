@@ -38,28 +38,6 @@ typedef ko::View<Index*[4],Dev> quad_tree_view;
 typedef ko::View<bool*,Dev> mask_view_type;
 typedef ko::View<const bool*,Dev> const_mask_view_type;
 
-
-/// Array slices
-#ifdef LPM_HAVE_CUDA
-  /// 1d slice of an array
-  template <typename VT> KOKKOS_FORCEINLINE_FUNCTION
-  ko::View<typename VT::value_type*, ko::LayoutStride, typename VT::device_type, ko::MemoryTraits<ko::Unmanaged>>
-  slice(const VT& v, Int i) {return ko::subview(v, i, ko::ALL());}
-  /// explicitly const 1d slice of an array
-  template <typename VT> KOKKOS_FORCEINLINE_FUNCTION
-  ko::View<typename VT::const_value_type*, ko::LayoutStride, typename VT::device_type, ko::MemoryTraits<ko::Unmanaged>>
-  const_slice(const VT& v, Int i) {return ko::subview(v, i, ko::ALL());}
-#else
-  template <typename VT> KOKKOS_FORCEINLINE_FUNCTION
-  typename VT::value_type*
-  slice(const VT& v, Int i) {return v.data() + v.extent(1)*i;}
-
-  template <typename VT> KOKKOS_FORCEINLINE_FUNCTION
-  typename VT::const_value_type*
-  const_slice(const VT& v, Int i) {return v.data() + v.extent(1)*i;}
-#endif
-
-
 } // namespace Lpm
 
 #endif

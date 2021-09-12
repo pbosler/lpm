@@ -3,7 +3,7 @@
 
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
-#include "util/lpm_math_util.hpp"
+#include "util/lpm_math.hpp"
 #include "lpm_geometry.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "Kokkos_Core.hpp"
@@ -127,13 +127,6 @@ template <typename Geo> class Coords {
         _hostcrds(ind,i) = v[i];
       }
     }
-
-//     void relocateHost(const Index ind, const ko::View<Real[Geo::ndim], Host> v) {
-//       LPM_REQUIRE_MSG(ind < _nh(), "Coords::relocateHost error: index out of range.");
-//       for (int i=0; i<Geo::ndim; ++i) {
-//         _hostcrds(ind, i) = v(i);
-//       }
-//     }
 
     /** \brief Writes basic info about a Coords instance to a string.
 

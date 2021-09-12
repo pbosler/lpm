@@ -58,6 +58,9 @@ PREFIX=$PWD/$1
 #SPDLOG_LIBRARY_DIR=/path/to/spdlog/library
 #SPDLOG_LIBRARY=libspdlog.a
 
+#BOOST_INCLUDE_DIR=/path/to/boost/includes
+#BOOST_LIBRARY_DIR=/path/to/boost/library
+
 #TRILINOS_INCLUDE_DIR=/path/to/trilinos/includes
 #TRILINOS_TPL_INCLUDE_DIR=/path/to/trilinos/tpl/includes
 #TRILINOS_LIBRARY_DIR=/path/to/trilinos/libraries
@@ -144,7 +147,9 @@ USE_VTK_GRAPHICS=OFF
 # Choose one of the following.
 
 # Debug executable (debugging symbols, no optimization).
-BUILD_TYPE=Debug
+# BUILD_TYPE=Debug
+
+BUILD_TYPE=RelWithDebInfo
 
 # Release executable (No symbols, optimization).
 #BUILD_TYPE=Release
@@ -249,6 +254,20 @@ if [ ! "\$NETCDF_LIBRARY_DIR" = "" -o ! "\$NETCDF_INCLUDE_DIR" = "" -o ! "\$NETC
   fi
   OPTIONS="\$OPTIONS -DNETCDF_LIBRARY=\$NETCDF_LIBRARY_DIR/\$NETCDF_LIBRARY"
   OPTIONS="\$OPTIONS -DNETCDF_INCLUDE_DIR=\$NETCDF_INCLUDE_DIR"
+fi
+
+# Configure Boost if needed
+if [ ! "\$BOOST_INCLUDE_DIR" = "" -o ! "\$BOOST_LIBRARY_DIR" = "" ]; then
+  if [ "\$BOOST_INCLUDE_DIR" = "" ]; then
+    echo "Error: BOOST_INCLUDE_DIR must be specified for a custom Boost installation."
+    exit 1
+  fi
+  if [ "\$BOOST_LIBRARY_DIR" = "" ]; then
+    echo "Error: BOOST_LIBRARY_DIR must be specified for a custom Boost installation."
+    exit 1
+  fi
+  OPTIONS="\$OPTIONS -DBOOST_INCLUDE_DIR=\$BOOST_INCLUDE_DIR"
+  OPTIONS="\$OPTIONS -DBOOST_LIBRARY_DIR=\$BOOST_LIBRARY_DIR"
 fi
 
 # Configure yaml-cpp if needed.

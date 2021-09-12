@@ -1,7 +1,7 @@
 #include "mesh/lpm_polymesh2d.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include "vtk/lpm_vtk_io.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "lpm_constants.hpp"
 #include <iostream>
 

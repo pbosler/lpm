@@ -1,10 +1,10 @@
-#include "LpmErrorNorms.hpp"
+#include "lpm_error.hpp"
 #include <sstream>
 
 namespace Lpm {
 
 template <typename Space>
-std::string ErrNorms<Space>::infoString(const std::string& label, const int tab_level) const {
+std::string ErrNorms<Space>::info_string(const std::string& label, const int tab_level) const {
     std::ostringstream ss;
     std::string tabstr;
     for (int i=0; i<tab_level; ++i) tabstr += "\t";

@@ -2,7 +2,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
 #include "util/lpm_string_util.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include <iomanip>
 
 namespace Lpm {
@@ -214,8 +214,12 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Vertices<Coords<Geo>
   for (int i=0; i<4; ++i) { // loop over child Faces
     for (int j=0; j<3; ++j) { // loop over vertices
       for (int k=0; k<Geo::ndim; ++k) { // loop over components
-        vert_crds(j,k) = verts.phys_crds->get_crd_component_host(verts.crd_inds(new_face_vert_inds(i,j)),k);
-        vert_lag_crds(j,k) = verts.lag_crds->get_crd_component_host(verts.crd_inds(new_face_vert_inds(i,j)),k);
+        vert_crds(j,k) =
+          verts.phys_crds->get_crd_component_host(
+          verts.host_crd_ind(new_face_vert_inds(i,j)),k);
+        vert_lag_crds(j,k) =
+          verts.lag_crds->get_crd_component_host(
+            verts.host_crd_ind(new_face_vert_inds(i,j)),k);
       }
     }
     auto ctr = ko::subview(face_crds, i, ko::ALL());
@@ -229,8 +233,8 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd, Vertices<Coords<Geo>
   /// create new child Faces
   const int crd_insert_pt = faces.phys_crds->nh();
   for (int i=0; i<4; ++i) {
-    faces.phys_crds->insert_host(slice(face_crds,i));
-    faces.lag_crds->insert_host(slice(face_lag_crds,i));
+    faces.phys_crds->insert_host(ko::subview(face_crds,i,ko::ALL));
+    faces.lag_crds->insert_host(ko::subview(face_lag_crds,i,ko::ALL));
     faces.insert_host(crd_insert_pt+i,
       ko::subview(new_face_vert_inds, i, ko::ALL()),
       ko::subview(new_face_edge_inds, i, ko::ALL()),
@@ -361,13 +365,12 @@ void FaceDivider<Geo,QuadFace>::divide(const Index faceInd, Vertices<Coords<Geo>
     Geo::barycenter(ctr, vert_crds, 4);
     Geo::barycenter(lagctr, vert_lag_crds,4);
     face_area(i) = Geo::polygon_area(ctr, vert_crds, 4);
-//     LPM_ASSERT(face_area(i) > 0);
   }
   const Index face_crd_ins_pt = faces.phys_crds->nh();
 
   for (int i=0; i<4; ++i) {
-    faces.phys_crds->insert_host(slice(face_crds,i));
-    faces.lag_crds->insert_host(slice(face_lag_crds,i));
+    faces.phys_crds->insert_host(ko::subview(face_crds,i,ko::ALL));
+    faces.lag_crds->insert_host(ko::subview(face_lag_crds,i,ko::ALL));
     faces.insert_host(face_crd_ins_pt+i, ko::subview(new_face_vert_inds,i,ko::ALL()),
       ko::subview(new_face_edge_inds,i,ko::ALL()), faceInd, face_area(i));
   }

@@ -15,9 +15,10 @@ endforeach()
 set(SUBMODULES_UPDATED FALSE)
 macro(update_submodules)
   if (NOT SUBMODULES_UPDATED)
-    message(STATUS "Updating git submodules recursively...")
-    execute_process(COMMAND ${GIT} submodule update --init --recursive
-                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+#    message(STATUS "Updating git submodules recursively...")
+#    execute_process(COMMAND ${GIT} submodule update --init --recursive
+#                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    message(WARNING "git submodules may need updating...\n...consider running 'git submodule update --init --recursive'")
     set(SUBMODULES_UPDATED TRUE)
   endif()
 endmacro()
@@ -211,6 +212,47 @@ if (NOT EXISTS ${YAMLCPP_LIBRARY})
 endif()
 list(APPEND LPM_EXT_INCLUDE_DIRS ${YAMLCPP_INCLUDE_DIR})
 set(LPM_EXT_LIBRARIES yaml-cpp;${LPM_EXT_LIBRARIES})
+
+#----------------------------------------------------------------------------
+# Boost
+#----------------------------------------------------------------------------
+set(LPM_BOOST_LIBS boost_math_c99
+                   boost_math_c99f
+                   boost_math_c99l
+                   boost_math_tr1
+                   boost_math_tr1f
+                   boost_math_tr1l
+                   )
+foreach(lib ${LPM_BOOST_LIBS})
+  add_library(${lib} STATIC IMPORTED GLOBAL)
+  set_target_properties(${lib} PROPERTIES IMPORTED_LOCATION ${BOOST_LIBRARY_DIR}/lib${lib}.a)
+endforeach()
+
+if (NOT LPM_NEEDS_BOOST_BUILD)
+  foreach(lib ${LPM_BOOST_LIBS})
+    if (NOT EXISTS "${BOOST_LIBRARY_DIR}/lib${lib}.a")
+      message(WARNING "Boost library ${lib} not found in ${BOOST_LIBRARY_DIR}.")
+    endif()
+  endforeach()
+endif()
+
+set(LPM_BOOST_LIBS ${LPM_BOOST_LIBS} PARENT_SCOPE)
+
+if (LPM_NEEDS_BOOST_BUILD)
+  update_submodules()
+
+  ExternalProject_Add(boost_proj
+      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost
+      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/boost
+      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost
+      INSTALL_DIR ${PROJECT_BINARY_DIR}
+      CONFIGURE_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/boost/bootstrap.sh --with-libraries=math --prefix=${PROJECT_BINARY_DIR}"
+      BUILD_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/b2 -j"
+      INSTALL_COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/b2 install"
+      LOG_CONFIGURE TRUE
+      LOG_BUILD TRUE
+      LOG_INSTALL TRUE)
+endif()
 
 #----------------------------------------------------------------------------
 # Trilinos

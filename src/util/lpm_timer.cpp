@@ -1,9 +1,9 @@
-#include "LpmTimer.hpp"
+#include "util/lpm_timer.hpp"
 #include <sstream>
 
 namespace Lpm {
 
-std::string Timer::infoString() const {
+std::string Timer::info_string() const {
   std::ostringstream ss;
   ss << "timer(" << _name << ") : elapsed time = " << _elap << " seconds\n";
   return ss.str();

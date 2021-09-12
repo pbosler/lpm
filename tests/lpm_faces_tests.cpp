@@ -10,7 +10,7 @@
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
 #include <memory>
 
@@ -63,14 +63,17 @@ TEST_CASE ("faces test", "[mesh]") {
 
     plane_tri.phys_crds = tri_hex_pcrd_face_crds;
     plane_tri.lag_crds = tri_hex_lcrd_face_crds;
+    logger.debug("calling init_from_seed");
     plane_tri.init_from_seed(thseed);
 
-    logger.debug("surface area = {}", plane_tri.surface_area_host());
+    logger.info("surface area = {}", plane_tri.surface_area_host());
     REQUIRE(FloatingPoint<Real>::equiv(plane_tri.surface_area_host(), 2.59807621135331512,
       constants::ZERO_TOL));
 
     typedef FaceDivider<PlaneGeometry,TriFace> tri_hex_divider;
+    logger.debug("calling divide.");
     tri_hex_divider::divide(0, verts, tri_hex_edges, plane_tri);
+    logger.debug("returned from divide.");
 
     REQUIRE(FloatingPoint<Real>::equiv(plane_tri.surface_area_host(), 2.59807621135331512,
       constants::ZERO_TOL));

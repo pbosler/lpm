@@ -2,10 +2,9 @@
 #define LPM_ERROR_NORMS_HPP
 
 #include "LpmConfig.h"
-#include "LpmDefs.hpp"
-#include "LpmKokkosUtil.hpp"
-#include "LpmUtilities.hpp"
-#include "LpmGeometry.hpp"
+#include "lpm_geometry.hpp"
+#include "util/lpm_tuple.hpp"
+
 #include "Kokkos_Core.hpp"
 
 namespace Lpm {
@@ -97,7 +96,7 @@ struct ErrNorms {
 
     ErrNorms(const Real l_1, const Real l_2, const Real l_i) : l1(l_1), l2(l_2), linf(l_i) {}
 
-    std::string infoString(const std::string& label="", const int tab_level=0) const;
+    std::string info_string(const std::string& label="", const int tab_level=0) const;
 
     /**
       constructor; assumes reductions have been pre-computed and stored in an ErrNormScalar.

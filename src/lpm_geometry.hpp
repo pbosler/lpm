@@ -4,7 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
-#include "util/lpm_math_util.hpp"
+#include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include <cassert>
@@ -93,7 +93,9 @@ struct PlaneGeometry {
   static Real polygon_area(const CV& v, const Int n) {
     Real ar = 0;
     for (int i=0; i<n; ++i) {
-      ar += tri_area(slice(v,0), slice(v,i), slice(v,(i+1)%n));
+      ar += tri_area(ko::subview(v,0,ko::ALL),
+                     ko::subview(v,i,ko::ALL),
+                     ko::subview(v,(i+1)%n, ko::ALL));
     }
     return ar;
   }
@@ -102,7 +104,8 @@ struct PlaneGeometry {
   static Real polygon_area(const CV1& ctr, const CV2& verts, const Int nverts) {
     Real ar = 0.0;
     for (int i=0; i<nverts; ++i) {
-      ar += tri_area(ctr, slice(verts,i), slice(verts, (i+1)%nverts));
+      ar += tri_area(ctr, ko::subview(verts,i,ko::ALL),
+              ko::subview(verts, (i+1)%nverts, ko::ALL));
     }
     return ar;
   }
@@ -134,14 +137,14 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     scale(rmid, v);
   }
 
-  template <typename CV>
+  template <typename CV> KOKKOS_INLINE_FUNCTION
   static Real theta(const CV& v) {
     return std::atan2(v[1],v[0]);
   }
 
   /** @brief Computes the interior angle between two points.
   */
-  template <typename V1, typename V2>
+  template <typename V1, typename V2> KOKKOS_INLINE_FUNCTION
   static Real dtheta(const V1& a, const V2& b) {
     const Real dp = dot(a,b);
     const Real alen = mag(a);
@@ -169,7 +172,7 @@ struct CircularPlaneGeometry : public PlaneGeometry {
     @param outer_ccw the outer, counter-clockwise-most point of the polar rectangle.
     @param inner_cw the inner, clockwise-most point of the polar rectangle.
   */
-  template <typename V1, typename V2>
+  template <typename V1, typename V2> KOKKOS_INLINE_FUNCTION
   static Real quad_sector_area(const V1& outer_ccw, const V2& inner_cw) {
     Real result = 0.0;
     const Real r0 = mag(inner_cw);
@@ -462,7 +465,8 @@ struct SphereGeometry {
   static Real polygon_area(const CV1& ctr, const CV2& verts, const Int nverts) {
     Real ar = 0;
     for (int i=0; i<nverts; ++i) {
-      ar += tri_area(ctr, slice(verts,i), slice(verts, (i+1)%nverts));
+      ar += tri_area(ctr, ko::subview(verts,i, ko::ALL),
+        ko::subview(verts, (i+1)%nverts, ko::ALL));
     }
     return ar;
   }

@@ -15,8 +15,11 @@ add_custom_target(update_version_info ALL
 
 add_library(lpm
                 ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
+                lpm_bve_sphere.cpp
+                lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
+                lpm_error.cpp
                 lpm_field.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
@@ -29,14 +32,12 @@ add_library(lpm
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
+                util/lpm_timer.cpp
 
-#    LpmPolyMesh2d.cpp LpmCompadre.cpp
+#    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
 #    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
-#    LpmSphereVoronoiPrimitives.cpp LpmSphereVoronoiMesh.cpp
-#    LpmBVESphere.cpp LpmVorticityGallery.cpp LpmBVERK4.cpp
-#    LpmPolyMesh2dVtkInterface.cpp LpmTimer.cpp LpmNetCDF.cpp
 #    LpmSWEGallery.cpp
                 )
 add_dependencies(lpm update_version_info
@@ -54,27 +55,34 @@ target_link_libraries(lpm ${LPM_LIBRARIES})
 #endif()
 
 install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
+              lpm_bve_sphere.hpp
+              lpm_bve_sphere_impl.hpp
+              lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
-              lpm_logger.hpp
-              lpm_geometry.hpp
               lpm_coords.hpp
-              vtk/lpm_vtk_io.hpp
+              lpm_geometry.hpp
+              lpm_logger.hpp
+              lpm_sphere_functions.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
               mesh/lpm_polymesh2d.hpp
-              util/lpm_math_util.hpp
+              netcdf/lpm_netcdf.hpp
+              netcdf/lpm_netcdf_impl.hpp
+              util/lpm_filename.hpp
               util/lpm_floating_point_util.hpp
-              util/lpm_string_util.hpp
-              util/lpm_tuple.hpp
-              util/lpm_timer.hpp
+              util/lpm_math_util.hpp
               util/lpm_progress_bar.hpp
+              util/lpm_string_util.hpp
+              util/lpm_timer.hpp
+              util/lpm_tuple.hpp
               util/ekat_rational_constant.hpp
               util/ekat_scaling_factor.hpp
               util/ekat_units.hpp
-              netcdf/lpm_netcdf.hpp
-              netcdf/lpm_netcdf_impl.hpp
+              vtk/lpm_vtk_io.hpp
+              vtk/lpm_vtk_io_impl.hpp
+
 #              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
 #              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
 #              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp

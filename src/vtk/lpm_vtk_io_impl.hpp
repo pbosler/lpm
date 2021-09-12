@@ -40,7 +40,7 @@ template <typename SeedType>
 vtkSmartPointer<vtkPoints> VtkPolymeshInterface<SeedType>::make_points() const {
   auto result = vtkSmartPointer<vtkPoints>::New();
   const auto vert_crd_view = mesh_->vertices.phys_crds->get_host_crd_view();
-  Real crds[2];
+  Real crds[3];
   for (Index i=0; i<mesh_->n_vertices_host(); ++i) {
     for (Short j=0; j<SeedType::geo::ndim; ++j) {
       crds[j] = vert_crd_view(i,j);
@@ -123,13 +123,13 @@ void VtkPolymeshInterface<SeedType>::write(const std::string& ofname) {
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_scalar_point_data(const ViewType s, const std::string& name) {
   typename ViewType::HostMirror h_scalars;
-  if (ViewType::is_hostspace) {
-    h_scalars = s;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_scalars = s;
+//   }
+//   else {
     h_scalars = ko::create_mirror_view(s);
     ko::deep_copy(h_scalars, s);
-  }
+//   }
   auto points_scalar = vtkSmartPointer<vtkDoubleArray>::New();
   points_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
   points_scalar->SetNumberOfComponents(1);
@@ -143,13 +143,13 @@ void VtkPolymeshInterface<SeedType>::add_scalar_point_data(const ViewType s, con
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_vector_point_data(const ViewType v, const std::string& name) {
   typename ViewType::HostMirror h_vectors;
-  if (ViewType::is_hostspace) {
-    h_vectors = v;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_vectors = v;
+//   }
+//   else {
     h_vectors = ko::create_mirror_view(v);
     ko::deep_copy(h_vectors, v);
-  }
+//   }
   auto point_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   point_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
   point_vectors->SetNumberOfComponents(v.extent(1));
@@ -170,19 +170,22 @@ void VtkPolymeshInterface<SeedType>::add_vector_point_data(const ViewType v, con
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_scalar_cell_data(const ViewType s, const std::string& name) {
   typename ViewType::HostMirror h_scalars;
-  if (ViewType::is_hostspace) {
-    h_scalars = s;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_scalars = s;
+//   }
+//   else {
     h_scalars = ko::create_mirror_view(s);
     ko::deep_copy(h_scalars, s);
-  }
+//   }
   auto cells_scalar = vtkSmartPointer<vtkDoubleArray>::New();
   cells_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
   cells_scalar->SetNumberOfComponents(1);
-  cells_scalar->SetNumberOfTuples(mesh_->n_vertices_host());
-  for (Index i=0; i<mesh_->n_vertices_host(); ++i) {
-    cells_scalar->InsertTuple1(i, h_scalars(i));
+  cells_scalar->SetNumberOfTuples(mesh_->faces.n_leaves_host());
+  Int ctr = 0;
+  for (Index i=0; i<mesh_->n_faces_host(); ++i) {
+    if (!mesh_->faces.has_kids_host(i)) {
+      cells_scalar->InsertTuple1(ctr++, h_scalars(i));
+    }
   }
   polydata_->GetCellData()->AddArray(cells_scalar);
 }
@@ -190,25 +193,30 @@ void VtkPolymeshInterface<SeedType>::add_scalar_cell_data(const ViewType s, cons
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_vector_cell_data(const ViewType v, const std::string& name) {
   typename ViewType::HostMirror h_vectors;
-  if (ViewType::is_hostspace) {
-    h_vectors = v;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_vectors = v;
+//   }
+//   else {
     h_vectors = ko::create_mirror_view(v);
     ko::deep_copy(h_vectors, v);
-  }
+//   }
   auto cell_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   cell_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
   cell_vectors->SetNumberOfComponents(v.extent(1));
-  cell_vectors->SetNumberOfTuples(mesh_->n_vertices_host());
+  cell_vectors->SetNumberOfTuples(mesh_->faces.n_leaves_host());
+  Int ctr = 0;
   if (SeedType::geo::ndim == 3) {
-    for (Index i=0; i<mesh_->n_vertices_host(); ++i) {
-      cell_vectors->InsertTuple3(i, h_vectors(i,0), h_vectors(i,1), h_vectors(i,2));
+    for (Index i=0; i<mesh_->n_faces_host(); ++i) {
+      if (!mesh_->faces.has_kids_host(i)) {
+        cell_vectors->InsertTuple3(ctr++, h_vectors(i,0), h_vectors(i,1), h_vectors(i,2));
+      }
     }
   }
   else {
-    for (Index i=0; i<mesh_->n_vertices_host(); ++i) {
-      cell_vectors->InsertTuple2(i, h_vectors(i,0), h_vectors(i,1));
+    for (Index i=0; i<mesh_->n_faces_host(); ++i) {
+      if (!mesh_->faces.has_kids_host(i)) {
+        cell_vectors->InsertTuple2(ctr++, h_vectors(i,0), h_vectors(i,1));
+      }
     }
   }
   polydata_->GetCellData()->AddArray(cell_vectors);

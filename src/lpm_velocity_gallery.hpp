@@ -80,7 +80,14 @@ struct LauritzenEtAlDivergentFlow : public VelocityFunction<3> {
   }
 };
 
+struct RossbyWave54Velocity : public VelocityFunction<3> {
 
+  std::string name() const {return "RossbyWave54Velocity";}
+
+  Tuple<Real,3> operator() (const Tuple<Real,3>& x, const Real& t) const {
+
+  }
+};
 
 
 

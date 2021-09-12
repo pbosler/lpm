@@ -7,7 +7,7 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_constants.hpp"
-#include "util/lpm_floating_point_util.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
 
 using namespace Lpm;

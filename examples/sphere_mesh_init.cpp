@@ -35,8 +35,8 @@ struct Input {
 /**
   Choose a MeshSeed
 */
-// typedef CubedSphereSeed seed_type;
-typedef IcosTriSphereSeed seed_type;
+typedef CubedSphereSeed seed_type;
+// typedef IcosTriSphereSeed seed_type;
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
