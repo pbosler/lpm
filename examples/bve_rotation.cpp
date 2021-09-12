@@ -84,15 +84,20 @@ int main (int argc, char* argv[]) {
     Index nmaxfaces;
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
 
+    logger.debug("max allocations: {}, {}, {}", nmaxverts, nmaxedges, nmaxfaces);
+
     /**
     Build the particle/panel mesh
     */
     const std::vector<std::string> tracer_names = {"u_dot_x",
       "vorticity_error"};
+
     auto sphere = std::shared_ptr<BVESphere<seed_type>>(new
       BVESphere<seed_type>(nmaxverts, nmaxedges, nmaxfaces, tracer_names));
     sphere->tree_init(input.init_depth, seed);
     sphere->update_device();
+
+    logger.debug("sphere allocated.");
 
     sphere->set_omega(0);
     SolidBodyRotation relvort;
@@ -322,12 +327,14 @@ Input::Input(int argc, char* argv[]) {
     const std::string& token = argv[i];
     if (token == "-d") {
       init_depth = std::stoi(argv[++i]);
+      LPM_REQUIRE(init_depth >= 0);
     }
     else if (token == "-o") {
       case_name = argv[++i];
     }
     else if (token == "-dt") {
       dt = std::stod(argv[++i]);
+      LPM_REQUIRE(dt > 0);
     }
     else if (token == "-tf") {
       tfinal = std::stod(argv[++i]);

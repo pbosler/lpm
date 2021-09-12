@@ -15,9 +15,10 @@ endforeach()
 set(SUBMODULES_UPDATED FALSE)
 macro(update_submodules)
   if (NOT SUBMODULES_UPDATED)
-    message(STATUS "Updating git submodules recursively...")
-    execute_process(COMMAND ${GIT} submodule update --init --recursive
-                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+#    message(STATUS "Updating git submodules recursively...")
+#    execute_process(COMMAND ${GIT} submodule update --init --recursive
+#                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    message(WARNING "git submodules may need updating...\n...consider running 'git submodule update --init --recursive'")
     set(SUBMODULES_UPDATED TRUE)
   endif()
 endmacro()

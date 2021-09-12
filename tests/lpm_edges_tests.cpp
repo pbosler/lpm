@@ -74,6 +74,7 @@ TEST_CASE("edges test", "[mesh]")  {
 
     logger.debug("calling divide");
     edges.divide(0, *verts);
+    logger.debug("returned from divide");
     edges.update_device();
     verts->update_device();
     REQUIRE(edges.nh() == 5);

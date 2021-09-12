@@ -68,8 +68,9 @@ template <> void Coords<SphereGeometry>::init_random(const Real max_range, const
 template <typename Geo>
 Real Coords<Geo>::max_radius() const {
   Real result = 0;
+  const auto local_crds = this->crds;
   Kokkos::parallel_reduce(_nh(), KOKKOS_LAMBDA (const Index i, Real& m) {
-    const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+    const auto mcrd = Kokkos::subview(local_crds, i, Kokkos::ALL);
     const Real r = Geo::mag(mcrd);
     if (r > m) m = r;
   }, Kokkos::Max<Real>(result));

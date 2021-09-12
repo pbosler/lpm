@@ -68,8 +68,8 @@ void Edges::divide(const Index edge_idx, Vertices<CoordsType>& verts) {
   ko::View<Real[Geo::ndim],Host> lag_midpt("lag_midpt");
   ko::View<Real[2][Geo::ndim],Host> endpts("parent_endpts");
   ko::View<Real[2][Geo::ndim],Host> lag_endpts("parent_lag_endpts");
-  const Index orig_crd_idx = verts.crd_inds(_ho(edge_idx));
-  const Index dest_crd_idx = verts.crd_inds(_hd(edge_idx));
+  const Index orig_crd_idx = verts.host_crd_ind(_ho(edge_idx));
+  const Index dest_crd_idx = verts.host_crd_ind(_hd(edge_idx));
   for (int i=0; i<Geo::ndim; ++i) {
     endpts(0,i) = verts.phys_crds->get_crd_component_host(orig_crd_idx, i);
     lag_endpts(0,i) = verts.lag_crds->get_crd_component_host(orig_crd_idx, i);

@@ -123,13 +123,13 @@ void VtkPolymeshInterface<SeedType>::write(const std::string& ofname) {
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_scalar_point_data(const ViewType s, const std::string& name) {
   typename ViewType::HostMirror h_scalars;
-  if (ViewType::is_hostspace) {
-    h_scalars = s;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_scalars = s;
+//   }
+//   else {
     h_scalars = ko::create_mirror_view(s);
     ko::deep_copy(h_scalars, s);
-  }
+//   }
   auto points_scalar = vtkSmartPointer<vtkDoubleArray>::New();
   points_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
   points_scalar->SetNumberOfComponents(1);
@@ -143,13 +143,13 @@ void VtkPolymeshInterface<SeedType>::add_scalar_point_data(const ViewType s, con
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_vector_point_data(const ViewType v, const std::string& name) {
   typename ViewType::HostMirror h_vectors;
-  if (ViewType::is_hostspace) {
-    h_vectors = v;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_vectors = v;
+//   }
+//   else {
     h_vectors = ko::create_mirror_view(v);
     ko::deep_copy(h_vectors, v);
-  }
+//   }
   auto point_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   point_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
   point_vectors->SetNumberOfComponents(v.extent(1));
@@ -170,13 +170,13 @@ void VtkPolymeshInterface<SeedType>::add_vector_point_data(const ViewType v, con
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_scalar_cell_data(const ViewType s, const std::string& name) {
   typename ViewType::HostMirror h_scalars;
-  if (ViewType::is_hostspace) {
-    h_scalars = s;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_scalars = s;
+//   }
+//   else {
     h_scalars = ko::create_mirror_view(s);
     ko::deep_copy(h_scalars, s);
-  }
+//   }
   auto cells_scalar = vtkSmartPointer<vtkDoubleArray>::New();
   cells_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
   cells_scalar->SetNumberOfComponents(1);
@@ -193,13 +193,13 @@ void VtkPolymeshInterface<SeedType>::add_scalar_cell_data(const ViewType s, cons
 template <typename SeedType> template <typename ViewType>
 void VtkPolymeshInterface<SeedType>::add_vector_cell_data(const ViewType v, const std::string& name) {
   typename ViewType::HostMirror h_vectors;
-  if (ViewType::is_hostspace) {
-    h_vectors = v;
-  }
-  else {
+//   if (ViewType::is_hostspace) {
+//     h_vectors = v;
+//   }
+//   else {
     h_vectors = ko::create_mirror_view(v);
     ko::deep_copy(h_vectors, v);
-  }
+//   }
   auto cell_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   cell_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
   cell_vectors->SetNumberOfComponents(v.extent(1));

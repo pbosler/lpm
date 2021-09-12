@@ -78,14 +78,16 @@ TEST_CASE("lpm_geometry", "") {
           vecs(3,j) = r2device_d(j);
       }
 
+      LPM_KERNEL_REQUIRE(PlaneGeometry::mag(r2device_a) == 1);
+
       // test midpoint on device
-      PlaneGeometry::midpoint(result, slice(vecs, 0), slice(vecs, 1));
+      PlaneGeometry::midpoint(result, ko::subview(vecs, 0, ko::ALL), ko::subview(vecs, 1, ko::ALL));
       bool pass = (result(0) == 1.5) and (result(1) == 0.5);
       if (!pass) {
           printf("device midpoint error.\n");
           printf("vecs(0,:) = (%f,%f)\n", vecs(0,0), vecs(0,1));
           printf("vecs(1,:) = (%f,%f)\n", vecs(1,0), vecs(1,1));
-          auto slice0 = slice(vecs,0);
+          auto slice0 = ko::subview(vecs,0,ko::ALL);
           printf("slice(vecs,0) = (%f,%f)\n", slice0[0], slice0[1]);
           printf("midpt result = (%f,%f)\n", result(0), result(1));
       }
@@ -97,7 +99,8 @@ TEST_CASE("lpm_geometry", "") {
       LPM_KERNEL_REQUIRE(pass);
 
       // test distance
-      scalar_result() = PlaneGeometry::distance(slice(vecs, 0), slice(vecs,2));
+      scalar_result() = PlaneGeometry::distance(ko::subview(vecs, 0, ko::ALL),
+        ko::subview(vecs,2, ko::ALL));
       LPM_KERNEL_REQUIRE(FloatingPoint<Real>::equiv(scalar_result(), 2*sqrt(26.0)));
 
       // test polygon area
@@ -180,7 +183,8 @@ TEST_CASE("lpm_geometry", "") {
           vecs(2, j) = c(j);
           vecs(3, j) = d(j);
       }
-      SphereGeometry::midpoint(vres, slice(vecs, 0), slice(vecs,1));
+      SphereGeometry::midpoint(vres, ko::subview(vecs, 0, ko::ALL),
+        ko::subview(vecs, 1, ko::ALL));
       printf("sphere midpoint = (%f,%f,%f)\n", vres(0), vres(1), vres(2));
 
       LPM_KERNEL_REQUIRE(FloatingPoint<Real>::equiv(vres(0), 0.5*sqrt(2.0)));

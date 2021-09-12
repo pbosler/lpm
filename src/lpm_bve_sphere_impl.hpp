@@ -1,13 +1,13 @@
 #include "lpm_bve_sphere.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_bve_sphere_kernels.hpp"
+#include "lpm_logger.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
-#include "lpm_logger.hpp"
 #include "Kokkos_Core.hpp"
 #include <memory>
-
+#include <iostream>
 namespace Lpm {
 
 template <typename SeedType>
@@ -25,7 +25,8 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges, con
   tracer_verts(nq), _host_tracer_verts(nq),
   tracer_faces(nq), _host_tracer_faces(nq),
   Omega(2*constants::PI),
-  omg_set(false)
+  omg_set(false),
+  t(0)
   {
     ntracers() = nq;
     _host_ntracers = ko::create_mirror_view(ntracers);
@@ -65,10 +66,10 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges, con
   tracer_verts(tracers.size()), _host_tracer_verts(tracers.size()),
   tracer_faces(tracers.size()), _host_tracer_faces(tracers.size()),
   Omega(2*constants::PI),
-  omg_set(false)
+  omg_set(false),
+  t(0)
   {
     const int nq = tracers.size();
-    ntracers() = nq;
     _host_ntracers = ko::create_mirror_view(ntracers);
     _host_ntracers() = nq;
     _host_rel_vort_verts = ko::create_mirror_view(rel_vort_verts);
@@ -80,11 +81,9 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges, con
     _host_stream_fn_faces = ko::create_mirror_view(stream_fn_faces);
     _host_velocity_faces = ko::create_mirror_view(velocity_faces);
 
-    std::ostringstream ss;
     for (int k=0; k<tracers.size(); ++k) {
       tracer_verts[k] = scalar_field(tracers[k], nmaxverts);
       tracer_faces[k] = scalar_field(tracers[k], nmaxfaces);
-      ss.str("");
       _host_tracer_verts[k] = ko::create_mirror_view(tracer_verts[k]);
       _host_tracer_faces[k] = ko::create_mirror_view(tracer_faces[k]);
     }
@@ -102,6 +101,7 @@ void BVESphere<SeedType>::update_device() const {
     ko::deep_copy(abs_vort_faces, _host_abs_vort_faces);
     ko::deep_copy(stream_fn_faces, _host_stream_fn_faces);
     ko::deep_copy(velocity_faces, _host_velocity_faces);
+    ko::deep_copy(ntracers, _host_ntracers);
     for (Int k=0; k<_host_ntracers(); ++k) {
       ko::deep_copy(tracer_verts[k], _host_tracer_verts[k]);
       ko::deep_copy(tracer_faces[k], _host_tracer_faces[k]);

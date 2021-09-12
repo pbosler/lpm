@@ -38,10 +38,12 @@ TEST_CASE("lpm_math", "") {
   logger.info("Checking that BesselJ1 is odd");
   REQUIRE( FloatingPoint<Real>::equiv(cyl_bessel_j(1, 0.5), -cyl_bessel_j(1, -0.5)));
 
+#ifndef LPM_USE_CUDA
   logger.info("Checking that LegendreP(l,1) = 1 for l in {0,1,2,3,4}");
   for (int l=0; l<5; ++l) {
     REQUIRE( FloatingPoint<Real>::equiv(legendre_p(l, 1), 1));
   }
+#endif
 }
 
 

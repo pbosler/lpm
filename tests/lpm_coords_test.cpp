@@ -29,6 +29,7 @@ TEST_CASE("lpm coords", "") {
     pc4.insert_host(d);
 
     pc4.update_device();
+
     REQUIRE(FloatingPoint<Real>::equiv(pc4.max_radius(), sqrt(2.0)));
 
     logger.info("pc4.n_max() = {}, pc4.nh() = {}", pc4.n_max(), pc4.nh());

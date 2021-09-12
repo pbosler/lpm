@@ -133,6 +133,7 @@ struct CollidingDipolePairPlane {
   std::string name() const  {return "PlanarCollidingDipoles";}
 };
 
+#ifndef LPM_USE_CUDA
 struct RossbyHaurwitz54 {
   Real u0;
   Real rh54_amplitude;
@@ -155,7 +156,7 @@ struct RossbyHaurwitz54 {
   }
 
 };
-
+#endif
 
 
 }

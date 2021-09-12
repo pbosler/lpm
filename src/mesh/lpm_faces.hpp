@@ -160,7 +160,10 @@ template <typename FaceKind, typename Geo> class Faces {
       @return true if face(ind) has children
     */
     KOKKOS_INLINE_FUNCTION
-    bool has_kids(const Index ind) const {return ind < n() && kids(ind,0) > 0;}
+    bool has_kids(const Index ind) const {
+      LPM_KERNEL_ASSERT( ind < n() );
+      return kids(ind,0) > 0;
+    }
 
     /** @brief returns a view to all face areas.
 
@@ -377,13 +380,6 @@ template <typename Geo> struct FaceDivider<Geo, QuadFace> {
   static void divide(const Index faceInd, Vertices<Coords<Geo>>& verts,
     Edges& edges, Faces<QuadFace, Geo>& faces);
 };
-
-// template <> struct FaceDivider<CircularPlaneGeometry,QuadFace> {
-//   static void divide(const Index faceInd, Coords<CircularPlaneGeometry>& physVerts,
-//     Coords<CircularPlaneGeometry>& lagVerts, Edges& edges,
-//     Faces<QuadFace>& faces, Coords<CircularPlaneGeometry>& physFaces,
-//     Coords<CircularPlaneGeometry>& lagFaces) ;
-// };
 
 }
 #endif

@@ -63,7 +63,7 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
           @param [in] nmaxverts: number of vertices to should be allocate
           @param [in] nmaxedges: number of edges to allocate
           @param [in] nmaxfaces: number of faces to allocate
-          @param [in] tracers names of passive tracers to allocate
+          @param [in] tracers: names of passive tracers to allocate
         */
         BVESphere(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces, const
           std::vector<std::string>& tracers);
