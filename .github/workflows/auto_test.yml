@@ -90,6 +90,8 @@ jobs:
           -DTRILINOS_TPL_INCLUDE_DIR=/trilinos/include \
           -DTRILINOS_TPL_LIBRARY_DIR=/trilinos/lib \
           -DVTK_INCLUDE_DIR=/vtk/include/vtk-8.1 \
+          -DBOOST_INCLUDE_DIR=/boost/include \
+          -DBOOST_LIBRARY_DIR=/boost/lib \
           -DVTK_LIBRARY_DIR=/vtk/lib \
           -G "Unix Makefiles" \
           ..
