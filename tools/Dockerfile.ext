@@ -132,3 +132,9 @@ cmake \
 /tpl/spdlog-1.8.5 && \
 make -j 4 && make install
 
+FROM spdlog_build AS boost_build
+WORKDIR /tpl
+COPY boost_1_77_0.tar.gz /tpl/
+RUN tar -xzf boost_1_77_0.tar.gz && cd boost_1_77_0 && \
+./bootstrap.sh --prefix=/boost --with-libraries=math && ./b2 -j 4 && \
+./b2 install
