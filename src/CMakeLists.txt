@@ -71,8 +71,8 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               util/lpm_filename.hpp
-              util/lpm_floating_point_util.hpp
-              util/lpm_math_util.hpp
+              util/lpm_floating_point.hpp
+              util/lpm_math.hpp
               util/lpm_progress_bar.hpp
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
