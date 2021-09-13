@@ -48,6 +48,8 @@ jobs:
       TRILINOS_TPL_LIBRARY_DIR: /trilinos/lib
       VTK_INCLUDE_DIR: /vtk/include
       VTK_LIBRARY_DIR: /vtk/lib
+      BOOST_INCLUDE_DIR: /boost/include
+      BOOST_LIBRARY_DIR: /boost/lib
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
 
