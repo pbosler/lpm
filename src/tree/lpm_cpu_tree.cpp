@@ -1,5 +1,11 @@
 #include "tree/lpm_cpu_tree.hpp"
 #include "lpm_assert.hpp"
+
+#include "vtkPolyData.h"
+#include "vtkVoxel.h"
+#include "vtkCellData.h"
+#include "vtkXMLPolyDataWriter.h"
+
 #include <numeric>
 #include <limits>
 
@@ -127,6 +133,55 @@ void CpuTree<Geo>::generate_tree_max_depth(Node* node, const int max_depth,
   }
 }
 
+template <typename Geo>
+void CpuTree<Geo>::insert_vtk_cell_points(
+  vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
+  vtkSmartPointer<vtkCellArray> cells, const Index cell_offset,
+  vtkSmartPointer<vtkIntArray> levels, const Node* node) {
+  const auto box = node->box;
+  pts->InsertNextPoint(box.xmin,box.ymin, box.zmin);
+  pts->InsertNextPoint(box.xmax,box.ymin, box.zmin);
+  pts->InsertNextPoint(box.xmin,box.ymax, box.zmin);
+  pts->InsertNextPoint(box.xmax,box.ymax, box.zmin);
+  pts->InsertNextPoint(box.xmin,box.ymin, box.zmax);
+  pts->InsertNextPoint(box.xmax,box.ymin, box.zmax);
+  pts->InsertNextPoint(box.xmin,box.ymax, box.zmax);
+  pts->InsertNextPoint(box.xmax,box.ymax, box.zmax);
+
+  cells->InsertNextCell(8);
+  for (int k=0; k<8; ++k) {
+    cells->InsertCellPoint(pt_offset + k);
+  }
+  levels->InsertTuple1(cell_offset+1, node->level);
+
+  if (node->has_kids()) {
+    for (int k=0; k<8; ++k) {
+      if (!node->kids[k]->empty()) {
+        insert_vtk_cell_points(pts, pt_offset+8*(k+1), cells, cell_offset+k+1, levels,
+          node->kids[k].get());
+      }
+    }
+  }
+}
+
+template <typename Geo>
+void CpuTree<Geo>::write_vtk(const std::string& ofname) const {
+  auto pts = vtkSmartPointer<vtkPoints>::New();
+  auto cells = vtkSmartPointer<vtkCellArray>::New();
+  auto levels = vtkSmartPointer<vtkIntArray>::New();
+  levels->SetName("tree_level");
+  levels->SetNumberOfComponents(1);
+  levels->SetNumberOfTuples(n_nodes);
+  insert_vtk_cell_points(pts, 0, cells, 0, levels, root);
+  auto polydata = vtkSmartPointer<vtkPolyData>::New();
+  polydata->SetPoints(pts);
+  polydata->SetPolys(cells);
+  polydata->GetCellData()->AddArray(levels);
+  auto writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+  writer->SetInputData(polydata);
+  writer->SetFileName(ofname.c_str());
+  writer->Write();
+}
 
 
 } // namespace tree

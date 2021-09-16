@@ -5,6 +5,11 @@
 #include "lpm_box3d.hpp"
 #include "lpm_coords.hpp"
 
+#include "vtkSmartPointer.h"
+#include "vtkPoints.h"
+#include "vtkIntArray.h"
+#include "vtkCellArray.h"
+
 #include <memory>
 #include <vector>
 
@@ -51,6 +56,8 @@ struct CpuTree {
     Index n_nodes;
     std::unique_ptr<Node> root;
 
+    void write_vtk(const std::string& ofname) const;
+
   protected:
     CpuTree() : depth(0), n_nodes(0) {}
 
@@ -63,6 +70,11 @@ struct CpuTree {
     void shrink_box(Node* node);
 
     void divide_node(Node* node, const bool do_shrink);
+
+    void insert_vtk_cell_points(
+      vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
+      vtkSmartPointer<vtkCellArray> cells, const Index cell_offset,
+      vtkSmartPointer<vtkIntArray> levels, const Node* node);
 
     std::shared_ptr<Coords<Geo>> _crds;
 };
