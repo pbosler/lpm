@@ -4,6 +4,8 @@
 #include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Array.hpp"
+#include "spdlog/fmt/ostr.h"
+#include "util/lpm_floating_point.hpp"
 #include <limits>
 #include <cfloat>
 /**
@@ -94,6 +96,16 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
       this->m_internal_implementation_private_member_data[i] *= o[i];
     return *this;
   }
+
+  template <typename OStream>
+  friend OStream& operator << (OStream& os, const Tuple<T,ndim>& tup) {
+    os << "[ ";
+    for (int i=0; i<ndim; ++i) {
+      os << tup[i] << " ";
+    }
+    os << "]";
+    return os;
+  }
 };
 
 template <int ndim>
@@ -104,11 +116,34 @@ struct reduction_identity<Tuple<Lpm::Real,ndim>> {
   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> min() {return Tuple<Lpm::Real,ndim>(DBL_MIN);}
 };
 
+template <typename T, int ndim> KOKKOS_INLINE_FUNCTION
+typename std::enable_if<std::is_floating_point<T>::value, bool>::type
+operator == (const Tuple<T,ndim>& lhs, const Tuple<T,ndim>& rhs) {
+  bool result = true;
+  for (int i=0; i<ndim; ++i) {
+    if (!Lpm::FloatingPoint<T>::equiv(lhs[i], rhs[i])) result = false;
+  }
+  return result;
+}
+
+template <typename T, int ndim> KOKKOS_INLINE_FUNCTION
+typename std::enable_if<std::is_integral<T>::value, bool>::type
+operator == (const Tuple<T,ndim>& lhs, const Tuple<T,ndim>& rhs) {
+  bool result = true;
+  for (int i=0; i<ndim; ++i) {
+    if (lhs[i] != rhs[i]) result = false;
+  }
+  return result;
+}
+
+template <typename T, int ndim> KOKKOS_INLINE_FUNCTION
+bool operator != (const Tuple<T, ndim>& lhs, const Tuple<T,ndim>& rhs) {
+  return !(lhs == rhs);
+}
+
 }// namespace Kokkos
 
 namespace Lpm {
-
-
 
 }
 #endif

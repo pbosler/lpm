@@ -44,6 +44,8 @@ CreateUnitTest(faces_test lpm_faces_tests.cpp)
 
 CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
 
+CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)
