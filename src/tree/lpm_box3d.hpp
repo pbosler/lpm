@@ -310,17 +310,47 @@ struct Box3d {
       return result;
     }
 
+    /** @brief function returns the closest point inside a box relative to
+      a query point using the L1 norm (not Euclidean distance).
+
+      If the box contains the point, the point itself is returned.
+
+      @param [in] p query point
+      @return c such that @f$ c = \arg\min_{p^*\in B} \Vert p^*-p\Vert_1@f$
+    */
     template <typename PtType> KOKKOS_INLINE_FUNCTION
-    ko::Tuple<Real,3> closest_pt(const PtType& p) const {
+    ko::Tuple<Real,3> closest_pt_l1(const PtType& p) const {
       ko::Tuple<Real,3> result;
       for (int i=0; i<3; ++i) {
         result[i] = p[i];
       }
       const int nbrh = pt_in_neighborhood(p);
-      if (nbrh%3 == 0) result[2] = zmin;
-      if ((nbrh-2)%3 == 0) result[2] = zmax;
-      if (nbrh <= 8) result[0] = xmin;
-      if (nbrh >= 18) result[0] = xmax;
+      if (nbrh != 13) {
+        if (nbrh%3 == 0) {
+          result[2] = zmin;
+        }
+        else if ((nbrh-2)%3 == 0) {
+          result[2] = zmax;
+        }
+
+        if ( (nbrh >= 0 and nbrh <= 2) or
+             (nbrh >= 9 and nbrh <= 11) or
+             (nbrh >=18 and nbrh <= 20) ) {
+          result[1] = ymin;
+        }
+        else if ((nbrh >= 6 and nbrh <= 8) or
+                 (nbrh >= 15 and nbrh <= 17) or
+                 (nbrh >= 24 and nbrh <= 26)) {
+          result[1] = ymax;
+        }
+
+        if (nbrh <= 8) {
+          result[0] = xmin;
+        }
+        else if (nbrh >= 18) {
+          result[0] = xmax;
+        }
+      }
       return result;
     }
 
@@ -339,37 +369,6 @@ bool operator == (const Box3d& lhs, const Box3d& rhs) {
 
 KOKKOS_INLINE_FUNCTION
 bool operator != (const Box3d& lhs, const Box3d& rhs) {return !(lhs == rhs);}
-
-struct BoundingBoxFunctor {
-    typedef Box3d value_type;
-    ko::View<Real*[3]> pts;
-
-    KOKKOS_INLINE_FUNCTION
-    BoundingBoxFunctor(const ko::View<Real*[3]> p) : pts(p) {}
-
-    KOKKOS_INLINE_FUNCTION
-    void operator () (const Index& i, value_type& bb) const {
-        if (pts(i,0) < bb.xmin) bb.xmin = pts(i,0);
-        if (pts(i,0) > bb.xmax) bb.xmax = pts(i,0);
-        if (pts(i,1) < bb.ymin) bb.ymin = pts(i,1);
-        if (pts(i,1) > bb.ymax) bb.ymax = pts(i,1);
-        if (pts(i,2) < bb.zmin) bb.zmin = pts(i,2);
-        if (pts(i,2) > bb.zmax) bb.zmax = pts(i,2);
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    void join(volatile value_type& dst, const volatile value_type& src) const {
-        if (src.xmin < dst.xmin) dst.xmin = src.xmin;
-        if (src.xmax > dst.xmax) dst.xmax = src.xmax;
-        if (src.ymin < dst.ymin) dst.ymin = src.ymin;
-        if (src.ymax > dst.ymax) dst.ymax = src.ymax;
-        if (src.zmin < dst.zmin) dst.zmin = src.zmin;
-        if (src.zmax > dst.zmax) dst.zmax = src.zmax;
-    }
-
-    KOKKOS_INLINE_FUNCTION
-    void init(value_type& dst) const {dst.init();}
-};
 
 std::ostream& operator << (std::ostream& os, const Box3d& b);
 
