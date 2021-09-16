@@ -28,6 +28,7 @@ add_library(lpm
                 mesh/lpm_polymesh2d.cpp
                 netcdf/lpm_netcdf.cpp
                 tree/lpm_box3d.cpp
+                tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
@@ -71,6 +72,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_box3d.hpp
+              tree/lpm_cpu_tree.hpp
               util/lpm_filename.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp

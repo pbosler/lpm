@@ -324,7 +324,6 @@ struct Box3d {
     }
 
     std::vector<Box3d> bisect_all() const;
-
 };
 
 KOKKOS_INLINE_FUNCTION
