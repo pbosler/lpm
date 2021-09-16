@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 
 #include "lpm_kokkos_defs.hpp"
+#include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 #include "util/lpm_floating_point.hpp"
 
@@ -11,10 +12,11 @@
 
 #include <iostream>
 #include <iomanip>
-#include <cassert>
 
 namespace Lpm {
 namespace tree {
+
+#define BOX_PADDING 1e-5
 
 
 /** @brief A simple struct representing a box (rectangular prism) in 3d Euclidean space.
@@ -29,8 +31,16 @@ struct Box3d {
     Box3d() {init();}
 
     KOKKOS_INLINE_FUNCTION
-    Box3d(const Real& xl, const Real& xr, const Real& yl, const Real& yr, const Real& zl, const Real& zr) :
-        xmin(xl), xmax(xr), ymin(yl), ymax(yr), zmin(zl), zmax(zr) {}
+    Box3d(const Real& xl, const Real& xr,
+          const Real& yl, const Real& yr,
+          const Real& zl, const Real& zr,
+          const bool pad = true) :
+        xmin(xl - (pad ? BOX_PADDING : 0)),
+        xmax(xr + (pad ? BOX_PADDING : 0)),
+        ymin(yl - (pad ? BOX_PADDING : 0)),
+        ymax(yr + (pad ? BOX_PADDING : 0)),
+        zmin(zl - (pad ? BOX_PADDING : 0)),
+        zmax(zr + (pad ? BOX_PADDING : 0)) {}
 
     KOKKOS_INLINE_FUNCTION
     Box3d(const ko::Tuple<Real,6>& mm) :
@@ -110,7 +120,7 @@ struct Box3d {
     }
 
     KOKKOS_INLINE_FUNCTION
-    Real longest_edge(const Box3d& b) const {
+    Real longest_edge() const {
         const Real dx = xmax - xmin;
         const Real dy = ymax - ymin;
         const Real dz = zmax - zmin;
@@ -140,7 +150,9 @@ struct Box3d {
     KOKKOS_INLINE_FUNCTION
     ko::Tuple<Real,3> centroid() const {
       ko::Tuple<Real,3> result;
-      centroid(result[0], result[1], result[2]);
+      result[0] = 0.5*(xmin+xmax);
+      result[1] = 0.5*(ymin+ymax);
+      result[2] = 0.5*(zmin+zmax);
       return result;
     }
 
@@ -152,7 +164,7 @@ struct Box3d {
     KOKKOS_INLINE_FUNCTION
     Real cube_edge_length() const {
         LPM_KERNEL_ASSERT(is_cube());
-        return bb.xmax - bb.xmin;
+        return xmax - xmin;
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -310,6 +322,9 @@ struct Box3d {
       if (nbrh >= 18) result[0] = xmax;
       return result;
     }
+
+    std::vector<Box3d> bisect_all() const;
+
 };
 
 KOKKOS_INLINE_FUNCTION
@@ -412,30 +427,24 @@ struct Box3dReducer {
 };
 
 
-
-
-
-
-
-
-KOKKOS_INLINE_FUNCTION
-bool boxIntersectsSphere(const Box3d& b, const Real sph_radius=1.0) {
-    bool result = false;
-    Real cp[3];
-    Real fp[3];
-    const Real origin[3] = {0.0,0.0,0.0};
-    closestPointInBox(cp, b, origin);
-    farthestPointInBox(fp, b, origin);
-    Real cp_mag_sq = 0.0;
-    Real fp_mag_sq = 0.0;
-    for (Int i=0; i<3; ++i) {
-        cp_mag_sq += square(cp[i]);
-        fp_mag_sq += square(fp[i]);
-    }
-    const Real rsq = square(sph_radius);
-    result = cp_mag_sq <= rsq && rsq <= fp_mag_sq;
-    return result;
-}
+// KOKKOS_INLINE_FUNCTION
+// bool boxIntersectsSphere(const Box3d& b, const Real sph_radius=1.0) {
+//     bool result = false;
+//     Real cp[3];
+//     Real fp[3];
+//     const Real origin[3] = {0.0,0.0,0.0};
+//     closestPointInBox(cp, b, origin);
+//     farthestPointInBox(fp, b, origin);
+//     Real cp_mag_sq = 0.0;
+//     Real fp_mag_sq = 0.0;
+//     for (Int i=0; i<3; ++i) {
+//         cp_mag_sq += square(cp[i]);
+//         fp_mag_sq += square(fp[i]);
+//     }
+//     const Real rsq = square(sph_radius);
+//     result = cp_mag_sq <= rsq && rsq <= fp_mag_sq;
+//     return result;
+// }
 
 template <typename BoxView> KOKKOS_INLINE_FUNCTION
 void box_bisect_all(BoxView& kids, const Box3d& parent) {

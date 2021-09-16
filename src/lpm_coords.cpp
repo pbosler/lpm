@@ -99,6 +99,18 @@ void Coords<Geo>::init_interior_crds_from_seed(const MeshSeed<SeedType>& seed) {
   _nh() = SeedType::nfaces;
 }
 
+template <typename Geo>
+Kokkos::MinMaxScalar<Real> Coords<Geo>::min_max_extent(const int dim) const {
+  Kokkos::MinMaxScalar<Real> minmax;
+  const auto local_crds = this->crds;
+  Kokkos::parallel_reduce(_nh(), KOKKOS_LAMBDA (const Index i,
+    Kokkos::MinMaxScalar<Real>& mm) {
+    if (local_crds(i,dim) < mm.min_val) mm.min_val = local_crds(i,dim);
+    if (local_crds(i,dim) > mm.max_val) mm.max_val = local_crds(i,dim);
+  }, Kokkos::MinMax<Real>(minmax));
+  return minmax;
+}
+
 /// ETI
 template class Coords<PlaneGeometry>;
 template class Coords<SphereGeometry>;

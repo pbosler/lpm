@@ -27,16 +27,16 @@ add_library(lpm
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
                 netcdf/lpm_netcdf.cpp
-                vtk/lpm_vtk_io.cpp
+                tree/lpm_box3d.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
                 util/lpm_timer.cpp
-
+                vtk/lpm_vtk_io.cpp
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
-#    LpmErrorNorms.cpp LpmBox3d.cpp  LpmOctreeLUT.cpp
+#    LpmOctreeLUT.cpp
 #    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
 #    LpmSWEGallery.cpp
                 )
@@ -70,6 +70,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               mesh/lpm_polymesh2d.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
+              tree/lpm_box3d.hpp
               util/lpm_filename.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp
