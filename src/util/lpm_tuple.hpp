@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Array.hpp"
+#include "spdlog/fmt/ostr.h"
 #include <limits>
 #include <cfloat>
 /**
@@ -94,6 +95,16 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
       this->m_internal_implementation_private_member_data[i] *= o[i];
     return *this;
   }
+
+  template <typename OStream>
+  friend OStream& operator << (OStream& os, const Tuple<T,ndim>& tup) {
+    os << "[ ";
+    for (int i=0; i<ndim; ++i) {
+      os << tup[i] << " ";
+    }
+    os << "]";
+    return os;
+  }
 };
 
 template <int ndim>
@@ -107,8 +118,6 @@ struct reduction_identity<Tuple<Lpm::Real,ndim>> {
 }// namespace Kokkos
 
 namespace Lpm {
-
-
 
 }
 #endif

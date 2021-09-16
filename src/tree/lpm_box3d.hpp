@@ -107,8 +107,8 @@ struct Box3d {
         return ((inx && iny) && inz);
     }
 
-    KOKKOS_INLINE_FUNCTION
-    Int octree_child_index(const Real pos[3]) const {
+    template <typename CPT> KOKKOS_INLINE_FUNCTION
+    Int octree_child_index(const CPT pos) const {
         Int result = 0;
         LPM_KERNEL_ASSERT(contains_pt(pos));
 
@@ -153,6 +153,7 @@ struct Box3d {
       result[0] = 0.5*(xmin+xmax);
       result[1] = 0.5*(ymin+ymax);
       result[2] = 0.5*(zmin+zmax);
+      LPM_KERNEL_ASSERT(contains_pt(result));
       return result;
     }
 
@@ -163,7 +164,7 @@ struct Box3d {
 
     KOKKOS_INLINE_FUNCTION
     Real cube_edge_length() const {
-        LPM_KERNEL_ASSERT(is_cube());
+        LPM_KERNEL_REQUIRE(is_cube());
         return xmax - xmin;
     }
 
