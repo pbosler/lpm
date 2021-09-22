@@ -175,7 +175,7 @@ template <typename Geo> class Coords {
     */
     typename crd_view_type::HostMirror get_host_crd_view() {return _hostcrds;}
 
-    Kokkos::MinMaxScalar<Real> min_max_extent(const int dim) const;
+    typename Kokkos::MinMax<Real>::value_type min_max_extent(const int dim) const;
 
   protected:
     typename crd_view_type::HostMirror _hostcrds; ///< host view of primary data

@@ -11,6 +11,11 @@ std::string indent_string(const int tab_lev) {
   return result;
 }
 
+std::string filename_extension(const std::string& fname) {
+  const auto dot_pos = fname.find_last_of('.');
+  return fname.substr(dot_pos);
+}
+
 std::string& tolower(std::string& s) {
   for (auto& c: s) {
     c = std::tolower(c);

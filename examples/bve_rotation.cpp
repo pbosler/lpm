@@ -175,7 +175,7 @@ int main (int argc, char* argv[]) {
       /**
       Output initial data
       */
-      const std::string vtkfname = fname(frame) + fname.vtk_suffix();
+      const std::string vtkfname = fname(frame) + fname.vtp_suffix();
       logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
       VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
       vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
@@ -270,7 +270,7 @@ int main (int argc, char* argv[]) {
         if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
           ko::Profiling::pushRegion("vtk output");
 
-          const std::string vtkfname = fname(++frame) + fname.vtk_suffix();
+          const std::string vtkfname = fname(++frame) + fname.vtp_suffix();
           VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
           vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
           vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");

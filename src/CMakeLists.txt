@@ -61,6 +61,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
               lpm_coords.hpp
+              lpm_coords_impl.hpp
               lpm_geometry.hpp
               lpm_logger.hpp
               lpm_sphere_functions.hpp

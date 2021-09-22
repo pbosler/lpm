@@ -19,10 +19,16 @@ struct BaseFilename {
     return ss.str();
   }
 
-  static std::string vtk_suffix() {return ".vtp";}
+  static std::string vtp_suffix() {return ".vtp";}
 
-  static std::string add_vtk_suffix(const std::string& basename) {
-    return basename + vtk_suffix();
+  static std::string add_vtp_suffix(const std::string& basename) {
+    return basename + vtp_suffix();
+  }
+
+  static std::string vtu_suffix() {return ".vtp";}
+
+  static std::string add_vtu_suffix(const std::string& basename) {
+    return basename + vtu_suffix();
   }
 
   static std::string nc_suffix() {return ".nc";}
