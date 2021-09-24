@@ -19,7 +19,7 @@ std::vector<Box3d> Box3d::bisect_all() const {
 
 std::ostream& operator << (std::ostream& os, const Box3d& b) {
     os << "(" << std::setw(4) << b.xmin << " " << std::setw(4) << b.xmax << " " << std::setw(4) << b.ymin << " "
-              << std::setw(4) << b.ymax << " " << std::setw(4) << b.zmin << " " << std::setw(4) << b.zmax << ")\n";
+              << std::setw(4) << b.ymax << " " << std::setw(4) << b.zmin << " " << std::setw(4) << b.zmax << ")";
     return os;
 }
 

@@ -166,6 +166,46 @@ T cube(const T& x) {
   return x*x*x;
 }
 
+/** @brief Specialization of 2^k for integer typed k and return type.
+*/
+template <typename T=uint_fast32_t, typename T2> KOKKOS_INLINE_FUNCTION
+T pow2(const T2 k) {
+  static_assert(std::is_integral<T>::value, "integral type required");
+  static_assert(std::is_integral<T2>::value, "integral type required for exponent of 2");
+  T result = 1;
+  for (auto i=k; i>0; --i) {
+    result *= 2;
+  }
+  return result;
+}
+
+/** @brief Specialization of 4^k for integer typed k and return type.
+*/
+template <typename T=uint_fast32_t, typename T2> KOKKOS_INLINE_FUNCTION
+T pow4(const T2 k) {
+  static_assert(std::is_integral<T>::value, "integral type required");
+  static_assert(std::is_integral<T2>::value, "integral type required for exponent of 2");
+  T result = 1;
+  for (auto i=k; i>0; --i) {
+    result *= 4;
+  }
+  return result;
+}
+
+/** @brief Specialization of 8^k for integer typed k and return type.
+*/
+template <typename T=uint_fast32_t, typename T2> KOKKOS_INLINE_FUNCTION
+T pow8(const T2 k) {
+  static_assert(std::is_integral<T>::value, "integral type required");
+  static_assert(std::is_integral<T2>::value, "integral type required for exponent of 8");
+  T result = 1;
+  for (auto i=k; i>0; --i) {
+    result *= 8;
+  }
+  return result;
+}
+
+
 } // namespace Lpm
 
 #endif

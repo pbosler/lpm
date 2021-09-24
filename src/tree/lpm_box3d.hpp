@@ -358,6 +358,11 @@ struct Box3d {
 };
 
 KOKKOS_INLINE_FUNCTION
+Box3d std_box() {
+  return Box3d(-1,1,-1,1,-1,1);
+}
+
+KOKKOS_INLINE_FUNCTION
 bool operator == (const Box3d& lhs, const Box3d& rhs) {
     return (FloatingPoint<Real>::equiv(lhs.xmin, rhs.xmin) &&
             FloatingPoint<Real>::equiv(lhs.xmax, rhs.xmax) &&

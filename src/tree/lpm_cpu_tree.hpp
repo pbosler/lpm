@@ -2,8 +2,10 @@
 #define LPM_CPU_TREE_HPP
 
 #include "LpmConfig.h"
-#include "lpm_box3d.hpp"
 #include "lpm_coords.hpp"
+
+#include "tree/lpm_tree_node.hpp"
+#include "tree/lpm_box3d.hpp"
 
 #include "vtkSmartPointer.h"
 #include "vtkPoints.h"
@@ -11,38 +13,11 @@
 #include "vtkUnstructuredGrid.h"
 
 #include <memory>
-#include <vector>
 
 namespace Lpm {
 namespace tree {
 
-struct Node {
-  Node(const Box3d& bb, Node* p = NULL,
-    const std::vector<Index>& inds = std::vector<Index>()) :
-    box(bb),
-    level((p ? p->level+1 : 0)),
-    parent(p),
-    crd_inds(inds) {}
-
-  virtual ~Node() {}
-
-  inline Index n() const {return crd_inds.size();}
-  inline bool is_leaf() const {return kids.empty();}
-  inline bool has_kids() const {return !is_leaf();}
-  inline bool empty() const {return crd_inds.empty();}
-
-  Box3d box;
-  int level;
-  Node* parent;
-  std::vector<std::unique_ptr<Node>> kids;
-  std::vector<Index> crd_inds;
-
-  std::string info_string(const int tab_level = 0) const;
-
-};
-
-
-template <typename Geo>
+template <typename Geo=SphereGeometry, typename NodeType=Node>
 struct CpuTree {
   public:
     static constexpr int MAX_CPU_TREE_DEPTH = 10;
@@ -58,7 +33,7 @@ struct CpuTree {
 
     int depth;
     Index n_nodes;
-    std::unique_ptr<Node> root;
+    std::unique_ptr<NodeType> root;
 
     void write_vtk(const std::string& ofname) const;
 
@@ -71,21 +46,21 @@ struct CpuTree {
     Int control_n;
     bool do_shrink;
 
-    void generate_tree_max_coords_per_node(Node* node,
+    void generate_tree_max_coords_per_node(NodeType* node,
       const Index max_coords_per_node);
 
-    void generate_tree_max_depth(Node* node, int max_depth);
+    void generate_tree_max_depth(NodeType* node, int max_depth);
 
-    void shrink_box(Node* node);
+    void shrink_box(NodeType* node);
 
-    void divide_node(Node* node);
+    void divide_node(NodeType* node);
 
-    std::string node_info_string(Node* node) const;
+    std::string node_info_string(NodeType* node) const;
 
     void insert_vtk_cell_points(
       vtkSmartPointer<vtkPoints> pts,
       vtkSmartPointer<vtkUnstructuredGrid> ugrid,
-      vtkSmartPointer<vtkIntArray> levels, const Node* node) const;
+      vtkSmartPointer<vtkIntArray> levels, const NodeType* node) const;
 
     std::shared_ptr<Coords<Geo>> _crds;
 };

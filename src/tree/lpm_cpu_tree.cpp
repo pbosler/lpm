@@ -17,22 +17,9 @@
 namespace Lpm {
 namespace tree {
 
-std::string Node::info_string(const int tab_level) const {
-  std::ostringstream ss;
-  auto tabstr = indent_string(tab_level);
-  ss << tabstr << "Node info:\n";
-  tabstr += "\t";
-  ss << tabstr << "n = " << n() << "\n";
-  ss << tabstr << "level = " << level << "\n";
-  ss << tabstr << "is_leaf() = " << std::boolalpha << is_leaf() << "\n";
-  ss << tabstr << "parent = " << parent << "\n";
-  ss << tabstr << "kids.size() = " << kids.size() << "\n";
-  ss << tabstr << "box.volume() = " << box.volume() << "\n";
-  return ss.str();
-}
 
-template <typename Geo>
-std::string CpuTree<Geo>::info_string(const int tab_level) const {
+template <typename Geo, typename NodeType>
+std::string CpuTree<Geo,NodeType>::info_string(const int tab_level) const {
   std::ostringstream ss;
   auto tabstr = indent_string(tab_level);
   ss << tabstr << "CpuTree info:\n";
@@ -40,8 +27,8 @@ std::string CpuTree<Geo>::info_string(const int tab_level) const {
   return ss.str();
 }
 
-template <typename Geo>
-CpuTree<Geo>::CpuTree(const std::shared_ptr<Coords<Geo>> crds,
+template <typename Geo, typename NodeType>
+CpuTree<Geo,NodeType>::CpuTree(const std::shared_ptr<Coords<Geo>> crds,
   const TreeDepthControl& ctl, const Int ctl_n,
   const bool shrink) :
   _crds(crds),
@@ -62,7 +49,7 @@ CpuTree<Geo>::CpuTree(const std::shared_ptr<Coords<Geo>> crds,
   std::vector<Index> root_inds(crds->nh());
   std::iota(root_inds.begin(), root_inds.end(), 0);
 
-  root = std::unique_ptr<Node>(new Node(root_box, NULL, root_inds));
+  root = std::unique_ptr<Node>(new NodeType(root_box, NULL, root_inds));
 
 #ifndef NDEBUG
   std::cout << root->info_string();
@@ -85,8 +72,8 @@ CpuTree<Geo>::CpuTree(const std::shared_ptr<Coords<Geo>> crds,
   }
 }
 
-template <typename Geo>
-void CpuTree<Geo>::shrink_box(Node* node) {
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::shrink_box(NodeType* node) {
   Real xmin = std::numeric_limits<Real>::max();
   Real xmax = std::numeric_limits<Real>::lowest();
   Real ymin = xmin;
@@ -111,8 +98,8 @@ void CpuTree<Geo>::shrink_box(Node* node) {
   node->box.zmax = zmax;
 }
 
-template <typename Geo>
-void CpuTree<Geo>::divide_node(Node* node) {
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::divide_node(NodeType* node) {
   LPM_ASSERT(!node->empty());
   const auto kid_boxes = node->box.bisect_all();
   auto counted = std::vector<bool>(node->n(), false);
@@ -161,8 +148,8 @@ void CpuTree<Geo>::divide_node(Node* node) {
   }
 }
 
-template <typename Geo>
-void CpuTree<Geo>::generate_tree_max_coords_per_node(Node* node,
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::generate_tree_max_coords_per_node(NodeType* node,
   const Index max_coords_per_node) {
   if (node->n() <= max_coords_per_node or node->empty()) {
     return;
@@ -176,8 +163,8 @@ void CpuTree<Geo>::generate_tree_max_coords_per_node(Node* node,
   }
 }
 
-template <typename Geo>
-void CpuTree<Geo>::generate_tree_max_depth(Node* node, const int max_depth) {
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::generate_tree_max_depth(NodeType* node, const int max_depth) {
   if (node->level == max_depth or node->empty()) {
     return;
   }
@@ -189,11 +176,11 @@ void CpuTree<Geo>::generate_tree_max_depth(Node* node, const int max_depth) {
   }
 }
 
-template <typename Geo>
-void CpuTree<Geo>::insert_vtk_cell_points(
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::insert_vtk_cell_points(
   vtkSmartPointer<vtkPoints> pts,
   vtkSmartPointer<vtkUnstructuredGrid> ugrid,
-  vtkSmartPointer<vtkIntArray> levels, const Node* node) const {
+  vtkSmartPointer<vtkIntArray> levels, const NodeType* node) const {
   const auto box = node->box;
   const auto npts_in = pts->GetNumberOfPoints();
   const auto ncells_in = ugrid->GetNumberOfCells();
@@ -225,8 +212,8 @@ void CpuTree<Geo>::insert_vtk_cell_points(
   }
 }
 
-template <typename Geo>
-void CpuTree<Geo>::write_vtk(const std::string& ofname) const {
+template <typename Geo, typename NodeType>
+void CpuTree<Geo,NodeType>::write_vtk(const std::string& ofname) const {
   LPM_REQUIRE(filename_extension(ofname) == ".vtu");
   vtkNew<vtkPoints> pts;
   vtkNew<vtkUnstructuredGrid> ugrid;
@@ -243,8 +230,8 @@ void CpuTree<Geo>::write_vtk(const std::string& ofname) const {
   writer->Write();
 }
 
-template <typename Geo>
-std::string CpuTree<Geo>::node_info_string(Node* node) const {
+template <typename Geo, typename NodeType>
+std::string CpuTree<Geo,NodeType>::node_info_string(NodeType* node) const {
   auto nodestr = node->info_string(node->level+1);
   if (node->has_kids()) {
     for (int k=0; k<8; ++k) {
@@ -257,7 +244,7 @@ std::string CpuTree<Geo>::node_info_string(Node* node) const {
 }
 
 // ETI
-template class CpuTree<SphereGeometry>;
+template class CpuTree<>;
 
 } // namespace tree
 } // namespace Lpm

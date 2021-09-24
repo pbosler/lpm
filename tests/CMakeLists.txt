@@ -48,6 +48,8 @@ CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
 
 CreateUnitTest(cpu_tree_test lpm_cpu_tree_tests.cpp)
 
+CreateUnitTest(gpu_octree_functions_test lpm_gpu_octree_functions_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)

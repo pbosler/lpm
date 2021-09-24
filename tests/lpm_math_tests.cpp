@@ -44,6 +44,14 @@ TEST_CASE("lpm_math", "") {
     REQUIRE( FloatingPoint<Real>::equiv(legendre_p(l, 1), 1));
   }
 #endif
+
+  for (int k=0; k<5; ++k) {
+    REQUIRE(pow2<unsigned>(k) == std::pow(2,k));
+    REQUIRE(pow8<unsigned short>(k) == std::pow(8,k));
+    REQUIRE(pow2<uint_fast32_t>(k) == std::pow(2,k));
+    REQUIRE(pow8<uint32_t>(k) == std::pow(8,k));
+    REQUIRE(pow8<uint_fast64_t>(k) == std::pow(8,k));
+  }
 }
 
 

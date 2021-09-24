@@ -52,10 +52,10 @@ TEST_CASE("cpu_tree_test", "[tree]") {
     /**
       Build the CPU trees
     */
-    const auto depth_ctl = CpuTree<SphereGeometry>::TreeDepthControl::MaxCoordsPerLeaf;
+    const auto depth_ctl = CpuTree<>::TreeDepthControl::MaxCoordsPerLeaf;
     const int max_leaf_crds = 20;
     const bool shrink_boxes = false;
-    CpuTree<SphereGeometry> vertex_tree(sphere->vertices.phys_crds,
+    CpuTree<> vertex_tree(sphere->vertices.phys_crds,
       depth_ctl, max_leaf_crds, shrink_boxes);
 
     logger.debug(vertex_tree.info_string());
