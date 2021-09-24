@@ -4,6 +4,7 @@
 #include "lpm_coords.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_comm.hpp"
+#include "lpm_constants.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"
@@ -92,4 +93,38 @@ TEST_CASE("gpu_octree_functions", "[tree]") {
     logger.info("key/node/parent tests pass.");
 
   }
+
+  SECTION("binary search tests") {
+
+    Kokkos::View<unsigned[8],Host> arr_view("arr_view");
+    for (auto i=0; i<8; ++i) {
+      arr_view(i) = i;
+    }
+    arr_view(4) = 3;
+    arr_view(5) = 3;
+
+    logger.debug("starting binary test loop.");
+
+    for (auto i=0; i<8; ++i) {
+      const auto first = binary_search_first(i, arr_view);
+      const auto last = binary_search_last(i, arr_view);
+      logger.debug("found first {} at idx {}", i, first);
+      logger.debug("found last  {} at idx {}", i, last);
+      REQUIRE(last >= first);
+      if (i == 3) {
+        REQUIRE(first == 3);
+        REQUIRE(last == 5);
+      }
+      else if (i == 4 or i==5) {
+        REQUIRE(first == constants::NULL_IND);
+        REQUIRE(last == constants::NULL_IND);
+      }
+      else {
+        REQUIRE(first >= 0);
+      }
+    }
+
+    logger.info("binary search tests passs.");
+  }
+
 }

@@ -237,6 +237,7 @@ Index binary_search_last(const T& target, const ViewType& sorted_view) {
       low = mid+1;
     }
   }
+  return result;
 }
 
 } // namespace tree
