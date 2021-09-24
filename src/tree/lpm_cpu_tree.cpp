@@ -49,7 +49,7 @@ CpuTree<Geo,NodeType>::CpuTree(const std::shared_ptr<Coords<Geo>> crds,
   std::vector<Index> root_inds(crds->nh());
   std::iota(root_inds.begin(), root_inds.end(), 0);
 
-  root = std::unique_ptr<Node>(new NodeType(root_box, NULL, root_inds));
+  root = std::unique_ptr<NodeType>(new NodeType(root_box, NULL, root_inds));
 
 #ifndef NDEBUG
   std::cout << root->info_string();
