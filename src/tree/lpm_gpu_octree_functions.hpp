@@ -8,6 +8,7 @@
 
 #define MAX_OCTREE_DEPTH 10
 #define WORD_MASK 0xFFFFFFFF
+#define NULL_IDX -1
 
 /**
   This file contains functions and utilities for use with the data-parallel
@@ -126,6 +127,7 @@ KOKKOS_INLINE_FUNCTION
 Box3d box_from_key(const key_type& k, const int& lev, const int& max_depth=MAX_OCTREE_DEPTH) {
   LPM_KERNEL_ASSERT(max_depth > 0 && max_depth <= MAX_OCTREE_DEPTH);
   LPM_KERNEL_ASSERT(lev >= 0 && lev <= MAX_OCTREE_DEPTH);
+  LPM_KERNEL_ASSERT(lev <= max_depth);
   Real cx = 0;
   Real cy = 0;
   Real cz = 0;
@@ -192,6 +194,28 @@ key_type decode_key(const code_type& code) {
   return key_type(code>>32);
 }
 
+template <typename T, typename T2>
+struct Converter {
+  KOKKOS_INLINE_FUNCTION
+  Converter() {}
+
+  KOKKOS_INLINE_FUNCTION
+  T operator() (const T2 src) const {
+    return T(src);
+  }
+};
+
+template <>
+struct Converter<key_type, code_type> {
+  KOKKOS_INLINE_FUNCTION
+  Converter() {}
+
+  KOKKOS_INLINE_FUNCTION
+  key_type operator() (const code_type c) const {
+    return decode_key(c);
+  }
+};
+
 /** @brief search a sorted view for a key
 
   @param [in] key
@@ -202,14 +226,16 @@ template <typename T=key_type, typename ViewType> KOKKOS_INLINE_FUNCTION
 Index binary_search_first(const T& target, const ViewType& sorted_view) {
   Index low = 0;
   Index high = sorted_view.extent(0)-1;
-  Index result = constants::NULL_IND;
+  Index result = NULL_IDX;
+  Converter<T, typename ViewType::value_type> convert;
   while ( low <= high) {
     Index mid = (low + high)/2;
-    if (target == sorted_view(mid)) {
+    const auto midval = convert(sorted_view(mid));
+    if (target == midval) {
       result = mid;
       high = mid-1;
     }
-    else if (target < sorted_view(mid)) {
+    else if (target < midval) {
       high = mid-1;
     }
     else {
@@ -223,14 +249,16 @@ template <typename T=key_type, typename ViewType> KOKKOS_INLINE_FUNCTION
 Index binary_search_last(const T& target, const ViewType& sorted_view) {
   Index low = 0;
   Index high = sorted_view.extent(0)-1;
-  Index result = constants::NULL_IND;
+  Index result = NULL_IDX;
+  Converter<T, typename ViewType::value_type> convert;
   while (low <= high) {
     Index mid = (low + high)/2;
-    if (target == sorted_view(mid)) {
+    const auto midval = convert(sorted_view(mid));
+    if (target == midval) {
       result = mid;
       low = mid+1;
     }
-    else if (target < sorted_view(mid)) {
+    else if (target < midval) {
       high = mid-1;
     }
     else {

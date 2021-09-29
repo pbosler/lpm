@@ -30,6 +30,9 @@ add_library(lpm
                 tree/lpm_box3d.cpp
                 tree/lpm_tree_node.cpp
                 tree/lpm_cpu_tree.cpp
+                tree/lpm_node_array_d.cpp
+                tree/lpm_node_array_internal.cpp
+                tree/lpm_gpu_octree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
@@ -76,6 +79,11 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               tree/lpm_tree_node.hpp
               tree/lpm_box3d.hpp
               tree/lpm_cpu_tree.hpp
+              tree/lpm_gpu_octree.hpp
+              tree/lpm_gpu_octree_functions.hpp
+              tree/lpm_gpu_octree_lookup_tables.hpp
+              tree/lpm_node_array_d.hpp
+              tree/lpm_node_array_internal.hpp
               util/lpm_filename.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp

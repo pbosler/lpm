@@ -354,6 +354,14 @@ struct Box3d {
       return result;
     }
 
+    template <typename PtType> KOKKOS_INLINE_FUNCTION
+    void vertex_crds(PtType& crds, const int v) const {
+      LPM_KERNEL_ASSERT( (v>=0 and v<8) );
+      crds[0] = ( (v&4) == 0 ? xmin : xmax );
+      crds[1] = ( (v&2) == 0 ? ymin : ymax );
+      crds[2] = ( (v&1) == 0 ? zmin : zmax );
+    }
+
     std::vector<Box3d> bisect_all() const;
 };
 

@@ -10,6 +10,8 @@
 #cmakedefine LPM_USE_BOOST
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 
+#include "Kokkos_Core.hpp"
+
 namespace Lpm {
 
   const char* version();
