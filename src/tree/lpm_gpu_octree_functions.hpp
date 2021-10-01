@@ -5,6 +5,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
 #include "tree/lpm_box3d.hpp"
+#include <array>
 
 #define MAX_OCTREE_DEPTH 10
 #define WORD_MASK 0xFFFFFFFF
@@ -21,8 +22,8 @@
 namespace Lpm {
 namespace tree {
 
-typedef uint_fast32_t key_type;
-typedef uint32_t id_type;
+typedef uint_fast32_t id_type;
+typedef uint32_t key_type;
 typedef uint_fast64_t code_type;
 
 /** @brief Compute the shuffled xyz key associated with a point at pos,
@@ -103,7 +104,7 @@ KOKKOS_INLINE_FUNCTION
 key_type local_key(const key_type& k, const int& lev, const int& max_depth = MAX_OCTREE_DEPTH) {
 
   LPM_KERNEL_ASSERT(max_depth > 0 && max_depth <= MAX_OCTREE_DEPTH);
-  LPM_KERNEL_ASSERT(lev > 0 && lev <= MAX_OCTREE_DEPTH);
+  LPM_KERNEL_ASSERT(lev > 0 && lev <= max_depth);
 
   const auto nbits = 3*max_depth; // key length in bits
   const auto pzb = nbits - 3*(lev-1); // postion of parent's z-bit
@@ -267,6 +268,8 @@ Index binary_search_last(const T& target, const ViewType& sorted_view) {
   }
   return result;
 }
+
+
 
 } // namespace tree
 } // namespace Lpm

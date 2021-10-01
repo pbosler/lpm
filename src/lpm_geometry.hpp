@@ -121,6 +121,20 @@ struct PlaneGeometry {
     d[0] = s[0];
     d[1] = s[1];
   }
+
+  /**\brief  Computes the squared Euclidean distance between two points on the sphere
+
+    \param a view of a position vector a = [a0,a1]
+    \param b view of a position vector b = [b0,b1]
+  */
+  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+  static Real square_euclidean_distance(const CV a, const CV2 b) {
+    Real result = 0;
+    for (int i=0; i<2; ++i) {
+      result += square(b[i]-a[i]);
+    }
+    return result;
+  }
 };
 
 struct CircularPlaneGeometry : public PlaneGeometry {

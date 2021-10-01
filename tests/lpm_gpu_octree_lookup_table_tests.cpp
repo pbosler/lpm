@@ -10,6 +10,7 @@
 #include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
+#include <array>
 
 using namespace Lpm;
 using namespace Lpm::tree;
@@ -46,6 +47,24 @@ TEST_CASE("gpu_octree_lookup_tables", "[tree]") {
       REQUIRE(h_p_i(i) == 13);
       REQUIRE(h_c_i(i) == i);
     }
+
+    const auto plut_entries = parent_lookup_table_entries();
+    Kokkos::View<ParentLUT,Host> h_parent_table("h_parent_table");
+    for (auto i=0; i<8; ++i) {
+      for (auto j=0; j<27; ++j) {
+        REQUIRE(table_val(i, j, h_parent_table) == plut_entries[27*i +j]);
+      }
+    }
+
+    const auto clut_entries = child_lookup_table_entries();
+    Kokkos::View<ChildLUT,Host> h_child_table("h_child_table");
+
+    for (auto i=0; i<8; ++i) {
+      for (auto j=0; j<27; ++j) {
+        REQUIRE(table_val(i, j, h_child_table) == clut_entries[27*i+j]);
+      }
+    }
+
   }
 
   SECTION("connectivity tables") {

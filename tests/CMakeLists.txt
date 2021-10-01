@@ -46,6 +46,8 @@ CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
 
 CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
 
+CreateUnitTest(box2d_test lpm_box2d_tests.cpp)
+
 CreateUnitTest(cpu_tree_test lpm_cpu_tree_tests.cpp)
 
 CreateUnitTest(gpu_octree_functions_test lpm_gpu_octree_functions_tests.cpp)

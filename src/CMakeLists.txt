@@ -27,12 +27,15 @@ add_library(lpm
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
                 netcdf/lpm_netcdf.cpp
+                tree/lpm_box2d.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_tree_node.cpp
                 tree/lpm_cpu_tree.cpp
                 tree/lpm_node_array_d.cpp
                 tree/lpm_node_array_internal.cpp
                 tree/lpm_gpu_octree.cpp
+                tree/lpm_quadtree_lookup_tables.cpp
+                tree/lpm_gpu_octree_lookup_tables.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
@@ -77,10 +80,12 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_tree_node.hpp
+              tree/lpm_box2d.hpp
               tree/lpm_box3d.hpp
               tree/lpm_cpu_tree.hpp
               tree/lpm_gpu_octree.hpp
               tree/lpm_gpu_octree_functions.hpp
+              tree/lpm_quadtree_lookup_tables.hpp
               tree/lpm_gpu_octree_lookup_tables.hpp
               tree/lpm_node_array_d.hpp
               tree/lpm_node_array_internal.hpp

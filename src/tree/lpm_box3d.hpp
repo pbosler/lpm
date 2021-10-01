@@ -23,6 +23,7 @@ namespace tree {
 
 */
 struct Box3d {
+    /// min/max coordinates in each dimension
     Real xmin, xmax;
     Real ymin, ymax;
     Real zmin, zmax;
@@ -30,6 +31,16 @@ struct Box3d {
     KOKKOS_INLINE_FUNCTION
     Box3d() {init();}
 
+    /** @brief constructor
+
+      @param [in] xl left boundary in x
+      @param [in] xr right boundary in x
+      @param [in] yl left boundary in xy
+      @param [in] yr right boundary in y
+      @param [in] zl left boundary in z
+      @param [in] zr right boundary in z
+      @param [in] pad if true, add padding in all directions
+    */
     KOKKOS_INLINE_FUNCTION
     Box3d(const Real& xl, const Real& xr,
           const Real& yl, const Real& yr,
@@ -42,6 +53,11 @@ struct Box3d {
         zmin(zl - (pad ? BOX_PADDING : 0)),
         zmax(zr + (pad ? BOX_PADDING : 0)) {}
 
+    /** @brief constructor
+
+      @param [in] mm min/max values in each direction,
+        ordered as min/max in x, then y, then z
+    */
     KOKKOS_INLINE_FUNCTION
     Box3d(const ko::Tuple<Real,6>& mm) :
       xmin(mm[0]),
@@ -52,6 +68,18 @@ struct Box3d {
       zmax(mm[5])
     {}
 
+    /** @brief Constuct a cube from centroid and side length
+    */
+    KOKKOS_INLINE_FUNCTION
+    Box3d(const ko::Tuple<Real,3>& c, const Real len) :
+      xmin(c[0] - 0.5*len),
+      xmax(c[0] + 0.5*len),
+      ymin(c[1] - 0.5*len),
+      ymax(c[1] + 0.5*len),
+      zmin(c[2] - 0.5*len),
+      zmax(c[2] + 0.5*len) {}
+
+    /// copy constructor
     KOKKOS_INLINE_FUNCTION
     Box3d(const Box3d& other) :
         xmin(other.xmin),
@@ -61,6 +89,10 @@ struct Box3d {
         zmin(other.zmin),
         zmax(other.zmax) {}
 
+    /** @brief default initializer
+
+      sets up box for use with custom reducer to determine bounding box
+    */
     KOKKOS_INLINE_FUNCTION
     void init() {
         xmin = ko::reduction_identity<Real>::min();
@@ -71,6 +103,7 @@ struct Box3d {
         zmax = ko::reduction_identity<Real>::max();
     }
 
+    /// @brief assignment operator
     KOKKOS_INLINE_FUNCTION
     void operator = (const Box3d& rhs) {
         xmin = rhs.xmin;
@@ -81,6 +114,7 @@ struct Box3d {
         zmax = rhs.zmax;
     }
 
+    /// @brief assignment operator
     KOKKOS_INLINE_FUNCTION
     void operator = (const volatile Box3d& rhs) {
         xmin = rhs.xmin;
@@ -91,6 +125,7 @@ struct Box3d {
         zmax = rhs.zmax;
     }
 
+    /// @brief compute & return volume
     KOKKOS_INLINE_FUNCTION
     Real volume() const {
       const Real dx = xmax - xmin;
@@ -99,6 +134,9 @@ struct Box3d {
       return dx*dy*dz;
     }
 
+    /** @brief given a query point, returns true if the point lies within
+      the box, false otherwise.
+    */
     template <typename CPT> KOKKOS_INLINE_FUNCTION
     bool contains_pt(const CPT& p) const {
         const bool inx = (xmin <= p[0] && p[0] <= xmax);
@@ -107,8 +145,11 @@ struct Box3d {
         return ((inx && iny) && inz);
     }
 
+    /** @brief given a point contained by *this,
+      return the index of the child that also contains the point.
+    */
     template <typename CPT> KOKKOS_INLINE_FUNCTION
-    Int octree_child_index(const CPT pos) const {
+    Int octree_child_idx(const CPT pos) const {
         Int result = 0;
         LPM_KERNEL_ASSERT(contains_pt(pos));
 
@@ -119,6 +160,7 @@ struct Box3d {
         return result;
     }
 
+    /// return the longest edge of a box
     KOKKOS_INLINE_FUNCTION
     Real longest_edge() const {
         const Real dx = xmax - xmin;
@@ -127,6 +169,7 @@ struct Box3d {
         return max(max(dx,dy),dz);
     }
 
+    /// return the shortest edge of a box
     KOKKOS_INLINE_FUNCTION
     Real shortest_edge() const {
         const Real dx = xmax - xmin;
@@ -135,11 +178,13 @@ struct Box3d {
         return min(min(dx,dy),dz);
     }
 
+    /// compute the aspect ratio
     KOKKOS_INLINE_FUNCTION
     Real aspect_ratio() const {
         return longest_edge() / shortest_edge();
     }
 
+    /// compute & return centroid
     KOKKOS_INLINE_FUNCTION
     void centroid(Real& cx, Real& cy, Real& cz) const {
         cx = 0.5*(xmin + xmax);
@@ -147,6 +192,7 @@ struct Box3d {
         cz = 0.5*(zmin + zmax);
     }
 
+    /// compute & return centroid
     KOKKOS_INLINE_FUNCTION
     ko::Tuple<Real,3> centroid() const {
       ko::Tuple<Real,3> result;
@@ -157,17 +203,20 @@ struct Box3d {
       return result;
     }
 
+    /// returns true if the box is a cube, false otherwise
     KOKKOS_INLINE_FUNCTION
     bool is_cube() const {
       return FloatingPoint<Real>::equiv(aspect_ratio(), 1.0);
     }
 
+    /// returns the edge length of a cubic box
     KOKKOS_INLINE_FUNCTION
     Real cube_edge_length() const {
         LPM_KERNEL_REQUIRE(is_cube());
         return xmax - xmin;
     }
 
+    /// re-compute box region to require the box to be a cube
     KOKKOS_INLINE_FUNCTION
     void make_cube() {
       if (!is_cube()) {
@@ -182,131 +231,15 @@ struct Box3d {
       }
     }
 
+    /** @brief given a query point, return the box-relative neighborhood that contains it.
+    */
     template <typename PtType> KOKKOS_INLINE_FUNCTION
     Int pt_in_neighborhood(const PtType& p) const {
       Int result = -1;
-      const bool inx = (xmin <= p[0] && p[0] <= xmax);
-      const bool iny = (ymin <= p[1] && p[1] <= ymax);
-      const bool inz = (zmin <= p[2] && p[2] <= zmax);
-      if (p[0] < xmin) {
-        if (p[1] < ymin) {
-          if (p[2] < zmin) {
-            result = 0;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 1;
-          }
-          else {
-            result = 2;
-          }
-        }
-        else if (p[1] <= ymax) {
-          LPM_KERNEL_ASSERT(iny);
-          if (p[2] < zmin) {
-            result = 3;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 4;
-          }
-          else {
-            result = 5;
-          }
-        }
-        else {
-          if (p[2] < zmin) {
-            result = 6;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 7;
-          }
-          else {
-            result = 8;
-          }
-        }
-      }
-      else if (p[0] <= xmax) {
-        LPM_KERNEL_ASSERT(inx);
-        if (p[1] < ymin) {
-          if (p[2] < zmin) {
-            result = 9;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 10;
-          }
-          else {
-            result = 11;
-          }
-        }
-        else if (p[1] <= ymax) {
-          LPM_KERNEL_ASSERT(iny);
-          if (p[2] < zmin) {
-            result = 12;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            LPM_KERNEL_ASSERT(contains_pt(p));
-            result = 13;
-          }
-          else {
-            result = 14;
-          }
-        }
-        else {
-          if (p[2] < zmin) {
-            result = 15;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 16;
-          }
-          else {
-            result = 17;
-          }
-        }
-      }
-      else {
-        if (p[1] < ymin) {
-          if (p[2] < zmin) {
-            result = 18;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 19;
-          }
-          else {
-            result = 20;
-          }
-        }
-        else if (p[1] <= ymax) {
-          LPM_KERNEL_ASSERT(iny);
-          if (p[2] < zmin) {
-            result = 21;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 22;
-          }
-          else {
-            result = 23;
-          }
-        }
-        else {
-          if (p[2] < zmin) {
-            result = 24;
-          }
-          else if (p[2] <= zmax) {
-            LPM_KERNEL_ASSERT(inz);
-            result = 25;
-          }
-          else {
-            result = 26;
-          }
-        }
-      }
+      const short xreg = (p[0] < xmin ? 0 : (p[0] < xmax ? 1 : 2));
+      const short yreg = (p[1] < ymin ? 0 : (p[1] < ymax ? 1 : 2));
+      const short zreg = (p[2] < zmin ? 0 : (p[2] < zmax ? 1 : 2));
+      result = 9*xreg + 3*yreg + zreg;
       return result;
     }
 
@@ -321,39 +254,18 @@ struct Box3d {
     template <typename PtType> KOKKOS_INLINE_FUNCTION
     ko::Tuple<Real,3> closest_pt_l1(const PtType& p) const {
       ko::Tuple<Real,3> result;
-      for (int i=0; i<3; ++i) {
-        result[i] = p[i];
-      }
-      const int nbrh = pt_in_neighborhood(p);
-      if (nbrh != 13) {
-        if (nbrh%3 == 0) {
-          result[2] = zmin;
-        }
-        else if ((nbrh-2)%3 == 0) {
-          result[2] = zmax;
-        }
-
-        if ( (nbrh >= 0 and nbrh <= 2) or
-             (nbrh >= 9 and nbrh <= 11) or
-             (nbrh >=18 and nbrh <= 20) ) {
-          result[1] = ymin;
-        }
-        else if ((nbrh >= 6 and nbrh <= 8) or
-                 (nbrh >= 15 and nbrh <= 17) or
-                 (nbrh >= 24 and nbrh <= 26)) {
-          result[1] = ymax;
-        }
-
-        if (nbrh <= 8) {
-          result[0] = xmin;
-        }
-        else if (nbrh >= 18) {
-          result[0] = xmax;
-        }
-      }
+      const auto nbrh = pt_in_neighborhood(p);
+      const auto zreg = nbrh%3;
+      const auto yreg = (nbrh/3)%3;
+      const auto xreg = (nbrh/9)%3;
+      result[2] = (zreg == 0 ? zmin : (zreg == 1 ? p[2] : zmax));
+      result[1] = (yreg == 0 ? ymin : (yreg == 1 ? p[1] : ymax));
+      result[0] = (xreg == 0 ? xmin : (xreg == 1 ? p[0] : xmax));
       return result;
     }
 
+    /** @brief return the vertex coordinates of a box
+    */
     template <typename PtType> KOKKOS_INLINE_FUNCTION
     void vertex_crds(PtType& crds, const int v) const {
       LPM_KERNEL_ASSERT( (v>=0 and v<8) );
@@ -362,9 +274,19 @@ struct Box3d {
       crds[2] = ( (v&1) == 0 ? zmin : zmax );
     }
 
+    /** @brief generate child boxes by bisection in every dimension.
+    */
     std::vector<Box3d> bisect_all() const;
+
+    /** @brief generate all neighbor boxes
+    */
+    std::vector<Box3d> neighbors() const;
 };
 
+
+/** @brief return the default box spanning [-1,1] (with padding) in each
+  direction.
+*/
 KOKKOS_INLINE_FUNCTION
 Box3d std_box() {
   return Box3d(-1,1,-1,1,-1,1);
@@ -385,6 +307,10 @@ bool operator != (const Box3d& lhs, const Box3d& rhs) {return !(lhs == rhs);}
 
 std::ostream& operator << (std::ostream& os, const Box3d& b);
 
+
+/** @brief custom reducer to determine the smallest box that contains
+  every point in a given point set.
+*/
 template <typename Space=Dev>
 struct Box3dReducer {
     public:
@@ -423,17 +349,21 @@ struct Box3dReducer {
         if (dest.zmax < src.zmax) dest.zmax = src.zmax;
     }
 
+    /// default initializer for use with custom reducer
     KOKKOS_INLINE_FUNCTION
     void init(value_type& val) const {
         val.init();
     }
 
+    /// return the object of a single-member view
     KOKKOS_INLINE_FUNCTION
     result_view_type view() const {return value;}
 
+    /// return the reference to a view's data
     KOKKOS_INLINE_FUNCTION
     value_type& reference() const {return *value.data();}
 
+    /// true if *this references its own instance (false if it references a view)
     KOKKOS_INLINE_FUNCTION
     bool references_scalar() const {return references_scalar_v;}
 };
@@ -458,6 +388,11 @@ struct Box3dReducer {
 //     return result;
 // }
 
+/** @brief given a child box, whose child index is known, build the parent box.
+*/
+Box3d parent_from_child(const Box3d& child, const Int child_idx);
+
+/// Generate a box's children by bisection in every coordinate dimension.
 template <typename BoxView> KOKKOS_INLINE_FUNCTION
 void box_bisect_all(BoxView& kids, const Box3d& parent) {
     const Real xmid = 0.5*(parent.xmin + parent.xmax);

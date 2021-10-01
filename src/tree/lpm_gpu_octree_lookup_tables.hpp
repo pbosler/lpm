@@ -3,9 +3,18 @@
 
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
+#include <array>
 
 namespace Lpm {
 namespace tree {
+
+/** @brief generates the ParentLUT entries
+*/
+std::array<Int,216> parent_lookup_table_entries();
+
+/** @brief generates the ChildLUT entries
+*/
+std::array<Int,216> child_lookup_table_entries();
 
 /**
     These lookup tables encode the neighbor/child relationships defined by the following orderings:
@@ -86,10 +95,16 @@ namespace tree {
     ...
 
     i = local_key of node t, relative to its parent
-    j = neighbor of node t, in neighbor ordering [0,27]
+    j = neighbor of node t, in neighbor ordering [0,27)
     *** I am the ith child of my parent;
       the parent of my jth neighbor is the table(i,j)th neighbor of my parent ***
 
+    These values can be produced by
+
+      parent_lookup_table_entries();
+
+    which returns a std::array<Int,216> (the values have been copy/pasted here
+    for convenience).
 */
 struct ParentLUT {
     const Int nrows = 8;
@@ -102,6 +117,7 @@ struct ParentLUT {
                             10,10,11,13,13,14,13,13,14,10,10,11,13,13,14,13,13,14,19,19,20,22,22,23,22,22,23,
                             12,13,13,12,13,13,15,16,16,12,13,13,12,13,13,15,16,16,21,22,22,21,22,22,24,25,25,
                             13,13,14,13,13,14,16,16,17,13,13,14,13,13,14,16,16,17,22,22,23,22,22,23,25,25,26};
+
 };
 
 /**
@@ -128,18 +144,25 @@ struct ParentLUT {
 
     *** My ith vertex is the table(i,j)th vertex of my jth neighbor
 
+
+    These values can be produced by
+
+      child_lookup_table_entries();
+
+    which returns a std::array<Int,216> (the values have been copy/pasted here
+    for convenience).
 */
 struct ChildLUT {
     const Int nrows = 8;
     const Int ncols = 27;
-    const Int entries[216] = {7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,3,2,3,5,4,5,1,0,1,
-                             6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,
-                             5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,
-                             4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,
-                             3,2,3,1,0,1,3,2,3,7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,
-                             2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,
-                             1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,
-                             0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0};
+   const Int entries[216] = {7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,7,6,7,5,4,5,7,6,7,
+                            6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,
+                            5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,
+                            4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,
+                            3,2,3,1,0,1,3,2,3,7,6,7,5,4,5,7,6,7,3,2,3,1,0,1,3,2,3,
+                            2,3,2,0,1,0,2,3,2,6,7,6,4,5,4,6,7,6,2,3,2,0,1,0,2,3,2,
+                            1,0,1,3,2,3,1,0,1,5,4,5,7,6,7,5,4,5,1,0,1,3,2,3,1,0,1,
+                            0,1,0,2,3,2,0,1,0,4,5,4,6,7,6,4,5,4,0,1,0,2,3,2,0,1,0};
 };
 
 /** @brief Given a node n with (local) vertex i, the table gives the neighbor
@@ -166,11 +189,16 @@ struct NeighborsAtVertexLUT {
                             13,14,16,17,22,23,25,26};
 };
 
-template <typename TableType> KOKKOS_INLINE_FUNCTION
-Int table_val(const Int& i, const Int& j, const ko::View<TableType>& tableview) {
+template <typename TableViewType> KOKKOS_INLINE_FUNCTION
+Int table_val(const Int& i, const Int& j, const TableViewType tableview) {
     LPM_KERNEL_ASSERT(i >=0 && i < tableview().nrows);
     LPM_KERNEL_ASSERT(j >=0 && j < tableview().ncols);
     return tableview().entries[tableview().ncols*i+j];
+}
+
+template <typename TableType> KOKKOS_INLINE_FUNCTION
+Int table_val(const Int& i, const Int& j, const Kokkos::View<TableType>& tableview) {
+  return table_val<Kokkos::View<TableType>>(i, j, tableview);
 }
 
 } // namespace tree

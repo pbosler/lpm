@@ -25,6 +25,9 @@ struct GpuOctree {
   Kokkos::View<id_type*> node_parents;
   Kokkos::View<id_type*[8]> node_kids;
   Kokkos::View<Index*[27]> node_neighbors;
+#ifndef NDEBUG
+  Kokkos::View<Index*[27]> node_neighbors_check;
+#endif
 
   // node connectivity arrays
   Kokkos::View<Box3d*> node_boxes;

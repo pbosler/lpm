@@ -520,7 +520,7 @@ struct NodeArrayInternalFunctor {
 
 
 /** @brief kernel functor for listing 2 in [Z11]. Given neighbor lists
- for all nodes at level l-1 (parents) constructo neighbor lists for all nodes
+ for all nodes at level l-1 (parents) constructs neighbor lists for all nodes
  at level l.
 
   Parallel over the number of nodes in a level.
@@ -539,6 +539,16 @@ struct NeighborhoodFunctor {
   Int max_depth;
   id_type base_address;
 
+  /** @brief constructor
+
+    @param [in/out] nn node_neighbors whole octree array
+    @param [in] keys node_keys whole octree array
+    @param [in] np node_parents whole octree array
+    @param [in] nk node_kids whole octree array
+    @param [in] l octree level whose neighbors need to be set
+    @param [in] md maximum depth of octree
+    @param [in] ba first idx of nodes at level l in whole octree array
+  */
   NeighborhoodFunctor(Kokkos::View<Index*[27]> nn,
                 const Kokkos::View<key_type*> keys,
                 const Kokkos::View<id_type*> np,
@@ -557,46 +567,20 @@ struct NeighborhoodFunctor {
     base_address(ba) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (const id_type n) const {
-    const auto t = n + base_address;
-    const auto i = local_key(node_keys(t), level, max_depth);
-    const auto p = node_parents(t);
-    for (auto j=0; j<27; ++j) {
-      const auto pval = table_val(i, j, parent_table);
-      const auto cval = table_val(i, j, child_table);
-      const auto h = node_neighbors(p, pval);
-      node_neighbors(t, j) = (h == NULL_IDX ? NULL_IDX :
-        node_kids(h, cval));
-    }
-
-  }
-
-  KOKKOS_INLINE_FUNCTION
   void operator() (const member_type team) const {
     const auto t = team.league_rank() + base_address;
     const auto i = local_key(node_keys(t), level, max_depth);
     const auto p = node_parents(t);
 
-    const size_t h_size = 27*sizeof(Index);
-    const size_t p_size = 27*sizeof(Int);
-    const size_t c_size = 27*sizeof(Int);
-    Index* shared_h = (Index*)team.team_shmem().get_shmem(h_size);
-    Int* shared_pval = (Int*)team.team_shmem().get_shmem(p_size);
-    Int* shared_cval = (Int*)team.team_shmem().get_shmem(c_size);
-    if (team.team_rank() < 27) {
-      const auto j = team.team_rank();
-      shared_pval[j] = table_val(i, j, parent_table);
-      shared_cval[j] = table_val(i, j, child_table);
-      shared_h[j] = node_neighbors(p, shared_pval[j]);
-      node_neighbors(t, j) = (shared_h[j] == NULL_IDX ? NULL_IDX :
-        node_kids(shared_h[j], shared_cval[j]));
-    }
+    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 27),
+      [=] (const int j) {
+        const auto pval = table_val(i, j, parent_table);
+        const auto cval = table_val(i, j, child_table);
+        const auto h = node_neighbors(p, pval);
+        node_neighbors(t, j) = (h==NULL_IDX ? NULL_IDX :
+          node_kids(h, cval));
+      });
   }
-
-  size_t team_shmem_size(int ) const {
-    return 27*(sizeof(Index) + 2*sizeof(Int));
-  }
-
 };
 
 

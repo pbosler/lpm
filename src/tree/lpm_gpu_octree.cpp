@@ -62,12 +62,22 @@ void GpuOctree::init() {
   Kokkos::deep_copy(base_address, h_base_address);
   Kokkos::deep_copy(nnodes_per_level, h_nnodes_per_level);
 
+  /**
+
+    allocate node arrays
+
+  */
   node_keys = Kokkos::View<key_type*>("node_keys", nnodes);
   node_pt_idx_start = Kokkos::View<Index*>("node_pt_idx_start", nnodes);
   node_pt_idx_count = Kokkos::View<id_type*>("node_pt_idx_count", nnodes);
   node_parents = Kokkos::View<id_type*>("node_parents", nnodes);
   node_kids = Kokkos::View<id_type*[8]>("node_kids", nnodes);
   node_neighbors = Kokkos::View<Index*[27]>("node_neighbors", nnodes);
+  Kokkos::deep_copy(node_neighbors, NULL_IDX);
+#ifndef NDEBUG
+  node_neighbors_check = Kokkos::View<Index*[27]>("node_neighbors_check", nnodes);
+  Kokkos::deep_copy(node_neighbors_check, NULL_IDX);
+#endif
 
   /**
 
@@ -118,16 +128,25 @@ void GpuOctree::init() {
   Kokkos::deep_copy(root_neighbors, h_root_neighbors);
   for (auto l=1; l<=max_depth; ++l) {
 #ifdef LPM_USE_CUDA
-    Kokkos::TeamPolicy<> neighbor_policy(h_nnodes_per_level(l), 32);
+#define NEIGHBORS_TEAM_SIZE 32
+#else
+#define NEIGHBORS_TEAM_SIZE Kokkos::AUTO()
+#endif
+    Kokkos::TeamPolicy<> neighbor_policy(h_nnodes_per_level(l), NEIGHBORS_TEAM_SIZE);
     Kokkos::parallel_for(neighbor_policy,
       NeighborhoodFunctor(node_neighbors, node_keys, node_parents, node_kids,
         l, max_depth, h_base_address(l)));
-#else
-    Kokkos::parallel_for(h_nnodes_per_level(l),
-      NeighborhoodFunctor(node_neighbors, node_keys, node_parents, node_kids,
-        l, max_depth, h_base_address(l)));
-#endif
   }
+
+#ifndef NDEBUG
+  auto h_parents = Kokkos::create_mirror_view(node_parents);
+
+  for (auto l=1; l<=max_depth; ++l) {
+    for (auto n=0; n<h_nnodes_per_level(l); ++n) {
+
+    }
+  }
+#endif
 
   /**
 
@@ -197,7 +216,9 @@ void GpuOctree::write_vtk(const std::string& ofname) const {
     nbrs->InsertTuple1(n, -1);
   }
   for (auto j=0; j<27; ++j) {
+    if (h_neighbors(nbr_example,j) != NULL_IDX) {
     nbrs->SetValue(h_neighbors(nbr_example, j), 100);
+    }
   }
 
 //   for (auto p=0; p<node_vertex_crds.extent(0); ++p) {

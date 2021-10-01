@@ -116,7 +116,7 @@ TEST_CASE("box3d", "[tree]") {
     });
     Kokkos::parallel_for(8, KOKKOS_LAMBDA (const int i) {
       const auto qxyz = Kokkos::subview(kid_query_pts, i, Kokkos::ALL);
-      kid_idx(i) = box0.octree_child_index(qxyz);
+      kid_idx(i) = box0.octree_child_idx(qxyz);
     });
 
     auto hnbrs = Kokkos::create_mirror_view(nbr);
@@ -150,6 +150,8 @@ TEST_CASE("box3d", "[tree]") {
     for (int i=0; i<8; ++i) {
       REQUIRE(kids[i] == kids_expected[i]);
       REQUIRE(kids[i].contains_pt(kpts[i]));
+      const auto p = parent_from_child(kids[i], i);
+      REQUIRE(box0 == p);
     }
     logger.info("kids region test passes.");
   }
