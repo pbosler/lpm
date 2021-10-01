@@ -40,8 +40,8 @@ struct PlaneGeometry {
     v[1] *= a;
   }
 
-  template <typename CV> KOKKOS_INLINE_FUNCTION
-  static Real dot(const CV a, const CV b) {
+  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+  static Real dot(const CV a, const CV2 b) {
     return a[0]*b[0] + a[1]*b[1];
   }
 
@@ -55,16 +55,16 @@ struct PlaneGeometry {
     return std::sqrt(norm2(v));
   }
 
-  template <typename CV> KOKKOS_INLINE_FUNCTION
-  static Real distance(const CV a, const CV b) {
+  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+  static Real distance(const CV a, const CV2 b) {
     Real bma[2];
     bma[0] = b[0] - a[0];
     bma[1] = b[1] - a[1];
     return mag(bma);
   }
 
-  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
-  static Real tri_area(const CV& va, const CV2& vb, const CV2& vc) {
+  template <typename CV, typename CV2, typename CV3> KOKKOS_INLINE_FUNCTION
+  static Real tri_area(const CV& va, const CV2& vb, const CV3& vc) {
     Real bma[2], cma[2];
     bma[0] = vb[0] - va[0];
     bma[1] = vb[1] - va[1];
@@ -110,8 +110,8 @@ struct PlaneGeometry {
     return ar;
   }
 
-  template <typename V, typename CV> KOKKOS_INLINE_FUNCTION
-  static void midpoint(V v, const CV& a, const CV& b) {
+  template <typename V, typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+  static void midpoint(V v, const CV& a, const CV2& b) {
     v[0] = 0.5*(a[0] + b[0]);
     v[1] = 0.5*(a[1] + b[1]);
   }

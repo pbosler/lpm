@@ -16,8 +16,8 @@ typedef uint32_t key_type;
 typedef uint_fast32_t id_type;
 typedef uint_fast64_t code_type;
 
-template <typename PointType, typename Itype=short> KOKKOS_INLINE_FUNCTION
-key_type compute_key_for_point(const PointType& pos, const Itype depth,
+template <typename PointType> KOKKOS_INLINE_FUNCTION
+key_type compute_key_for_point(const PointType& pos, const int depth,
   const Box2d& bounding_box=default_box()) {
   LPM_KERNEL_ASSERT(depth >=0 && depth <= MAX_QUADTREE_DEPTH);
   LPM_KERNEL_REQUIRE(bounding_box.is_square());
@@ -40,8 +40,8 @@ key_type compute_key_for_point(const PointType& pos, const Itype depth,
   return key;
 }
 
-template <typename IType=short> KOKKOS_INLINE_FUNCTION
-key_type parent_key(const key_type& kid_key, const IType lev, const IType max_depth) {
+KOKKOS_INLINE_FUNCTION
+key_type parent_key(const key_type& kid_key, const int lev, const int max_depth) {
   LPM_KERNEL_ASSERT( max_depth > 0 && max_depth <= MAX_QUADTREE_DEPTH );
   LPM_KERNEL_ASSERT( lev > 0 && lev <= max_depth );
 
@@ -54,8 +54,8 @@ key_type parent_key(const key_type& kid_key, const IType lev, const IType max_de
   return (kid_key & mask);
 }
 
-template <typename IType=short> KOKKOS_INLINE_FUNCTION
-key_type local_key(const key_type& key, const IType lev, const IType max_depth) {
+KOKKOS_INLINE_FUNCTION
+key_type local_key(const key_type& key, const int lev, const int max_depth) {
   LPM_KERNEL_ASSERT( max_depth > 0 && max_depth <= MAX_QUADTREE_DEPTH );
   LPM_KERNEL_ASSERT( lev > 0 && lev <= max_depth );
 
@@ -68,8 +68,8 @@ key_type local_key(const key_type& key, const IType lev, const IType max_depth) 
   return ( (key & mask) >> (pyb-2) );
 }
 
-template <typename IType=short> KOKKOS_INLINE_FUNCTION
-Box2d box_from_key(const key_type& k, const IType lev, const IType max_depth) {
+KOKKOS_INLINE_FUNCTION
+Box2d box_from_key(const key_type& k, const int lev, const int max_depth) {
   LPM_KERNEL_ASSERT(max_depth > 0 && max_depth <= MAX_QUADTREE_DEPTH);
   LPM_KERNEL_ASSERT( lev >= 0 && lev <= max_depth);
   Real cx = 0;
@@ -83,6 +83,16 @@ Box2d box_from_key(const key_type& k, const IType lev, const IType max_depth) {
   }
   return Box2d(cx - half_len, cx + half_len,
                cy - half_len, cy + half_len);
+}
+
+KOKKOS_INLINE_FUNCTION
+key_type build_key(const key_type& parent_key, const int kid_idx,
+  const int kid_lev, const int max_depth) {
+  LPM_KERNEL_ASSERT(max_depth > 0 and max_depth <= MAX_QUADTREE_DEPTH);
+  LPM_KERNEL_ASSERT(kid_lev > 0 and kid_lev <= max_depth);
+  const auto pzb = 2*max_depth - 2*(kid_lev-1);
+  const key_type shifted_kid = (kid_idx << (pzb-2));
+  return parent_key + shifted_kid;
 }
 
 /** @brief given a point's global index and its node key,
@@ -118,10 +128,10 @@ key_type decode_key(const code_type& code) {
 
 template <typename T, typename T2>
 struct Converter {
-  KOKKOS_INLINE_FUNCTION
+ KOKKOS_INLINE_FUNCTION
   Converter() {}
 
-  KOKKOS_INLINE_FUNCTION
+ KOKKOS_INLINE_FUNCTION
   T operator() (const T2 src) const {
     return T(src);
   }
@@ -129,10 +139,10 @@ struct Converter {
 
 template <>
 struct Converter<key_type, code_type> {
-  KOKKOS_INLINE_FUNCTION
+ KOKKOS_INLINE_FUNCTION
   Converter() {}
 
-  KOKKOS_INLINE_FUNCTION
+ KOKKOS_INLINE_FUNCTION
   key_type operator() (const code_type c) const {
     return decode_key(c);
   }
@@ -144,7 +154,7 @@ struct Converter<key_type, code_type> {
   @param [in] sorted_view
   @return index of key in sorted_view
 */
-template <typename T=key_type, typename ViewType> KOKKOS_INLINE_FUNCTION
+template <typename T=key_type, typename ViewType>KOKKOS_INLINE_FUNCTION
 Index binary_search_first(const T& target, const ViewType& sorted_view) {
   Index low = 0;
   Index high = sorted_view.extent(0)-1;
@@ -167,7 +177,7 @@ Index binary_search_first(const T& target, const ViewType& sorted_view) {
   return result;
 }
 
-template <typename T=key_type, typename ViewType> KOKKOS_INLINE_FUNCTION
+template <typename T=key_type, typename ViewType>KOKKOS_INLINE_FUNCTION
 Index binary_search_last(const T& target, const ViewType& sorted_view) {
   Index low = 0;
   Index high = sorted_view.extent(0)-1;
