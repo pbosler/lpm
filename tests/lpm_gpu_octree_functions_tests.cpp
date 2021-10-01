@@ -5,13 +5,15 @@
 #include "lpm_logger.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_constants.hpp"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
 
 using namespace Lpm;
-using namespace Lpm::tree;
+using namespace Lpm::octree;
 
 TEST_CASE("gpu_octree_functions", "[tree]") {
 

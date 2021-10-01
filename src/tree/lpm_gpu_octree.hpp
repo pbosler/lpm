@@ -2,11 +2,13 @@
 #define LPM_GPU_OCTREE_HPP
 
 #include "LpmConfig.h"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "tree/lpm_box3d.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 struct GpuOctree {
 

@@ -2,6 +2,8 @@
 #define LPM_NODE_ARRAY_2D_HPP
 
 #include "LpmConfig.h"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_quadtree_functions.hpp"
 #include "lpm_logger.hpp"
 #include <memory>

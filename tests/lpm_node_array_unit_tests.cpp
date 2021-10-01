@@ -7,6 +7,8 @@
 #include "lpm_constants.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "tree/lpm_node_array_d.hpp"
 #include "tree/lpm_node_array_internal.hpp"
@@ -18,7 +20,7 @@
 #include "catch.hpp"
 
 using namespace Lpm;
-using namespace Lpm::tree;
+using namespace Lpm::octree;
 
 TEST_CASE("node_array_d_unit_tests", "[tree]") {
 

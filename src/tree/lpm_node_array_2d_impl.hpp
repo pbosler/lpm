@@ -1,7 +1,7 @@
 #ifndef LPM_NODE_ARRAY_2D_IMPL_HPP
 #define LPM_NODE_ARRAY_2D_IMPL_HPP
 
-#include "LpmConfig.h"
+#include "LpmConfig.h""
 #include "tree/lpm_node_array_2d.hpp"
 
 namespace Lpm {

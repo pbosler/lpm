@@ -2,10 +2,12 @@
 #define LPM_NODE_ARRAY_D_HPP
 
 #include "LpmConfig.h"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 /** @brief Constructs the leaves of the octree in parallel
 

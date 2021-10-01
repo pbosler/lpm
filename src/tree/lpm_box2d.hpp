@@ -3,6 +3,7 @@
 
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
+#include "tree/lpm_tree_defs.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 #include "util/lpm_floating_point.hpp"
@@ -11,9 +12,6 @@
 #include <iomanip>
 
 namespace Lpm {
-namespace quadtree {
-
-#define BOX_PADDING 1e-5
 
 struct Box2d {
   Real xmin, xmax;
@@ -282,7 +280,7 @@ struct Box2dReducer {
     bool references_scalar_v;
 };
 
-} // namespace quadtree
+
 } // namespace Lpm
 
 #endif

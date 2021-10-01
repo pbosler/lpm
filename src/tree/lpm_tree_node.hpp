@@ -2,6 +2,8 @@
 #define LPM_TREE_NODE_HPP
 
 #include "LpmConfig.h"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_box3d.hpp"
 #include <memory>
 #include <vector>

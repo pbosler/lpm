@@ -16,7 +16,7 @@
 #include "Kokkos_Sort.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 void NodeArrayD::init(const Kokkos::View<Real*[3]> unsorted_pts) {
   // step 1: compute bounding box

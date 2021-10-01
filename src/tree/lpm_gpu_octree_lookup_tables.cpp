@@ -2,7 +2,7 @@
 #include "tree/lpm_box3d.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 std::array<Int,216> parent_lookup_table_entries() {
   std::array<Int,216> result;

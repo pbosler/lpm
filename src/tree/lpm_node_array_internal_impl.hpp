@@ -4,7 +4,7 @@
 #include "lpm_constants.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 template <typename LowerLevelType>
 void NodeArrayInternal::init_from_lower(LowerLevelType& lower) {

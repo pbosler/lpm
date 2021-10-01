@@ -7,6 +7,8 @@
 #include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 #include "tree/lpm_box2d.hpp"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_quadtree_functions.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"

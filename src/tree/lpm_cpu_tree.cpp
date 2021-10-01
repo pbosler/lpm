@@ -17,7 +17,6 @@
 namespace Lpm {
 namespace tree {
 
-
 template <typename Geo, typename NodeType>
 std::string CpuTree<Geo,NodeType>::info_string(const int tab_level) const {
   std::ostringstream ss;
@@ -246,5 +245,5 @@ std::string CpuTree<Geo,NodeType>::node_info_string(NodeType* node) const {
 // ETI
 template class CpuTree<>;
 
-} // namespace tree
+}
 } // namespace Lpm

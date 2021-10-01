@@ -9,7 +9,6 @@
 #include "catch.hpp"
 
 using namespace Lpm;
-using namespace Lpm::tree;
 
 TEST_CASE("box3d", "[tree]") {
   Comm comm;

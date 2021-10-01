@@ -1,7 +1,7 @@
 #include "tree/lpm_box2d.hpp"
 
 namespace Lpm {
-namespace quadtree {
+
 
 std::vector<Box2d> Box2d::bisect_all() const {
   std::vector<Box2d> result(4);
@@ -42,5 +42,5 @@ std::ostream& operator << (std::ostream& os, const Box2d& b) {
     return os;
 }
 
-}
+
 }

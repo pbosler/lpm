@@ -15,7 +15,7 @@
 #include <map>
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 void GpuOctree::init() {
   /**

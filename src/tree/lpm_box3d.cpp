@@ -1,7 +1,6 @@
 #include "tree/lpm_box3d.hpp"
 
 namespace Lpm {
-namespace tree {
 
 std::vector<Box3d> Box3d::bisect_all() const {
   std::vector<Box3d> result(8);
@@ -47,4 +46,4 @@ std::ostream& operator << (std::ostream& os, const Box3d& b) {
     return os;
 }
 
-}}
+}

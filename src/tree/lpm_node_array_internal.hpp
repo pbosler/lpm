@@ -2,11 +2,13 @@
 #define LPM_NODE_ARRAY_INTERNAL_HPP
 
 #include "LpmConfig.h"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "tree/lpm_node_array_d.hpp"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 /** @brief Constructs internal levels of the octree in parallel
 

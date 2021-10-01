@@ -3,6 +3,8 @@
 
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include "tree/lpm_gpu_octree_functions.hpp"
 #include "tree/lpm_gpu_octree_lookup_tables.hpp"
 #include "tree/lpm_box3d.hpp"
@@ -12,7 +14,7 @@
 #include <bitset>
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 /**
 
@@ -706,7 +708,7 @@ struct VertexArrayFunctor {
 };
 
 
-} // namespace tree
+} // namespace octree
 } // namespace Lpm
 
 #endif

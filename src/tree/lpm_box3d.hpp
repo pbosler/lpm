@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 
 #include "lpm_kokkos_defs.hpp"
+#include "tree/lpm_tree_defs.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 #include "util/lpm_floating_point.hpp"
@@ -14,10 +15,6 @@
 #include <iomanip>
 
 namespace Lpm {
-namespace tree {
-
-#define BOX_PADDING 1e-5
-
 
 /** @brief A simple struct representing a box (rectangular prism) in 3d Euclidean space.
 
@@ -408,5 +405,5 @@ void box_bisect_all(BoxView& kids, const Box3d& parent) {
     }
 }
 
-}}
+}
 #endif

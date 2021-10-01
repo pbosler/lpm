@@ -3,10 +3,12 @@
 
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
+#include "tree/lpm_tree_defs.hpp"
+#include "tree/lpm_tree_common.hpp"
 #include <array>
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 /** @brief generates the ParentLUT entries
 */
@@ -189,17 +191,6 @@ struct NeighborsAtVertexLUT {
                             13,14,16,17,22,23,25,26};
 };
 
-template <typename TableViewType> KOKKOS_INLINE_FUNCTION
-Int table_val(const Int& i, const Int& j, const TableViewType tableview) {
-    LPM_KERNEL_ASSERT(i >=0 && i < tableview().nrows);
-    LPM_KERNEL_ASSERT(j >=0 && j < tableview().ncols);
-    return tableview().entries[tableview().ncols*i+j];
-}
-
-template <typename TableType> KOKKOS_INLINE_FUNCTION
-Int table_val(const Int& i, const Int& j, const Kokkos::View<TableType>& tableview) {
-  return table_val<Kokkos::View<TableType>>(i, j, tableview);
-}
 
 } // namespace tree
 } // namespace Lpm

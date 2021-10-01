@@ -10,7 +10,7 @@
 #include "vtkXMLUnstructuredGridWriter.h"
 
 namespace Lpm {
-namespace tree {
+namespace octree {
 
 void NodeArrayInternal::build_root(Kokkos::View<id_type*> parents_lower,
   const Kokkos::View<id_type*> idx_count_lower) {
