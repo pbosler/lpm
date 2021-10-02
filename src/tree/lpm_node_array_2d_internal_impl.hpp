@@ -48,7 +48,7 @@ struct ParentsFunctor {
       const auto kid_idx = kid0_address + k;
       bool found_first = false;
       if (lower_idx_count(kid_idx) > 0 and !found_first) {
-        parent_idx_start(kid_idx) = lower_idx_start(kid_idx);
+        parent_idx_start(i) = lower_idx_start(kid_idx);
         found_first = true;
       }
       parent_idx_count(i) += lower_idx_count(kid_idx);
