@@ -1,0 +1,1561 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 12.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     57372,       1551]
+NotebookOptionsPosition[     56621,       1530]
+NotebookOutlinePosition[     56960,       1545]
+CellTagsIndexPosition[     56917,       1542]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"p", " ", "=", " ", 
+   RowBox[{"Cube", "[", "2", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"kids", " ", "=", " ", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Cube", "[", 
+      RowBox[{"{", 
+       RowBox[{
+        RowBox[{"If", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"BitAnd", "[", 
+            RowBox[{"i", ",", "4"}], "]"}], "\[Equal]", "0"}], ",", 
+          RowBox[{
+           RowBox[{"-", "1"}], "/", "2"}], ",", 
+          RowBox[{"1", "/", "2"}]}], "]"}], ",", " ", 
+        RowBox[{"If", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"BitAnd", "[", 
+            RowBox[{"i", ",", "2"}], "]"}], "\[Equal]", "0"}], ",", 
+          RowBox[{
+           RowBox[{"-", "1"}], "/", "2"}], ",", 
+          RowBox[{"1", "/", "2"}]}], "]"}], ",", " ", 
+        RowBox[{"If", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"BitAnd", "[", 
+            RowBox[{"i", ",", "1"}], "]"}], "\[Equal]", "0"}], ",", " ", 
+          RowBox[{
+           RowBox[{"-", "1"}], "/", "2"}], ",", " ", 
+          RowBox[{"1", "/", "2"}]}], "]"}]}], "}"}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "0", ",", "7"}], "}"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"Graphics3D", "[", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"LightGray", ",", 
+       RowBox[{"Opacity", "[", "0.3", "]"}], ",", "p"}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"LightBlue", ",", 
+       RowBox[{"Opacity", "[", "0.3", "]"}], ",", 
+       RowBox[{"kids", "[", 
+        RowBox[{"[", "1", "]"}], "]"}]}], "}"}]}], "}"}], ",", 
+   RowBox[{"Boxed", "\[Rule]", "False"}], ",", " ", 
+   RowBox[{"Lighting", "\[Rule]", "\"\<Neutral\>\""}], ",", 
+   RowBox[{"Axes", "\[Rule]", "True"}], ",", 
+   RowBox[{"AxesLabel", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"x", ",", "y", ",", "z"}], "}"}]}]}], "]"}]}], "Input",
+ CellChangeTimes->{{3.841915833456917*^9, 3.841915863021969*^9}, {
+  3.841915893934455*^9, 3.8419158977407017`*^9}, {3.841915931932317*^9, 
+  3.8419159332033577`*^9}, {3.841915980169918*^9, 3.841916033694137*^9}, {
+  3.841916072707581*^9, 3.841916120713256*^9}, {3.841916155519657*^9, 
+  3.841916387659609*^9}, {3.841916463177092*^9, 3.8419165141892567`*^9}},
+ CellLabel->"In[42]:=",ExpressionUUID->"9071b239-51eb-449f-be5a-48d1c9d7141d"],
+
+Cell[BoxData[
+ Graphics3DBox[{
+   {GrayLevel[0.85], Opacity[0.3], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -1}, {1, 1, -1}, {
+       1, -1, -1}, {-1, -1, -1}, {-1, 1, 1}, {1, 1, 1}, {1, -1, 1}, {-1, -1, 
+       1}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[2]]}, 
+   {RGBColor[0.87, 0.94, 1], Opacity[0.3], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, -1}, {0, 0, -1}, {
+       0, -1, -1}, {-1, -1, -1}, {-1, 0, 0}, {0, 0, 0}, {0, -1, 0}, {-1, -1, 
+       0}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}]]}},
+  Axes->True,
+  AxesLabel->{
+    FormBox["x", TraditionalForm], 
+    FormBox["y", TraditionalForm], 
+    FormBox["z", TraditionalForm]},
+  Boxed->False,
+  ImageSize->{373.47556410038754`, 395.4501405344764},
+  ImageSizeRaw->Automatic,
+  Lighting->"Neutral",
+  ViewPoint->{3.1508715065783095`, 0.4169794596004553, 1.1610929675543866`},
+  ViewVertical->{0.27751100531410006`, 0.02516460037099659, 
+   0.9603928283872832}]], "Output",
+ CellChangeTimes->{
+  3.841915864681869*^9, 3.841915899003274*^9, 3.841915934490288*^9, 
+   3.8419159879342403`*^9, 3.841916232970378*^9, {3.8419162716720953`*^9, 
+   3.841916388684477*^9}, {3.841916478852622*^9, 3.841916514680378*^9}},
+ CellLabel->"Out[44]=",ExpressionUUID->"2a9f88b5-ef48-4236-9b23-67977a4ecc2d"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"neighbors", "[", "box_", "]"}], ":=", " ", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"c", "=", 
+        RowBox[{"RegionCentroid", "[", "box", "]"}]}], ",", " ", 
+       RowBox[{"l", "=", 
+        RowBox[{"CubeRoot", "[", 
+         RowBox[{"Volume", "[", "box", "]"}], "]"}]}]}], "}"}], ",", 
+     "\[IndentingNewLine]", "\t", 
+     RowBox[{"Table", "[", 
+      RowBox[{
+       RowBox[{"Cube", "[", 
+        RowBox[{
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"c", "[", 
+             RowBox[{"[", "1", "]"}], "]"}], " ", "+", " ", 
+            RowBox[{
+             RowBox[{"(", 
+              RowBox[{
+               RowBox[{"Mod", "[", 
+                RowBox[{
+                 RowBox[{"Floor", "[", 
+                  RowBox[{"j", "/", "9"}], "]"}], ",", "3"}], "]"}], "-", 
+               "1"}], ")"}], "*", "l"}]}], ",", "\[IndentingNewLine]", 
+           "\t\t\t ", 
+           RowBox[{
+            RowBox[{"c", "[", 
+             RowBox[{"[", "2", "]"}], "]"}], " ", "+", " ", 
+            RowBox[{
+             RowBox[{"(", 
+              RowBox[{
+               RowBox[{"Mod", "[", 
+                RowBox[{
+                 RowBox[{"Floor", "[", 
+                  RowBox[{"j", "/", "3"}], "]"}], ",", "3"}], "]"}], "-", 
+               "1"}], ")"}], "*", "l"}]}], ",", "\[IndentingNewLine]", 
+           "\t\t\t ", 
+           RowBox[{
+            RowBox[{"c", "[", 
+             RowBox[{"[", "3", "]"}], "]"}], " ", "+", " ", 
+            RowBox[{
+             RowBox[{"(", 
+              RowBox[{
+               RowBox[{"Mod", "[", 
+                RowBox[{"j", ",", "3"}], "]"}], "-", "1"}], ")"}], "*", 
+             "l"}]}]}], "}"}], ",", "l"}], "]"}], ",", 
+       RowBox[{"{", 
+        RowBox[{"j", ",", "0", ",", "26"}], "}"}]}], "]"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"pn", " ", "=", " ", 
+   RowBox[{"neighbors", "[", "p", "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"p0j", " ", "=", " ", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Text", "[", 
+      RowBox[{
+       RowBox[{"Style", "[", 
+        RowBox[{"j", ",", "Large"}], "]"}], ",", 
+       RowBox[{"RegionCentroid", "[", 
+        RowBox[{"pn", "[", 
+         RowBox[{"[", 
+          RowBox[{"j", "+", "1"}], "]"}], "]"}], "]"}]}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"j", ",", "0", ",", "26"}], "}"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"k0n", " ", "=", " ", 
+   RowBox[{"neighbors", "[", 
+    RowBox[{"kids", "[", 
+     RowBox[{"[", "1", "]"}], "]"}], "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"k0j", " ", "=", " ", 
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Text", "[", 
+      RowBox[{
+       RowBox[{"Style", "[", 
+        RowBox[{"j", ",", "Large"}], "]"}], ",", " ", 
+       RowBox[{"RegionCentroid", "[", 
+        RowBox[{"k0n", "[", 
+         RowBox[{"[", 
+          RowBox[{"j", "+", "1"}], "]"}], "]"}], "]"}]}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"j", ",", "0", ",", "26"}], "}"}]}], "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{"Show", "[", 
+  RowBox[{
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"LightGray", ",", 
+      RowBox[{"Opacity", "[", "0.4", "]"}], ",", "k0n"}], "}"}], "]"}], ",", 
+   " ", 
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"Red", ",", " ", "k0j"}], "}"}], "]"}], ",", 
+   RowBox[{"Lighting", "\[Rule]", "\"\<Neutral\>\""}], ",", 
+   RowBox[{"Boxed", "\[Rule]", "False"}], ",", 
+   RowBox[{"Axes", "\[Rule]", "True"}], ",", 
+   RowBox[{"AxesLabel", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"x", ",", "y", ",", "z"}], "}"}]}]}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{"Show", "[", 
+  RowBox[{
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"LightBlue", ",", " ", 
+      RowBox[{"Opacity", "[", "0.5", "]"}], ",", 
+      RowBox[{"EdgeForm", "[", 
+       RowBox[{"Directive", "[", 
+        RowBox[{"Thick", ",", "Blue", ",", "Dashed"}], "]"}], "]"}], ",", 
+      "p"}], "}"}], "]"}], ",", " ", 
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"LightRed", ",", 
+      RowBox[{"Opacity", "[", "0.4", "]"}], ",", "k0n"}], "}"}], "]"}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"Red", ",", "k0j"}], "}"}], "]"}], ",", "\[IndentingNewLine]", 
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"LightBlue", ",", " ", 
+      RowBox[{"Opacity", "[", "0.5", "]"}], ",", 
+      RowBox[{"EdgeForm", "[", 
+       RowBox[{"Directive", "[", 
+        RowBox[{"Blue", ",", "Dashed"}], "]"}], "]"}], ",", "pn"}], "}"}], 
+    "]"}], ",", "\[IndentingNewLine]", 
+   RowBox[{"Graphics3D", "[", 
+    RowBox[{"{", 
+     RowBox[{"Blue", ",", "p0j"}], "}"}], "]"}], ",", "\[IndentingNewLine]", 
+   RowBox[{"Boxed", "\[Rule]", "False"}], ",", 
+   RowBox[{"Lighting", "\[Rule]", "\"\<Neutral\>\""}], ",", " ", 
+   RowBox[{"Axes", "\[Rule]", "True"}], ",", 
+   RowBox[{"AxesLabel", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"x", ",", "y", ",", "z"}], "}"}]}]}], "]"}]}], "Input",
+ CellChangeTimes->{{3.841916919369052*^9, 3.8419169430066*^9}, {
+  3.841917060329269*^9, 3.841917183481986*^9}, {3.841917256079287*^9, 
+  3.841917314731739*^9}, {3.8419177293671827`*^9, 3.841917934299635*^9}, {
+  3.8419180238957577`*^9, 3.841918052109653*^9}, {3.841918107899167*^9, 
+  3.841918229470366*^9}, {3.8419182780277147`*^9, 3.841918296556191*^9}, {
+  3.841918349232354*^9, 3.8419184383545647`*^9}, {3.8419184723938704`*^9, 
+  3.841918507063367*^9}, {3.841919374580001*^9, 3.841919524051346*^9}, {
+  3.841919567304471*^9, 3.841919631832573*^9}, {3.8419196804452333`*^9, 
+  3.8419197225284367`*^9}, {3.841919775167487*^9, 3.841919778749609*^9}, {
+  3.841919815262018*^9, 3.841919848226684*^9}, {3.841919885425804*^9, 
+  3.8419199399501963`*^9}, {3.841920049001526*^9, 3.841920177713468*^9}},
+ CellLabel->
+  "In[160]:=",ExpressionUUID->"0f3da41b-e80f-45f9-80f7-e08e0bcd2456"],
+
+Cell[BoxData[
+ Graphics3DBox[{
+   {GrayLevel[0.85], Opacity[0.4], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, -2}, {-1, -1, -2}, {-1, -2, -2}, {-2, \
+-2, -2}, {-2, -1, -1}, {-1, -1, -1}, {-1, -2, -1}, {-2, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, -1}, {-1, -1, -1}, {-1, -2, -1}, {-2, \
+-2, -1}, {-2, -1, 0}, {-1, -1, 0}, {-1, -2, 0}, {-2, -2, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, 0}, {-1, -1, 0}, {-1, -2, 0}, {-2, -2, 
+       0}, {-2, -1, 1}, {-1, -1, 1}, {-1, -2, 1}, {-2, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, -2}, {-1, 
+       0, -2}, {-1, -1, -2}, {-2, -1, -2}, {-2, 0, -1}, {-1, 
+       0, -1}, {-1, -1, -1}, {-2, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, -1}, {-1, 
+       0, -1}, {-1, -1, -1}, {-2, -1, -1}, {-2, 0, 0}, {-1, 0, 0}, {-1, -1, 
+       0}, {-2, -1, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, 0}, {-1, 0, 0}, {-1, -1, 0}, {-2, -1, 
+       0}, {-2, 0, 1}, {-1, 0, 1}, {-1, -1, 1}, {-2, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, -2}, {-1, 1, -2}, {-1, 0, -2}, {-2, 
+       0, -2}, {-2, 1, -1}, {-1, 1, -1}, {-1, 0, -1}, {-2, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, -1}, {-1, 1, -1}, {-1, 0, -1}, {-2, 
+       0, -1}, {-2, 1, 0}, {-1, 1, 0}, {-1, 0, 0}, {-2, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, 0}, {-1, 1, 0}, {-1, 0, 0}, {-2, 0, 
+       0}, {-2, 1, 1}, {-1, 1, 1}, {-1, 0, 1}, {-2, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -2}, {0, -1, -2}, {
+       0, -2, -2}, {-1, -2, -2}, {-1, -1, -1}, {0, -1, -1}, {
+       0, -2, -1}, {-1, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -1}, {0, -1, -1}, {
+       0, -2, -1}, {-1, -2, -1}, {-1, -1, 0}, {0, -1, 0}, {0, -2, 0}, {-1, -2,
+        0}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4,
+         3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, 0}, {0, -1, 0}, {0, -2, 0}, {-1, -2, 
+       0}, {-1, -1, 1}, {0, -1, 1}, {0, -2, 1}, {-1, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, -2}, {0, 0, -2}, {
+       0, -1, -2}, {-1, -1, -2}, {-1, 0, -1}, {0, 0, -1}, {
+       0, -1, -1}, {-1, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, -1}, {0, 0, -1}, {
+       0, -1, -1}, {-1, -1, -1}, {-1, 0, 0}, {0, 0, 0}, {0, -1, 0}, {-1, -1, 
+       0}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, 0}, {0, 0, 0}, {0, -1, 0}, {-1, -1, 
+       0}, {-1, 0, 1}, {0, 0, 1}, {0, -1, 1}, {-1, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -2}, {0, 1, -2}, {0, 0, -2}, {-1, 
+       0, -2}, {-1, 1, -1}, {0, 1, -1}, {0, 0, -1}, {-1, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -1}, {0, 1, -1}, {0, 0, -1}, {-1, 
+       0, -1}, {-1, 1, 0}, {0, 1, 0}, {0, 0, 0}, {-1, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, 0}, {0, 1, 0}, {0, 0, 0}, {-1, 0, 0}, {-1,
+        1, 1}, {0, 1, 1}, {0, 0, 1}, {-1, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, -2}, {1, -1, -2}, {1, -2, -2}, {
+       0, -2, -2}, {0, -1, -1}, {1, -1, -1}, {1, -2, -1}, {0, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, -1}, {1, -1, -1}, {1, -2, -1}, {
+       0, -2, -1}, {0, -1, 0}, {1, -1, 0}, {1, -2, 0}, {0, -2, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, 0}, {1, -1, 0}, {1, -2, 0}, {0, -2, 0}, {
+       0, -1, 1}, {1, -1, 1}, {1, -2, 1}, {0, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, -2}, {1, 0, -2}, {1, -1, -2}, {
+       0, -1, -2}, {0, 0, -1}, {1, 0, -1}, {1, -1, -1}, {0, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, -1}, {1, 0, -1}, {1, -1, -1}, {
+       0, -1, -1}, {0, 0, 0}, {1, 0, 0}, {1, -1, 0}, {0, -1, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, 0}, {1, 0, 0}, {1, -1, 0}, {0, -1, 0}, {0, 
+       0, 1}, {1, 0, 1}, {1, -1, 1}, {0, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, -2}, {1, 1, -2}, {1, 0, -2}, {0, 0, -2}, {
+       0, 1, -1}, {1, 1, -1}, {1, 0, -1}, {0, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, -1}, {1, 1, -1}, {1, 0, -1}, {0, 0, -1}, {
+       0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, {0, 1,
+        1}, {1, 1, 1}, {1, 0, 1}, {0, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]]}, 
+   {RGBColor[1, 0, 0], Text3DBox[
+     StyleBox["0",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], 
+       Rational[-3, 2]}, {-1.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["1",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], 
+       Rational[-1, 2]}, {-1.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["2",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], Rational[1, 2]}, {-1.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["3",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], 
+       Rational[-3, 2]}, {-1.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["4",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], 
+       Rational[-1, 2]}, {-1.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["5",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], Rational[1, 2]}, {-1.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["6",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[-3, 2]}, {-1.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["7",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[-1, 2]}, {-1.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["8",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[1, 2]}, {-1.5, 0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["9",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], 
+       Rational[-3, 2]}, {-0.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["10",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], 
+       Rational[-1, 2]}, {-0.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["11",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], Rational[1, 2]}, {-0.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["12",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], 
+       Rational[-3, 2]}, {-0.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["13",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], 
+       Rational[-1, 2]}, {-0.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["14",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], Rational[1, 2]}, {-0.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["15",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[-3, 2]}, {-0.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["16",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[-1, 2]}, {-0.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["17",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[1, 2]}, {-0.5, 0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["18",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[-3, 2]}, {
+      0.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["19",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[-1, 2]}, {
+      0.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["20",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[1, 2]}, {0.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["21",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[-3, 2]}, {
+      0.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["22",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[-1, 2]}, {
+      0.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["23",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[1, 2]}, {0.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["24",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[-3, 2]}, {0.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["25",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[-1, 2]}, {0.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["26",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[1, 2]}, {0.5, 0.5, 
+      0.5}]]}},
+  Axes->True,
+  AxesLabel->{
+    FormBox["x", TraditionalForm], 
+    FormBox["y", TraditionalForm], 
+    FormBox["z", TraditionalForm]},
+  Boxed->False,
+  ImageSize->{368.60603031310467`, 358.25926121256964`},
+  ImageSizeRaw->Automatic,
+  Lighting->"Neutral",
+  ViewPoint->{2.613317538410994, 1.947578007217204, 0.9096765080166501},
+  ViewVertical->{0.29121919590281425`, 0.19909821079948808`, 
+   0.9357089731290179}]], "Output",
+ CellChangeTimes->{
+  3.8419178820186377`*^9, {3.8419181715666237`*^9, 3.841918194256757*^9}, {
+   3.8419182252348013`*^9, 3.841918230088149*^9}, 3.841918364067572*^9, 
+   3.8419184393083878`*^9, {3.841918479628656*^9, 3.841918508032735*^9}, {
+   3.841919509413457*^9, 3.84191952492299*^9}, {3.841919603687306*^9, 
+   3.84191963311327*^9}, {3.841919682101557*^9, 3.841919723486519*^9}, 
+   3.841919779633141*^9, {3.8419198189862843`*^9, 3.8419198503274927`*^9}, {
+   3.841919905463641*^9, 3.8419199410103483`*^9}, 3.841920181105895*^9},
+ CellLabel->
+  "Out[165]=",ExpressionUUID->"bb5662bf-dcf1-4abd-9fea-db4a238b09ae"],
+
+Cell[BoxData[
+ Graphics3DBox[{
+   {RGBColor[0.87, 0.94, 1], Opacity[0.5], EdgeForm[{RGBColor[0, 0, 1], 
+    Thickness[Large], Dashing[{Small, Small}]}], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -1}, {1, 1, -1}, {
+       1, -1, -1}, {-1, -1, -1}, {-1, 1, 1}, {1, 1, 1}, {1, -1, 1}, {-1, -1, 
+       1}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[2]]}, 
+   {RGBColor[1, 0.85, 0.85], Opacity[0.4], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, -2}, {-1, -1, -2}, {-1, -2, -2}, {-2, \
+-2, -2}, {-2, -1, -1}, {-1, -1, -1}, {-1, -2, -1}, {-2, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, -1}, {-1, -1, -1}, {-1, -2, -1}, {-2, \
+-2, -1}, {-2, -1, 0}, {-1, -1, 0}, {-1, -2, 0}, {-2, -2, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, -1, 0}, {-1, -1, 0}, {-1, -2, 0}, {-2, -2, 
+       0}, {-2, -1, 1}, {-1, -1, 1}, {-1, -2, 1}, {-2, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, -2}, {-1, 
+       0, -2}, {-1, -1, -2}, {-2, -1, -2}, {-2, 0, -1}, {-1, 
+       0, -1}, {-1, -1, -1}, {-2, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, -1}, {-1, 
+       0, -1}, {-1, -1, -1}, {-2, -1, -1}, {-2, 0, 0}, {-1, 0, 0}, {-1, -1, 
+       0}, {-2, -1, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 0, 0}, {-1, 0, 0}, {-1, -1, 0}, {-2, -1, 
+       0}, {-2, 0, 1}, {-1, 0, 1}, {-1, -1, 1}, {-2, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, -2}, {-1, 1, -2}, {-1, 0, -2}, {-2, 
+       0, -2}, {-2, 1, -1}, {-1, 1, -1}, {-1, 0, -1}, {-2, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, -1}, {-1, 1, -1}, {-1, 0, -1}, {-2, 
+       0, -1}, {-2, 1, 0}, {-1, 1, 0}, {-1, 0, 0}, {-2, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-2, 1, 0}, {-1, 1, 0}, {-1, 0, 0}, {-2, 0, 
+       0}, {-2, 1, 1}, {-1, 1, 1}, {-1, 0, 1}, {-2, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-3, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -2}, {0, -1, -2}, {
+       0, -2, -2}, {-1, -2, -2}, {-1, -1, -1}, {0, -1, -1}, {
+       0, -2, -1}, {-1, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -1}, {0, -1, -1}, {
+       0, -2, -1}, {-1, -2, -1}, {-1, -1, 0}, {0, -1, 0}, {0, -2, 0}, {-1, -2,
+        0}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4,
+         3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, 0}, {0, -1, 0}, {0, -2, 0}, {-1, -2, 
+       0}, {-1, -1, 1}, {0, -1, 1}, {0, -2, 1}, {-1, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, -2}, {0, 0, -2}, {
+       0, -1, -2}, {-1, -1, -2}, {-1, 0, -1}, {0, 0, -1}, {
+       0, -1, -1}, {-1, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, -1}, {0, 0, -1}, {
+       0, -1, -1}, {-1, -1, -1}, {-1, 0, 0}, {0, 0, 0}, {0, -1, 0}, {-1, -1, 
+       0}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 0, 0}, {0, 0, 0}, {0, -1, 0}, {-1, -1, 
+       0}, {-1, 0, 1}, {0, 0, 1}, {0, -1, 1}, {-1, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -2}, {0, 1, -2}, {0, 0, -2}, {-1, 
+       0, -2}, {-1, 1, -1}, {0, 1, -1}, {0, 0, -1}, {-1, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -1}, {0, 1, -1}, {0, 0, -1}, {-1, 
+       0, -1}, {-1, 1, 0}, {0, 1, 0}, {0, 0, 0}, {-1, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, 0}, {0, 1, 0}, {0, 0, 0}, {-1, 0, 0}, {-1,
+        1, 1}, {0, 1, 1}, {0, 0, 1}, {-1, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[-1, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, -2}, {1, -1, -2}, {1, -2, -2}, {
+       0, -2, -2}, {0, -1, -1}, {1, -1, -1}, {1, -2, -1}, {0, -2, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, -1}, {1, -1, -1}, {1, -2, -1}, {
+       0, -2, -1}, {0, -1, 0}, {1, -1, 0}, {1, -2, 0}, {0, -2, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, -1, 0}, {1, -1, 0}, {1, -2, 0}, {0, -2, 0}, {
+       0, -1, 1}, {1, -1, 1}, {1, -2, 1}, {0, -2, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-3, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, -2}, {1, 0, -2}, {1, -1, -2}, {
+       0, -1, -2}, {0, 0, -1}, {1, 0, -1}, {1, -1, -1}, {0, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, -1}, {1, 0, -1}, {1, -1, -1}, {
+       0, -1, -1}, {0, 0, 0}, {1, 0, 0}, {1, -1, 0}, {0, -1, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 0, 0}, {1, 0, 0}, {1, -1, 0}, {0, -1, 0}, {0, 
+       0, 1}, {1, 0, 1}, {1, -1, 1}, {0, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[-1, 2], 
+       Rational[1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, -2}, {1, 1, -2}, {1, 0, -2}, {0, 0, -2}, {
+       0, 1, -1}, {1, 1, -1}, {1, 0, -1}, {0, 0, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[-3, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, -1}, {1, 1, -1}, {1, 0, -1}, {0, 0, -1}, {
+       0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[-1, 2]}, 1]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, {0, 1,
+        1}, {1, 1, 1}, {1, 0, 1}, {0, 0, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{
+       Rational[1, 2], 
+       Rational[1, 2], 
+       Rational[1, 2]}, 1]]}, 
+   {RGBColor[1, 0, 0], Text3DBox[
+     StyleBox["0",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], 
+       Rational[-3, 2]}, {-1.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["1",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], 
+       Rational[-1, 2]}, {-1.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["2",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-3, 2], Rational[1, 2]}, {-1.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["3",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], 
+       Rational[-3, 2]}, {-1.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["4",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], 
+       Rational[-1, 2]}, {-1.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["5",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[-1, 2], Rational[1, 2]}, {-1.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["6",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[-3, 2]}, {-1.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["7",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[-1, 2]}, {-1.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["8",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-3, 2], Rational[1, 2], Rational[1, 2]}, {-1.5, 0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["9",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], 
+       Rational[-3, 2]}, {-0.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["10",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], 
+       Rational[-1, 2]}, {-0.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["11",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-3, 2], Rational[1, 2]}, {-0.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["12",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], 
+       Rational[-3, 2]}, {-0.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["13",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], 
+       Rational[-1, 2]}, {-0.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["14",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[-1, 2], Rational[1, 2]}, {-0.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["15",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[-3, 2]}, {-0.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["16",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[-1, 2]}, {-0.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["17",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[-1, 2], Rational[1, 2], Rational[1, 2]}, {-0.5, 0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["18",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[-3, 2]}, {
+      0.5, -1.5, -1.5}]], Text3DBox[
+     StyleBox["19",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[-1, 2]}, {
+      0.5, -1.5, -0.5}]], Text3DBox[
+     StyleBox["20",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-3, 2], Rational[1, 2]}, {0.5, -1.5, 
+      0.5}]], Text3DBox[
+     StyleBox["21",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[-3, 2]}, {
+      0.5, -0.5, -1.5}]], Text3DBox[
+     StyleBox["22",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[-1, 2]}, {
+      0.5, -0.5, -0.5}]], Text3DBox[
+     StyleBox["23",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[-1, 2], Rational[1, 2]}, {0.5, -0.5, 
+      0.5}]], Text3DBox[
+     StyleBox["24",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[-3, 2]}, {0.5, 
+      0.5, -1.5}]], Text3DBox[
+     StyleBox["25",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[-1, 2]}, {0.5, 
+      0.5, -0.5}]], Text3DBox[
+     StyleBox["26",
+      StripOnInput->False,
+      FontSize->Large], 
+     NCache[{Rational[1, 2], Rational[1, 2], Rational[1, 2]}, {0.5, 0.5, 
+      0.5}]]}, 
+   {RGBColor[0.87, 0.94, 1], Opacity[0.5], EdgeForm[{RGBColor[0, 0, 1], 
+    Dashing[{Small, Small}]}], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, -1, -3}, {-1, -1, -3}, {-1, -3, -3}, {-3, \
+-3, -3}, {-3, -1, -1}, {-1, -1, -1}, {-1, -3, -1}, {-3, -3, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, -2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, -1, -1}, {-1, -1, -1}, {-1, -3, -1}, {-3, \
+-3, -1}, {-3, -1, 1}, {-1, -1, 1}, {-1, -3, 1}, {-3, -3, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, -2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, -1, 1}, {-1, -1, 1}, {-1, -3, 1}, {-3, -3, 
+       1}, {-3, -1, 3}, {-1, -1, 3}, {-1, -3, 3}, {-3, -3, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, -2, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 1, -3}, {-1, 
+       1, -3}, {-1, -1, -3}, {-3, -1, -3}, {-3, 1, -1}, {-1, 
+       1, -1}, {-1, -1, -1}, {-3, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 0, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 1, -1}, {-1, 
+       1, -1}, {-1, -1, -1}, {-3, -1, -1}, {-3, 1, 1}, {-1, 1, 1}, {-1, -1, 
+       1}, {-3, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 0, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 1, 1}, {-1, 1, 1}, {-1, -1, 1}, {-3, -1, 
+       1}, {-3, 1, 3}, {-1, 1, 3}, {-1, -1, 3}, {-3, -1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 0, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 3, -3}, {-1, 3, -3}, {-1, 1, -3}, {-3, 
+       1, -3}, {-3, 3, -1}, {-1, 3, -1}, {-1, 1, -1}, {-3, 1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 3, -1}, {-1, 3, -1}, {-1, 1, -1}, {-3, 
+       1, -1}, {-3, 3, 1}, {-1, 3, 1}, {-1, 1, 1}, {-3, 1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-3, 3, 1}, {-1, 3, 1}, {-1, 1, 1}, {-3, 1, 
+       1}, {-3, 3, 3}, {-1, 3, 3}, {-1, 1, 3}, {-3, 1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{-2, 2, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -3}, {1, -1, -3}, {
+       1, -3, -3}, {-1, -3, -3}, {-1, -1, -1}, {1, -1, -1}, {
+       1, -3, -1}, {-1, -3, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, -2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, -1}, {1, -1, -1}, {
+       1, -3, -1}, {-1, -3, -1}, {-1, -1, 1}, {1, -1, 1}, {1, -3, 1}, {-1, -3,
+        1}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4,
+         3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, -2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, -1, 1}, {1, -1, 1}, {1, -3, 1}, {-1, -3, 
+       1}, {-1, -1, 3}, {1, -1, 3}, {1, -3, 3}, {-1, -3, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, -2, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -3}, {1, 1, -3}, {
+       1, -1, -3}, {-1, -1, -3}, {-1, 1, -1}, {1, 1, -1}, {
+       1, -1, -1}, {-1, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 0, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, -1}, {1, 1, -1}, {
+       1, -1, -1}, {-1, -1, -1}, {-1, 1, 1}, {1, 1, 1}, {1, -1, 1}, {-1, -1, 
+       1}}, Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 
+        3}, {8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 0, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 1, 1}, {1, 1, 1}, {1, -1, 1}, {-1, -1, 
+       1}, {-1, 1, 3}, {1, 1, 3}, {1, -1, 3}, {-1, -1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 0, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 3, -3}, {1, 3, -3}, {1, 1, -3}, {-1, 
+       1, -3}, {-1, 3, -1}, {1, 3, -1}, {1, 1, -1}, {-1, 1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 3, -1}, {1, 3, -1}, {1, 1, -1}, {-1, 
+       1, -1}, {-1, 3, 1}, {1, 3, 1}, {1, 1, 1}, {-1, 1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{-1, 3, 1}, {1, 3, 1}, {1, 1, 1}, {-1, 1, 1}, {-1,
+        3, 3}, {1, 3, 3}, {1, 1, 3}, {-1, 1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{0, 2, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, -1, -3}, {3, -1, -3}, {3, -3, -3}, {
+       1, -3, -3}, {1, -1, -1}, {3, -1, -1}, {3, -3, -1}, {1, -3, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, -2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, -1, -1}, {3, -1, -1}, {3, -3, -1}, {
+       1, -3, -1}, {1, -1, 1}, {3, -1, 1}, {3, -3, 1}, {1, -3, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, -2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, -1, 1}, {3, -1, 1}, {3, -3, 1}, {1, -3, 1}, {
+       1, -1, 3}, {3, -1, 3}, {3, -3, 3}, {1, -3, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, -2, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 1, -3}, {3, 1, -3}, {3, -1, -3}, {
+       1, -1, -3}, {1, 1, -1}, {3, 1, -1}, {3, -1, -1}, {1, -1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 0, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 1, -1}, {3, 1, -1}, {3, -1, -1}, {
+       1, -1, -1}, {1, 1, 1}, {3, 1, 1}, {3, -1, 1}, {1, -1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 0, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 1, 1}, {3, 1, 1}, {3, -1, 1}, {1, -1, 1}, {1, 
+       1, 3}, {3, 1, 3}, {3, -1, 3}, {1, -1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 0, 2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 3, -3}, {3, 3, -3}, {3, 1, -3}, {1, 1, -3}, {
+       1, 3, -1}, {3, 3, -1}, {3, 1, -1}, {1, 1, -1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 2, -2}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 3, -1}, {3, 3, -1}, {3, 1, -1}, {1, 1, -1}, {
+       1, 3, 1}, {3, 3, 1}, {3, 1, 1}, {1, 1, 1}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 2, 0}, 2]], 
+    InterpretationBox[
+     TagBox[
+      GraphicsComplex3DBox[{{1, 3, 1}, {3, 3, 1}, {3, 1, 1}, {1, 1, 1}, {1, 3,
+        3}, {3, 3, 3}, {3, 1, 3}, {1, 1, 3}}, 
+       Polygon3DBox[{{1, 2, 3, 4}, {5, 6, 2, 1}, {6, 7, 3, 2}, {7, 8, 4, 3}, {
+        8, 5, 1, 4}, {8, 7, 6, 5}}]],
+      "Polyhedron"],
+     Cube[{2, 2, 2}, 2]]}, 
+   {RGBColor[0, 0, 1], Text3DBox[
+     StyleBox["0",
+      StripOnInput->False,
+      FontSize->Large], {-2, -2, -2}], Text3DBox[
+     StyleBox["1",
+      StripOnInput->False,
+      FontSize->Large], {-2, -2, 0}], Text3DBox[
+     StyleBox["2",
+      StripOnInput->False,
+      FontSize->Large], {-2, -2, 2}], Text3DBox[
+     StyleBox["3",
+      StripOnInput->False,
+      FontSize->Large], {-2, 0, -2}], Text3DBox[
+     StyleBox["4",
+      StripOnInput->False,
+      FontSize->Large], {-2, 0, 0}], Text3DBox[
+     StyleBox["5",
+      StripOnInput->False,
+      FontSize->Large], {-2, 0, 2}], Text3DBox[
+     StyleBox["6",
+      StripOnInput->False,
+      FontSize->Large], {-2, 2, -2}], Text3DBox[
+     StyleBox["7",
+      StripOnInput->False,
+      FontSize->Large], {-2, 2, 0}], Text3DBox[
+     StyleBox["8",
+      StripOnInput->False,
+      FontSize->Large], {-2, 2, 2}], Text3DBox[
+     StyleBox["9",
+      StripOnInput->False,
+      FontSize->Large], {0, -2, -2}], Text3DBox[
+     StyleBox["10",
+      StripOnInput->False,
+      FontSize->Large], {0, -2, 0}], Text3DBox[
+     StyleBox["11",
+      StripOnInput->False,
+      FontSize->Large], {0, -2, 2}], Text3DBox[
+     StyleBox["12",
+      StripOnInput->False,
+      FontSize->Large], {0, 0, -2}], Text3DBox[
+     StyleBox["13",
+      StripOnInput->False,
+      FontSize->Large], {0, 0, 0}], Text3DBox[
+     StyleBox["14",
+      StripOnInput->False,
+      FontSize->Large], {0, 0, 2}], Text3DBox[
+     StyleBox["15",
+      StripOnInput->False,
+      FontSize->Large], {0, 2, -2}], Text3DBox[
+     StyleBox["16",
+      StripOnInput->False,
+      FontSize->Large], {0, 2, 0}], Text3DBox[
+     StyleBox["17",
+      StripOnInput->False,
+      FontSize->Large], {0, 2, 2}], Text3DBox[
+     StyleBox["18",
+      StripOnInput->False,
+      FontSize->Large], {2, -2, -2}], Text3DBox[
+     StyleBox["19",
+      StripOnInput->False,
+      FontSize->Large], {2, -2, 0}], Text3DBox[
+     StyleBox["20",
+      StripOnInput->False,
+      FontSize->Large], {2, -2, 2}], Text3DBox[
+     StyleBox["21",
+      StripOnInput->False,
+      FontSize->Large], {2, 0, -2}], Text3DBox[
+     StyleBox["22",
+      StripOnInput->False,
+      FontSize->Large], {2, 0, 0}], Text3DBox[
+     StyleBox["23",
+      StripOnInput->False,
+      FontSize->Large], {2, 0, 2}], Text3DBox[
+     StyleBox["24",
+      StripOnInput->False,
+      FontSize->Large], {2, 2, -2}], Text3DBox[
+     StyleBox["25",
+      StripOnInput->False,
+      FontSize->Large], {2, 2, 0}], Text3DBox[
+     StyleBox["26",
+      StripOnInput->False,
+      FontSize->Large], {2, 2, 2}]}},
+  Axes->True,
+  AxesLabel->{
+    FormBox["x", TraditionalForm], 
+    FormBox["y", TraditionalForm], 
+    FormBox["z", TraditionalForm]},
+  Boxed->False,
+  ImageSize->{387.04369114899737`, 432.18592938106934`},
+  ImageSizeRaw->Automatic,
+  Lighting->"Neutral",
+  ViewPoint->{2.763972539817703, 0.9048873606786396, 1.729634257182055},
+  ViewVertical->{0.10699408262812737`, -0.016785708067687324`, 
+   0.9941179539105165}]], "Output",
+ CellChangeTimes->{
+  3.8419178820186377`*^9, {3.8419181715666237`*^9, 3.841918194256757*^9}, {
+   3.8419182252348013`*^9, 3.841918230088149*^9}, 3.841918364067572*^9, 
+   3.8419184393083878`*^9, {3.841918479628656*^9, 3.841918508032735*^9}, {
+   3.841919509413457*^9, 3.84191952492299*^9}, {3.841919603687306*^9, 
+   3.84191963311327*^9}, {3.841919682101557*^9, 3.841919723486519*^9}, 
+   3.841919779633141*^9, {3.8419198189862843`*^9, 3.8419198503274927`*^9}, {
+   3.841919905463641*^9, 3.8419199410103483`*^9}, 3.841920181260335*^9},
+ CellLabel->
+  "Out[166]=",ExpressionUUID->"92011594-ee4a-458e-8a12-306932afaa4f"]
+}, Open  ]]
+},
+WindowSize->{1130, 1186},
+WindowMargins->{{252, Automatic}, {Automatic, 0}},
+FrontEndVersion->"12.0 for Mac OS X x86 (64-bit) (April 8, 2019)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 2389, 61, 115, "Input",ExpressionUUID->"9071b239-51eb-449f-be5a-48d1c9d7141d"],
+Cell[2972, 85, 1590, 39, 412, "Output",ExpressionUUID->"2a9f88b5-ef48-4236-9b23-67977a4ecc2d"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[4599, 129, 6064, 158, 346, "Input",ExpressionUUID->"0f3da41b-e80f-45f9-80f7-e08e0bcd2456"],
+Cell[10666, 289, 16794, 461, 375, "Output",ExpressionUUID->"bb5662bf-dcf1-4abd-9fea-db4a238b09ae"],
+Cell[27463, 752, 29142, 775, 483, "Output",ExpressionUUID->"92011594-ee4a-458e-8a12-306932afaa4f"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+
