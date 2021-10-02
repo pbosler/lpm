@@ -10,12 +10,15 @@
 #include "tree/lpm_quadtree_lookup_tables.hpp"
 #include "tree/lpm_node_array_2d.hpp"
 #include "tree/lpm_node_array_2d_impl.hpp"
+#include "tree/lpm_node_array_2d_internal.hpp"
+#include "tree/lpm_node_array_2d_internal_impl.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_tuple.hpp"
 #include "util/lpm_python3_util.hpp"
 #include "catch.hpp"
 #include <memory>
 #include <fstream>
+#include <map>
 
 using namespace Lpm;
 using namespace Lpm::quadtree;
@@ -48,7 +51,7 @@ TEST_CASE("node_array_2d", "[tree]") {
   Kokkos::View<Box2d*,Host> boxes("boxes",leaves.nnodes);
   Kokkos::View<Real*[2],Host> box_vert_crds("box_vert_crds", 4*leaves.nnodes);
   for (auto i=0; i<leaves.nnodes; ++i) {
-    logger->debug("node idx {} key {} idx0 {} idxn {} parent {}",
+    logger->trace("node idx {} key {} idx0 {} idxn {} parent {}",
       i, h_keys(i), h_idx0(i), h_idxn(i), h_prnt(i));
 
     REQUIRE(h_prnt(i) == NULL_IDX);
@@ -73,5 +76,13 @@ TEST_CASE("node_array_2d", "[tree]") {
   write_1d_numpy_array(ofile, "node_idxn", h_idxn);
   write_2d_numpy_array(ofile, "box_vert_crds", box_vert_crds);
   ofile.close();
+
+  std::map<int, NodeArray2DInternal> tree_levels;
+
+  tree_levels.emplace(max_quadtree_depth-1, NodeArray2DInternal(leaves, logger));
+
+  logger->debug("returned from emplace.");
+
+  logger->info(tree_levels.at(max_quadtree_depth-1).info_string());
 
 }

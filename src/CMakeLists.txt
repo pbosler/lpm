@@ -37,6 +37,7 @@ add_library(lpm
                 tree/lpm_quadtree_lookup_tables.cpp
                 tree/lpm_gpu_octree_lookup_tables.cpp
                 tree/lpm_node_array_2d.cpp
+                tree/lpm_node_array_2d_internal.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/lpm_python3_util.cpp
@@ -94,6 +95,8 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               tree/lpm_node_array_d.hpp
               tree/lpm_node_array_2d.hpp
               tree/lpm_node_array_internal.hpp
+              tree/lpm_node_array_2d_internal.hpp
+              tree/lpm_node_array_2d_internal_impl.hpp
               util/lpm_filename.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp

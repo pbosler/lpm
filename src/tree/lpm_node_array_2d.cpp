@@ -89,7 +89,8 @@ void NodeArray2D::init(const Kokkos::View<Real*[2]> unsorted_pts) {
 
 #ifndef NDEBUG
   if (logger) {
-    logger->debug("including empty siblings makes {} leaves total.", nnodes);
+    logger->debug("including empty siblings makes {} leaves total at level {}.",
+     nnodes, level);
   }
 #endif
 
