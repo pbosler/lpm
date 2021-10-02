@@ -55,7 +55,7 @@ struct SortPointsFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator() (const id_type i) const {
     const auto old_id = decode_id(sort_codes(i));
-    orig_inds(i) = old_id;
+    orig_inds(i) = Index(old_id);
     for (auto j=0; j<2; ++j) {
       sorted_pts(i,j) = unsorted_pts(old_id, j);
     }

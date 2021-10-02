@@ -199,7 +199,7 @@ struct Box2d {
 
 KOKKOS_INLINE_FUNCTION
 Box2d default_box() {
-  return Box2d(-1,1, -1,1);
+  return Box2d(-1,1, -1,1, false);
 }
 
 KOKKOS_INLINE_FUNCTION

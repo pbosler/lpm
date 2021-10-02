@@ -11,7 +11,7 @@
 
 namespace Lpm {
 
-typedef uint_fast32_t id_type;
+typedef uint32_t id_type;
 typedef uint32_t key_type;
 typedef uint_fast64_t code_type;
 

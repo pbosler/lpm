@@ -85,9 +85,16 @@ TEST_CASE("quadtree_functions", "[tree]") {
       REQUIRE(key == i);
       REQUIRE(h_decoded_ids(i) == i);
       const auto box = h_boxes(i);
-      logger.debug("key {} pt ({}, {}) box {}", bits(key), cxy(0), cxy(1), box);
       REQUIRE(box.contains_pt(cxy));
       const auto cntd = box.centroid();
+
+      if (!FloatingPoint<Real>::zero(PlaneGeometry::distance(cxy, cntd))) {
+        logger.debug("{}: key = {} box = {} box_from_key {}", i, bits(key),
+          h_boxes(i), box_from_key(key, max_depth, max_depth));
+        logger.error("cxy = ({}, {}) cntd = ({}, {}) distance = {}",
+          cxy(0), cxy(1), cntd[0], cntd[1], PlaneGeometry::distance(cxy, cntd));
+      }
+
       REQUIRE(FloatingPoint<Real>::zero(PlaneGeometry::distance(cxy, cntd)));
     }
 
