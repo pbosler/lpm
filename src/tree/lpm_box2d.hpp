@@ -187,8 +187,8 @@ struct Box2d {
   Kokkos::Tuple<Real,2> vertex_crds(const int v) const {
     LPM_KERNEL_ASSERT( v>=0 and v<4 );
     Kokkos::Tuple<Real,2> result;
-    result[0] = ((v&2) == 0 ? xmin : xmax);
-    result[1] = ((v&1) == 0 ? ymin : ymax);
+    result[0] = ((v&2) ? xmax : xmin);
+    result[1] = ((v&1) ? ymax : ymin);
     return result;
   }
 

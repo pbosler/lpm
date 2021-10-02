@@ -63,20 +63,20 @@ key_type local_key(const key_type& key, const int lev, const int max_depth) {
 }
 
 KOKKOS_INLINE_FUNCTION
-Box2d box_from_key(const key_type& k, const int lev, const int max_depth) {
+Box2d box_from_key(const key_type& k, const int lev, const int max_depth,
+  const Box2d& bounding_box=default_box()) {
   LPM_KERNEL_ASSERT(max_depth > 0 && max_depth <= MAX_QUADTREE_DEPTH);
   LPM_KERNEL_ASSERT( lev >= 0 && lev <= max_depth);
-  Real cx = 0;
-  Real cy = 0;
-  Real half_len = 1;
+  auto c = bounding_box.centroid();
+  auto half_len = 0.5 * bounding_box.square_edge_length();
   for (auto i=1; i<=lev; ++i) {
     half_len *= 0.5;
     const key_type lkey = local_key(k, i, max_depth);
-    cy += ( (lkey&1) > 0 ? half_len : -half_len);
-    cx += ( (lkey&2) > 0 ? half_len : -half_len);
+    c[1] += ( (lkey&1) ? half_len : -half_len);
+    c[0] += ( (lkey&2) ? half_len : -half_len);
   }
-  return Box2d(cx - half_len, cx + half_len,
-               cy - half_len, cy + half_len);
+  return Box2d(c[0] - half_len, c[0] + half_len,
+               c[1] - half_len, c[1] + half_len, false);
 }
 
 KOKKOS_INLINE_FUNCTION

@@ -35,9 +35,9 @@ TEST_CASE("gpu_octree_functions", "[tree]") {
     for (auto l=1; l<=2; ++l) {
       half_len *= 0.5;
       const auto lkey = local_key(k, l, 2);
-      cz += ( (lkey&1) > 0 ? half_len : -half_len);
-      cy += ( (lkey&2) > 0 ? half_len : -half_len);
-      cx += ( (lkey&4) > 0 ? half_len : -half_len);
+      cz += ( (lkey&1) ? half_len : -half_len);
+      cy += ( (lkey&2) ? half_len : -half_len);
+      cx += ( (lkey&4) ? half_len : -half_len);
     }
     leaf_centroids(k,0) = cx;
     leaf_centroids(k,1) = cy;

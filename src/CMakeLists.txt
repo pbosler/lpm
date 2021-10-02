@@ -36,8 +36,10 @@ add_library(lpm
                 tree/lpm_gpu_octree.cpp
                 tree/lpm_quadtree_lookup_tables.cpp
                 tree/lpm_gpu_octree_lookup_tables.cpp
+                tree/lpm_node_array_2d.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
+                util/lpm_python3_util.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
                 util/lpm_timer.cpp
@@ -87,7 +89,10 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               tree/lpm_gpu_octree_functions.hpp
               tree/lpm_quadtree_lookup_tables.hpp
               tree/lpm_gpu_octree_lookup_tables.hpp
+              tree/lpm_tree_defs.hpp
+              tree/lpm_tree_common.hpp
               tree/lpm_node_array_d.hpp
+              tree/lpm_node_array_2d.hpp
               tree/lpm_node_array_internal.hpp
               util/lpm_filename.hpp
               util/lpm_floating_point.hpp
@@ -96,6 +101,8 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
               util/lpm_tuple.hpp
+              util/lpm_python3_util.hpp
+              util/lpm_matlab_io.hpp
               util/ekat_rational_constant.hpp
               util/ekat_scaling_factor.hpp
               util/ekat_units.hpp

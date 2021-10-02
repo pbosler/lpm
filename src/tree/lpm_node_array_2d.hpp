@@ -17,6 +17,7 @@ struct NodeArray2D {
   Int max_depth;
   id_type nnodes;
   id_type npts;
+  Box2d bbox;
 
   Kokkos::View<id_type*> pt_node;
   Kokkos::View<Index*> pt_idx_orig;
@@ -41,7 +42,7 @@ struct NodeArray2D {
       init(unsorted_pts);
     }
 
-  void write_vtk(const std::string& ofname) const;
+//   void write_vtk(const std::string& ofname) const;
 
   std::string info_string(const int tab_level=0) const;
 

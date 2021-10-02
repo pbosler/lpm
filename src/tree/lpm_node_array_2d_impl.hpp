@@ -1,7 +1,7 @@
 #ifndef LPM_NODE_ARRAY_2D_IMPL_HPP
 #define LPM_NODE_ARRAY_2D_IMPL_HPP
 
-#include "LpmConfig.h""
+#include "LpmConfig.h"
 #include "tree/lpm_node_array_2d.hpp"
 
 namespace Lpm {
@@ -13,6 +13,7 @@ struct EncodeFunctor {
   // input
   Kokkos::View<Real*[2]> pts;
   Int level;
+  Box2d bounding_box;
 
   /** @brief constructor.
 
@@ -21,15 +22,16 @@ struct EncodeFunctor {
     @param [in] l level
   */
   EncodeFunctor(Kokkos::View<code_type*> c, const Kokkos::View<Real*[2]> p,
-    const Int l) :
+    const Int l, const Box2d bb) :
     codes(c),
     pts(p),
-    level(l) {}
+    level(l),
+    bounding_box(bb) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const id_type i) const {
     const auto pos = Kokkos::subview(pts, i, Kokkos::ALL);
-    const auto key = compute_key_for_point(pos, level);
+    const auto key = compute_key_for_point(pos, level, bounding_box);
     codes(i) = encode(key, i);
   }
 };
@@ -69,7 +71,7 @@ struct UniqueKeyFunctor {
     sort_codes(sc) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (const id_type i, id_type& ct) {
+  void operator() (const id_type i, id_type& ct) const {
     if (i == 0) {
       unique_flags(i) = 1;
     }
@@ -107,11 +109,12 @@ struct UniqueNodeFunctor {
     if (is_new_key) {
       const auto new_idx = scanned_flags(i) - 1;
       const auto new_key = decode_key(sorted_codes(i));
-      const auto first_pt = binary_search_first(new_key, sort_codes);
-      const auto last_pt = binary_search_last(new_key, sort_codes);
+      const auto first_pt = binary_search_first(new_key, sorted_codes);
+      const auto last_pt = binary_search_last(new_key, sorted_codes);
       keys(new_idx) = new_key;
       pt_idx_start(new_idx) = first_pt;
       pt_idx_count(new_idx) = last_pt - first_pt + 1;
+      LPM_KERNEL_ASSERT(pt_idx_count(new_idx) > 0);
     }
   }
 };
@@ -130,12 +133,12 @@ struct NodeNumFunctor {
   KOKKOS_INLINE_FUNCTION
   void operator() (const id_type i) const {
     if (i==0) {
-      node_num(i) = 8;
+      node_num(i) = 4;
     }
     else {
-      const auto prev_parent = parent_key(unique_keys(i), level, max_depth);
+      const auto prev_parent = parent_key(unique_keys(i-1), level, max_depth);
       const auto parent = parent_key(unique_keys(i), level, max_depth);
-      node_num(i) = (parent == prev_parent ? 0 : 8);
+      node_num(i) = (parent == prev_parent ? 0 : 4);
     }
   }
 };
@@ -173,12 +176,12 @@ struct NodeArray2DFunctor {
     bool is_new_parent = true;
     if (i>0) is_new_parent = (node_num(i) > node_num(i-1));
     if (is_new_parent) {
-      const auto kid0_idx = node_num(i) - 8;
+      const auto kid0_idx = node_num(i) - 4;
       const auto p_key = parent_key(unique_keys(i), level, level);
       for (int k=0; k<4; ++k) {
         const id_type k_idx = kid0_idx + k;
-        const key_type k_key = pkey + k;
-        node_keys(k_idx) = k_key;
+        const key_type k_key = p_key + k;
+        keys(k_idx) = k_key;
         parent_idx(k_idx) = NULL_IDX;
         const auto ukey_idx = binary_search_first(k_key, unique_keys);
         if (ukey_idx != NULL_IDX) {

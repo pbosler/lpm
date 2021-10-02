@@ -56,6 +56,8 @@ CreateUnitTest(quadtree_functions_test lpm_quadtree_functions_tests.cpp)
 
 CreateUnitTest(node_array lpm_node_array_unit_tests.cpp)
 
+CreateUnitTest(node_array_2d lpm_node_array_2d_tests.cpp)
+
 CreateUnitTest(gpu_octree_lookup_tables lpm_gpu_octree_lookup_table_tests.cpp)
 
 CreateUnitTest(gpu_octree lpm_gpu_octree_tests.cpp)

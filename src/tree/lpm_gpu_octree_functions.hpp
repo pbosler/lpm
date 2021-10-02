@@ -131,9 +131,9 @@ Box3d box_from_key(const key_type& k, const int& lev, const int& max_depth=MAX_O
   for (auto i=1; i<=lev; ++i) {
     half_len *= 0.5;
     const key_type lkey = local_key(k, i, max_depth);
-    cz += ((lkey&1) > 0 ? half_len : -half_len);
-    cy += ((lkey&2) > 0 ? half_len : -half_len);
-    cx += ((lkey&4) > 0 ? half_len : -half_len);
+    cz += ((lkey&1) ? half_len : -half_len);
+    cy += ((lkey&2) ? half_len : -half_len);
+    cx += ((lkey&4) ? half_len : -half_len);
   }
   return Box3d(cx-half_len, cx+half_len,
                cy-half_len, cy+half_len,
