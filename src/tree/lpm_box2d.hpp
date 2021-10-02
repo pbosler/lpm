@@ -66,7 +66,7 @@ struct Box2d {
 
   /// @brief assignment operator
   KOKKOS_INLINE_FUNCTION
-  void operator = (const volatile Box2d& rhs) {
+  void operator = (const volatile Box2d& rhs) volatile {
       xmin = rhs.xmin;
       xmax = rhs.xmax;
       ymin = rhs.ymin;

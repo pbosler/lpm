@@ -1,5 +1,6 @@
 #include "tree/lpm_node_array_2d.hpp"
 #include "tree/lpm_node_array_2d_impl.hpp"
+#include "lpm_box2d.hpp"
 #include "util/lpm_string_util.hpp"
 #include "Kokkos_Sort.hpp"
 
@@ -9,7 +10,7 @@ namespace quadtree {
 void NodeArray2D::init(const Kokkos::View<Real*[2]> unsorted_pts) {
 
   Kokkos::parallel_reduce(npts, BoundingBoxFunctor(unsorted_pts),
-    bounding_box());
+    Box2dReducer<>(bounding_box()));
 
   auto h_bounding_box = Kokkos::create_mirror_view(bounding_box);
       Kokkos::deep_copy(h_bounding_box, bounding_box);

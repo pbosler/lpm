@@ -225,13 +225,13 @@ struct UniqueNodeFunctor {
 */
 struct MarkUniqueParentFunctor {
   // output
-  Kokkos::View<key_type*> node_address;
+  Kokkos::View<id_type*> node_address;
   // input
   Kokkos::View<key_type*> unique_keys;
   Int level;
   Int max_depth;
 
-  MarkUniqueParentFunctor(Kokkos::View<key_type*> na,
+  MarkUniqueParentFunctor(Kokkos::View<id_type*> na,
                           const Kokkos::View<key_type*> k,
                           const Int l,
                           const Int md):
@@ -279,9 +279,9 @@ struct NodeArrayDFunctor{
   NodeArrayDFunctor(Kokkos::View<key_type*> n_k,
                     Kokkos::View<Index*> n_idx0,
                     Kokkos::View<id_type*> n_idxn,
-                    Kokkos::View<key_type*> n_p,
-                    Kokkos::View<key_type*> p_n,
-              const Kokkos::View<key_type*> n_a,
+                    Kokkos::View<id_type*> n_p,
+                    Kokkos::View<id_type*> p_n,
+              const Kokkos::View<id_type*> n_a,
               const Kokkos::View<key_type*> u_k,
               const Kokkos::View<Index*> u_idx0,
               const Kokkos::View<id_type*> u_idxn,
