@@ -5,6 +5,7 @@
 #include "Kokkos_Core.hpp"
 #include "Kokkos_Array.hpp"
 #include "spdlog/fmt/ostr.h"
+#include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"
 #include <limits>
 #include <cfloat>
@@ -29,9 +30,9 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
   }
 
   KOKKOS_FORCEINLINE_FUNCTION
-  Tuple(const T& val) : Array<T,ndim>() {
+  Tuple(const Tuple<T,ndim>& val) : Array<T,ndim>() {
     for (int i=0; i<ndim; ++i)
-      this->m_internal_implementation_private_member_data[i] = val;
+      this->m_internal_implementation_private_member_data[i] = val[i];
   }
 
   KOKKOS_FORCEINLINE_FUNCTION
@@ -45,6 +46,12 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
     this->m_internal_implementation_private_member_data[0] = v0;
     this->m_internal_implementation_private_member_data[1] = v1;
     this->m_internal_implementation_private_member_data[2] = v2;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Tuple(const volatile Tuple<T, ndim>& src) : Array<T, ndim>() {
+    const auto n = std::min(this->size(), src.size());
+    for (auto i=0; i<n; ++i) this->m_internal_implementation_private_member_data[i] = src[i];
   }
 
   KOKKOS_FORCEINLINE_FUNCTION
@@ -82,6 +89,22 @@ template <typename T, int ndim> struct Tuple : public Array<T,ndim> {
       this->m_internal_implementation_private_member_data[i] += o[i];
     return *this;
   }
+
+  KOKKOS_INLINE_FUNCTION
+  Tuple& operator=(const Tuple<T,ndim>& rhs) {
+    const auto n = std::min(this->size(), rhs.size());
+    for (auto i=0; i<n; ++i) this->m_internal_implementation_private_member_data[i] = rhs[i];
+    return *this;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Tuple operator=(const volatile Tuple<T,ndim>& rhs) {
+    const auto n = std::min(this->size(), rhs.size());
+    for (auto i=0; i<n; ++i) this->m_internal_implementation_private_member_data[i] = rhs[i];
+    return *this;
+  }
+
+
 
   KOKKOS_FORCEINLINE_FUNCTION
   Tuple operator *= (const Tuple<T,ndim>& o) {

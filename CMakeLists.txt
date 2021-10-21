@@ -66,7 +66,10 @@ elseif(LPM_PRECISION STREQUAL "double")
   set(LPM_REAL_TYPE "double")
   set(LPM_DOUBLE_PRECISION 1)
 else()
-  message(FATAL_ERROR "Invalid LPM_PRECISION: ${LPM_PRECISION} (use 'single' or 'double')")
+  message(WARNING "Invalid LPM_PRECISION: ${LPM_PRECISION} (use 'single' or 'double')")
+  message(STATUS "   setting LPM_PRECISION=double")
+  set(LPM_PRECISION double)
+  set(LPM_DOUBLE_PRECISION 1)
 endif()
 
 # Build dependencies if necessary
