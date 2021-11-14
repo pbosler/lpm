@@ -5,9 +5,10 @@
 #include "lpm_geometry.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
-
+#endif
 #include "Kokkos_Core.hpp"
 
 #include <vector>
@@ -112,8 +113,10 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
         bool omg_set;
 };
 
+#ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<SeedType>> bve);
+#endif
 
 }
 #endif

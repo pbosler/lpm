@@ -1,6 +1,8 @@
 #include "mesh/lpm_polymesh2d.hpp"
 #include "lpm_kokkos_defs.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
+#endif
 #include "util/lpm_floating_point.hpp"
 #include "lpm_constants.hpp"
 #include <iostream>
@@ -48,6 +50,7 @@ void PolyMesh2d<SeedType>::reset_face_centroids() {
         );
 }
 
+#ifdef LPM_USE_VTK
 template <typename SeedType>
 void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
     VtkInterface<Geo,FaceType> vtk;
@@ -56,6 +59,7 @@ void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
     vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(faces, edges, vertices, NULL, cd);
     vtk.writePolyData(fname, pd);
 }
+#endif
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::update_device() const {

@@ -1,10 +1,12 @@
 #include "tree/lpm_cpu_tree.hpp"
 #include "lpm_assert.hpp"
 
+#ifdef LPM_USE_VTK
 #include "vtkPolyData.h"
 #include "vtkVoxel.h"
 #include "vtkCellData.h"
 #include "vtkXMLPolyDataWriter.h"
+#endif
 
 #include <numeric>
 #include <limits>
@@ -133,6 +135,7 @@ void CpuTree<Geo>::generate_tree_max_depth(Node* node, const int max_depth,
   }
 }
 
+#ifdef LPM_USE_VTK
 template <typename Geo>
 void CpuTree<Geo>::insert_vtk_cell_points(
   vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
@@ -182,7 +185,7 @@ void CpuTree<Geo>::write_vtk(const std::string& ofname) const {
   writer->SetFileName(ofname.c_str());
   writer->Write();
 }
-
+#endif
 
 } // namespace tree
 } // namespace Lpm

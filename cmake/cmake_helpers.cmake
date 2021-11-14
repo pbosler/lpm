@@ -76,6 +76,10 @@ function(CreateUnitTest target_name target_sources)
         ${lpmtest_INCLUDE_DIRS}
         )
   target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS})
+  if (VTK_FOUND)
+    target_include_directories(${target_name} PUBLIC ${VTK_INCLUDE_DIRS})
+    target_link_libraries(${target_name} PUBLIC ${VTK_LIBRARIES})
+  endif()
 
   if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
     target_link_libraries(${target_name} PUBLIC lpm_test_main)

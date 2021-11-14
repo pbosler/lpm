@@ -162,9 +162,10 @@ template <typename SeedType> class PolyMesh2d {
     */
     void tree_init(const Int initDepth, const MeshSeed<SeedType>& seed);
 
-
+#ifdef LPM_USE_VTK
     /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d instance
     virtual void output_vtk(const std::string& fname) const;
+#endif
 
     /// @brief Copies data from host to device
     virtual void update_device() const;

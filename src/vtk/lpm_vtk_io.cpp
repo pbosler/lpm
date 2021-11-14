@@ -1,5 +1,8 @@
 #include "lpm_vtk_io.hpp"
 #include "lpm_vtk_io_impl.hpp"
+
+#ifdef LPM_USE_VTK
+
 #include "vtkDoubleArray.h"
 #include "vtkIntArray.h"
 #include "vtkPoints.h"
@@ -157,3 +160,4 @@ template class VtkPolymeshInterface<QuadRectSeed>;
 template class VtkPolymeshInterface<TriHexSeed>;
 }
 
+#endif
