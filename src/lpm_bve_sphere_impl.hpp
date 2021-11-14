@@ -121,6 +121,7 @@ void BVESphere<SeedType>::update_host() const {
     ko::deep_copy(_host_velocity_faces, velocity_faces);
 }
 
+#ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<SeedType>> bve) {
     std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(bve);
@@ -141,6 +142,7 @@ VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<See
     }
     return vtk;
 }
+#endif
 
 template <typename SeedType>
 void BVESphere<SeedType>::set_omega(const Real& omg) {

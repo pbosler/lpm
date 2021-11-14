@@ -3,6 +3,7 @@
 #define LPM_CONFIG_H
 
 #cmakedefine LPM_USE_MPI
+#cmakedefine LPM_USE_VTK
 #cmakedefine LPM_USE_VTK_GRAPHICS
 #cmakedefine LPM_USE_CUDA
 #cmakedefine LPM_HAVE_SPHEREPACK
