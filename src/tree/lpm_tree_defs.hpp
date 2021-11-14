@@ -3,6 +3,8 @@
 
 #include "LpmConfig.h"
 
+#include <stdint.h>
+
 #define BOX_PADDING 1e-5
 #define MAX_OCTREE_DEPTH 10
 #define MAX_QUADTREE_DEPTH 16

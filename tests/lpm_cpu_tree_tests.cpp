@@ -26,7 +26,7 @@ TEST_CASE("cpu_tree_test", "[tree]") {
 
   MeshSeed<seed_type> seed;
 
-  const Int mesh_tree_depth = 3;
+  const Int mesh_tree_depth = 5;
 
   /**
     Set memory allocations
