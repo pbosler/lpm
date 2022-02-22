@@ -13,6 +13,25 @@
 
 namespace Lpm {
 
+template <typename SeedType>
+struct PolyMeshParameters {
+  Index nmaxverts;
+  Index nmaxedges;
+  Index nmaxfaces;
+  Int init_depth;
+  Real radius;
+  Int amr_limit;
+  MeshSeed<SeedType> seed;
+
+  PolyMeshParameters(const Int depth, const Real r=1, const Int amr = 0) :
+    init_depth(depth),
+    amr_limit(amr),
+    seed(r)
+    {
+      seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr);
+    }
+};
+
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
 
   Provides a single access point for a collection of:
@@ -46,6 +65,16 @@ template <typename SeedType> class PolyMesh2d {
       faces.lag_crds = coords_ptr(new coords_type(nmaxfaces));
     }
 
+  PolyMesh2d(const PolyMeshParameters<SeedType>& params) :
+    vertices(params.nmaxverts),
+    edges(params.nmaxedges),
+    faces(params.nmaxfaces) {
+      vertices.phys_crds = coords_ptr(new coords_type(params.nmaxverts));
+      vertices.lag_crds = coords_ptr(new coords_type(params.nmaxverts));
+      faces.phys_crds = coords_ptr(new coords_type(params.nmaxfaces));
+      faces.lag_crds = coords_ptr(new coords_type(params.nmaxfaces));
+      tree_init(params.init_depth, params.seed);
+    }
 
     /// Destructor
     virtual ~PolyMesh2d() {}
