@@ -6,6 +6,7 @@
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
+#include "lpm_logger.hpp"
 #include "Kokkos_Core.hpp"
 #include "Kokkos_View.hpp"
 
@@ -190,6 +191,9 @@ template <typename SeedType> class PolyMesh2d {
     @param seed Mesh seed used to initialize particles and panels
     */
     void tree_init(const Int initDepth, const MeshSeed<SeedType>& seed);
+
+    template <typename LoggerType>
+    void divide_face(const Index face_idx, LoggerType& logger);
 
 #ifdef LPM_USE_VTK
     /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d instance

@@ -27,16 +27,27 @@ void PolyMesh2d<SeedType>::tree_init(const Int initDepth, const MeshSeed<SeedTyp
     seed_init(seed);
     base_tree_depth=initDepth;
 
+    Index startInd = 0;
     for (int i=0; i<initDepth; ++i) {
-        Index startInd = 0;
         Index stopInd = faces.nh();
         for (Index j=startInd; j<stopInd; ++j) {
             if (!faces.has_kids_host(j)) {
                 divider::divide(j, vertices, edges, faces);
             }
         }
+        startInd = stopInd-1;
     }
     update_device();
+}
+
+template <typename SeedType> template <typename LoggerType>
+void PolyMesh2d<SeedType>::divide_face(const Index face_idx, LoggerType& logger) {
+  if (faces.has_kids_host(face_idx)) {
+    logger.warn("divide_face: face {} has already been divided.", face_idx);
+  }
+  else {
+    divider::divide(face_idx, vertices, edges, faces);
+  }
 }
 
 template <typename SeedType>
