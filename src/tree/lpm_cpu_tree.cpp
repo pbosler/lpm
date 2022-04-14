@@ -8,6 +8,7 @@
 #include "vtkVoxel.h"
 #include "vtkCellData.h"
 #include "vtkXMLPolyDataWriter.h"
+#include "vtkXMLUnstructuredGridWriter.h"
 #endif
 
 #include <numeric>
@@ -177,62 +178,61 @@ void CpuTree<Geo,NodeType>::generate_tree_max_depth(NodeType* node, const int ma
 }
 
 #ifdef LPM_USE_VTK
-template <typename Geo>
-void CpuTree<Geo>::insert_vtk_cell_points(
-  vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
-  vtkSmartPointer<vtkCellArray> cells, const Index cell_offset,
-  vtkSmartPointer<vtkIntArray> levels, const Node* node) {
-  const auto box = node->box;
-  const auto npts_in = pts->GetNumberOfPoints();
-  const auto ncells_in = ugrid->GetNumberOfCells();
+// template <typename Geo, typename NodeType>
+// void CpuTree<Geo,NodeType>::insert_vtk_cell_points(
+//   vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
+//   vtkSmartPointer<vtkCellArray> cells, const Index cell_offset,
+//   vtkSmartPointer<vtkIntArray> levels, const Node* node) {
+//   const auto box = node->box;
+//   const auto npts_in = pts->GetNumberOfPoints();
+//   const auto ncells_in = ugrid->GetNumberOfCells();
+//
+//   pts->InsertNextPoint(box.xmin, box.ymin, box.zmin);
+//   pts->InsertNextPoint(box.xmax, box.ymin, box.zmin);
+//   pts->InsertNextPoint(box.xmax, box.ymax, box.zmin);
+//   pts->InsertNextPoint(box.xmin, box.ymax, box.zmin);
+//
+//   pts->InsertNextPoint(box.xmin, box.ymin, box.zmax);
+//   pts->InsertNextPoint(box.xmax, box.ymin, box.zmax);
+//   pts->InsertNextPoint(box.xmax, box.ymax, box.zmax);
+//   pts->InsertNextPoint(box.xmin, box.ymax, box.zmax);
+//
+//   vtkNew<vtkHexahedron> hex;
+//   for (auto i=0; i<8; ++i) {
+//     hex->GetPointIds()->SetId(i, npts_in+i);
+//   }
+//   levels->InsertTuple1(ncells_in, node->level);
+//   ugrid->InsertNextCell(hex->GetCellType(), hex->GetPointIds());
+//
+//   if (node->has_kids()) {
+//     for (int k=0; k<8; ++k) {
+//       if (!node->kids[k]->empty()) {
+//         insert_vtk_cell_points(pts, ugrid, levels,
+//           node->kids[k].get());
+//       }
+//     }
+//   }
+// }
 
-  pts->InsertNextPoint(box.xmin, box.ymin, box.zmin);
-  pts->InsertNextPoint(box.xmax, box.ymin, box.zmin);
-  pts->InsertNextPoint(box.xmax, box.ymax, box.zmin);
-  pts->InsertNextPoint(box.xmin, box.ymax, box.zmin);
-
-  pts->InsertNextPoint(box.xmin, box.ymin, box.zmax);
-  pts->InsertNextPoint(box.xmax, box.ymin, box.zmax);
-  pts->InsertNextPoint(box.xmax, box.ymax, box.zmax);
-  pts->InsertNextPoint(box.xmin, box.ymax, box.zmax);
-
-  vtkNew<vtkHexahedron> hex;
-  for (auto i=0; i<8; ++i) {
-    hex->GetPointIds()->SetId(i, npts_in+i);
-  }
-  levels->InsertTuple1(ncells_in, node->level);
-  ugrid->InsertNextCell(hex->GetCellType(), hex->GetPointIds());
-
-  if (node->has_kids()) {
-    for (int k=0; k<8; ++k) {
-      if (!node->kids[k]->empty()) {
-        insert_vtk_cell_points(pts, ugrid, levels,
-          node->kids[k].get());
-      }
-    }
-  }
-}
-
-template <typename Geo, typename NodeType>
-void CpuTree<Geo,NodeType>::write_vtk(const std::string& ofname) const {
-  LPM_REQUIRE(filename_extension(ofname) == ".vtu");
-  vtkNew<vtkPoints> pts;
-  vtkNew<vtkUnstructuredGrid> ugrid;
-  vtkNew<vtkIntArray> levels;
-  levels->SetName("tree_level");
-  levels->SetNumberOfComponents(1);
-  levels->SetNumberOfTuples(n_nodes);
-  insert_vtk_cell_points(pts, ugrid, levels, root.get());
-  ugrid->SetPoints(pts);
-  ugrid->GetCellData()->AddArray(levels);
-  vtkNew<vtkXMLUnstructuredGridWriter> writer;
-  writer->SetInputData(ugrid);
-  writer->SetFileName(ofname.c_str());
-  writer->Write();
-}
+// template <typename Geo, typename NodeType>
+// void CpuTree<Geo,NodeType>::write_vtk(const std::string& ofname) const {
+//   LPM_REQUIRE(filename_extension(ofname) == ".vtu");
+//   vtkNew<vtkPoints> pts;
+//   vtkNew<vtkUnstructuredGrid> ugrid;
+//   vtkNew<vtkIntArray> levels;
+//   levels->SetName("tree_level");
+//   levels->SetNumberOfComponents(1);
+//   levels->SetNumberOfTuples(n_nodes);
+//   insert_vtk_cell_points(pts, ugrid, levels, root.get());
+//   ugrid->SetPoints(pts);
+//   ugrid->GetCellData()->AddArray(levels);
+//   vtkNew<vtkXMLUnstructuredGridWriter> writer;
+//   writer->SetInputData(ugrid);
+//   writer->SetFileName(ofname.c_str());
+//   writer->Write();
+// }
 #endif
 
-} // namespace tree
 
 template <typename Geo, typename NodeType>
 std::string CpuTree<Geo,NodeType>::node_info_string(NodeType* node) const {
@@ -249,6 +249,5 @@ std::string CpuTree<Geo,NodeType>::node_info_string(NodeType* node) const {
 
 // ETI
 template class CpuTree<>;
-
-}
+} // namespace tree
 } // namespace Lpm

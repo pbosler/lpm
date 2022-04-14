@@ -12,6 +12,7 @@
 #include "vtkPoints.h"
 #include "vtkIntArray.h"
 #include "vtkCellArray.h"
+#include "vtkUnstructuredGrid.h"
 #endif
 
 #include <memory>
@@ -69,7 +70,7 @@ struct CpuTree {
 
     std::shared_ptr<Coords<Geo>> _crds;
 };
-
+#endif
 
 } // namespace tree
 } // namespace Lpm
