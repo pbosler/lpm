@@ -3,11 +3,13 @@
 
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
+#include "lpm_field.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
-
+#endif
 #include "Kokkos_Core.hpp"
 
 #include <vector>
@@ -32,22 +34,22 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
         typedef Coords<Geo> coords_type;
         typedef std::shared_ptr<Coords<Geo>> coords_ptr;
 
-        scalar_field rel_vort_verts; /// relative vorticity, passive particles [1/time]
-        scalar_field abs_vort_verts; /// absolute vorticity, passive particles [1/time]
-        scalar_field stream_fn_verts; /// stream function, passive particles [length^2/time]
-        vector_field velocity_verts; /// velocity, passive particles [length/time]
+        ScalarField<VertexField> rel_vort_verts; /// relative vorticity, passive particles [1/time]
+        ScalarField<VertexField> abs_vort_verts; /// absolute vorticity, passive particles [1/time]
+        ScalarField<VertexField> stream_fn_verts; /// stream function, passive particles [length^2/time]
+        VectorField<SphereGeometry,VertexField> velocity_verts; /// velocity, passive particles [length/time]
 
-        scalar_field rel_vort_faces;  /// relative vorticity, active particles
-        scalar_field abs_vort_faces;  /// absolute vorticity, active particles
-        scalar_field stream_fn_faces; /// stream function, active particles
-        vector_field velocity_faces; /// velocity, active particles
+        ScalarField<FaceField> rel_vort_faces;  /// relative vorticity, active particles
+        ScalarField<FaceField> abs_vort_faces;  /// absolute vorticity, active particles
+        ScalarField<FaceField> stream_fn_faces; /// stream function, active particles
+        VectorField<SphereGeometry,FaceField> velocity_faces; /// velocity, active particles
         n_view_type ntracers; /// number of passive tracers
 
         Real Omega; /// background rotation rate of sphere about positive z-axis
         Real t; /// time
 
-        std::vector<scalar_field> tracer_verts; /// passive tracers at passive particles
-        std::vector<scalar_field> tracer_faces; /// passive tracers at active particles
+        std::vector<ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
+        std::vector<ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
 
         /** @brief Constructor.  Allocates memory; does not initialize problem data.
 
@@ -90,30 +92,15 @@ template <typename SeedType> class BVESphere : public PolyMesh2d<SeedType> {
         Real avg_mesh_size_degrees() const;
 
     protected:
-        typedef typename scalar_field::HostMirror scalar_host;
-        typedef typename vector_field::HostMirror vector_host;
-        typedef typename n_view_type::HostMirror n_host;
-
-        n_host _host_ntracers;
-
-        scalar_host _host_rel_vort_verts;
-        scalar_host _host_abs_vort_verts;
-        scalar_host _host_stream_fn_verts;
-        vector_host _host_velocity_verts;
-
-        scalar_host _host_rel_vort_faces;
-        scalar_host _host_abs_vort_faces;
-        scalar_host _host_stream_fn_faces;
-        vector_host _host_velocity_faces;
-
-        std::vector<scalar_host> _host_tracer_verts;
-        std::vector<scalar_host> _host_tracer_faces;
+        typename n_view_type::HostMirror _host_ntracers;
 
         bool omg_set;
 };
 
+#ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(const std::shared_ptr<BVESphere<SeedType>> bve);
+#endif
 
 }
 #endif

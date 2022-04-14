@@ -7,10 +7,12 @@
 #include "tree/lpm_tree_node.hpp"
 #include "tree/lpm_box3d.hpp"
 
+#ifdef LPM_USE_VTK
 #include "vtkSmartPointer.h"
 #include "vtkPoints.h"
 #include "vtkIntArray.h"
-#include "vtkUnstructuredGrid.h"
+#include "vtkCellArray.h"
+#endif
 
 #include <memory>
 
@@ -35,7 +37,9 @@ struct CpuTree {
     Index n_nodes;
     std::unique_ptr<NodeType> root;
 
+#ifdef LPM_USE_VTK
     void write_vtk(const std::string& ofname) const;
+#endif
 
     std::string info_string(const int tab_level = 0) const;
 
@@ -57,6 +61,7 @@ struct CpuTree {
 
     std::string node_info_string(NodeType* node) const;
 
+#ifdef LPM_USE_VTK
     void insert_vtk_cell_points(
       vtkSmartPointer<vtkPoints> pts,
       vtkSmartPointer<vtkUnstructuredGrid> ugrid,

@@ -13,7 +13,9 @@
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
 #include "lpm_constants.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
+#endif
 #include "catch.hpp"
 #include <memory>
 #include <sstream>
@@ -49,8 +51,10 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(FloatingPoint<Real>::equiv(triplane->surface_area_host(), 2.59807621135331512,
       constants::ZERO_TOL));
 
+#ifdef LPM_USE_VTK
     VtkPolymeshInterface<TriHexSeed> vtk(triplane);
     vtk.write("triplane_vtk_test.vtp");
+#endif
   }
 
   SECTION("planar quads") {
@@ -76,8 +80,10 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 
     REQUIRE(FloatingPoint<Real>::equiv(quadplane->surface_area_host(), 64));
 
+#ifdef LPM_USE_VTK
     VtkPolymeshInterface<QuadRectSeed> vtk(quadplane);
     vtk.write("quadplane_vtk_test.vtp");
+#endif
   }
 
   SECTION("spherical triangles") {
@@ -103,8 +109,10 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(FloatingPoint<Real>::equiv(trisphere->surface_area_host(), 4*constants::PI,
       31*constants::ZERO_TOL));
 
+#ifdef LPM_USE_VTK
     VtkPolymeshInterface<IcosTriSphereSeed> vtk(trisphere);
     vtk.write("icosstri_vtk_test.vtp");
+#endif
   }
 
   SECTION("cubed sphere") {
@@ -131,8 +139,10 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(FloatingPoint<Real>::equiv(quadsphere->surface_area_host(), 4*constants::PI,
       3.5*constants::ZERO_TOL));
 
+#ifdef LPM_USE_VTK
     VtkPolymeshInterface<CubedSphereSeed> vtk(quadsphere);
     vtk.write("cubed_sphere_vtk_test.vtp");
+#endif
   }
 
 }

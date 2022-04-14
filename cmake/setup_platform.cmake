@@ -176,24 +176,36 @@ macro(setup_platform)
     set(LPM_TRILINOS_NEEDS_BUILD TRUE)
   endif()
 
-  if (VTK_INCLUDE_DIR)
-    if (NOT EXISTS ${VTK_INCLUDE_DIR})
-      message(FATAL_ERROR "Couldn't find vtk include dir: ${VTK_INCLUDE_DIR}.")
-    endif()
-    message(STATUS "Using vtk include dir: ${VTK_INCLUDE_DIR}.")
+  find_package(VTK COMPONENTS
+    vtkCommonColor
+    vtkCommonCore
+    vtkCommonDataModel
+    vtkIOMPIParallel
+    vtkIOCore
+    vtkIOGeometry
+    vtkIOImage
+    vtkIOLegacy
+    vtkIOMPIImage
+    vtkIOMPIParallel
+    vtkIONetCDF
+    vtkIOParallel
+    vtkIOParallelNetCDF
+    vtkIOXML
+    vtkIOXMLParser
+    vtkParallelCore
+    vtkParallelMPI
+  )
+  if (NOT VTK_FOUND)
+    message("VTK not found.")
   else()
-    set(VTK_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
-  endif()
-  if (VTK_LIBRARY_DIR)
-    if (NOT EXISTS ${VTK_LIBRARY_DIR})
-      message(FATAL_ERROR "Couldn't find vtk library dir at: ${VTK_LIBRARY_DIR}.")
+    message("Found VTK Version: ${VTK_VERSION}")
+    if (VTK_VERSION VERSION_LESS "9.0.0")
+      set(LPM_USE_VTK TRUE)
+    else ()
+      message("lpm is not compatible with this version of VTK.")
     endif()
-    message(STATUS "Using vtk library dir: ${VTK_LIBRARY_DIR}.")
-  else()
-    set(VTK_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-    message(STATUS "Building vtk libraries in: ${VTK_LIBRARY_DIR}.\n       Please be patient; vtk can take a long time to build.")
-    set(LPM_VTK_NEEDS_BUILD TRUE)
   endif()
+
 
   if (SPDLOG_INCLUDE_DIR)
     if (NOT EXISTS ${SPDLOG_INCLUDE_DIR})
@@ -203,11 +215,11 @@ macro(setup_platform)
   else()
     set(SPDLOG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
   endif()
-  if (SPDLOG_LIBRARY_DIR)
-    if (NOT EXISTS ${SPDLOG_LIBRARY_DIR})
-      message(FATAL_ERROR "Couldn't find spdlog library dir: ${SPDLOG_LIBRARY_DIR}")
+  if (SPDLOG_LIBRARY)
+    if (NOT EXISTS ${SPDLOG_LIBRARY})
+      message(FATAL_ERROR "Couldn't find spdlog library: ${SPDLOG_LIBRARY}")
     endif()
-    message(STATUS "Using spdlog library dir: ${SPDLOG_LIBRARY_DIR}")
+    message(STATUS "Using spdlog library: ${SPDLOG_LIBRARY}")
   else()
     set(SPDLOG_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
     set(SPDLOG_LIBRARY "${SPDLOG_LIBRARY_DIR}/libspdlog.a")

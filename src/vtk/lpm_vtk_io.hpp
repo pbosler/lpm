@@ -3,6 +3,8 @@
 
 #include "LpmConfig.h"
 
+#ifdef LPM_USE_VTK
+
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
 
@@ -99,4 +101,7 @@ template <typename Geo, typename FaceKind> class VtkInterface {
 
 
 }
+
+#endif // LPM_USE_VTK
+
 #endif

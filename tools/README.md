@@ -18,6 +18,7 @@ TPLs in the docker image:
 - Trilinos-13.0.1: Required by LPM for meshfree functional approximations via generalized moving least squares methods (GMLS), and for parallel domain decomposition via MPI. This release is the latest stable release in July 2021, when the docker file was made.
 - Yaml-cpp-0.6.3: Required by Trilinos and soon-to-be required by LPM.  This release is the latest stable release available from the SNLComputation github organization as of July 2021.
 - spdlog-1.8.5: Required by LPM for console & file logging capabilities.  1.8.5 is the latest stable release as of July 2021.
+- Boost 1.77.0: Special math functions (Bessel functions, Legendre polynomials).  These do not work with CUDA.
 
 **Note:** Any TPLs not contained in the docker image will be cloned from their respective github repositories by LPM automatically (via `git submodule` commands) and LPM will attempt to build them as part of its build process.
 

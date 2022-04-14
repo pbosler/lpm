@@ -353,7 +353,6 @@ echo "Configuring with command: "
 echo " "
 echo "cmake -DCMAKE_INSTALL_PREFIX:PATH=\$PREFIX"
 echo "      -DCMAKE_BUILD_TYPE=\$BUILD_TYPE"
-echo "      -DCMAKE_C_COMPILER=\$CC"
 echo "      -DCMAKE_CXX_COMPILER=\$CXX"
 echo "      -DLPM_PRECISION=\$PRECISION"
 echo "      -DLPM_DEVICE=\$DEVICE"
@@ -368,7 +367,6 @@ echo ""
 cmake \
  -DCMAKE_INSTALL_PREFIX:PATH=\$PREFIX \
  -DCMAKE_BUILD_TYPE=\$BUILD_TYPE \
- -DCMAKE_C_COMPILER=\$CC \
  -DCMAKE_CXX_COMPILER=\$CXX \
  -DLPM_PRECISION=\$PRECISION \
  -DLPM_DEVICE=\$DEVICE \

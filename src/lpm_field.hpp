@@ -28,7 +28,7 @@ struct ScalarField {
 
   ScalarField(const std::string& mname,
               const Index nmax,
-              const ekat::units::Units& u,
+              const ekat::units::Units& u=ekat::units::Units::nondimensional(),
               const metadata_type& mdata=metadata_type()
               ) :
     name(mname),
@@ -45,11 +45,11 @@ struct ScalarField {
   ekat::units::Units units;
   metadata_type metadata;
 
-  void update_device() {
+  void update_device() const {
     ko::deep_copy(view, hview);
   }
 
-  void update_host() {
+  void update_host() const {
     ko::deep_copy(hview, view);
   }
 
@@ -65,7 +65,7 @@ struct VectorField {
 
   VectorField(const std::string& mname,
               const Index nmax,
-              const ekat::units::Units& u,
+              const ekat::units::Units& u=ekat::units::Units::nondimensional(),
               const metadata_type& mdata=metadata_type()
               ) :
     name(mname),
@@ -82,11 +82,11 @@ struct VectorField {
   ekat::units::Units units;
   metadata_type metadata;
 
-  void update_device() {
+  void update_device() const {
     ko::deep_copy(view, hview);
   }
 
-  void update_host() {
+  void update_host() const {
     ko::deep_copy(hview, view);
   }
 

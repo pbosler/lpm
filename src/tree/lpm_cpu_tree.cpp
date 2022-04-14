@@ -3,11 +3,12 @@
 #include "lpm_coords_impl.hpp"
 #include "util/lpm_string_util.hpp"
 
+#ifdef LPM_USE_VTK
+#include "vtkPolyData.h"
+#include "vtkVoxel.h"
 #include "vtkCellData.h"
-#include "vtkNew.h"
-#include "vtkHexahedron.h"
-#include "vtkXMLUnstructuredGridWriter.h"
-// #include "vtkCellArray.h"
+#include "vtkXMLPolyDataWriter.h"
+#endif
 
 #include <numeric>
 #include <limits>
@@ -175,11 +176,12 @@ void CpuTree<Geo,NodeType>::generate_tree_max_depth(NodeType* node, const int ma
   }
 }
 
-template <typename Geo, typename NodeType>
-void CpuTree<Geo,NodeType>::insert_vtk_cell_points(
-  vtkSmartPointer<vtkPoints> pts,
-  vtkSmartPointer<vtkUnstructuredGrid> ugrid,
-  vtkSmartPointer<vtkIntArray> levels, const NodeType* node) const {
+#ifdef LPM_USE_VTK
+template <typename Geo>
+void CpuTree<Geo>::insert_vtk_cell_points(
+  vtkSmartPointer<vtkPoints> pts, const Index pt_offset,
+  vtkSmartPointer<vtkCellArray> cells, const Index cell_offset,
+  vtkSmartPointer<vtkIntArray> levels, const Node* node) {
   const auto box = node->box;
   const auto npts_in = pts->GetNumberOfPoints();
   const auto ncells_in = ugrid->GetNumberOfCells();
@@ -228,6 +230,9 @@ void CpuTree<Geo,NodeType>::write_vtk(const std::string& ofname) const {
   writer->SetFileName(ofname.c_str());
   writer->Write();
 }
+#endif
+
+} // namespace tree
 
 template <typename Geo, typename NodeType>
 std::string CpuTree<Geo,NodeType>::node_info_string(NodeType* node) const {

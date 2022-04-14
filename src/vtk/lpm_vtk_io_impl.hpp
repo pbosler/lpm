@@ -2,6 +2,9 @@
 #define LPM_VTK_IO_IMPL_HPP
 
 #include "LpmConfig.h"
+
+#ifdef LPM_USE_VTK
+
 #include "vtk/lpm_vtk_io.hpp"
 #include "lpm_assert.hpp"
 
@@ -225,4 +228,5 @@ void VtkPolymeshInterface<SeedType>::add_vector_cell_data(const ViewType v, cons
 
 } // namespace Lpm
 
+#endif // LPM_USE_VTK
 #endif

@@ -5,7 +5,9 @@
 #include "lpm_logger.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
+#endif
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
@@ -158,10 +160,12 @@ TEST_CASE ("faces test", "[mesh]") {
         REQUIRE(FloatingPoint<Real>::equiv(csfaces.surface_area_host(), 4*constants::PI,
           1.5*constants::ZERO_TOL));
 
+#ifdef LPM_USE_VTK
         VtkInterface<SphereGeometry, QuadFace> vtk;
         auto pd = vtk.toVtkPolyData(csfaces, csedges, csverts);
         logger.debug("vtk data conversion done.");
         vtk.writePolyData("cs_test.vtk", pd);
+#endif
     }
 
   SECTION("tri, sphere") {
@@ -206,11 +210,13 @@ TEST_CASE ("faces test", "[mesh]") {
         REQUIRE(FloatingPoint<Real>::equiv(icfaces.surface_area_host(), 4*constants::PI,
           31*constants::ZERO_TOL));
 
+#ifdef LPM_USE_VTK
         VtkInterface<SphereGeometry, TriFace> vtk;
         logger.debug("writing vtk output.");
         vtkSmartPointer<vtkPolyData> pd = vtk.toVtkPolyData(icfaces, icedges, icverts);
         logger.debug("conversion to vtk polydata complete.");
         vtk.writePolyData("ic_test.vtk", pd);
+#endif
     }
 }
 

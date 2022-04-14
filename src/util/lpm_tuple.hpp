@@ -136,7 +136,7 @@ struct reduction_identity<Tuple<Lpm::Real,ndim>> {
   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> sum() {return Tuple<Lpm::Real,ndim>();}
   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> prod() {return Tuple<Lpm::Real,ndim>(1);}
   KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> max() {return Tuple<Lpm::Real,ndim>(-DBL_MAX);}
-  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> min() {return Tuple<Lpm::Real,ndim>(DBL_MIN);}
+  KOKKOS_FORCEINLINE_FUNCTION static Tuple<Lpm::Real,ndim> min() {return Tuple<Lpm::Real,ndim>(DBL_MAX);}
 };
 
 template <typename T, int ndim> KOKKOS_INLINE_FUNCTION

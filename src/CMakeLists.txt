@@ -54,12 +54,11 @@ add_library(lpm
 add_dependencies(lpm update_version_info
                      netcdf
                      ${LPM_TRILINOS_LIBS}
-                     ${LPM_VTK_LIBS}
                      yaml-cpp
                      spdlog
                      )
 
-target_link_libraries(lpm ${LPM_LIBRARIES})
+target_link_libraries(lpm ${LPM_LIBRARIES} ${VTK_LIBRARIES})
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
 #    target_link_libraries(lpm spherepack)
