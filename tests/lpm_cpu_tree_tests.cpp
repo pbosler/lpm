@@ -64,7 +64,7 @@ TEST_CASE("cpu_tree_test", "[tree]") {
     const auto vert_tree_fname = "cpu_tree_verts_n" +
       std::to_string(max_leaf_crds) + ".vtu";
 
-    vertex_tree.write_vtk(vert_tree_fname);
+//     vertex_tree.write_vtk(vert_tree_fname);
 
 //     CpuTree<SphereGeometry> face_tree(sphere->faces.phys_crds,
 //       depth_ctl, max_leaf_crds, shrink_boxes);
