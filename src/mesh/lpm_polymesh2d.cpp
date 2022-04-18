@@ -89,7 +89,7 @@ void PolyMesh2d<SeedType>::update_host() const {
 template <typename SeedType>
 std::string PolyMesh2d<SeedType>::info_string(const std::string& label, const int& tab_level, const bool& dump_all) const {
   std::ostringstream ss;
-  ss << "PolyMesh2d " << label << " info:\n";
+  ss << "\nPolyMesh2d<" << SeedType::id_string() << "> " << label << " info:\n";
   ss << vertices.info_string(label, tab_level+1, dump_all);
   ss << edges.info_string(label, tab_level+1, dump_all);
   ss << faces.info_string(label, tab_level+1, dump_all);
