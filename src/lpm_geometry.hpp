@@ -55,8 +55,8 @@ struct PlaneGeometry {
     return std::sqrt(norm2(v));
   }
 
-  template <typename CV> KOKKOS_INLINE_FUNCTION
-  static Real distance(const CV a, const CV b) {
+  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
+  static Real distance(const CV a, const CV2 b) {
     Real bma[2];
     bma[0] = b[0] - a[0];
     bma[1] = b[1] - a[1];

@@ -127,6 +127,7 @@ template <typename FaceKind, typename Geo> class Faces {
     inline host_index_view crd_inds_host() const {return _host_crd_inds;}
     inline typename ko::View<Int*,Dev>::HostMirror levels_host() const {
        return _hlevel;}
+    inline Int host_level(const Index idx) const {return _hlevel(idx);}
 
     /** @brief Copies data from host to device
     */
