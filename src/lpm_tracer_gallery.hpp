@@ -12,6 +12,90 @@
 
 namespace Lpm {
 
+/**
+
+  Eqn. (9.4) from LeVeque 1996, SIAM J. Num. Anal.
+*/
+struct PlanarHump {
+  static constexpr Real x0 = 0.25;
+  static constexpr Real y0 = 0.5;
+  static constexpr Real r0 = 0.15;
+  static constexpr Real h0 = 0.25;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarHump() = default;
+
+  inline std::string name() const {return "PlanarHump";}
+
+  template <typename CVType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVType xy) const {
+    const Real xy0[2] = {x0, y0};
+    const Real dist = PlaneGeometry::distance(xy, xy0);
+    const Real r = min(dist, r0)/r0;
+    return h0*(1 + cos(constants::PI * r));
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real x, const Real y) const {
+    const Real xy[2] = {x,y};
+    const Real xy0[2] = {x0, y0};
+    const Real dist = PlaneGeometry::distance(xy, xy0);
+    const Real r = min(dist, r0)/r0;
+    return h0*(1 + cos(constants::PI * r));
+  }
+};
+
+struct PlanarSlottedDisk {
+  static constexpr Real x0 = 0.5;
+  static constexpr Real y0 = 0.75;
+  static constexpr Real r0 = 0.15;
+  static constexpr Real h0 = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarSlottedDisk() = default;
+
+  inline std::string name() const {return "PlanarSlottedDisk";}
+
+  template <typename CVType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVType xy) const {
+    Real result = 0;
+    const Real xy0[2] = {x0, y0};
+    const Real dist = PlaneGeometry::distance(xy, xy0);
+    if (dist <= r0) {
+      if (abs(xy(1) - y0) > r0/6) {
+        result = h0;
+      }
+      else if (xy(0) - x0 < -5*r0/12) {
+        result = h0;
+      }
+    }
+    return result;
+  }
+};
+
+struct PlanarCone {
+  static constexpr Real x0 = 0.5;
+  static constexpr Real y0 = 0.25;
+  static constexpr Real r0 = 0.15;
+  static constexpr Real h0 = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarCone() = default;
+
+  inline std::string name() const {return "PlanarCone";}
+
+  template <typename CVType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVType xy) const {
+    Real result = 0;
+    const Real xy0[2] = {x0, y0};
+    const Real dist = PlaneGeometry::distance(xy, xy0);
+    if (dist <= r0) {
+      result = 1 - dist/r0;
+    }
+    return result;
+  }
+};
+
 struct SphericalSlottedCylinders {
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5*constants::PI/6;

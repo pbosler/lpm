@@ -15,6 +15,7 @@ TEST_CASE("basic logger", "[logging]") {
 
     mylog.info("This is a console-only message, with level = info");
     mylog.error("Here is an error message.");
+    mylog.error("Here is an error message with a number: {}", 4);
 
     // check that this log did not produce a file
     const std::string logfilename = "ekat_log_test_console_only_logfile.txt";

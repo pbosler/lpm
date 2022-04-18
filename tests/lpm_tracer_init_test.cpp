@@ -38,12 +38,79 @@ TEST_CASE("planar mesh", "") {
   const int amr_limit = 2;
   const Real radius = 2;
 
+  PlanarHump ph;
+  PlanarSlottedDisk pd;
+  PlanarCone pc;
+
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
     auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
-    std::vector<ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
-    std::vector<ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
+    logger.info(pm->info_string());
+
+    std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
+    std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
+
+    tracer_verts.emplace(ph.name(), ScalarField<VertexField>(ph.name(), params.nmaxverts));
+    tracer_verts.emplace(pd.name(), ScalarField<VertexField>(pd.name(), params.nmaxverts));
+    tracer_verts.emplace(pc.name(), ScalarField<VertexField>(pc.name(), params.nmaxverts));
+    tracer_verts.emplace("sum_all", ScalarField<VertexField>("sum_all", params.nmaxverts));
+
+    tracer_faces.emplace(ph.name(), ScalarField<FaceField>(ph.name(), params.nmaxfaces));
+    tracer_faces.emplace(pd.name(), ScalarField<FaceField>(pd.name(), params.nmaxfaces));
+    tracer_faces.emplace(pc.name(), ScalarField<FaceField>(pc.name(), params.nmaxfaces));
+    tracer_faces.emplace("sum_all", ScalarField<FaceField>("sum_all", params.nmaxfaces));
+
+    auto phv = tracer_verts.at(ph.name()).view;
+    auto pdv = tracer_verts.at(pd.name()).view;
+    auto pcv = tracer_verts.at(pc.name()).view;
+    auto sav = tracer_verts.at("sum_all").view;
+    auto xyv = pm->vertices.phys_crds->crds;
+    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+        const auto xy = Kokkos::subview(xyv, i, Kokkos::ALL);
+        phv(i) = ph(xy);
+        pdv(i) = pd(xy);
+        pcv(i) = pc(xy);
+        sav(i) = phv(i) + pdv(i) + pcv(i);
+    });
+
+    auto phf = tracer_faces.at(ph.name()).view;
+    auto pdf = tracer_faces.at(pd.name()).view;
+    auto pcf = tracer_faces.at(pc.name()).view;
+    auto saf = tracer_faces.at("sum_all").view;
+    auto xyf = pm->faces.phys_crds->crds;
+    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+        const auto xy = Kokkos::subview(xyf, i, Kokkos::ALL);
+        phf(i) = ph(xy);
+        pdf(i) = pd(xy);
+        pcf(i) = pc(xy);
+        saf(i) = phf(i) + pdf(i) + pcf(i);
+    });
+
+#ifdef LPM_USE_VTK
+    VtkPolymeshInterface<seed_type> vtk(pm);
+    vtk.add_scalar_point_data(phv, ph.name());
+    vtk.add_scalar_point_data(pdv, pd.name());
+    vtk.add_scalar_point_data(pcv, pc.name());
+    vtk.add_scalar_point_data(sav, "sum_all");
+
+    vtk.add_scalar_cell_data(phf, ph.name());
+    vtk.add_scalar_cell_data(pdf, pd.name());
+    vtk.add_scalar_cell_data(pcf, pc.name());
+    vtk.add_scalar_cell_data(saf, "sum_all");
+
+    vtk.write("tracer_init_test_trihex.vtp");
+#endif
+
+    typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
+    Kokkos::parallel_reduce(pm->vertices.nh(),
+      KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
+        if (pdv(i) < mm.min_val) mm.min_val = pdv(i);
+        if (pdv(i) > mm.max_val) mm.max_val = pdv(i);
+      }, Kokkos::MinMax<Real>(sc_minmax_verts));
+
+    REQUIRE(FloatingPoint<Real>::equiv(sc_minmax_verts.min_val, 0));
+    REQUIRE(FloatingPoint<Real>::equiv(sc_minmax_verts.max_val, 1));
 
   }
 
@@ -52,6 +119,71 @@ TEST_CASE("planar mesh", "") {
     typedef QuadRectSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
     auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
+    logger.info(pm->info_string());
+
+    std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
+    std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
+
+    tracer_verts.emplace(ph.name(), ScalarField<VertexField>(ph.name(), params.nmaxverts));
+    tracer_verts.emplace(pd.name(), ScalarField<VertexField>(pd.name(), params.nmaxverts));
+    tracer_verts.emplace(pc.name(), ScalarField<VertexField>(pc.name(), params.nmaxverts));
+    tracer_verts.emplace("sum_all", ScalarField<VertexField>("sum_all", params.nmaxverts));
+
+    tracer_faces.emplace(ph.name(), ScalarField<FaceField>(ph.name(), params.nmaxfaces));
+    tracer_faces.emplace(pd.name(), ScalarField<FaceField>(pd.name(), params.nmaxfaces));
+    tracer_faces.emplace(pc.name(), ScalarField<FaceField>(pc.name(), params.nmaxfaces));
+    tracer_faces.emplace("sum_all", ScalarField<FaceField>("sum_all", params.nmaxfaces));
+
+    auto phv = tracer_verts.at(ph.name()).view;
+    auto pdv = tracer_verts.at(pd.name()).view;
+    auto pcv = tracer_verts.at(pc.name()).view;
+    auto sav = tracer_verts.at("sum_all").view;
+    auto xyv = pm->vertices.phys_crds->crds;
+    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+        const auto xy = Kokkos::subview(xyv, i, Kokkos::ALL);
+        phv(i) = ph(xy);
+        pdv(i) = pd(xy);
+        pcv(i) = pc(xy);
+        sav(i) = phv(i) + pdv(i) + pcv(i);
+    });
+
+    auto phf = tracer_faces.at(ph.name()).view;
+    auto pdf = tracer_faces.at(pd.name()).view;
+    auto pcf = tracer_faces.at(pc.name()).view;
+    auto saf = tracer_faces.at("sum_all").view;
+    auto xyf = pm->faces.phys_crds->crds;
+    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+        const auto xy = Kokkos::subview(xyf, i, Kokkos::ALL);
+        phf(i) = ph(xy);
+        pdf(i) = pd(xy);
+        pcf(i) = pc(xy);
+        saf(i) = phf(i) + pdf(i) + pcf(i);
+    });
+
+#ifdef LPM_USE_VTK
+    VtkPolymeshInterface<seed_type> vtk(pm);
+    vtk.add_scalar_point_data(phv, ph.name());
+    vtk.add_scalar_point_data(pdv, pd.name());
+    vtk.add_scalar_point_data(pcv, pc.name());
+    vtk.add_scalar_point_data(sav, "sum_all");
+
+    vtk.add_scalar_cell_data(phf, ph.name());
+    vtk.add_scalar_cell_data(pdf, pd.name());
+    vtk.add_scalar_cell_data(pcf, pc.name());
+    vtk.add_scalar_cell_data(saf, "sum_all");
+
+    vtk.write("tracer_init_test_quadrect.vtp");
+#endif
+
+    typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
+    Kokkos::parallel_reduce(pm->vertices.nh(),
+      KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
+        if (pdv(i) < mm.min_val) mm.min_val = pdv(i);
+        if (pdv(i) > mm.max_val) mm.max_val = pdv(i);
+      }, Kokkos::MinMax<Real>(sc_minmax_verts));
+
+    REQUIRE(FloatingPoint<Real>::equiv(sc_minmax_verts.min_val, 0));
+    REQUIRE(FloatingPoint<Real>::equiv(sc_minmax_verts.max_val, 1));
   }
 }
 
