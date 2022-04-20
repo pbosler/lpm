@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 namespace Lpm {
 
@@ -21,6 +22,8 @@ static std::string sprarr (const std::string& name, const T* const v, const size
   ss << "\n";
   return ss.str();
 }
+
+std::string table_str(const std::vector<std::string>& headers, const std::vector<Real>& cols...);
 
 } // namespace Lpm
 
