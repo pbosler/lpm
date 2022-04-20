@@ -1,5 +1,5 @@
-#ifndef LPM_RK4_HPP
-#define LPM_RK4_HPP
+#ifndef LPM_BVE_RK4_HPP
+#define LPM_BVE_RK4_HPP
 
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"

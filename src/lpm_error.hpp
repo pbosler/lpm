@@ -139,7 +139,13 @@ struct ErrNorms {
   void compute(const scalar_view_type& err, const scalar_view_type& exact, const scalar_view_type& wt);
 };
 
+std::vector<Real> convergence_rates(const std::vector<Real>& dx, const std::vector<Real>& ex);
 
+std::string convergence_table(const std::string dxlabel,
+                              const std::vector<Real>& dx,
+                              const std::string exlabel,
+                              const std::vector<Real>& ex,
+                              const std::vector<Real>& rate);
 
 }
 #endif
