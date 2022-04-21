@@ -1,9 +1,6 @@
 [submodule "ext/trilinos"]
 	path = ext/trilinos
 	url = git@github.com:trilinos/Trilinos.git
-[submodule "ext/hdf5"]
-	path = ext/hdf5
-	url = git@github.com:HDFGroup/hdf5.git
 [submodule "ext/yaml-cpp"]
 	path = ext/yaml-cpp
 	url = git@github.com:SNLComputation/yaml-cpp.git
