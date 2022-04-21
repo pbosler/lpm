@@ -21,8 +21,8 @@ include(cmake_helpers)
 
 # Set all installation folders for third-party libraries, and figure out which
 # ones have to be built.
-include(setup_platform)
-setup_platform()
+#include(setup_platform)
+#setup_platform()
 
 # explicitly loading c++ features is necessary for some platforms
 get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
