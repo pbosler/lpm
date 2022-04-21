@@ -54,7 +54,7 @@ struct FlowMapVariationFlagFunctor {
         dsum += max_lag_crds[j] - min_lag_crds[j];
       }
 
-      flags(i) = (dsum > tol);
+      if (!flags(i)) flags(i) = (dsum > tol);
     }
   }
 };
@@ -98,7 +98,7 @@ struct ScalarVariationFlagFunctor {
         if (vert_vals(vidx) < minval) minval = vert_vals(vidx);
         if (vert_vals(vidx) > maxval) maxval = vert_vals(vidx);
       }
-      flags(i) = (maxval - minval > tol);
+      if (!flags(i)) flags(i) = (maxval - minval > tol);
     }
   }
 };

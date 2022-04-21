@@ -23,8 +23,6 @@ static std::string sprarr (const std::string& name, const T* const v, const size
   return ss.str();
 }
 
-std::string table_str(const std::vector<std::string>& headers, const std::vector<Real>& cols...);
-
 } // namespace Lpm
 
 #endif
