@@ -87,6 +87,7 @@ macro(setup_platform)
   #
   # YAMLCPP (Required, will build if not found)
   #
+  set(LPM_NEEDS_YAMLCPP_BUILD FALSE)
   if (YAMLCPP_INCLUDE_DIR)
     if (NOT EXISTS ${YAMLCPP_INCLUDE_DIR})
       message(FATAL_ERROR "Couldn't find yaml-cpp include dir at ${YAMLCPP_INCLUDE_DIR}.")

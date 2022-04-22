@@ -67,9 +67,13 @@ endif()
 #----------------------------------------------------------------------------
 # yaml-cpp
 #----------------------------------------------------------------------------
+if (YAMLCPP_LIBRARY MATCHES ".so")
+    add_library(yaml-cpp SHARED IMPORTED GLOBAL)
+  else()
+    add_library(yaml-cpp STATIC IMPORTED GLOBAL)
+  endif()
 list(APPEND LPM_EXT_INCLUDE_DIRS ${YAMLCPP_INCLUDE_DIR})
 set(LPM_EXT_LIBRARIES yaml-cpp;${LPM_EXT_LIBRARIES})
-add_library(yaml-cpp STATIC IMPORTED GLOBAL)
 set_target_properties(yaml-cpp PROPERTIES IMPORTED_LOCATION ${YAMLCPP_LIBRARY})
 if (LPM_NEEDS_YAMLCPP_BUILD)
   update_submodules()
