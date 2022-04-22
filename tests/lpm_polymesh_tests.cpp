@@ -39,8 +39,6 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(triplane->vertices.nh() == params.nmaxverts);
     REQUIRE(triplane->edges.nh() == params.nmaxedges);
     REQUIRE(triplane->faces.nh() == params.nmaxfaces);
-
-    triplane->output_vtk("triplane_test.vtk");
     triplane->update_device();
     logger.info("TriHexSeed mesh info:\n {}", triplane->info_string());
 
@@ -48,6 +46,7 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
       constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
+    triplane->output_vtk("triplane_test.vtk");
     VtkPolymeshInterface<TriHexSeed> vtk(triplane);
     vtk.write("triplane_vtk_test.vtp");
 #endif
@@ -64,14 +63,13 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(quadplane->edges.nh() == params.nmaxedges);
     REQUIRE(quadplane->faces.nh() == params.nmaxfaces);
 
-
-    quadplane->output_vtk("quadplane_test.vtk");
     quadplane->update_device();
     logger.info("QuadRectSeed mesh info:\n {}", quadplane->info_string("radius = 4"));
 
     REQUIRE(FloatingPoint<Real>::equiv(quadplane->surface_area_host(), 64));
 
 #ifdef LPM_USE_VTK
+    quadplane->output_vtk("quadplane_test.vtk");
     VtkPolymeshInterface<QuadRectSeed> vtk(quadplane);
     vtk.write("quadplane_vtk_test.vtp");
 #endif
@@ -87,7 +85,6 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(trisphere->edges.nh() == params.nmaxedges);
     REQUIRE(trisphere->faces.nh() == params.nmaxfaces);
 
-    trisphere->output_vtk("trisphere_test.vtk");
     trisphere->update_device();
     logger.info("IcosTriSphereSeed mesh info:\n {}", trisphere->info_string());
 
@@ -95,6 +92,7 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
       31*constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
+    trisphere->output_vtk("trisphere_test.vtk");
     VtkPolymeshInterface<IcosTriSphereSeed> vtk(trisphere);
     vtk.write("icosstri_vtk_test.vtp");
 #endif
@@ -109,7 +107,6 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(quadsphere->edges.nh() == params.nmaxedges);
     REQUIRE(quadsphere->faces.nh() == params.nmaxfaces);
 
-    quadsphere->output_vtk("quadsphere_test.vtk");
     quadsphere->update_device();
     logger.info("CubedSphereSeed mesh info:\n {}", quadsphere->info_string());
 
@@ -120,6 +117,7 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
       3.5*constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
+    quadsphere->output_vtk("quadsphere_test.vtk");
     VtkPolymeshInterface<CubedSphereSeed> vtk(quadsphere);
     vtk.write("cubed_sphere_vtk_test.vtp");
 #endif
@@ -127,6 +125,7 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 
 }
 
+#ifdef LPM_USE_NETCDF
 TEST_CASE("cubed sphere/netcdf", "[mesh]") {
 
   typedef CubedSphereSeed seed_type;
@@ -330,4 +329,5 @@ TEST_CASE("icosahedral sphere/netcdf", "[mesh]") {
     }
   }
 }
+#endif
 

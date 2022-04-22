@@ -3,6 +3,7 @@
 
 #include "LpmConfig.h"
 
+#ifdef LPM_USE_NETCDF
 #include "mesh/lpm_polymesh2d.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_field.hpp"
@@ -255,4 +256,5 @@ class PolymeshReader : public NcReader {
 
 
 }// namespace Lpm
+#endif
 #endif

@@ -2,9 +2,7 @@
 #define LPM_TIMER_HPP
 
 #include "LpmConfig.h"
-#ifdef LPM_USE_MPI
 #include <mpi.h>
-#endif
 #include "Kokkos_Core.hpp"
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -29,8 +27,6 @@ static double toc (const timeval& t1) {
   return calc_et(t1, t);
 }
 
-#ifdef LPM_USE_MPI
-
 struct Timer {
     Timer(const std::string& name="") : _name(name), _start(0), _end(0) {}
 
@@ -49,8 +45,6 @@ struct Timer {
     std::string _name;
 
 };
-
-#endif // MPI
 
 } // namespace Lpm
 

@@ -91,18 +91,17 @@ struct GaussianVortexSphere  {
 
 };
 
+#ifdef LPM_USE_BOOST
 inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr, const Real yctr, const Real dipole_radius, const Real dipole_strength) {
   static constexpr Real LAMB_K0 = 3.8317;
   const Real r = sqrt(square(x-xctr) + square(y-yctr));
   Real result = 0;
-#ifdef LPM_USE_BOOST
   if ( (r < dipole_radius) and !FloatingPoint<Real>::zero(r)) {
     const Real k = LAMB_K0 / dipole_radius;
     const Real sintheta = y/r;
     const Real denom = cyl_bessel_j(0, LAMB_K0);
     result = -2*dipole_strength * k * cyl_bessel_j(1, k*r)*sintheta/denom;
   }
-#endif
   return result;
 }
 
@@ -133,7 +132,6 @@ struct CollidingDipolePairPlane {
   std::string name() const  {return "PlanarCollidingDipoles";}
 };
 
-#ifndef LPM_USE_CUDA
 struct RossbyHaurwitz54 {
   Real u0;
   Real rh54_amplitude;
@@ -148,13 +146,8 @@ struct RossbyHaurwitz54 {
 
   inline Real operator() (const Real& x, const Real& y, const Real& z) const  {
     const Real lon = atan4(y,x);
-#ifdef LPM_USE_BOOST
     return 2*u0*z + 30*rh54_amplitude*cos(4*lon) * legendre_p(5,4,z);
-#else
-    return 0;
-#endif
   }
-
 };
 #endif
 
