@@ -69,11 +69,7 @@ add_subdirectory(ext)
 
 # If we're building on a GPU, set the C++ compiler appropriately.
 if (LPM_DEVICE STREQUAL CUDA)
-  if (HAVE_MPI)
-    set(ENV{OMPI_CXX_COMPILER} "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
-  else()
-    set(CMAKE_CXX_COMPILER "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
-  endif()
+  set(ENV{OMPI_CXX_COMPILER} "${TRILINOS_LIBRARY_DIR}/bin/nvcc_wrapper")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
 endif()
 
