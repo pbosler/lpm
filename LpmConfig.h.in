@@ -2,7 +2,6 @@
 #ifndef LPM_CONFIG_H
 #define LPM_CONFIG_H
 
-#cmakedefine LPM_USE_MPI
 #cmakedefine LPM_USE_CUDA
 #cmakedefine LPM_DOUBLE_PRECISION
 #cmakedefine LPM_USE_VTK

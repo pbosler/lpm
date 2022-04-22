@@ -49,7 +49,7 @@ PREFIX=$PWD/$1
 #SPDLOG_LIBRARY=libspdlog.a
 
 #-----------------------------------------------------------------------------
-#                            Required third-party libraries
+#                            Optional third-party libraries
 #-----------------------------------------------------------------------------
 # Usually you don't need to set these. But we provide this ability in case
 # another project needs to build and use its own
@@ -61,16 +61,16 @@ PREFIX=$PWD/$1
 #HDF5_LIBRARY=libhdf5.a
 #HDF5_HL_LIBRARY=libhdf5_hl.a
 
-LPM_ENABLE_NETCDF=FALSE
+LPM_ENABLE_NETCDF=ON
 #NETCDF_INCLUDE_DIR=/path/to/netcdf-c/includes
 #NETCDF_LIBRARY_DIR=/path/to/netcdf-c/library
 #NETCDF_LIBRARY=libnetcdf.a
 
-LPM_ENABLE_VTK=FALSE
+LPM_ENABLE_VTK=ON
 #VTK_INCLUDE_DIR=/path/to/vtk/includes
 #VTK_LIBRARY_DIR=/path/to/vtk/libraries
 
-LPM_ENABLE_BOOST=FALSE
+LPM_ENABLE_BOOST=ON
 #BOOST_INCLUDE_DIR=/path/to/boost/includes
 #BOOST_LIBRARY_DIR=/path/to/boost/library
 
@@ -306,9 +306,9 @@ echo "      -DTrilinos_DIR=\$Trilinos_DIR"
 echo "      -DLPM_PRECISION=\$PRECISION"
 echo "      -DLPM_DEVICE=\$DEVICE"
 echo "      -DLPM_DEVICE_ARCH=\$DEVICE_ARCH"
-echo "      -DLPM_ENABLE_NETCDF=$LPM_ENABLE_NETCDF"
-echo "      -DLPM_ENABLE_VTK=$LPM_ENABLE_VTK"
-echo "      -DLPM_ENABLE_BOOST=$LPM_ENABLE_BOOST"
+echo "      -DLPM_ENABLE_NETCDF=\$LPM_ENABLE_NETCDF"
+echo "      -DLPM_ENABLE_VTK=\$LPM_ENABLE_VTK"
+echo "      -DLPM_ENABLE_BOOST=\$LPM_ENABLE_BOOST"
 echo "      \$OPTIONS"
 echo "      -G \$GENERATOR"
 echo "      \$SOURCE_DIR"
@@ -324,9 +324,9 @@ cmake \
  -DLPM_PRECISION=\$PRECISION \
  -DLPM_DEVICE=\$DEVICE \
  -DLPM_DEVICE_ARCH=\$DEVICE_ARCH \
- -DLPM_ENABLE_NETCDF=$LPM_ENABLE_NETCDF \
- -DLPM_ENABLE_VTK=$LPM_ENABLE_VTK \
- -DLPM_ENABLE_BOOST=$LPM_ENABLE_BOOST \
+ -DLPM_ENABLE_NETCDF=\$LPM_ENABLE_NETCDF \
+ -DLPM_ENABLE_VTK=\$LPM_ENABLE_VTK \
+ -DLPM_ENABLE_BOOST=\$LPM_ENABLE_BOOST \
  \$OPTIONS \
  -G "\$GENERATOR" \
  \$SOURCE_DIR
