@@ -72,13 +72,25 @@ function(CreateUnitTest target_name target_sources)
   #---------------------------#
   target_include_directories(${target_name} PUBLIC
         ${LPM_INCLUDE_DIRS}
+        ${Trilinos_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
   target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS})
-  if (VTK_FOUND)
+  if (LPM_USE_VTK)
     target_include_directories(${target_name} PUBLIC ${VTK_INCLUDE_DIRS})
     target_link_libraries(${target_name} PUBLIC ${VTK_LIBRARIES})
+  endif()
+  if (LPM_USE_NETCDF)
+    target_include_directories(${target_name} PUBLIC ${HDF5_INCLUDE_DIR}
+            ${NETCDF_INCLUDE_DIR})
+    target_link_libraries(${target_name} PUBLIC ${ZLIB_LIBRARIES}
+      ${HDF5_LIBRARY}
+      ${HDF5_HL_LIBRARY}
+      ${NETCDF_LIBRARY})
+  endif()
+  if (LPM_USE_BOOST)
+    target_include_directories(${target_name} PUBLIC ${Boost_INCLUDE_DIRS})
   endif()
 
   if (NOT lpmtest_EXCLUDE_CATCH_MAIN)

@@ -7,6 +7,8 @@
 
 #include "Kokkos_Core.hpp"
 
+#include <vector>
+
 namespace Lpm {
 
 struct ENormScalar {

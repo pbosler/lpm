@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TR=$HOME/trilinos-lpm
+export Trilinos_DIR=$HOME/trilinos-lpm/lib/cmake
 
 export HDF5_INCLUDE_DIR=$HDF5_ROOT/include
 export HDF5_LIBRARY_DIR=$HDF5_ROOT/lib

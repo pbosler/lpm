@@ -1,4 +1,15 @@
-include_directories("${LPM_INCLUDE_DIRS}")
+include_directories(${LPM_INCLUDE_DIRS}
+                    ${Trilinos_INCLUDE_DIRS}
+                    ${Trilinos_TPL_INCLUDE_DIRS})
+if (LPM_USE_BOOST)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
+if (LPM_USE_NETCDF)
+  include_directories(${HDF5_INCLUDE_DIRS} ${NETCDF_INCLUDE_DIRS})
+endif()
+if (LPM_USE_VTK)
+  include_directories(${VTK_INCLUDE_DIRS})
+endif()
 
 # Generate a blank lpm_version.cpp file
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
@@ -42,13 +53,18 @@ add_library(lpm
 #    LpmSWEGallery.cpp
                 )
 add_dependencies(lpm update_version_info
-                     netcdf
-                     ${LPM_TRILINOS_LIBS}
                      yaml-cpp
                      spdlog
                      )
 
-target_link_libraries(lpm ${LPM_LIBRARIES} ${VTK_LIBRARIES})
+target_link_libraries(lpm ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+if (LPM_USE_NETCDF)
+  target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
+endif()
+if (LPM_USE_VTK)
+  target_link_libraries(lpm ${VTK_LIBRARIES})
+endif()
+
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
 #    target_link_libraries(lpm spherepack)

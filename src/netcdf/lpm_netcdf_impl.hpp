@@ -1,3 +1,4 @@
+#ifdef LPM_USE_NETCDF
 #include "netcdf/lpm_netcdf.hpp"
 #include "util/lpm_string_util.hpp"
 #include <sstream>
@@ -744,4 +745,5 @@ template class NcWriter<PlaneGeometry>;
 template class NcWriter<SphereGeometry>;
 
 }
+#endif
 

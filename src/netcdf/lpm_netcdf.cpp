@@ -1,3 +1,4 @@
+#ifdef LPM_USE_NETCDF
 #include "netcdf/lpm_netcdf.hpp"
 #include "util/lpm_string_util.hpp"
 
@@ -247,3 +248,4 @@ void PolymeshReader::fill_edges(Edges& edges) {
 }
 
 }
+#endif
