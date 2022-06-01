@@ -19,7 +19,7 @@ fi
 echo -e "#!/usr/bin/env bash\n" > $1/config.sh
 echo "SOURCE_DIR=$PWD" >> $1/config.sh
 cat <<EOT >> $1/config.sh
-# ^^^^^^ location of haero source code.
+# ^^^^^^ location of lpm source code.
 
 # config.sh -- A CMake configuration script.
 # Edit this file to change the parameters in your build. Uncomment exactly one
@@ -31,7 +31,25 @@ cat <<EOT >> $1/config.sh
 PREFIX=$PWD/$1
 
 #-----------------------------------------------------------------------------
-#                             Third-party libraries
+#                            Required third-party libraries
+#-----------------------------------------------------------------------------
+# Usually you don't need to set these. But we provide this ability in case
+# another project needs to build and use its own
+# libraries. We also use these in our automatic testing environment. If any one
+# of these variables is supplied for a library, all must be supplied.
+
+#Trilinos_DIR=/path/to/TrilinosConfig.cmake
+
+#YAMLCPP_INCLUDE_DIR=/path/to/yaml-cpp/includes
+#YAMLCPP_LIBRARY_DIR=/path/to/yaml-cpp/library
+#YAMLCPP_LIBRARY=libyaml-cpp.a
+
+#SPDLOG_INCLUDE_DIR=/path/to/spdlog/includes
+#SPDLOG_LIBRARY_DIR=/path/to/spdlog/library
+#SPDLOG_LIBRARY=libspdlog.a
+
+#-----------------------------------------------------------------------------
+#                            Optional third-party libraries
 #-----------------------------------------------------------------------------
 # Usually you don't need to set these. But we provide this ability in case
 # another project needs to build and use its own
@@ -43,35 +61,19 @@ PREFIX=$PWD/$1
 #HDF5_LIBRARY=libhdf5.a
 #HDF5_HL_LIBRARY=libhdf5_hl.a
 
+LPM_ENABLE_NETCDF=ON
 #NETCDF_INCLUDE_DIR=/path/to/netcdf-c/includes
 #NETCDF_LIBRARY_DIR=/path/to/netcdf-c/library
 #NETCDF_LIBRARY=libnetcdf.a
 
-#YAMLCPP_INCLUDE_DIR=/path/to/yaml-cpp/includes
-#YAMLCPP_LIBRARY_DIR=/path/to/yaml-cpp/library
-#YAMLCPP_LIBRARY=libyaml-cpp.a
-
+LPM_ENABLE_VTK=ON
 #VTK_INCLUDE_DIR=/path/to/vtk/includes
 #VTK_LIBRARY_DIR=/path/to/vtk/libraries
 
-#SPDLOG_INCLUDE_DIR=/path/to/spdlog/includes
-#SPDLOG_LIBRARY_DIR=/path/to/spdlog/library
-#SPDLOG_LIBRARY=libspdlog.a
-
+LPM_ENABLE_BOOST=ON
 #BOOST_INCLUDE_DIR=/path/to/boost/includes
 #BOOST_LIBRARY_DIR=/path/to/boost/library
 
-#TRILINOS_INCLUDE_DIR=/path/to/trilinos/includes
-#TRILINOS_TPL_INCLUDE_DIR=/path/to/trilinos/tpl/includes
-#TRILINOS_LIBRARY_DIR=/path/to/trilinos/libraries
-#TRILINOS_TPL_LIBRARY_DIR=/path/to/trilinos/tpl/libraries
-
-#-----------------------------------------------------------------------------
-#                             Inter-Node Parallelism (MPI)
-#-----------------------------------------------------------------------------
-
-# Build with MPI for parallel simulations.
-MPI=ON
 
 #-----------------------------------------------------------------------------
 #                             On-Node Parallelism (Kokkos)
@@ -159,32 +161,8 @@ BUILD_TYPE=RelWithDebInfo
 #-----------------------------------------------------------------------------
 
 # Uncomment this if you want really verbose builds.
-#VERBOSE=ON
+VERBOSE=OFF
 
-#-----------------------------------------------------------------------------
-#                                   Compilers
-#-----------------------------------------------------------------------------
-
-if [ "\$MPI" = "ON" ]; then
-  CXX=mpic++
-  CC=mpicc
-  FC=mpif90
-else
-  CXX=c++
-  CC=cc
-  FC=gfortran
-fi
-
-# Override compilers here (ONLY if you know what you're doing!).
-
-# C++ compiler.
-#CXX=c++
-
-# Fortran compiler.
-#FC=gfortran
-
-# C compiler.
-#CC=cc
 
 #-----------------------------------------------------------------------------
 #                   Don't change anything below here.
@@ -206,12 +184,6 @@ popd >& /dev/null
 GENERATOR="Unix Makefiles"
 
 OPTIONS=""
-if [ "\$MPI" = "ON" ]; then
-  OPTIONS="-DHAVE_MPI=ON"
-else
-  echo "Error: non-MPI builds are not supported yet."
-  exit 1
-fi
 if [ "\$VERBOSE" = "ON" ]; then
   OPTIONS="\$OPTIONS -DCMAKE_VERBOSE_MAKEFILE=ON"
 fi
@@ -306,30 +278,6 @@ if [ ! "\$SPDLOG_LIBRARY_DIR" = "" -o ! "\$SPDLOG_INCLUDE_DIR" = "" -o ! "\$SPDL
   OPTIONS="\$OPTIONS -DSPDLOG_INCLUDE_DIR=\${SPDLOG_INCLUDE_DIR}"
 fi
 
-# Configure Trilinos if needed
-if [ ! "\$TRILINOS_INCLUDE_DIR" = "" -o ! "\$TRILINOS_TPL_INCLUDE_DIR" = "" -o ! "\$TRILNOS_LIBRARY_DIR" = "" -o ! "\$TRILINOS_TPL_LIBRARY_DIR" = "" ]; then
-  if [ "\$TRILINOS_INCLUDE_DIR" = "" ]; then
-    echo "Error: TRILINOS_INCLUDE_DIR must be specified for a custom trilinos build."
-    exit 1
-  fi
-  if [ "\$TRILINOS_TPL_INCLUDE_DIR" = "" ]; then
-    echo "Error: TRILINOS_TPL_INCLUDE_DIR must be specified for a custom trilinos build."
-    exit 1
-  fi
-  if [ "\$TRILINOS_TPL_LIBRARY_DIR" = "" ]; then
-    echo "Error: TRILINOS_TPL_LIBRARY_DIR must be specified for a custom trilinos build."
-    exit 1
-  fi
-  if [ "\$TRILINOS_LIBRARY_DIR" = "" ]; then
-    echo "Error: TRILINOS_LIBRARY_DIR must be specified for a custom trilinos build."
-    exit 1
-  fi
-  OPTIONS="\$OPTIONS -DTRILINOS_INCLUDE_DIR=\$TRILINOS_INCLUDE_DIR"
-  OPTIONS="\$OPTIONS -DTRILINOS_LIBRARY_DIR=\$TRILINOS_LIBRARY_DIR"
-  OPTIONS="\$OPTIONS -DTRILINOS_TPL_INCLUDE_DIR=\$TRILINOS_TPL_INCLUDE_DIR"
-  OPTIONS="\$OPTIONS -DTRILINOS_TPL_LIBRARY_DIR=\$TRILINOS_TPL_LIBRARY_DIR"
-fi
-
 # Configure vtk if needed
 if [ ! "\$VTK_INCLUDE_DIR" = "" -o ! "\$VTK_LIBRARY_DIR" = "" ]; then
   if [ "\$VTK_INCLUDE_DIR" = "" ]; then
@@ -354,9 +302,13 @@ echo " "
 echo "cmake -DCMAKE_INSTALL_PREFIX:PATH=\$PREFIX"
 echo "      -DCMAKE_BUILD_TYPE=\$BUILD_TYPE"
 echo "      -DCMAKE_CXX_COMPILER=\$CXX"
+echo "      -DTrilinos_DIR=\$Trilinos_DIR"
 echo "      -DLPM_PRECISION=\$PRECISION"
 echo "      -DLPM_DEVICE=\$DEVICE"
 echo "      -DLPM_DEVICE_ARCH=\$DEVICE_ARCH"
+echo "      -DLPM_ENABLE_NETCDF=\$LPM_ENABLE_NETCDF"
+echo "      -DLPM_ENABLE_VTK=\$LPM_ENABLE_VTK"
+echo "      -DLPM_ENABLE_BOOST=\$LPM_ENABLE_BOOST"
 echo "      \$OPTIONS"
 echo "      -G \$GENERATOR"
 echo "      \$SOURCE_DIR"
@@ -368,9 +320,13 @@ cmake \
  -DCMAKE_INSTALL_PREFIX:PATH=\$PREFIX \
  -DCMAKE_BUILD_TYPE=\$BUILD_TYPE \
  -DCMAKE_CXX_COMPILER=\$CXX \
+ -DTrilinos_DIR=\$Trilinos_DIR \
  -DLPM_PRECISION=\$PRECISION \
  -DLPM_DEVICE=\$DEVICE \
  -DLPM_DEVICE_ARCH=\$DEVICE_ARCH \
+ -DLPM_ENABLE_NETCDF=\$LPM_ENABLE_NETCDF \
+ -DLPM_ENABLE_VTK=\$LPM_ENABLE_VTK \
+ -DLPM_ENABLE_BOOST=\$LPM_ENABLE_BOOST \
  \$OPTIONS \
  -G "\$GENERATOR" \
  \$SOURCE_DIR

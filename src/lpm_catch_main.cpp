@@ -8,15 +8,12 @@
 
 #include "Kokkos_Core.hpp"
 
-#ifdef LPM_USE_MPI
 #include <mpi.h>
-#endif
+
 
 int main(int argc, char* argv[]) {
 
-#ifdef LPM_USE_MPI
   MPI_Init(&argc, &argv);
-#endif
 
   // Read LPM-specific args
   /*
@@ -62,9 +59,9 @@ int main(int argc, char* argv[]) {
 
 
   Kokkos::finalize();
-#ifdef LPM_USE_MPI
+
   MPI_Finalize();
-#endif
+
 
 return (num_failed == 0 ? 0 : 1);
 }

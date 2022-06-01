@@ -3,7 +3,6 @@
 
 #include "LpmConfig.h"
 
-#ifdef LPM_USE_MPI
 #include <mpi.h>
 
 
@@ -33,5 +32,4 @@ class Comm {
 
 } // namespace Lpm
 
-#endif
 #endif

@@ -29,9 +29,10 @@ struct PlanarHump {
 
   template <typename CVType> KOKKOS_INLINE_FUNCTION
   Real operator() (const CVType xy) const {
-    const Real xy0[2] = {x0, y0};
+    const Real rr0 = PlanarHump::r0;
+    const Real xy0[2] = {PlanarHump::x0, PlanarHump::y0};
     const Real dist = PlaneGeometry::distance(xy, xy0);
-    const Real r = min(dist, r0)/r0;
+    const Real r = min(dist, rr0)/rr0;
     return h0*(1 + cos(constants::PI * r));
   }
   }
@@ -51,13 +52,13 @@ struct PlanarSlottedDisk {
   template <typename CVType> KOKKOS_INLINE_FUNCTION
   Real operator() (const CVType xy) const {
     Real result = 0;
-    const Real xy0[2] = {x0, y0};
+    const Real xy0[2] = {PlanarSlottedDisk::x0, PlanarSlottedDisk::y0};
     const Real dist = PlaneGeometry::distance(xy, xy0);
-    if (dist <= r0) {
-      if (abs(xy(1) - y0) > r0/6) {
+    if (dist <= PlanarSlottedDisk::r0) {
+      if (abs(xy(1) - y0) > PlanarSlottedDisk::r0/6) {
         result = h0;
       }
-      else if (xy(0) - x0 < -5*r0/12) {
+      else if (xy(0) - x0 < -5*PlanarSlottedDisk::r0/12) {
         result = h0;
       }
     }
@@ -79,10 +80,10 @@ struct PlanarCone {
   template <typename CVType> KOKKOS_INLINE_FUNCTION
   Real operator() (const CVType xy) const {
     Real result = 0;
-    const Real xy0[2] = {x0, y0};
+    const Real xy0[2] = {PlanarCone::x0, PlanarCone::y0};
     const Real dist = PlaneGeometry::distance(xy, xy0);
-    if (dist <= r0) {
-      result = 1 - dist/r0;
+    if (dist <= PlanarCone::r0) {
+      result = 1 - dist/PlanarCone::r0;
     }
     return result;
   }

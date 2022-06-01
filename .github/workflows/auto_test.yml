@@ -73,26 +73,16 @@ jobs:
           -DLPM_PRECISION=${{ matrix.fp-precision }} \
           -DLPM_DEVICE=CPU \
           -DLPM_DEVICE_ARCH=AMDAVX \
+          -DLPM_ENABLE_NETCDF=OFF \
+          -DLPM_ENABLE_BOOST=OFF \
+          -DLPM_ENABLE_VTK=OFF \
           -DYAMLCPP_LIBRARY_DIR=/yaml-cpp \
           -DYAMLCPP_LIBRARY=/yaml-cpp/lib/libyaml-cpp.a \
           -DYAMLCPP_INCLUDE_DIR=/yaml-cpp/include \
-          -DHDF5_LIBRARY_DIR=/hdf5/lib \
-          -DHDF5_LIBRARY=/hdf5/lib/libhdf5.a \
-          -DHDF5_HL_LIBRARY=/hdf5/lib/libhdf5_hl.a \
-          -DHDF5_INCLUDE_DIR=/hdf5/include \
-          -DNETCDF_LIBRARY=/netcdf-c/lib/libnetcdf.a \
-          -DNETCDF_INCLUDE_DIR=/netcdf-c/include \
           -DSPDLOG_LIBRARY_DIR=/spdlog/lib \
           -DSPDLOG_INCLUDE_DIR=/spdlog/include \
           -DSPDLOG_LIBRARY=/spdlog/lib/libspdlog.a \
-          -DTRILINOS_INCLUDE_DIR=/trilinos/include \
-          -DTRILINOS_LIBRARY_DIR=/trilinos/lib \
-          -DTRILINOS_TPL_INCLUDE_DIR=/trilinos/include \
-          -DTRILINOS_TPL_LIBRARY_DIR=/trilinos/lib \
-          -DVTK_INCLUDE_DIR=/vtk/include/vtk-8.1 \
-          -DBOOST_INCLUDE_DIR=/boost/include \
-          -DBOOST_LIBRARY_DIR=/boost/lib \
-          -DVTK_LIBRARY_DIR=/vtk/lib \
+          -DTrilinos_DIR=/trilinos/lib/cmake \
           -G "Unix Makefiles" \
           ..
 
