@@ -34,14 +34,6 @@ struct PlanarHump {
     const Real r = min(dist, r0)/r0;
     return h0*(1 + cos(constants::PI * r));
   }
-
-  KOKKOS_INLINE_FUNCTION
-  Real operator() (const Real x, const Real y) const {
-    const Real xy[2] = {x,y};
-    const Real xy0[2] = {x0, y0};
-    const Real dist = PlaneGeometry::distance(xy, xy0);
-    const Real r = min(dist, r0)/r0;
-    return h0*(1 + cos(constants::PI * r));
   }
 };
 
