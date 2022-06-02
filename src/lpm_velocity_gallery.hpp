@@ -61,6 +61,7 @@ struct SphericalRigidRotation {
 };
 
 struct MovingVorticesVelocity {
+  typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
   static constexpr Real u0 = 2*constants::PI/12;
 
@@ -90,6 +91,7 @@ struct MovingVorticesVelocity {
 };
 
 struct LauritzenEtAlDeformationalFlow {
+  typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
   static constexpr Real RR = 1;
   static constexpr Real TT = 5;
@@ -116,6 +118,7 @@ struct LauritzenEtAlDeformationalFlow {
 };
 
 struct LauritzenEtAlDivergentFlow {
+  typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
   static constexpr Real RR = 1;
   static constexpr Real TT = 5;
@@ -144,6 +147,7 @@ struct LauritzenEtAlDivergentFlow {
 };
 
 struct RossbyWave54Velocity {
+  typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
   static constexpr Real background_rotation = 5 * constants::PI / 6;
 
