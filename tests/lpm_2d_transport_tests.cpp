@@ -15,6 +15,7 @@
 #include "lpm_2d_transport_rk4.hpp"
 #include "lpm_2d_transport_rk4_impl.hpp"
 #include "util/lpm_floating_point.hpp"
+#include "util/lpm_filename.hpp"
 #include "util/lpm_string_util.hpp"
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
@@ -63,8 +64,6 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
       for (const auto& n : nsteps) {
         dts.push_back(tfinal/n);
       }
-      PolyMeshParameters<SeedType> params(tree_lev, radius, amr_limit);
-      tm = std::shared_ptr<TransportMesh2d<SeedType>>(new TransportMesh2d<SeedType>(params));
     }
 
 
@@ -84,6 +83,9 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         const auto ns = nsteps[n_idx];
         const auto dt = dts[n_idx];
 
+        PolyMeshParameters<SeedType> params(tree_lev, radius, amr_limit);
+        tm = std::shared_ptr<TransportMesh2d<SeedType>>(new TransportMesh2d<SeedType>(params));
+
         tm->initialize_tracer(t1);
         tm->initialize_tracer(t2);
         tm->initialize_tracer(t3);
@@ -93,9 +95,16 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         logger.info(tm->info_string());
 
         #ifdef LPM_USE_VTK
+        int frame_counter = 0;
+        std::stringstream ss;
+        ss << "transport_2d_" << SeedType::id_string() << tree_lev << "_dt_conv_" << dt << "_";
+        const auto base_filename = ss.str();
+        ss.str("");
         {
-            VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-            vtk.write(test_name + "0.vtp");
+          ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
+          VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
+          vtk.write(ss.str());
+          ss.str("");
         }
         #endif
 
@@ -104,16 +113,19 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
           solver.template advance_timestep<VelocityType>();
           #ifdef LPM_USE_VTK
             if (time_idx == ns/2) {
+              ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
               VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-              vtk.write(test_name + "1.vtp");
-            }
+              vtk.write(ss.str());
+              ss.str("");            }
           #endif
         }
 
         #ifdef LPM_USE_VTK
         {
-            VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-            vtk.write(test_name + "2.vtp");
+          ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
+          VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
+          vtk.write(ss.str());
+          ss.str("");
         }
         #endif
 
@@ -122,7 +134,7 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         auto final_pos = tm->faces.phys_crds->crds;
         auto init_pos = tm->faces.lag_crds->crds;
 
-        auto face_err_norms = ErrNorms<>(face_position_error, final_pos, init_pos, tm->faces.area);
+        auto face_err_norms = ErrNorms(face_position_error, final_pos, init_pos, tm->faces.area);
         logger.info("ns = {}, l1 = {}, l2 = {}, linf = {}", ns, face_err_norms.l1, face_err_norms.l2, face_err_norms.linf);
 
         l1.push_back(face_err_norms.l1);
