@@ -67,6 +67,9 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
     template <typename ICType>
     void initialize_tracer(const ICType& tracer_ic);
 
+    template <typename VelocityType>
+    void initialize_velocity();
+
     inline Int ntracers() const {return tracer_verts.size();}
 
     std::string info_string(const int tab_lev=0) const;

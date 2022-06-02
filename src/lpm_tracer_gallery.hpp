@@ -17,6 +17,7 @@ namespace Lpm {
   Eqn. (9.4) from LeVeque 1996, SIAM J. Num. Anal.
 */
 struct PlanarHump {
+  typedef PlaneGeometry geo;
   static constexpr Real x0 = 0.25;
   static constexpr Real y0 = 0.5;
   static constexpr Real r0 = 0.15;
@@ -38,6 +39,7 @@ struct PlanarHump {
 };
 
 struct PlanarSlottedDisk {
+  typedef PlaneGeometry geo;
   static constexpr Real x0 = 0.5;
   static constexpr Real y0 = 0.75;
   static constexpr Real r0 = 0.15;
@@ -66,6 +68,7 @@ struct PlanarSlottedDisk {
 };
 
 struct PlanarCone {
+  typedef PlaneGeometry geo;
   static constexpr Real x0 = 0.5;
   static constexpr Real y0 = 0.25;
   static constexpr Real r0 = 0.15;
@@ -89,6 +92,7 @@ struct PlanarCone {
 };
 
 struct SphericalSlottedCylinders {
+  typedef SphereGeometry geo;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5*constants::PI/6;
   static constexpr Real lat2 = 0;
@@ -175,6 +179,7 @@ struct SphericalSlottedCylinders {
 };
 
 struct SphericalCosineBells {
+  typedef SphereGeometry geo;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5*constants::PI/6;
   static constexpr Real lat2 = 0;
@@ -244,6 +249,7 @@ struct SphericalCosineBells {
 };
 
 struct SphericalGaussianHills {
+  typedef SphereGeometry geo;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5*constants::PI/6;
   static constexpr Real lat2 = 0;
@@ -295,6 +301,7 @@ struct SphericalGaussianHills {
 };
 
 struct MovingVorticesTracer {
+  typedef SphereGeometry geo;
   static constexpr Real u0 = 2*constants::PI/12;
 
   KOKKOS_INLINE_FUNCTION
@@ -331,6 +338,7 @@ struct MovingVorticesTracer {
 };
 
 struct LatitudeTracer {
+  typedef SphereGeometry geo;
   KOKKOS_INLINE_FUNCTION
   LatitudeTracer() = default;
 
