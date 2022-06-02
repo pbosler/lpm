@@ -7,8 +7,24 @@
 
 namespace Lpm {
 
+template <typename SeedType> template <typename VelocityType>
+void TransportMesh2d<SeedType>::initialize_velocity() {
+  static_assert(std::is_same<typename SeedType::geo, typename VelocityType::geo>::value,
+    "Geometry types must match.");
+
+  Kokkos::parallel_for(this->vertices.nh(),
+    VelocityKernel<VelocityType>(this->velocity_verts.view, this->vertices.phys_crds->crds, 0)
+  );
+  Kokkos::parallel_for(this->faces.nh(),
+    VelocityKernel<VelocityType>(this->velocity_faces.view, this->faces.phys_crds->crds, 0)
+  );
+}
+
 template <typename SeedType> template <typename ICType>
 void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
+  static_assert(std::is_same<typename SeedType::geo, typename ICType::geo>::value,
+    "Geometry types must match.");
+
   tracer_verts.emplace(tracer_ic.name(),
     ScalarField<VertexField>(tracer_ic.name(), this->velocity_verts.view.extent(0)));
   tracer_faces.emplace(tracer_ic.name(),

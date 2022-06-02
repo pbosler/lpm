@@ -13,10 +13,32 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
+struct PlanarRigidRotation {
+  typedef PlaneGeometry geo;
+  static constexpr Int ndim = 2;
+  static constexpr Real Omega = 2*constants::PI/5;
+  static constexpr Real x0 = 0.5;
+  static constexpr Real y0 = 0.5;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarRigidRotation() = default;
+
+  inline std::string name() const {return "PlanarRigidRotation";}
+
+  template <typename CV> KOKKOS_INLINE_FUNCTION
+  Tuple<Real,2> operator() (const CV xy, const Real t=0) const {
+    Tuple<Real,2> result;
+    result[0] = - Omega * (xy[0] - x0);
+    result[1] =   Omega * (xy[1] - y0);
+    return result;
+  }
+};
+
 struct SphericalRigidRotation {
+  typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
   static constexpr Real alpha = 0;
-  static constexpr Real u0 = 2*constants::PI/12;
+  static constexpr Real u0 = 2*constants::PI/5;
 
   KOKKOS_INLINE_FUNCTION
   SphericalRigidRotation() = default;
