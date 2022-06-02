@@ -12,6 +12,7 @@
 #include "lpm_bve_rk4.hpp"
 #include "lpm_bve_rk4_impl.hpp"
 #include "lpm_error.hpp"
+#include "lpm_error_impl.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_filename.hpp"
 #include "util/lpm_progress_bar.hpp"
@@ -297,10 +298,10 @@ int main (int argc, char* argv[]) {
       fexactpsi(i) = 2*constants::PI*myx(2);
     });
 
-    ErrNorms<> facevort_err(sphere->tracer_faces[1].view, face_absvort, sphere->faces.area);
-    ErrNorms<> facevel_err(face_velocity_error, face_vel, fexactvel, sphere->faces.area);
-    ErrNorms<> facepos_err(face_position_error, facex, facea, sphere->faces.area);
-    ErrNorms<> facepsi_err(face_stream_fn_error, fexactpsi, sphere->faces.area);
+    ErrNorms facevort_err(sphere->tracer_faces[1].view, face_absvort, sphere->faces.area);
+    ErrNorms facevel_err(face_velocity_error, face_vel, fexactvel, sphere->faces.area);
+    ErrNorms facepos_err(face_position_error, facex, facea, sphere->faces.area);
+    ErrNorms facepsi_err(face_stream_fn_error, fexactpsi, sphere->faces.area);
 
     logger.info("tfinal (stream fn): {}", facepsi_err.info_string());
     logger.info("tfinal (vorticity): {}", facevort_err.info_string());
