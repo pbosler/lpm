@@ -35,7 +35,6 @@ struct PlanarHump {
     const Real r = min(dist, rr0)/rr0;
     return h0*(1 + cos(constants::PI * r));
   }
-  }
 };
 
 struct PlanarSlottedDisk {
