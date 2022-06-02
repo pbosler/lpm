@@ -7,6 +7,7 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_error.hpp"
+#include "lpm_error_impl.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "lpm_2d_transport_mesh.hpp"
@@ -108,7 +109,7 @@ TEST_CASE("spherical meshes", "") {
       const auto pxf = tm->faces.phys_crds->crds;
       const auto lxf = tm->faces.lag_crds->crds;
 
-      auto face_err_norms = ErrNorms<>(face_position_error, pxf, lxf, tm->faces.area);
+      auto face_err_norms = ErrNorms(face_position_error, pxf, lxf, tm->faces.area);
       logger.info("ns = {}, l1 = {}, l2 = {}, linf = {}", ns, face_err_norms.l1, face_err_norms.l2, face_err_norms.linf);
 
       l1.push_back(face_err_norms.l1);
@@ -191,7 +192,7 @@ TEST_CASE("spherical meshes", "") {
       const auto pxf = tm->faces.phys_crds->crds;
       const auto lxf = tm->faces.lag_crds->crds;
 
-      auto face_err_norms = ErrNorms<>(face_position_error, pxf, lxf, tm->faces.area);
+      auto face_err_norms = ErrNorms(face_position_error, pxf, lxf, tm->faces.area);
       logger.debug("ns = {}, l1 = {}, l2 = {}, linf = {}", ns, face_err_norms.l1, face_err_norms.l2, face_err_norms.linf);
 
       l1.push_back(face_err_norms.l1);

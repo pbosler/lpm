@@ -82,7 +82,7 @@ struct ErrReducer {
 
 
 /**
-    Computes error norms defined as follows:
+    Computes error norms defined as:
 
     l1 = (\sum_{i=1}^N abs(appx(i) - exact(i))*weight(i)) / (\sum_{i=1}^N abs(exact(i))*weight(i))
 
@@ -90,7 +90,6 @@ struct ErrReducer {
 
     linf = max_{i} abs(appx(i)- exact(i)) / max_{i}abs(exact(i))
 */
-template <typename Space=Host>
 struct ErrNorms {
     Real l1;
     Real l2;
@@ -106,39 +105,11 @@ struct ErrNorms {
     ErrNorms(const ENormScalar& err) : l1(err.l1num/err.l1denom), l2(std::sqrt(err.l2num/err.l2denom)),
       linf(err.linfnum/err.linfdenom) {}
 
-    /**
-        Scalar field constructor; performs reductions (error data is precomputed).
-    */
-    ErrNorms(const scalar_view_type& er, const scalar_view_type& ex, const scalar_view_type& wt) : l1(0), l2(0), linf(0) {
-        compute(er, ex, wt);
-    }
+    template <typename V1, typename V2, typename V3>
+    ErrNorms(const V1 err, const V2 appx, const V3 exact, const scalar_view_type wt);
 
-  /**
-    vector field constructor; computes error, then performs reductions
-  */
-  ErrNorms(const SphereGeometry::vec_view_type& err, const SphereGeometry::vec_view_type& appx,
-    const SphereGeometry::vec_view_type& exact, const scalar_view_type& wt) : l1(0), l2(0), linf(0) {
-      compute(err, appx, exact, wt);
-    }
-
-  /**
-    scalar field constructor; computes error, then performs reductions
-  */
-  ErrNorms(scalar_view_type& err, const scalar_view_type& appx, const scalar_view_type& exact, const scalar_view_type& wt):
-    l1(0), l2(0), linf(0) {
-    compute(err, appx, exact, wt);
-  }
-
-  void compute(const SphereGeometry::vec_view_type& err, const SphereGeometry::vec_view_type& appx,
-    const SphereGeometry::vec_view_type& exct, const scalar_view_type& wt);
-
-  void compute(scalar_view_type& err, const scalar_view_type& appx,
-    const scalar_view_type& exact, const scalar_view_type& wt);
-
-  void compute(const SphereGeometry::vec_view_type& err, const SphereGeometry::vec_view_type& exact,
-    const scalar_view_type& wt);
-
-  void compute(const scalar_view_type& err, const scalar_view_type& exact, const scalar_view_type& wt);
+    template <typename V1, typename V2>
+    ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt);
 };
 
 std::vector<Real> convergence_rates(const std::vector<Real>& dx, const std::vector<Real>& ex);
@@ -148,6 +119,13 @@ std::string convergence_table(const std::string dxlabel,
                               const std::string exlabel,
                               const std::vector<Real>& ex,
                               const std::vector<Real>& rate);
+
+
+template <typename V1, typename V2>
+ENormScalar reduce_error(const V1 err, const V2 exact, const scalar_view_type wt);
+
+template <typename V1, typename V2, typename V3>
+void compute_error(const V1 err, const V2 appx, const V3 exact);
 
 }
 #endif
