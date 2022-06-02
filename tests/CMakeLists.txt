@@ -48,6 +48,8 @@ CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
 
 CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
 
+CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
+
 CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
