@@ -15,7 +15,6 @@
 #include "lpm_2d_transport_rk4.hpp"
 #include "lpm_2d_transport_rk4_impl.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "util/lpm_filename.hpp"
 #include "util/lpm_string_util.hpp"
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
@@ -97,13 +96,12 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         #ifdef LPM_USE_VTK
         int frame_counter = 0;
         std::stringstream ss;
-        ss << "transport_2d_" << SeedType::id_string() << tree_lev << "_dt_conv_" << dt << "_";
+        ss << "transport_2d_" << SeedType::id_string() << tree_lev << "_dt_conv_" << float_str(dt);
         const auto base_filename = ss.str();
         ss.str("");
         {
-          ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
           VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-          vtk.write(ss.str());
+          vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
           ss.str("");
         }
         #endif
@@ -113,18 +111,18 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
           solver.template advance_timestep<VelocityType>();
           #ifdef LPM_USE_VTK
             if (time_idx == ns/2) {
-              ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
+//               ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
               VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-              vtk.write(ss.str());
+              vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
               ss.str("");            }
           #endif
         }
 
         #ifdef LPM_USE_VTK
         {
-          ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
+//           ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
           VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
-          vtk.write(ss.str());
+          vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
           ss.str("");
         }
         #endif

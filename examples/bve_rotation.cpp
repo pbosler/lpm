@@ -14,7 +14,6 @@
 #include "lpm_error.hpp"
 #include "lpm_error_impl.hpp"
 #include "util/lpm_timer.hpp"
-#include "util/lpm_filename.hpp"
 #include "util/lpm_progress_bar.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -168,15 +167,18 @@ int main (int argc, char* argv[]) {
         sphere->faces.phys_crds->crds,
         sphere->velocity_faces.view));
 
-    BaseFilename<seed_type> fname(input.case_name, input.init_depth, input.dt);
+    std::ostringstream ss;
+    ss << input.case_name << "_" << seed_type::id_string() << input.init_depth
+       << "_dt" << float_str(input.dt);
+    const std::string basefname = ss.str();
 
-
+#ifdef LPM_USE_VTK
     int frame = 0;
     if (input.output_interval > 0) {
       /**
       Output initial data
       */
-      const std::string vtkfname = fname(frame) + fname.vtk_suffix();
+      const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
       logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
       VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
       vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
@@ -187,7 +189,7 @@ int main (int argc, char* argv[]) {
       vtk.add_vector_cell_data(face_position_error, "position_error");
       vtk.write(vtkfname);
     }
-
+#endif
     init_timer.stop();
 
     logger.info(init_timer.info_string());
@@ -267,11 +269,11 @@ int main (int argc, char* argv[]) {
 
       ko::Profiling::popRegion();
 
+#ifdef LPM_USE_VTK
       if (input.output_interval > 0) {
         if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
           ko::Profiling::pushRegion("vtk output");
-
-          const std::string vtkfname = fname(++frame) + fname.vtk_suffix();
+          const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
           VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
           vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
           vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
@@ -283,6 +285,7 @@ int main (int argc, char* argv[]) {
           ko::Profiling::popRegion();
         }
       }
+#endif
 
         progress.update();
 
