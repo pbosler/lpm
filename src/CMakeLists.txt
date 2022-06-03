@@ -88,7 +88,6 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_box3d.hpp
               tree/lpm_cpu_tree.hpp
-              util/lpm_filename.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp
               util/lpm_progress_bar.hpp
