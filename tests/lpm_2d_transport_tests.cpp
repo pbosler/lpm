@@ -65,8 +65,6 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
       }
     }
 
-
-
     void run() {
       std::string test_name = "transport2d_dtconv_" + SeedType::id_string();
 
@@ -113,7 +111,8 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
             if (time_idx == ns/2) {
               VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
               vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
-              ss.str("");            }
+              ss.str("");
+            }
           #endif
         }
 
@@ -161,6 +160,7 @@ TEST_CASE("planar meshes", "") {
   const std::vector<Int> nsteps = {10, 20, 40, 80, 100};
 
   typedef PlanarRigidRotation velocity_field;
+//   typedef PlanarDeformationalFlow velocity_field;
 
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;
