@@ -111,7 +111,6 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
           solver.template advance_timestep<VelocityType>();
           #ifdef LPM_USE_VTK
             if (time_idx == ns/2) {
-//               ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
               VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
               vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
               ss.str("");            }
@@ -120,7 +119,6 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
 
         #ifdef LPM_USE_VTK
         {
-//           ss << base_filename << std::setfill('0') << std::setw(4) << frame_counter++ << ".vtp";
           VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
           vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
           ss.str("");
