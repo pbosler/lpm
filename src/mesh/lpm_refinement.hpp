@@ -54,7 +54,7 @@ struct FlowMapVariationFlagFunctor {
         dsum += max_lag_crds[j] - min_lag_crds[j];
       }
 
-      if (!flags(i)) flags(i) = (dsum > tol);
+      flags(i) = (dsum > tol);
     }
   }
 };
@@ -108,7 +108,7 @@ void divide_flagged_faces(std::shared_ptr<PolyMesh2d<SeedType>> mesh, const Kokk
 
   Index flag_count;
   Kokkos::parallel_reduce(mesh->faces.n_host(), KOKKOS_LAMBDA (const Index i, Index& s) {
-    s += (flags(i) : 1 : 0);
+    s += (flags(i) ? 1 : 0);
   }, flag_count);
   const Index space_left = params.nmaxfaces - mesh->faces.n_host();
 
