@@ -32,14 +32,24 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 
   auto vertview = tracer_verts.at(tracer_ic.name()).view;
   auto faceview = tracer_faces.at(tracer_ic.name()).view;
+  const auto vlags = this->vertices.lag_crds->crds;
+  const auto flags = this->faces.lag_crds->crds;
   Kokkos::parallel_for(this->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
-    const auto crd = Kokkos::subview(this->vertices.lag_crds->crds, i, Kokkos::ALL);
+    const auto crd = Kokkos::subview(vlags, i, Kokkos::ALL);
     vertview(i) = tracer_ic(crd);
   });
   Kokkos::parallel_for(this->faces.nh(), KOKKOS_LAMBDA (const Index i) {
-    const auto crd = Kokkos::subview(this->faces.lag_crds->crds, i, Kokkos::ALL);
+    const auto crd = Kokkos::subview(flags, i, Kokkos::ALL);
     faceview(i) = tracer_ic(crd);
   });
+}
+
+template <typename SeedType>
+void TransportMesh2d<SeedType>::initialize_scalar_tracer(const std::string name) {
+  tracer_verts.emplace(name,
+    ScalarField<VertexField>(name, this->velocity_verts.view.extent(0)));
+  tracer_faces.emplace(name,
+    ScalarField<FaceField>(name, this->velocity_faces.view.extent(0)));
 }
 
 template <typename SeedType>

@@ -13,6 +13,25 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
+struct PlanarConstantEastward {
+  typedef PlaneGeometry geo;
+  static constexpr Int ndim = 2;
+  static constexpr Real u0 = 8;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarConstantEastward() = default;
+
+  inline std::string name() const {return "PlanarConstantEastward";}
+
+  template <typename CV> KOKKOS_INLINE_FUNCTION
+  Tuple<Real,2> operator() (const CV xy, const Real t=0) const {
+    Tuple<Real,2> result;
+    result[0] = u0;
+    result[1] = 0;
+    return result;
+  }
+};
+
 struct PlanarRigidRotation {
   typedef PlaneGeometry geo;
   static constexpr Int ndim = 2;

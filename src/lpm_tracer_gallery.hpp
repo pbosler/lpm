@@ -12,6 +12,49 @@
 
 namespace Lpm {
 
+struct PlanarGaussian {
+  typedef PlaneGeometry geo;
+  static constexpr Real b = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarGaussian() = default;
+
+  inline std::string name() const {return "PlanarGaussian";}
+
+  template <typename CVT> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVT xy) const {
+    const Real rsq = PlaneGeometry::norm2(xy);
+    return exp(-PlanarGaussian::b * rsq);
+  }
+
+  template <typename CVT> KOKKOS_INLINE_FUNCTION
+  Real laplacian(const CVT xy) const {
+    const Real rsq = PlaneGeometry::norm2(xy);
+    return 4*PlanarGaussian::b*exp(-b*rsq)*(square(PlanarGaussian::b)*rsq - 1 );
+  }
+};
+
+struct PlanarRings {
+  typedef PlaneGeometry geo;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarRings() = default;
+
+  inline std::string name() const {return "PlanarRings";}
+
+  template <typename CVType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVType xy) const {
+    const Real r = geo::mag(xy);
+    return r * exp(-r) * sin(r);
+  }
+
+  template <typename CVType> KOKKOS_INLINE_FUNCTION
+  Real laplacian(const CVType xy) const {
+    const Real r = geo::mag(xy);
+    return safe_divide(r)*(exp(-r)*((-2*square(r) + 3*r)*cos(r) + (1-3*r)*sin(r)));
+  }
+};
+
 /**
 
   Eqn. (9.4) from LeVeque 1996, SIAM J. Num. Anal.

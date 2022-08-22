@@ -52,6 +52,8 @@ CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
 
 CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
 
+CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)
