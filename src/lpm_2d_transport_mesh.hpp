@@ -74,7 +74,7 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
 
     inline Int ntracers() const {return tracer_verts.size();}
 
-    std::string info_string(const int tab_lev=0) const;
+    std::string info_string(const int tab_lev=0) const /*override*/;
 
     void update_device() const override;
 

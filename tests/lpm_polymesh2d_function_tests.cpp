@@ -6,28 +6,18 @@
 #include "lpm_geometry.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
-#include "lpm_tracer_gallery.hpp"
-#include "lpm_error.hpp"
-#include "lpm_error_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_polymesh2d_functions.hpp"
-#include "util/lpm_floating_point.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_string_util.hpp"
-#include "netcdf/lpm_netcdf.hpp"
-#include "netcdf/lpm_netcdf_impl.hpp"
-#include "lpm_constants.hpp"
-#include "lpm_velocity_gallery.hpp"
+// #include "lpm_constants.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif
 #include "catch.hpp"
-#include <map>
 #include <memory>
 #include <sstream>
-#include <vector>
-#include <iomanip>
 
 using namespace Lpm;
 
@@ -57,100 +47,182 @@ struct PlanePolyMeshFnUnitTest {
 
       typedef FaceDivider<PlaneGeometry, QuadFace> qr_divider;
       qr_divider::divide(0, qr0->vertices, qr0->edges, qr0->faces);
-      REQUIRE(qr0->faces.kids(0,0) == 4);
-      qr_divider::divide(qr0->faces.kids(0,0), qr0->vertices, qr0->edges, qr0->faces);
 
+      REQUIRE(qr0->faces.kid_host(0,0) == 4);
 
+      qr_divider::divide(qr0->faces.kid_host(0,0), qr0->vertices, qr0->edges, qr0->faces);
       logger.info(qr0->info_string());
-      auto face_xy_host = Kokkos::subview(qr0->faces.phys_crds->get_host_crd_view(),
+
+      logger.debug("setting up local view copies to use with lambda");
+      auto face_xy = Kokkos::subview(qr0->faces.phys_crds->crds,
          std::make_pair(0, qr0->faces.nh()), Kokkos::ALL);
-      auto vert_xy_host = Kokkos::subview(qr0->vertices.phys_crds->get_host_crd_view(),
-        std::make_pair(0, qr0->vertices.nh()), Kokkos::ALL);
+      auto face_xy_host = qr0->faces_phys_crds();
+      const auto faces_edges = qr0->faces.edges;
+      const auto edges_lefts = qr0->edges.lefts;
+      const auto edges_rights = qr0->edges.rights;
+      auto faces_kids = qr0->faces.kids;
+//       auto vert_xy = Kokkos::subview(qr0->vertices.phys_crds->crds,
+//         std::make_pair(0, qr0->vertices.nh()), Kokkos::ALL);
 
 #ifdef LPM_USE_VTK
+      logger.debug("starting vtk output.");
       VtkPolymeshInterface<QuadRectSeed> vtk(qr0);
       vtk.write("qr0_divide2.vtp");
+      logger.debug("vtk output complete.");
 #endif
 
-      Index leaf_edges0[2*LPM_MAX_AMR_LIMIT];
-      Int n_leaf_edges0;
-      get_leaf_edges_from_parent<Index*,QuadRectSeed>(leaf_edges0, n_leaf_edges0, 0, qr0->edges.kids);
-
-      logger.debug(qr0->edges.info_string("all_edges", 0, true));
-      logger.info("parent edge 0 has {} leaves: [{}, {}, {}]", n_leaf_edges0,
-        leaf_edges0[0], leaf_edges0[1], leaf_edges0[2]);
-
       REQUIRE(qr0->n_faces_host() == 12);
-      REQUIRE(qr0->edges.kids(0,0) == 12);
-      REQUIRE(qr0->edges.kids(0,1) == 13);
-      REQUIRE(qr0->edges.kids(12,0) == 24);
-      REQUIRE(qr0->edges.kids(12,1) == 25);
-      REQUIRE(qr0->edges.lefts(24) == 8);
-      REQUIRE(qr0->edges.rights(24) == LPM_NULL_IDX);
-      REQUIRE(qr0->edges.lefts(25) == 9);
+      REQUIRE(qr0->edges.kid_host(0,0) == 12);
+      REQUIRE(qr0->edges.kid_host(0,1) == 13);
+      REQUIRE(qr0->edges.kid_host(12,0) == 24);
+      REQUIRE(qr0->edges.kid_host(12,1) == 25);
+      REQUIRE(qr0->edges.left_host(24) == 8);
+      REQUIRE(qr0->edges.right_host(24) == LPM_NULL_IDX);
+      REQUIRE(qr0->edges.left_host(25) == 9);
       REQUIRE(face_xy_host(8,0) == Approx(-7.0/8));
       REQUIRE(face_xy_host(8,1) == Approx( 7.0/8));
-      REQUIRE(n_leaf_edges0 == 3);
-      REQUIRE(leaf_edges0[0] == 24);
-      REQUIRE(leaf_edges0[1] == 25);
-      REQUIRE(leaf_edges0[2] == 13);
+      qr0->update_device();
 
-      Index leaf_edges7[8*LPM_MAX_AMR_LIMIT];
-      Int n_leaf_edges7;
-      ccw_edges_around_face<Index*,QuadRectSeed>(leaf_edges7, n_leaf_edges7,
-        7, qr0->faces.edges, qr0->edges.lefts, qr0->edges.kids);
+      Kokkos::View<Index[2*LPM_MAX_AMR_LIMIT]> leaf_edges0("leaf_edges0");
+      auto leaf_edges0_host = Kokkos::create_mirror_view(leaf_edges0);
+      n_view_type n_leaf_edges0("n_leaf_edges0");
+      auto n_leaf_edges0_host = Kokkos::create_mirror_view(n_leaf_edges0);
+      const auto edges_kids = qr0->edges.kids;
 
-      logger.info("face 7 has {} {}", n_leaf_edges7,
-        sprarr("leaf_edges7", leaf_edges7, n_leaf_edges7));
+      Kokkos::View<Index[8*LPM_MAX_AMR_LIMIT]> leaf_edges7("leaf_edges7");
+      auto leaf_edges7_host = Kokkos::create_mirror_view(leaf_edges7);
+      n_view_type n_leaf_edges7("n_leaf_edges7");
+      auto n_leaf_edges7_host = Kokkos::create_mirror_view(n_leaf_edges7);
 
-      REQUIRE(leaf_edges7[0] == 29);
-      REQUIRE(leaf_edges7[1] == 28);
-      REQUIRE(leaf_edges7[2] == 21);
-      REQUIRE(leaf_edges7[3] == 17);
-      REQUIRE(leaf_edges7[4] == 18);
 
-      Index adj_faces5[8*LPM_MAX_AMR_LIMIT];
-      Int n_adj5;
-      ccw_adjacent_faces<Index*, QuadRectSeed>(adj_faces5, n_adj5,
-        5, qr0->faces.edges, qr0->edges.lefts, qr0->edges.rights,
-        qr0->edges.kids);
+      Kokkos::View<Index[8*LPM_MAX_AMR_LIMIT]> adj_faces5("adj_faces5");
+      auto adj_faces5_host = Kokkos::create_mirror_view(adj_faces5);
+      n_view_type n_adj5("n_adj5");
+      auto n_adj5_host = Kokkos::create_mirror_view(n_adj5);
 
-      logger.info("face 5 has {} {}", n_adj5,
-        sprarr("adjacent faces", adj_faces5, n_adj5));
+      Kokkos::View<Real[2]> qp("qp");
+      auto qp_host = Kokkos::create_mirror_view(qp);
+      qp_host[0] = -7.0/8;
+      qp_host[1] =  7.0/8;
+      Kokkos::deep_copy(qp, qp_host);
+      n_view_type fidx0("fidx0");
+      n_view_type fidx1("fidx1");
+      n_view_type fidx2("fidx2");
+      n_view_type ridx("ridx");
 
-      REQUIRE(n_adj5 == 5);
-      REQUIRE(adj_faces5[0] == LPM_NULL_IDX);
-      REQUIRE(adj_faces5[1] == 1);
-      REQUIRE(adj_faces5[2] == 6);
-      REQUIRE(adj_faces5[3] == 10);
-      REQUIRE(adj_faces5[4] == 9);
+      auto fidx0_host = Kokkos::create_mirror_view(fidx0);
+      auto fidx1_host = Kokkos::create_mirror_view(fidx1);
+      auto fidx2_host = Kokkos::create_mirror_view(fidx2);
+      auto ridx_host = Kokkos::create_mirror_view(ridx);
 
-      const Real qp[2] = {-7.0/8, 7.0/8};
-      const auto fidx = locate_point_walk_search<const Real*, QuadRectSeed>(qp, 2,
-        qr0->edges.lefts, qr0->edges.rights, qr0->edges.kids,
-        qr0->faces.edges, face_xy_host);
+      logger.info("launching test kernels on device...");
+
+      Kokkos::parallel_for(7, KOKKOS_LAMBDA (const Index i) {
+
+        if (i==0) {
+          get_leaf_edges_from_parent<Kokkos::View<Index*>,QuadRectSeed>(
+            leaf_edges0,
+            n_leaf_edges0(),
+            0,
+            edges_kids);
+        }
+        else if (i==1) {
+          ccw_edges_around_face<Kokkos::View<Index*>,QuadRectSeed>(
+            leaf_edges7,
+            n_leaf_edges7(),
+            7,
+            faces_edges,
+            edges_lefts,
+            edges_kids);
+        }
+        else if (i==2) {
+          ccw_adjacent_faces<Kokkos::View<Index*>, QuadRectSeed>(
+            adj_faces5,
+            n_adj5(),
+            5,
+            faces_edges,
+            edges_lefts,
+            edges_rights,
+            edges_kids);
+        }
+        else if (i==3) {
+          fidx0() =
+            locate_point_walk_search<Kokkos::View<Real*>, QuadRectSeed>(qp,
+              2,
+              edges_lefts,
+              edges_rights,
+              edges_kids,
+              faces_edges,
+              face_xy);
+        }
+        else if (i==4) {
+          ridx() =
+            nearest_root_face<Kokkos::View<Real*>, QuadRectSeed>(qp, face_xy);
+        }
+        else if (i==5) {
+          fidx1() =
+            locate_point_tree_search<Kokkos::View<Real*>, QuadRectSeed>(
+              qp,
+              0,
+              face_xy,
+              faces_kids);
+        }
+        else if (i==6) {
+          fidx2() =
+            locate_face_containing_pt<Kokkos::View<Real*>, QuadRectSeed>(qp,
+              edges_lefts,
+              edges_rights,
+              edges_kids,
+              face_xy,
+              faces_kids,
+              faces_edges);
+        }
+      });
+
+      Kokkos::deep_copy(leaf_edges0_host, leaf_edges0);
+      Kokkos::deep_copy(n_leaf_edges0_host, n_leaf_edges0);
+      Kokkos::deep_copy(leaf_edges7_host, leaf_edges7);
+      Kokkos::deep_copy(n_leaf_edges7_host, n_leaf_edges7);
+      Kokkos::deep_copy(adj_faces5_host, adj_faces5);
+      Kokkos::deep_copy(n_adj5_host, n_adj5);
+      Kokkos::deep_copy(fidx0_host, fidx0);
+      Kokkos::deep_copy(fidx1_host, fidx1);
+      Kokkos::deep_copy(fidx2_host, fidx2);
+
+      logger.debug(qr0->edges.info_string("all_edges", 0, true));
+      logger.info("parent edge 0 has {} leaves: [{}, {}, {}]", n_leaf_edges0_host(),
+        leaf_edges0_host[0], leaf_edges0_host[1], leaf_edges0_host[2]);
+
+      REQUIRE(n_leaf_edges0_host() == 3);
+      REQUIRE(leaf_edges0_host[0] == 24);
+      REQUIRE(leaf_edges0_host[1] == 25);
+      REQUIRE(leaf_edges0_host[2] == 13);
+
+      logger.info("face 7 has {} {}", n_leaf_edges7_host(),
+        sprarr("leaf_edges7", leaf_edges7_host.data(), n_leaf_edges7_host()));
+
+      REQUIRE(leaf_edges7_host[0] == 29);
+      REQUIRE(leaf_edges7_host[1] == 28);
+      REQUIRE(leaf_edges7_host[2] == 21);
+      REQUIRE(leaf_edges7_host[3] == 17);
+      REQUIRE(leaf_edges7_host[4] == 18);
+
+      logger.info("face 5 has {} {}", n_adj5_host(),
+        sprarr("adjacent faces", adj_faces5_host.data(), n_adj5_host()));
+
+      REQUIRE(n_adj5_host() == 5);
+      REQUIRE(adj_faces5_host[0] == LPM_NULL_IDX);
+      REQUIRE(adj_faces5_host[1] == 1);
+      REQUIRE(adj_faces5_host[2] == 6);
+      REQUIRE(adj_faces5_host[3] == 10);
+      REQUIRE(adj_faces5_host[4] == 9);
 
       logger.info("{} located in face {}",
-        sprarr("query pt", qp, 2), fidx);
+        sprarr("query pt", qp_host.data(), 2), fidx0_host());
 
-      REQUIRE(fidx == 8);
-
-
-      const auto ridx = nearest_root_face<const Real*, QuadRectSeed>(qp, face_xy_host);
-      REQUIRE(ridx == 0);
-      const auto fidx2 =
-        locate_point_tree_search<const Real*, QuadRectSeed>(qp, ridx,
-          face_xy_host, qr0->faces.kids);
-
-      REQUIRE(fidx2 == 8);
-
-      const auto fidx3 =
-        locate_face_containing_pt<const Real*, QuadRectSeed>(qp, qr0->edges.lefts,
-          qr0->edges.rights, qr0->edges.kids, face_xy_host, qr0->faces.kids,
-          qr0->faces.edges);
-
-      REQUIRE(fidx3 == 8);
-
+      REQUIRE(fidx0_host() == 8);
+      REQUIRE(ridx_host() == 0);
+      REQUIRE(fidx2_host() == 8);
 
     }
   }

@@ -24,12 +24,13 @@ struct PlanarGaussian {
   template <typename CVT> KOKKOS_INLINE_FUNCTION
   Real operator() (const CVT xy) const {
     const Real rsq = PlaneGeometry::norm2(xy);
-    return exp(-b * rsq);
+    return exp(-PlanarGaussian::b * rsq);
   }
 
   template <typename CVT> KOKKOS_INLINE_FUNCTION
   Real laplacian(const CVT xy) const {
     const Real rsq = PlaneGeometry::norm2(xy);
+    const Real b = PlanarGaussian::b;
     return 4*b*exp(-b*rsq)*(square(b)*rsq - 1 );
   }
 };
