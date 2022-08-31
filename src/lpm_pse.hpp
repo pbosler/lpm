@@ -61,6 +61,7 @@ template <typename PSEKind> struct DeltaReducer {
   Real epsilon;
   Real eps_sq;
 
+  KOKKOS_INLINE_FUNCTION
   DeltaReducer(Index tidx, const crd_view targets, const crd_view sources,
     const scalar_view_type src_vals, const scalar_view_type area, Real ep) :
     tgt_idx(tidx),
@@ -93,6 +94,7 @@ template <typename PSEKind> struct LaplacianReducer {
   Real epsilon;
   Real eps_sq;
 
+  KOKKOS_INLINE_FUNCTION
   LaplacianReducer(const Index tidx, const crd_view targets, const crd_view sources,
     const scalar_view_type target_vals, const scalar_view_type source_vals,
     const scalar_view_type source_area, const Real eps) :

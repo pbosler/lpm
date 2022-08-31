@@ -12,10 +12,8 @@
 #include "lpm_2d_transport_mesh.hpp"
 #include "lpm_2d_transport_mesh_impl.hpp"
 #include "lpm_pse.hpp"
-#include "util/lpm_floating_point.hpp"
 #include "util/lpm_timer.hpp"
-#include "netcdf/lpm_netcdf.hpp"
-#include "netcdf/lpm_netcdf_impl.hpp"
+#include "util/lpm_test_utils.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_velocity_gallery.hpp"
 #ifdef LPM_USE_VTK
@@ -181,8 +179,13 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
 
 TEST_CASE("planar mesh", "") {
   const int start_depth = 2;
-  const int end_depth = 8;
+  int end_depth = 3;
   const Real radius = 6;
+
+  auto& ts = TestSession::get();
+  if (ts.params.find("end_depth") != ts.params.end()) {
+    end_depth = std::stoi(ts.params["end_depth"]);
+  }
 
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;
