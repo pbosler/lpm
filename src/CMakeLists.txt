@@ -52,10 +52,9 @@ add_library(lpm
 #    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
 #    LpmSWEGallery.cpp
                 )
+target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 add_dependencies(lpm update_version_info
-                     yaml-cpp
-                     spdlog
-                     )
+                     spdlog)
 
 target_link_libraries(lpm ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 if (LPM_USE_NETCDF)

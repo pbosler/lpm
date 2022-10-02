@@ -7,7 +7,6 @@
 #include "lpm_geometry.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 #include <cassert>
 
 namespace Lpm {

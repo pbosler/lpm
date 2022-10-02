@@ -72,42 +72,41 @@ function(CreateUnitTest target_name target_sources)
   #---------------------------#
   target_include_directories(${target_name} PUBLIC
         ${LPM_INCLUDE_DIRS}
-        ${Trilinos_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
-  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS})
-  if (LPM_USE_VTK)
-    target_include_directories(${target_name} PUBLIC ${VTK_INCLUDE_DIRS})
-    target_link_libraries(${target_name} PUBLIC ${VTK_LIBRARIES})
-  endif()
-  if (LPM_USE_NETCDF)
-    target_include_directories(${target_name} PUBLIC ${HDF5_INCLUDE_DIR}
-            ${NETCDF_INCLUDE_DIR})
-    target_link_libraries(${target_name} PUBLIC ${ZLIB_LIBRARIES}
-      ${HDF5_LIBRARY}
-      ${HDF5_HL_LIBRARY}
-      ${NETCDF_LIBRARY})
-  endif()
-  if (LPM_USE_BOOST)
-    target_include_directories(${target_name} PUBLIC ${Boost_INCLUDE_DIRS})
-  endif()
+  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
+#  if (LPM_USE_VTK)
+#    target_include_directories(${target_name} PUBLIC ${VTK_INCLUDE_DIRS})
+#    target_link_libraries(${target_name} PUBLIC ${VTK_LIBRARIES})
+#  endif()
+#  if (LPM_USE_NETCDF)
+#    target_include_directories(${target_name} PUBLIC ${HDF5_INCLUDE_DIR}
+#            ${NETCDF_INCLUDE_DIR})
+#    target_link_libraries(${target_name} PUBLIC ${ZLIB_LIBRARIES}
+#      ${HDF5_LIBRARY}
+#      ${HDF5_HL_LIBRARY}
+#      ${NETCDF_LIBRARY})
+#  endif()
+#  if (LPM_USE_BOOST)
+#    target_include_directories(${target_name} PUBLIC ${Boost_INCLUDE_DIRS})
+#  endif()
 
-  if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
-    target_link_libraries(${target_name} PUBLIC lpm_test_main)
-  endif()
-  if (lpmtest_COMPILER_DEFS)
-    target_compile_definitions(${target_name} PUBLIC "${lpmtest_COMPILER_DEFS}")
-  endif()
-  if (lpmtest_COMPILER_FLAGS)
-    target_compile_options(${target_name} PUBLIC "${lpmtest_COMPILER_FLAGS}")
-  endif()
-  if (lpmtest_LIBS)
-    target_link_libraries(${target_name} PUBLIC "${lpmtest_LIBS}")
-  endif()
-  if (lpmtest_LINKER_FLAGS)
-    set_target_properties(${target_name} PROPERTIES LINK_FLAGS "${lpmtest_LINKER_FLAGS}")
-  endif()
+ if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
+   target_link_libraries(${target_name} PUBLIC lpm_test_main)
+ endif()
+ if (lpmtest_COMPILER_DEFS)
+   target_compile_definitions(${target_name} PUBLIC "${lpmtest_COMPILER_DEFS}")
+ endif()
+ if (lpmtest_COMPILER_FLAGS)
+   target_compile_options(${target_name} PUBLIC "${lpmtest_COMPILER_FLAGS}")
+ endif()
+ if (lpmtest_LIBS)
+   target_link_libraries(${target_name} PUBLIC "${lpmtest_LIBS}")
+ endif()
+ if (lpmtest_LINKER_FLAGS)
+   set_target_properties(${target_name} PROPERTIES LINK_FLAGS "${lpmtest_LINKER_FLAGS}")
+ endif()
 
   #--------------------------#
   # Setup MPI/OpenMP configs #

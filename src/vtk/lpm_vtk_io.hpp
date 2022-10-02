@@ -15,7 +15,6 @@
 #include "mesh/lpm_polymesh2d.hpp"
 
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 
 #include <vector>
 

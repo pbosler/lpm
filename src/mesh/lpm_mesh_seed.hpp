@@ -5,7 +5,6 @@
 #include <string>
 
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 
 namespace Lpm {
 

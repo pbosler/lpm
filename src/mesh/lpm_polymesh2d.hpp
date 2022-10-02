@@ -8,7 +8,7 @@
 #include "mesh/lpm_faces.hpp"
 #include "lpm_logger.hpp"
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
+
 
 #include <memory>
 

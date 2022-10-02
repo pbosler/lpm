@@ -6,7 +6,6 @@
 #include "lpm_logger.hpp"
 #include "lpm_field.hpp"
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #endif
