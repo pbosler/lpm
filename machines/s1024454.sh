@@ -5,7 +5,7 @@
 # else
 #   export TR=/home/pabosle/trilinos-lpm-omp
 # fi
-export Trilinos_DIR=/home/pabosle/trilinos-lpm-omp
+export Trilinos_DIR=/home/pabosle/trilinos-lpm-cuda
 
 export HDF5_INCLUDE_DIR=$HDF5_ROOT/include
 export HDF5_LIBRARY_DIR=$HDF5_ROOT/lib

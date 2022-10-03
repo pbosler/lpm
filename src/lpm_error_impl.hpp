@@ -103,7 +103,7 @@ ReduceErrorFtor<V1, V2, 1> {
 
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact) {
-  static_assert(V1::Rank == V2::rank and V2::Rank == V3::Rank,
+  static_assert(V1::Rank == V2::Rank and V2::Rank == V3::Rank,
     "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and appx.extent(0) == exact.extent(0));
   LPM_REQUIRE(err.extent(1) == appx.extent(1) and appx.extent(1) == exact.extent(1));

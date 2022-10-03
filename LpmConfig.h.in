@@ -12,6 +12,9 @@
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 
+#define LPM_MAX_AMR_LIMIT 6
+#define LPM_NULL_IDX -1
+
 namespace Lpm {
 
   const char* version();

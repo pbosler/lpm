@@ -26,7 +26,7 @@ macro(setup_platform)
   # Do we have make?
   find_program(MAKE make)
   if (MAKE STREQUAL "MAKE_NOTFOUND")
-   message(FATAL_ERROR "Make is required, but is not available on this system.")
+    message(FATAL_ERROR "Make is required, but is not available on this system.")
   endif()
 
   include(lpm_find_trilinos)

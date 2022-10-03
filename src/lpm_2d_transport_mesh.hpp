@@ -31,7 +31,7 @@ struct VelocityKernel {
   void operator() (const Index i) const {
     const auto myx = Kokkos::subview(xcrds, i, Kokkos::ALL);
     auto myu = Kokkos::subview(velocity, i, Kokkos::ALL);
-    Tuple<Real,VelocityFtor::ndim> u = velfn(myx, t);
+    Kokkos::Tuple<Real,VelocityFtor::ndim> u = velfn(myx, t);
     for (int j=0; j<VelocityFtor::ndim; ++j) {
       myu(j) = u[j];
     }
@@ -66,12 +66,14 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
     template <typename ICType>
     void initialize_tracer(const ICType& tracer_ic);
 
+    void initialize_scalar_tracer(const std::string name);
+
     template <typename VelocityType>
     void initialize_velocity();
 
     inline Int ntracers() const {return tracer_verts.size();}
 
-    std::string info_string(const int tab_lev=0) const;
+    std::string info_string(const int tab_lev=0) const /*override*/;
 
     void update_device() const override;
 
