@@ -30,7 +30,7 @@ macro(setup_platform)
   endif()
 
   include(lpm_find_trilinos)
-  include(lpm_find_spdlog)
+  include(lpm_build_spdlog)
   include(lpm_find_netcdf)
 
 #  if (APPLE)

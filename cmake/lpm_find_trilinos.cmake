@@ -20,4 +20,5 @@ else()
 endif()
 
 list(APPEND LPM_INCLUDE_DIRS ${Trilinos_INCLUDE_DIRS})
-list(APPEND LPM_LIBRARIES ${Trilinos_LIBRARIES})
+#list(APPEND LPM_LIBRARIES ${Trilinos_LIBRARIES})
+

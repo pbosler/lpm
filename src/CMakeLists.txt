@@ -54,9 +54,15 @@ add_library(lpm
                 )
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 add_dependencies(lpm update_version_info
-                     spdlog)
+                     spdlog
+                     Trilinos)
 
-target_link_libraries(lpm ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+target_link_libraries(lpm KokkosAlgorithms::kokkosalgorithms
+                          KokkosContainers::kokkoscontainers
+                          KokkosCore::kokkoscore
+                          KokkosKernels::kokkoskernels
+                          Compadre::compadre
+                          )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
 endif()

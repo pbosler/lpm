@@ -48,7 +48,7 @@ else()
   message(FATAL_ERROR "Invalid LPM_PRECISION: ${LPM_PRECISION} (use 'single' or 'double')")
 endif()
 
-# Add external libraries in-tree
+# Add external libraries
 set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES} )
 set(LPM_EXT_INCLUDE_DIRS ${MPI_C_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 #add_subdirectory(ext)
