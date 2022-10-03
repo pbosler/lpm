@@ -3,7 +3,7 @@
 
 #include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
-#include "Kokkos_Array.hpp"
+// #include "Kokkos_Array.hpp"
 #include "spdlog/fmt/ostr.h"
 #include "util/lpm_floating_point.hpp"
 #include <limits>
