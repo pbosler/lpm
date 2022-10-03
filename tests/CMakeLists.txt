@@ -1,3 +1,4 @@
+include(create_unit_test)
 enable_testing()
 
 #######################

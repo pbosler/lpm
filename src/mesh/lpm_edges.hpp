@@ -11,7 +11,6 @@
 #include "util/lpm_string_util.hpp"
 
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 
 namespace Lpm {
 

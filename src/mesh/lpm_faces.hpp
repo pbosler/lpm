@@ -9,7 +9,6 @@
 #include "mesh/lpm_mesh_seed.hpp"
 
 #include "Kokkos_Core.hpp"
-#include "Kokkos_View.hpp"
 
 namespace Lpm {
 
