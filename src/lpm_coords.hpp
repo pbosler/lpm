@@ -11,8 +11,10 @@
 
 namespace Lpm {
 
+#ifdef LPM_USE_NETCDF
 template <typename Geo> class NcWriter;
 class PolymeshReader;
+#endif
 
 /** \brief Coords class handles arrays of vectors in \f$\mathbb{R}^d\f$, where \f$d=2,3\f$.
 Templated on Geometry Type (e.g., SphereGeometry, PlaneGeometry).
@@ -29,9 +31,11 @@ template <typename Geo> class Coords {
     crd_view_type crds; ///< primary container --- a view of vectors in spatial coordinates
     n_view_type n; ///< number of vectors currently intialized
 
+#ifdef LPM_USE_NETCDF
     friend class NcWriter<Geo>;
 
     friend class PolymeshReader;
+#endif
 
     /** @brief Constructor.
 

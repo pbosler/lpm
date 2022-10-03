@@ -10,8 +10,10 @@
 
 namespace Lpm {
 
+#ifdef LPM_USE_NETCDF
 template <typename Geo> class NcWriter;
 class PolymeshReader;
+#endif
 
 /** @brief class for recording information stored at vertices in a mesh with
 vertices, edges, and faces.
@@ -37,10 +39,12 @@ class Vertices {
       }
     }
 
+#ifdef LPM_USE_NETCDF
     template <typename Geo>
     friend class NcWriter;
 
     friend class PolymeshReader;
+#endif
 
     Vertices(const Index nmax, std::shared_ptr<CoordsType> pcrds,
         std::shared_ptr<CoordsType> lcrds);
