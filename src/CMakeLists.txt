@@ -11,21 +11,7 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-# Generate a blank lpm_version.cpp file
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Generating initial lpm_version.cpp ..."
-)
-
-# update lpm version info
-add_custom_target(update_version_info ALL
-  COMMAND ${BASH} ${PROJECT_SOURCE_DIR}/tools/update_version_info.sh ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Updating lpm version info ..."
-)
-
 add_library(lpm
-                ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
                 lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
@@ -53,15 +39,14 @@ add_library(lpm
 #    LpmSWEGallery.cpp
                 )
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
-add_dependencies(lpm update_version_info
-                     spdlog
-                     Trilinos)
+add_dependencies(lpm spdlog)
 
 target_link_libraries(lpm KokkosAlgorithms::kokkosalgorithms
                           KokkosContainers::kokkoscontainers
                           KokkosCore::kokkoscore
                           KokkosKernels::kokkoskernels
                           Compadre::compadre
+                          spdlog
                           )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})

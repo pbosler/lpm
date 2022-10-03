@@ -16,19 +16,26 @@
 include(ExternalProject)
 include(GNUInstallDirs)
 
-set(SPDLOG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
-set(SPDLOG_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-set(SPDLOG_LIBRARY "${SPDLOG_LIBRARY_DIR}/libspdlog.a")
-message(STATUS "Building spdlog library: ${SPDLOG_LIBRARY}")
-set(LPM_NEEDS_SPDLOG_BUILD TRUE)
+define_property(GLOBAL PROPERTY SPDLOG_BUILT
+  BRIEF_DOCS "Whether spdlog has been built"
+  FULL_DOCS "Used to ensure spdlog only gets built once.")
 
-add_library(spdlog STATIC IMPORTED GLOBAL)
-set_target_properties(spdlog PROPERTIES IMPORTED_LOCATION ${SPDLOG_LIBRARY})
-list(APPEND LPM_EXT_INCLUDE_DIRS ${SPDLOG_INCLUDE_DIR})
-set(LPM_EXT_LIBRARIES spdlog;${LPM_EXT_LIBRARIES})
-set(SPDLOG_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-if (LPM_NEEDS_SPDLOG_BUILD)
- set(SPDLOG_CMAKE_OPTS -DCMAKE_INSTALL_PREFIX=${SPDLOG_INSTALL_PREFIX}
+get_property(IS_SPDLOG_BUILT GLOBAL PROPERTY SPDLOG_BUILT SET)
+
+if (NOT IS_SPDLOG_BUILT)
+
+  set(SPDLOG_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+
+  set(SPDLOG_INCLUDE_DIR "${SPDLOG_INSTALL_PREFIX}/include")
+  set(SPDLOG_LIBRARY_DIR "${SPDLOG_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+  set(SPDLOG_LIBRARY "${SPDLOG_LIBRARY_DIR}/libspdlog.a")
+  message(STATUS "Building spdlog library: ${SPDLOG_LIBRARY}")
+
+  add_library(spdlog STATIC IMPORTED GLOBAL)
+  set_target_properties(spdlog PROPERTIES IMPORTED_LOCATION ${SPDLOG_LIBRARY})
+  list(APPEND LPM_EXT_INCLUDE_DIRS ${SPDLOG_INCLUDE_DIR})
+
+  set(SPDLOG_CMAKE_OPTS -DCMAKE_INSTALL_PREFIX=${SPDLOG_INSTALL_PREFIX}
                      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                      -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -39,7 +46,7 @@ if (LPM_NEEDS_SPDLOG_BUILD)
                      -DSPDLOG_INSTALL=ON
                      )
 
- ExternalProject_Add(spdlog_proj
+  ExternalProject_Add(spdlog_proj
          PREFIX ${CMAKE_CURRENT_BINARY_DIR}/ext/spdlog
          SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/spdlog
          BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/ext/spdlog
@@ -50,5 +57,9 @@ if (LPM_NEEDS_SPDLOG_BUILD)
          LOG_BUILD TRUE
          LOG_INSTALL TRUE
          )
- add_dependencies(spdlog spdlog_proj)
+  add_dependencies(spdlog spdlog_proj)
+
+
+
+
 endif()
