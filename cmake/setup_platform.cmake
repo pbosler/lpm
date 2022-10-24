@@ -32,6 +32,7 @@ macro(setup_platform)
   include(lpm_find_trilinos)
   include(lpm_build_spdlog)
   include(lpm_find_netcdf)
+  include(lpm_find_vtk)
 
 #  if (APPLE)
 #    set(LPM_USE_OPENMP FALSE)

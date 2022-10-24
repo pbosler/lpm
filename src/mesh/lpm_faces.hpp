@@ -12,8 +12,10 @@
 
 namespace Lpm {
 
+#ifdef LPM_USE_NETCDF
 template <typename Geo> class NcWriter; // fwd decl
 class PolymeshReader;
+#endif
 
 /** @brief Faces define panels.  Connected to Coords and Edges.
 
@@ -41,8 +43,10 @@ template <typename FaceKind, typename Geo> class Faces {
     typedef host_vertex_view host_edge_view;
     typedef typename scalar_view_type::HostMirror host_scalar;
 
+#ifdef LPM_USE_NETCDF
     friend class NcWriter<Geo>;
     friend class PolymeshReader;
+#endif
 
     mask_view_type mask; ///< non-leaf faces are masked
     vertex_view_type verts;  ///< indices to Coords on face edges, ccw order per face
@@ -115,8 +119,8 @@ template <typename FaceKind, typename Geo> class Faces {
         _hlevel = ko::create_mirror_view(level);
       }
 
-#ifdef LPM_HAVE_NETCDF
-  Faces(const PolyMeshReader& reader);
+#ifdef LPM_USE_NETCDF
+  Faces(const PolymeshReader& reader);
 #endif
 
     inline host_vertex_view verts_host() const {return _hostverts;}

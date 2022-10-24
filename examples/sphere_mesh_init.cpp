@@ -7,9 +7,13 @@
 #include "lpm_logger.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
+#endif
+#ifdef LPM_USE_NETCDF
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
+#endif
 #include <sstream>
 #include <string>
 #include <memory>
@@ -73,14 +77,17 @@ int main(int argc, char* argv[]) {
 
       logger.info(sphere->info_string());
 
+#ifdef LPM_USE_VTK
       /** Output mesh to a vtk file */
       VtkPolymeshInterface<seed_type> vtk(sphere);
       vtk.write(input.vtk_fname);
-
+#endif
+#ifdef LPM_USE_NETCDF
       /** Output mesh to a netCDF file */
       NcWriter<SphereGeometry> nc(input.nc_fname);
       nc.define_polymesh(*sphere);
       logger.debug(nc.info_string());
+#endif
   }
 
   ko::finalize();
