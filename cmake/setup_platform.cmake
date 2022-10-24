@@ -8,12 +8,18 @@ macro(setup_platform)
 #  endif()
 #
  # do we have openmp?
- find_package(OpenMP)
- if (OpenMP-NOTFOUND)
-   set(LPM_USE_OPENMP FALSE)
+ # TODO: Use Kokkos to determine this
+ if (APPLE)
+     set(LPM_USE_OPENMP FALSE)
+     find_package(Threads)
  else()
-   message(STATUS "setting LPM_USE_OPENMP")
-   set(LPM_USE_OPENMP TRUE)
+  find_package(OpenMP)
+  if (OpenMP_FOUND)
+     message(STATUS "setting LPM_USE_OPENMP")
+     set(LPM_USE_OPENMP TRUE)
+  else()
+    set(LPM_USE_OPENMP FALSE)
+  endif()
  endif()
 
   if (LPM_USE_OPENMP)
@@ -34,9 +40,7 @@ macro(setup_platform)
   include(lpm_find_netcdf)
   include(lpm_find_vtk)
 
-#  if (APPLE)
-#    set(LPM_USE_OPENMP FALSE)
-#  endif()
+
 #
 #  # Do we have bash?
 #  find_program(BASH bash)
