@@ -17,12 +17,6 @@
 
 namespace Lpm {
 
-  const char* version();
-
-  const char* revision();
-
-  bool has_uncomitted_changes();
-
 	typedef int Index;
 	typedef @LPM_REAL_TYPE@ Real;
 	typedef int Int;

@@ -11,8 +11,7 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-add_library(lpm
-                lpm_bve_sphere.cpp
+set(LPM_SOURCES lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
@@ -23,21 +22,34 @@ add_library(lpm
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
-                netcdf/lpm_netcdf.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
-                util/lpm_timer.cpp
-                vtk/lpm_vtk_io.cpp
+                util/lpm_timer.cpp)
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmOctreeLUT.cpp
 #    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
 #    LpmSWEGallery.cpp
-                )
+#                )
+
+if (LPM_USE_NETCDF)
+  LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
+    netcdf/lpm_polymesh_reader.cpp
+    netcdf/lpm_polymesh_writer.cpp)
+endif()
+
+if (LPM_USE_VTK)
+  LIST(APPEND LPM_SOURCES vtk/lpm_vtk_io.cpp)
+endif()
+
+add_library(lpm ${LPM_SOURCES})
+
+
+
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 add_dependencies(lpm spdlog)
 

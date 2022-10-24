@@ -2,8 +2,8 @@
 #include <algorithm>
 #include "util/lpm_floating_point.hpp"
 
-#ifdef LPM_HAVE_NETCDF
-#include "LpmNetCDF.hpp"
+#ifdef LPM_USE_NETCDF
+#include "netcdf/lpm_netcdf.hpp"
 #endif
 
 #include <sstream>
@@ -24,8 +24,8 @@ void Edges::insert_host(const Index o, const Index d, const Index l, const Index
   _hn_leaves() += 1;
 }
 
-#ifdef LPM_HAVE_NETCDF
-Edges::Edges(const PolyMeshReader& reader) : Edges(reader.nEdges()) {
+#ifdef LPM_USE_NETCDF
+Edges::Edges(const PolymeshReader& reader) : Edges(reader.n_edges()) {
   reader.fill_origs(_ho);
   reader.fill_dests(_hd);
   reader.fill_lefts(_hl);

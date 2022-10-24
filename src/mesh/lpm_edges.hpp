@@ -14,8 +14,10 @@
 
 namespace Lpm {
 
+#ifdef LPM_USE_NETCDF
 template <typename Geo> class NcWriter;
 class PolymeshReader;
+#endif
 
 /** @brief Edges of panels connect Coords to Faces
 
@@ -33,10 +35,14 @@ class Edges {
     typedef ko::View<Index*[2]> edge_tree_view; ///< Edge division results in a binary tree; this holds its data
     typedef typename edge_tree_view::HostMirror edge_tree_host;
 
+#ifdef LPM_USE_NETCDF
     template <typename Geo>
     friend class NcWriter;
 
     friend class PolymeshReader;
+
+    explicit Edges(const PolymeshReader& reader);
+#endif
 
     edge_view_type origs; ///< pointers to edge origin vertices
     edge_view_type dests; ///< pointers to edge destination vertices

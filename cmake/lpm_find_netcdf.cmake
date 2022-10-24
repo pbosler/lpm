@@ -103,7 +103,10 @@ if (LPM_ENABLE_NETCDF)
     #  to use a netcdf that was built without cmake.
     #
     set(netcdf_FOUND TRUE)
-    set(LPM_USE_NETCDF TRUE CACHE BOOL "netcdf is enabled, and all components are found.")
+    set(LPM_USE_NETCDF TRUE CACHE BOOL "netcdf: all components are found.")
+    if (LPM_USE_NETCDF)
+      message(STATUS "netcdf is enabled, and all components are found.")
+    endif()
     if (NETCDF_LIBRARY MATCHES ".so")
       add_library(netcdf SHARED IMPORTED GLOBAL)
     else()
