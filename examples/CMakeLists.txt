@@ -8,7 +8,7 @@ target_include_directories(sphere_mesh_init PUBLIC
         ${VTK_INCLUDE_DIRS}
         ${lpmtest_INCLUDE_DIRS}
         )
-target_link_libraries(sphere_mesh_init PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+target_link_libraries(sphere_mesh_init PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES} ${CMAKE_DL_LIBS})
 
 add_executable(bve_rotation bve_rotation.cpp)
 target_include_directories(bve_rotation PUBLIC
@@ -19,7 +19,7 @@ target_include_directories(bve_rotation PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${lpmtest_INCLUDE_DIRS}
   )
-target_link_libraries(bve_rotation PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES})
+target_link_libraries(bve_rotation PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
 else()
   message("VTK not found. Skipping examples:
       sphere_mesh_init
