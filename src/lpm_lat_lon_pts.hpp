@@ -3,7 +3,7 @@
 
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
-#include "lpm_matlab_io.hpp"
+#include "util/lpm_matlab_io.hpp"
 
 namespace Lpm {
 
