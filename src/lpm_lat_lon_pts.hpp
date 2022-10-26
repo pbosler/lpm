@@ -21,6 +21,9 @@ struct LatLonPts {
   LatLonPts(const int n_lat, const int n_lon);
 
   KOKKOS_INLINE_FUNCTION
+  Int n() const {return nlat*nlon;}
+
+  KOKKOS_INLINE_FUNCTION
   Int lat_idx(const Index pt_idx) const {return pt_idx/nlon;}
 
   KOKKOS_INLINE_FUNCTION

@@ -105,33 +105,7 @@ macro(setup_platform)
 #    message(STATUS "Building yaml-cpp library: ${YAMLCPP_LIBRARY}.")
 #    set(LPM_NEEDS_YAMLCPP_BUILD TRUE)
 #  endif()
-#
-#
 
-
-# if (SPDLOG_INCLUDE_DIR)
-#   if (NOT EXISTS ${SPDLOG_INCLUDE_DIR})
-#     message(FATAL_ERROR "Couldn't find spdlog include dir: ${SPDLOG_INCLUDE_DIR}")
-#   endif()
-#   message(STATUS "Using spdlog include dir: ${SPDLOG_INCLUDE_DIR}")
-# else()
-#   set(SPDLOG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include")
-# endif()
-# if (SPDLOG_LIBRARY)
-#   if (NOT EXISTS ${SPDLOG_LIBRARY})
-#     message(FATAL_ERROR "Couldn't find spdlog library: ${SPDLOG_LIBRARY}")
-#   endif()
-#   message(STATUS "Using spdlog library: ${SPDLOG_LIBRARY}")
-# else()
-#   set(SPDLOG_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
-#   set(SPDLOG_LIBRARY "${SPDLOG_LIBRARY_DIR}/libspdlog.a")
-#   message(STATUS "Building spdlog library: ${SPDLOG_LIBRARY}")
-#   set(LPM_NEEDS_SPDLOG_BUILD TRUE)
-# endif()
-#
-#
-##  get_filename_component(NETCDF_LIBRARY_DIR ${NETCDF_LIBRARY} DIRECTORY)
-#
 #  #
 #  # Boost (optional)
 #  #
@@ -152,45 +126,6 @@ macro(setup_platform)
 #  endif()
 #
 
-
-
-
-
-#
-#if (LPM_ENABLE_VTK)
-#  find_package(VTK COMPONENTS
-#    vtkCommonColor
-#    vtkCommonCore
-#    vtkCommonDataModel
-#    vtkIOMPIParallel
-#    vtkIOCore
-#    vtkIOGeometry
-#    vtkIOImage
-#    vtkIOLegacy
-#    vtkIOMPIImage
-#    vtkIOMPIParallel
-#    vtkIONetCDF
-#    vtkIOParallel
-#    vtkIOParallelNetCDF
-#    vtkIOXML
-#    vtkIOXMLParser
-#    vtkParallelCore
-#    vtkParallelMPI
-#  )
-#  if (NOT VTK_FOUND)
-#    message("VTK not found.")
-#  else()
-#    message("Found VTK Version: ${VTK_VERSION}")
-#    if (VTK_VERSION VERSION_LESS "9.0.0")
-#      set(LPM_USE_VTK TRUE)
-#    else ()
-#      message("lpm is not compatible with this version of VTK.")
-#    endif()
-#  endif()
-#endif()
-#
-#
-#
 #
 #  set(LPM_LIBRARY_DIRS ${HDF5_LIBRARY_DIR};${HDF5_HL_LIBRARY_DIR};${NETCDF_LIBRARY_DIR};${YAMLCPP_LIBRARY_DIR};${SPDLOG_LIBRARY_DIR};${BOOST_LIBRARY_DIR})
 #  set(LPM_INCLUDE_DIRS ${HDF5_INCLUDE_DIR};${TRILINOS_INCLUDE_DIR};${VTK_INCLUDE_DIR};${LPM_INCLUDE_DIRS};${SPDLOG_INCLUDE_DIR};${BOOST_INCLUDE_DIR})

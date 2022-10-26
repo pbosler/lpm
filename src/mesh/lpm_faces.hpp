@@ -230,6 +230,7 @@ template <typename FaceKind, typename Geo> class Faces {
     */
     template <typename CV>
     void set_kids_host(const Index ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (int i=0; i<4; ++i) {
         _hostkids(ind, i) = v(i);
       }
@@ -252,6 +253,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     template <typename CV>
     void set_verts_host(const Index& ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (Short i=0; i<nverts; ++i) {
         _hostverts(ind,i) = v[i];
       }
@@ -259,6 +261,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     template <typename CV>
     void set_edges_host(const Index& ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (Short i=0; i<nverts; ++i) {
         _hostedges(ind,i) = v[i];
       }

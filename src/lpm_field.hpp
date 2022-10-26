@@ -41,6 +41,9 @@ struct ScalarField {
       hview = ko::create_mirror_view(view);
     }
 
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Index i) const {return view(i);}
+
   std::string name;
   ekat::units::Units units;
   metadata_type metadata;
@@ -81,6 +84,9 @@ struct VectorField {
   std::string name;
   ekat::units::Units units;
   metadata_type metadata;
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Index i, Int j) const {return view(i,j);}
 
   void update_device() const {
     ko::deep_copy(view, hview);
