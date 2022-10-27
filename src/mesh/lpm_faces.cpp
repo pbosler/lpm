@@ -8,6 +8,79 @@
 namespace Lpm {
 
 template <typename FaceKind, typename Geo>
+void Faces<FaceKind,Geo>::leaf_crd_view(const typename Geo::crd_view_type leaf_crds) const {
+  LPM_REQUIRE(leaf_crds.extent(0) >= n_leaves_host());
+
+  Kokkos::parallel_for("Faces::leaf_crd_view", _nh(),
+    KOKKOS_CLASS_LAMBDA (const Index i) {
+      if (!has_kids(i)) {
+        for (int j=0; j<Geo::ndim; ++j) {
+          leaf_crds(leaf_idx(i),j) = phys_crds->crds(i,j);
+        }
+      }
+    }
+  );
+}
+
+template <typename FaceKind, typename Geo>
+typename Geo::crd_view_type Faces<FaceKind, Geo>::leaf_crd_view() const {
+  typename Geo::crd_view_type result("leaf_crds", n_leaves_host());
+  leaf_crd_view(result);
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
+void Faces<FaceKind, Geo>::leaf_field_vals(const scalar_view_type vals, const ScalarField<FaceField>& field) const {
+  LPM_ASSERT(vals.extent(0) >= n_leaves_host());
+  Kokkos::parallel_for("Faces::leaf_field_vals", _nh(),
+    KOKKOS_CLASS_LAMBDA (const Index i) {
+    if (!has_kids(i)) {
+      vals(leaf_idx(i)) = field.view(i);
+    }
+  });
+}
+
+template <typename FaceKind, typename Geo>
+scalar_view_type Faces<FaceKind, Geo>::leaf_field_vals(const ScalarField<FaceField>& field) const {
+  scalar_view_type result("leaf_field_vals", n_leaves_host());
+  leaf_field_vals(result, field);
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
+void Faces<FaceKind, Geo>::leaf_field_vals(const typename Geo::vec_view_type vals, const VectorField<Geo,FaceField>& field) const {
+  LPM_ASSERT(vals.extent(0) >= n_leaves_host());
+  Kokkos::parallel_for("Faces::leaf_field_vals", _nh(),
+    KOKKOS_CLASS_LAMBDA (const Index i) {
+      if (!has_kids(i)) {
+        for (int j=0; j<Geo::ndim; ++j) {
+          vals(leaf_idx(i),j) = field.view(i,j);
+        }
+      }
+  });
+}
+
+template <typename FaceKind, typename Geo>
+typename Geo::vec_view_type Faces<FaceKind, Geo>::leaf_field_vals(const VectorField<Geo,FaceField>& field) const {
+  typename Geo::vec_view_type result("leaf_field_vals", n_leaves_host());
+  leaf_field_vals(result, field);
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
+void Faces<FaceKind, Geo>::scan_leaves() const {
+  auto scan = leaf_idx;
+  Index result;
+  Kokkos::parallel_scan("Faces::scan_leaves", _nh(),
+    KOKKOS_LAMBDA (const Index i, Index& psum, bool is_final) {
+      if (is_final) scan(i) = psum;
+      psum += (has_kids(i) ? 0 : 1);
+    }, result);
+
+  LPM_ASSERT(result + 1 == n_leaves_host());
+}
+
+template <typename FaceKind, typename Geo>
 void Faces<FaceKind,Geo>::insert_host(const Index ctr_ind, ko::View<Index*,Host> vertinds, ko::View<Index*,Host> edgeinds, const Index prt, const Real ar) {
   LPM_REQUIRE_MSG(_nh()+1 <= _nmax, "Faces::insert error: not enough memory.");
   const Index ins = _nh();
@@ -398,5 +471,6 @@ template struct FaceDivider<PlaneGeometry, TriFace>;
 template struct FaceDivider<SphereGeometry, TriFace>;
 template struct FaceDivider<PlaneGeometry, QuadFace>;
 template struct FaceDivider<SphereGeometry, QuadFace>;
+
 
 }

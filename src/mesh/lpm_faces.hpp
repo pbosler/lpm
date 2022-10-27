@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_field.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
@@ -16,6 +17,7 @@ namespace Lpm {
 template <typename Geo> class NcWriter; // fwd decl
 class PolymeshReader;
 #endif
+
 
 /** @brief Faces define panels.  Connected to Coords and Edges.
 
@@ -58,6 +60,7 @@ template <typename FaceKind, typename Geo> class Faces {
     n_view_type n; ///< number of Faces currently defined
     n_view_type n_leaves; ///< number of leaf Faces
     scalar_view_type area; ///< Areas of each face
+    index_view_type leaf_idx; ///< index of leaf in leaf-only face array
 
     /** @brief Constructor.
 
@@ -75,7 +78,8 @@ template <typename FaceKind, typename Geo> class Faces {
       area("area", nmax),
       n_leaves("n_leaves"),
       mask("mask",nmax),
-      level("level",nmax) {
+      level("level",nmax),
+      leaf_idx("leaf_idx", nmax) {
       _hostverts = ko::create_mirror_view(verts);
       _hostedges = ko::create_mirror_view(edges);
       _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -147,6 +151,7 @@ template <typename FaceKind, typename Geo> class Faces {
       ko::deep_copy(level, _hlevel);
       phys_crds->update_device();
       lag_crds->update_device();
+      scan_leaves();
     }
 
     /** @brief Copies data from device to Host
@@ -208,6 +213,27 @@ template <typename FaceKind, typename Geo> class Faces {
     */
     void insert_host(const Index ctr_ind, ko::View<Index*,Host> vertinds,
       ko::View<Index*,Host> edgeinds, const Index prt=constants::NULL_IND, const Real ar = 0.0);
+
+
+    /** Populate a view of coordinates that only includes leaf faces.
+
+      View must have been allocated already.
+    */
+    void leaf_crd_view(const typename Geo::crd_view_type leaf_crds) const;
+
+    /** Allocate and populate a view of coordinates that only includes
+      leaf faces.
+    */
+    typename Geo::crd_view_type leaf_crd_view() const;
+
+
+    void leaf_field_vals(const scalar_view_type vals, const ScalarField<FaceField>& field) const;
+
+    scalar_view_type leaf_field_vals(const ScalarField<FaceField>& field) const;
+
+    void leaf_field_vals(const typename Geo::vec_view_type vals, const VectorField<Geo,FaceField>& field) const;
+
+    typename Geo::vec_view_type leaf_field_vals(const VectorField<Geo,FaceField>& field) const;
 
 
     /** @brief Returns true if a face has been divided
@@ -371,6 +397,8 @@ template <typename FaceKind, typename Geo> class Faces {
     host_scalar _hostarea;
 
     Index _nmax;
+
+    void scan_leaves() const;
 };
 
 template <typename Geo, typename FaceType> struct FaceDivider {

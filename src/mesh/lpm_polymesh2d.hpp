@@ -143,6 +143,11 @@ template <typename SeedType> class PolyMesh2d {
     KOKKOS_INLINE_FUNCTION
     Index n_faces() const {return faces.n();}
 
+    template <typename VT>
+    void get_leaf_face_crds(VT leaf_crds) const;
+
+    typename SeedType::geo::crd_view_type get_leaf_face_crds() const;
+
 
     /** @brief Number of initialized vertices
 

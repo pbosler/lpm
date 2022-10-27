@@ -16,6 +16,7 @@
 #include "catch.hpp"
 #include <memory>
 
+
 using namespace Lpm;
 
 TEST_CASE ("faces test", "[mesh]") {
@@ -81,8 +82,22 @@ TEST_CASE ("faces test", "[mesh]") {
       constants::ZERO_TOL));
     logger.info("tri hex faces:\n {}", plane_tri.info_string("divide face 0"));
 
-
     plane_tri.update_device();
+    auto fcrds = plane_tri.phys_crds->get_host_crd_view();
+    auto leaf_crds = plane_tri.leaf_crd_view();
+    auto h_leaf_crds = Kokkos::create_mirror_view(leaf_crds);
+    auto h_leaf_idx = Kokkos::create_mirror_view(plane_tri.leaf_idx);
+    Kokkos::deep_copy(h_leaf_crds, leaf_crds);
+    Kokkos::deep_copy(h_leaf_idx, plane_tri.leaf_idx);
+
+    for (int i=0; i<plane_tri.nh(); ++i) {
+      logger.info("face idx {} leaf idx {} (x, y) = ({}, {}), leaf(x,y) = ({}, {})",
+        i, h_leaf_idx(i), fcrds(i,0), fcrds(i,1),
+        leaf_crds(h_leaf_idx(i), 0), leaf_crds(h_leaf_idx(i),1));
+    }
+
+
+
     std::cout << "face tree:" << std::endl;
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
         printf("------------Parallel region------------\n");
