@@ -13,6 +13,7 @@
 #include "lpm_lat_lon_pts.hpp"
 #include "lpm_field.hpp"
 #include "lpm_vorticity_gallery.hpp"
+#include "lpm_tracer_gallery.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_polymesh2d_functions.hpp"
 #include "util/lpm_timer.hpp"
@@ -35,12 +36,47 @@ struct Input {
   Int tree_depth;
   Int gmls_order;
   Int gmls_eps;
-  Int nlon;
+  Int nunif;
   std::string m_filename;
 
   Input(const std::map<std::string,std::string>& params);
 
   std::string info_string() const;
+};
+
+struct PlanarGrid {
+  Kokkos::View<Real*[2]> pts;
+  Kokkos::View<Real*> wts;
+  typename Kokkos::View<Real*[2]>::HostMirror h_pts;
+  typename Kokkos::View<Real*>::HostMirror h_wts;
+  Real xmin;
+  Real xmax;
+  Real ymin;
+  Real ymax;
+
+  PlanarGrid(const int n, const Real xmi, const Real xma) :
+    pts("pts", n*n),
+    wts("wts", n*n),
+    xmin(xmi),
+    xmax(xma),
+    ymin(xmi),
+    ymax(xma) {
+
+    h_pts = Kokkos::create_mirror_view(pts);
+    h_wts = Kokkos::create_mirror_view(wts);
+
+    const Real dx = (xmax - xmin)/(n-1);
+    const Real dy = (ymin - ymax)/(n-1);
+    for (int i=0; i<n*n; ++i) {
+      const Int ii = i/n;
+      const Int jj = i%n;
+      h_pts(i, 0) = xmin + ii*dx;
+      h_pts(i, 1) = ymin + jj*dy;
+      h_wts(i) = dx*dy;
+    }
+    Kokkos::deep_copy(pts, h_pts);
+    Kokkos::deep_copy(wts, h_wts);
+  }
 };
 
 TEST_CASE("compadre_unit_tests", "") {
@@ -54,6 +90,90 @@ TEST_CASE("compadre_unit_tests", "") {
   logger.info(input.info_string());
 
   SECTION("plane geometry") {
+
+    const Real radius = 6;
+
+    PolyMeshParameters<QuadRectSeed> qr_params(input.tree_depth, radius);
+    auto quad_plane = std::shared_ptr<PolyMesh2d<QuadRectSeed>>(new
+      PolyMesh2d<QuadRectSeed>(qr_params));
+
+    logger.info(quad_plane->info_string());
+
+    PlanarGaussian gaussian;
+
+    ScalarField<VertexField> gaussian_verts("gaussian",
+      quad_plane->n_vertices_host());
+    ScalarField<FaceField> gaussian_faces("gaussian",
+      quad_plane->n_faces_host());
+
+    auto vcrds = quad_plane->vertices.phys_crds->crds;
+    auto fcrds = quad_plane->faces.phys_crds->crds;
+    Kokkos::parallel_for(quad_plane->n_vertices_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        gaussian_verts.view(i) = gaussian(Kokkos::subview(vcrds, i, Kokkos::ALL));
+      });
+    Kokkos::parallel_for(quad_plane->n_faces_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        gaussian_faces.view(i) = gaussian(Kokkos::subview(fcrds, i, Kokkos::ALL));
+      });
+
+    auto src_crds = quad_plane->get_leaf_face_crds();
+    auto h_src_crds = Kokkos::create_mirror_view(src_crds);
+    auto src_data = quad_plane->faces.leaf_field_vals(gaussian_faces);
+    Kokkos::deep_copy(h_src_crds, src_crds);
+
+#ifdef LPM_USE_VTK
+  VtkPolymeshInterface<QuadRectSeed> vtk(quad_plane);
+  vtk.add_scalar_point_data(gaussian_verts.view);
+  vtk.add_scalar_cell_data(gaussian_faces.view);
+  vtk.write("compadre_plane_test.vtp");
+#endif
+
+    PlanarGrid grid(input.nunif, -radius, radius);
+    gmls::Params gmls_params(input.gmls_order, PlaneGeometry::ndim);
+    gmls_params.topo_dim = 2;
+    gmls_params.ambient_dim = 2;
+    gmls::Neighborhoods face_neighbors(h_src_crds, grid.h_pts, gmls_params);
+
+    logger.info(face_neighbors.info_string());
+
+    const std::vector<Compadre::TargetOperation> gmls_ops =
+      {Compadre::ScalarPointEvaluation,
+       Compadre::LaplacianOfScalarPointEvaluation};
+
+    auto scalar_gmls = gmls::plane_scalar_gmls(src_crds,
+      grid.pts, face_neighbors, gmls_params, gmls_ops);
+
+    Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
+
+    auto gaussian_gmls =
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+        src_data,
+        Compadre::ScalarPointEvaluation,
+        Compadre::PointSample);
+    auto lap_gaussian_gmls =
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+        src_data,
+        Compadre::LaplacianOfScalarPointEvaluation,
+        Compadre::PointSample);
+
+    Kokkos::View<Real*> grid_gaussian("gaussian_exact", grid.pts.extent(0));
+    Kokkos::View<Real*> grid_lap_gaussian("laplacian_gauss_exact", grid.pts.extent(0));
+    Kokkos::parallel_for(grid.pts.extent(0),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto xy = Kokkos::subview(grid.pts, i, Kokkos::ALL);
+        grid_gaussian(i) = gaussian(xy);
+        grid_lap_gaussian(i) = gaussian.laplacian(xy);
+      });
+
+    Kokkos::View<Real*> gauss_err("gaussian_error", grid.pts.extent(0));
+    Kokkos::View<Real*> gauss_lap_err("laplacian_gauss_err", grid.pts.extent(0));
+
+    ErrNorms gauss_err_norms(gauss_err, gaussian_gmls, grid_gaussian, grid.wts);
+    ErrNorms lap_gauss_err_norms(gauss_lap_err, lap_gaussian_gmls, grid_lap_gaussian, grid.wts);
+
+    logger.info("interpolation error: {}", gauss_err_norms.info_string());
+    logger.info("laplacian error: {}", lap_gauss_err_norms.info_string());
   }
 
   SECTION("sphere geometry") {
@@ -79,9 +199,13 @@ TEST_CASE("compadre_unit_tests", "") {
         rh54_faces.view(i) = rh54(fcrds(i,0), fcrds(i,1), fcrds(i,2));
       });
 
+    auto src_crds = trisphere->get_leaf_face_crds();
+    auto h_src_crds = Kokkos::create_mirror_view(src_crds);
+    Kokkos::deep_copy(h_src_crds, src_crds);
+
     // target points will be a uniform lat-lon grid
-    const Real nlat = input.nlon/2 + 1;
-    const Real nlon = input.nlon;
+    const int nlat = input.nunif/2 + 1;
+    const int nlon = input.nunif;
     LatLonPts ll(nlat, nlon);
 
     Kokkos::View<Real*> ll_rh54("rh54_exact", ll.n());
@@ -92,9 +216,15 @@ TEST_CASE("compadre_unit_tests", "") {
       ll_lap_rh54(i) = -30*zeta;
     });
 
+#ifdef LPM_USE_VTK
+  VtkPolymeshInterface<IcosTriSphereSeed> vtk(trisphere);
+  vtk.add_scalar_point_data(rh54_verts.view);
+  vtk.add_scalar_cell_data(rh54_faces.view);
+  vtk.write("compadre_sphere_test.vtp");
+#endif
+
     gmls::Params gmls_params(input.gmls_order);
-    gmls::Neighborhoods face_neighbors(trisphere->faces.phys_crds->get_host_crd_view(),
-      ll.h_pts, gmls_params);
+    gmls::Neighborhoods face_neighbors(h_src_crds, ll.h_pts, gmls_params);
 
     logger.info(face_neighbors.info_string());
 
@@ -102,19 +232,20 @@ TEST_CASE("compadre_unit_tests", "") {
       {Compadre::ScalarPointEvaluation,
        Compadre::LaplacianOfScalarPointEvaluation};
 
-    auto scalar_gmls = sphere_scalar_gmls(trisphere->faces.phys_crds->crds,
+    auto scalar_gmls = gmls::sphere_scalar_gmls(src_crds,
       ll.pts, face_neighbors, gmls_params, gmls_ops);
 
     Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
 
+    auto src_data = trisphere->faces.leaf_field_vals(rh54_faces);
     auto rh54_gmls =
       gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
-        rh54_faces.view,
+        src_data,
         Compadre::ScalarPointEvaluation,
         Compadre::PointSample);
     auto lap_rh54_gmls =
       gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
-        rh54_faces.view,
+        src_data,
         Compadre::LaplacianOfScalarPointEvaluation,
         Compadre::PointSample);
 
@@ -132,7 +263,7 @@ Input::Input(const std::map<std::string, std::string>& params) {
   tree_depth = 4;
   gmls_order = 3;
   gmls_eps = 2;
-  nlon = 60;
+  nunif = 60;
   m_filename = "compadre_tests.m";
   for (const auto& p : params) {
     if (p.first == "tree_depth") {
@@ -144,8 +275,8 @@ Input::Input(const std::map<std::string, std::string>& params) {
     else if (p.first == "gmls_eps") {
       gmls_eps = std::stod(p.second);
     }
-    else if (p.first == "nlon") {
-      nlon = std::stoi(p.second);
+    else if (p.first == "n") {
+      nunif = std::stoi(p.second);
     }
     else if (p.first == "m_filename") {
       m_filename = p.second;
@@ -160,7 +291,7 @@ std::string Input::info_string() const {
   ss << tab << "tree_depth = " << tree_depth << "\n"
      << tab << "gmls_order = " << gmls_order << "\n"
      << tab << "gmls_eps   = " << gmls_eps << "\n"
-     << tab << "nlon       = " << nlon << "\n"
+     << tab << "nunif      = " << nunif << "\n"
      << tab << "m_filename = " << m_filename << "\n";
   return ss.str();
 }

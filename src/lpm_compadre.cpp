@@ -4,6 +4,7 @@
 #include "Compadre_PointCloudSearch.hpp"
 
 #include <sstream>
+#include <iostream>
 
 namespace Lpm {
 namespace gmls {
@@ -39,6 +40,22 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
   neighborhood_radii = Kokkos::View<Real*>("neighborhood_radii",
      host_tgt_crds.extent(0));
   auto h_radii = Kokkos::create_mirror_view(neighborhood_radii);
+
+  {
+    std::cout << "min neighbors = " << params.min_neighbors << "\n";
+    std::cout << "est_max_neighbors = " << est_max_neighbors << "\n";
+    std::cout << "extents = " << neighbor_lists.extent(0) << " " << neighbor_lists.extent(1) << "\n";
+    constexpr bool dry_run = true;
+    point_cloud_search.generate2DNeighborListsFromKNNSearch(dry_run,
+      host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
+      params.eps_multiplier);
+
+    Index max_n = 0;
+    for (Index i=0; i<h_neighbors.extent(0); ++i) {
+      if (h_neighbors(i,0) > max_n) max_n = h_neighbors(i,0);
+    }
+    std::cout << "max_n = " << max_n << "\n";
+  }
 
   constexpr bool dry_run = false;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(dry_run,

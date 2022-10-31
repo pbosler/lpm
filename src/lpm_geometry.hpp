@@ -63,8 +63,8 @@ struct PlaneGeometry {
     return mag(bma);
   }
 
-  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
-  static Real tri_area(const CV& va, const CV2& vb, const CV2& vc) {
+  template <typename CV, typename CV2, typename CV3> KOKKOS_INLINE_FUNCTION
+  static Real tri_area(const CV& va, const CV2& vb, const CV3& vc) {
     Real bma[2], cma[2];
     bma[0] = vb[0] - va[0];
     bma[1] = vb[1] - va[1];
@@ -296,6 +296,15 @@ struct SphereGeometry {
     c[0] = a[1]*b[2] - a[2]*b[1];
     c[1] = a[2]*b[0] - a[0]*b[2];
     c[2] = a[0]*b[1] - a[1]*b[0];
+  }
+
+  /** sum y = a*x + y
+  */
+  template <typename CV, typename V> KOKKOS_INLINE_FUNCTION
+  static void axpy (const Real& a, const CV x, V y) {
+    y[0] += a*x[0];
+    y[1] += a*x[1];
+    y[2] += a*x[2];
   }
 
   /** \brief Computes the dot product of two vectors
