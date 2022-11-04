@@ -22,6 +22,8 @@ std::string field_loc_string(const FieldLocation& floc);
 
 template <FieldLocation FL>
 struct ScalarField {
+  typedef scalar_view_type view_type;
+  static constexpr FieldLocation field_loc = FL;
   static constexpr int ndim = 1;
   scalar_view_type view;
   typename scalar_view_type::HostMirror hview;
@@ -62,6 +64,8 @@ struct ScalarField {
 
 template <typename Geo, FieldLocation FL>
 struct VectorField {
+  typedef typename Geo::vec_view_type view_type;
+  static constexpr FieldLocation field_loc = FL;
   static constexpr int ndim = Geo::ndim;
   typename Geo::vec_view_type view;
   typename Geo::vec_view_type::HostMirror hview;
@@ -86,7 +90,7 @@ struct VectorField {
   metadata_type metadata;
 
   KOKKOS_INLINE_FUNCTION
-  Real operator() (const Index i, Int j) const {return view(i,j);}
+  Real operator() (const Index i, const Int j) const {return view(i,j);}
 
   void update_device() const {
     ko::deep_copy(view, hview);

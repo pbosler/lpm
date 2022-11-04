@@ -7,7 +7,6 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#include "mesh/lpm_polymesh2d_functions.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_string_util.hpp"
 // #include "lpm_constants.hpp"
@@ -120,62 +119,29 @@ struct PlanePolyMeshFnUnitTest {
       Kokkos::parallel_for(7, KOKKOS_LAMBDA (const Index i) {
 
         if (i==0) {
-          get_leaf_edges_from_parent<Kokkos::View<Index*>,QuadRectSeed>(
-            leaf_edges0,
-            n_leaf_edges0(),
-            0,
-            edges_kids);
+          qr0->get_leaf_edges_from_parent(leaf_edges0, n_leaf_edges0(), 0);
         }
         else if (i==1) {
-          ccw_edges_around_face<Kokkos::View<Index*>,QuadRectSeed>(
-            leaf_edges7,
-            n_leaf_edges7(),
-            7,
-            faces_edges,
-            edges_lefts,
-            edges_kids);
+          qr0->ccw_edges_around_face(leaf_edges7, n_leaf_edges7(), 7);
         }
         else if (i==2) {
-          ccw_adjacent_faces<Kokkos::View<Index*>, QuadRectSeed>(
-            adj_faces5,
-            n_adj5(),
-            5,
-            faces_edges,
-            edges_lefts,
-            edges_rights,
-            edges_kids);
+          qr0->ccw_adjacent_faces(adj_faces5, n_adj5(), 5);
         }
         else if (i==3) {
           fidx0() =
-            locate_point_walk_search<Kokkos::View<Real*>, QuadRectSeed>(qp,
-              2,
-              edges_lefts,
-              edges_rights,
-              edges_kids,
-              faces_edges,
-              face_xy);
+            qr0->locate_pt_walk_search(qp, 2);
         }
         else if (i==4) {
           ridx() =
-            nearest_root_face<Kokkos::View<Real*>, QuadRectSeed>(qp, face_xy);
+            qr0->nearest_root_face(qp);
         }
         else if (i==5) {
           fidx1() =
-            locate_point_tree_search<Kokkos::View<Real*>, QuadRectSeed>(
-              qp,
-              0,
-              face_xy,
-              faces_kids);
+            qr0->locate_pt_tree_search(qp, 0);
         }
         else if (i==6) {
           fidx2() =
-            locate_face_containing_pt<Kokkos::View<Real*>, QuadRectSeed>(qp,
-              edges_lefts,
-              edges_rights,
-              edges_kids,
-              face_xy,
-              faces_kids,
-              faces_edges);
+            qr0->locate_face_containing_pt(qp);
         }
       });
 

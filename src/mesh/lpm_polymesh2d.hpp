@@ -9,6 +9,15 @@
 #include "lpm_logger.hpp"
 #include "Kokkos_Core.hpp"
 
+#ifdef LPM_USE_COMPOSE
+#include "compose/siqk_sqr.hpp"
+#endif
+
+#ifndef NDEBUG
+#include "util/lpm_string_util.hpp"
+#include <iostream>
+#include <sstream>
+#endif
 
 #include <memory>
 
@@ -172,6 +181,168 @@ template <typename SeedType> class PolyMesh2d {
     Vertices<Coords<Geo>> vertices;
     Edges edges;
     Faces<FaceType, Geo> faces;
+
+    KOKKOS_INLINE_FUNCTION
+    bool edge_is_positive(const Index edge_idx, const Index face_idx) const {
+      LPM_KERNEL_ASSERT(face_idx == edges.lefts(edge_idx) or
+                        face_idx == edges.rights(edge_idx));
+      return face_idx == edges.lefts(edge_idx);
+    }
+
+    template <typename EdgeList=Index*> KOKKOS_INLINE_FUNCTION
+    void get_leaf_edges_from_parent(EdgeList& edge_list, Int& n_leaves,
+      const Index parent_edge_idx) const {
+      edge_list[0] = parent_edge_idx;
+      n_leaves = 1;
+      bool keep_going = edges.has_kids(parent_edge_idx);
+      while (keep_going) {
+        Int n_new = 0;
+        keep_going = false;
+        for (int i=0; i<n_leaves; ++i) {
+          if (edges.has_kids(edge_list[i])) {
+            // replace parent idx in list with its kids
+            const auto kid0 = edges.kids(edge_list[i], 0);
+            const auto kid1 = edges.kids(edge_list[i], 1);
+            // kid0 will replace its parent, but
+            // need to make room for kid1 at idx i + 1
+            for (int j=i+1; j<n_leaves; ++j) {
+              edge_list[j+1] = edge_list[j];
+            }
+            edge_list[i] = kid0;
+            edge_list[i+1] = kid1;
+            if (edges.has_kids(kid0) or edges.has_kids(kid1)) {
+              keep_going = true;
+            }
+            ++n_new;
+          }
+        }
+        n_leaves += n_new;
+      }
+    }
+
+    template <typename EdgeList=Index*> KOKKOS_INLINE_FUNCTION
+    void ccw_edges_around_face(EdgeList& face_leaf_edges, Int& n_leaf_edges,
+      const Index face_idx) const {
+      n_leaf_edges = 0;
+      for (int i=0; i<SeedType::nfaceverts; ++i) {
+        Index leaf_edge_list[2*LPM_MAX_AMR_LIMIT];
+        Int n_leaves_this_edge = 0;
+        get_leaf_edges_from_parent(leaf_edge_list, n_leaves_this_edge,
+          faces.edges(face_idx, i));
+#ifndef NDEBUG
+        std::ostringstream ss;
+        ss << "face " << face_idx << " edge " << i << " ("
+           << faces.edges(face_idx,i) << ") : n_leaves_this_edge = "
+           << n_leaves_this_edge << " "
+           << sprarr("leaf_edge_list", leaf_edge_list, n_leaves_this_edge) << "\n";
+        std::cout << ss.str();
+#endif
+        if (edge_is_positive(faces.edges(face_idx, i), face_idx)) {
+          for (int j=0; j<n_leaves_this_edge; ++j) {
+            face_leaf_edges[n_leaf_edges+j] = leaf_edge_list[j];
+          }
+        }
+        else {
+          const Int last_idx = n_leaf_edges + n_leaves_this_edge -1;
+          for (int j=0; j<n_leaves_this_edge; ++j) {
+            face_leaf_edges[last_idx - j] = leaf_edge_list[j];
+          }
+        }
+        n_leaf_edges += n_leaves_this_edge;
+      }
+    }
+
+    template <typename FaceList=Index*> KOKKOS_INLINE_FUNCTION
+    void ccw_adjacent_faces(FaceList& adj_faces, Int& n_adj, const Index face_idx) const {
+      Index leaf_edge_list[2*SeedType::nfaceverts*LPM_MAX_AMR_LIMIT];
+      Int n_leaf_edges = 0;
+      ccw_edges_around_face(leaf_edge_list, n_leaf_edges, face_idx);
+
+      n_adj = n_leaf_edges;
+
+      for (int i=0; i<n_leaf_edges; ++i) {
+        if (edge_is_positive(leaf_edge_list[i], face_idx)) {
+          adj_faces[i] = edges.rights(leaf_edge_list[i]);
+        }
+        else {
+          adj_faces[i] = edges.lefts(leaf_edge_list[i]);
+        }
+      }
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_pt_walk_search(const Point& query_pt, const Index face_start_idx) const {
+      Index result = LPM_NULL_IDX;
+      Index current_idx = result;
+      auto fcrd = Kokkos::subview(faces.phys_crds->crds, current_idx, Kokkos::ALL);
+      Real dist = SeedType::geo::distance(query_pt, fcrd);
+
+      bool keep_going = true;
+      while (keep_going) {
+        Index adj_face_list[8*LPM_MAX_AMR_LIMIT];
+        Int n_adj;
+        result = current_idx;
+        ccw_adjacent_faces(adj_face_list, n_adj, current_idx);
+        for (int i=0; i<n_adj; ++i) {
+          fcrd = Kokkos::subview(faces.phys_crds->crds, adj_face_list[i], Kokkos::ALL);
+          Real test_dist = SeedType::geo::distance(fcrd, query_pt);
+          if (test_dist < dist) {
+            dist = test_dist;
+            current_idx = adj_face_list[i];
+          }
+        }
+        keep_going = (current_idx != result);
+      }
+      return result;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index nearest_root_face(const Point& query_pt) const {
+      Index result = 0;
+      auto x0 = Kokkos::subview(faces.phys_crds->crds, 0, Kokkos::ALL);
+      Real dist = SeedType::geo::distance(query_pt, x0);
+      for (int i=1; i<SeedType::nfaces; ++i) {
+        x0 = Kokkos::subview(faces.phys_crds->crds, i, Kokkos::ALL);
+        const Real test_dist = SeedType::geo::distance(x0, query_pt);
+        if (test_dist < dist) {
+          dist = test_dist;
+          result = i;
+        }
+      }
+      return result;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_pt_tree_search(const Point& query_pt, const Index root_face) const {
+      bool keep_going = true;
+      Index current_idx = root_face;
+      Index next_idx = LPM_NULL_IDX;
+      Real dist = std::numeric_limits<Real>::max();
+      while (keep_going) {
+        if (faces.has_kids(current_idx) > 0) {
+          for (int k=0; k<4; ++k) {
+            const auto fx = Kokkos::subview(faces.phys_crds->crds, faces.kids(current_idx, k), Kokkos::ALL);
+            const Real test_dist = SeedType::geo::distance(query_pt, fx);
+            if (test_dist < dist) {
+              next_idx = faces.kids(current_idx, k);
+              dist = test_dist;
+            }
+          }
+          current_idx = next_idx;
+        }
+        else {
+          keep_going = false;
+        }
+      }
+      return current_idx;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_face_containing_pt(const Point& query_pt) const {
+      const auto tree_start = nearest_root_face(query_pt);
+      const auto walk_start = locate_pt_tree_search(query_pt, tree_start);
+      return locate_pt_walk_search(query_pt, walk_start);
+    }
 
     Real surface_area_host() const {
       return faces.surface_area_host();

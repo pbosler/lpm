@@ -39,6 +39,8 @@ class Vertices {
       }
     }
 
+    template <typename MeshSeedType> friend class PolyMesh2d;
+
 #ifdef LPM_USE_NETCDF
     template <typename Geo>
     friend class NcWriter;

@@ -34,16 +34,20 @@ All initialization / changes occur on host.  Device arrays are const.
 */
 template <typename FaceKind, typename Geo> class Faces {
   public:
+    typedef FaceKind faceKind;
+    typedef Geo geo;
     typedef ko::View<Index*[FaceKind::nverts]> vertex_view_type;
     typedef vertex_view_type edge_view_type;
     typedef ko::View<Index*[4]> face_tree_view;
-    template <typename Geom, typename FaceType> friend struct FaceDivider;
     static constexpr Int nverts = FaceKind::nverts;
     typedef typename face_tree_view::HostMirror face_tree_host;
     typedef typename index_view_type::HostMirror host_index_view;
     typedef typename vertex_view_type::HostMirror host_vertex_view;
     typedef host_vertex_view host_edge_view;
     typedef typename scalar_view_type::HostMirror host_scalar;
+
+    template <typename Geom, typename FaceType> friend struct FaceDivider;
+    template <typename MeshSeedType> friend class PolyMesh2d;
 
 #ifdef LPM_USE_NETCDF
     friend class NcWriter<Geo>;
@@ -124,7 +128,7 @@ template <typename FaceKind, typename Geo> class Faces {
       }
 
 #ifdef LPM_USE_NETCDF
-  Faces(const PolymeshReader& reader);
+  explicit Faces(const PolymeshReader& reader);
 #endif
 
     inline host_vertex_view verts_host() const {return _hostverts;}

@@ -15,7 +15,6 @@
 #include "lpm_vorticity_gallery.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#include "mesh/lpm_polymesh2d_functions.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_test_utils.hpp"
 

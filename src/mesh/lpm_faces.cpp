@@ -4,6 +4,8 @@
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_floating_point.hpp"
 #include <iomanip>
+#include <iostream>
+#include <sstream>
 
 namespace Lpm {
 
@@ -77,7 +79,18 @@ void Faces<FaceKind, Geo>::scan_leaves() const {
       psum += (has_kids(i) ? 0 : 1);
     }, result);
 
-  LPM_ASSERT(result + 1 == n_leaves_host());
+#ifndef NDEBUG
+if (result != n_leaves_host() ) {
+  auto h_leaf_idx = Kokkos::create_mirror_view(leaf_idx);
+  Kokkos::deep_copy(h_leaf_idx, leaf_idx);
+  std::ostringstream ss;
+  ss << "Faces::scan_leaves error: expected " << n_leaves_host()
+    << " but result = " << result << "\n"
+    << sprarr("faces.leaf_idx", h_leaf_idx.data(), n_leaves_host()) << "\n";
+  std::cout << ss.str();
+}
+#endif
+  LPM_ASSERT(result == n_leaves_host());
 }
 
 template <typename FaceKind, typename Geo>

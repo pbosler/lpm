@@ -35,6 +35,7 @@ class Edges {
     typedef ko::View<Index*[2]> edge_tree_view; ///< Edge division results in a binary tree; this holds its data
     typedef typename edge_tree_view::HostMirror edge_tree_host;
 
+    template <typename MeshSeedType> friend class PolyMesh2d;
 #ifdef LPM_USE_NETCDF
     template <typename Geo>
     friend class NcWriter;
