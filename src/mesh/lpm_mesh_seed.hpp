@@ -51,7 +51,7 @@ struct QuadRectSeed {
   static constexpr Int nfaceverts = 4;
   static constexpr Int vertex_degree = 4;
   static std::string filename() {return "quadRectSeed.dat";}
-  static std::string id_string() {return "quad_rect_seed";}
+  static std::string id_string() {return "quad_rect";}
   static std::string id() {return "qrect";}
   static std::string face_str() {return "quad";}
   static Index n_faces_at_tree_level(const Int lev);
@@ -170,7 +170,7 @@ template <typename SeedType> struct MeshSeed {
     seed_face_edges("seed face edges"), seed_vert_edges("seed vertex edges") {read_file();}
 
   /// constructor. Multiplies radius of mesh.
-  MeshSeed(const Real& maxr);
+  explicit MeshSeed(const Real& maxr);
 
   /// id_string
   static std::string id_string() {return SeedType::id_string();}

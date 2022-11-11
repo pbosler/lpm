@@ -89,6 +89,21 @@ struct PlaneGeometry {
     scale(1.0/n, v);
   }
 
+  template <typename V, typename CV, typename Poly> KOKKOS_INLINE_FUNCTION
+  static void barycenter(V v, const CV pts, const Poly& poly, const Int n) {
+    set_zero(v);
+    for (int i=0; i<n; ++i) {
+      v[0] += pts(poly[i],0);
+      v[1] += pts(poly[i],1);
+    }
+    scale(1.0/n, v);
+  }
+
+  template <typename V> KOKKOS_INLINE_FUNCTION
+  static void negate(V& v) {
+    scale(-1, v);
+  }
+
   template <typename CV> KOKKOS_INLINE_FUNCTION
   static Real polygon_area(const CV& v, const Int n) {
     Real ar = 0;
