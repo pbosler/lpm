@@ -35,6 +35,7 @@ class Edges {
     typedef ko::View<Index*[2]> edge_tree_view; ///< Edge division results in a binary tree; this holds its data
     typedef typename edge_tree_view::HostMirror edge_tree_host;
 
+    template <typename MeshSeedType> friend class PolyMesh2d;
 #ifdef LPM_USE_NETCDF
     template <typename Geo>
     friend class NcWriter;
@@ -88,6 +89,15 @@ class Edges {
 
     // currently, edges are modified only the host (for AMR).
     void update_host() const {}
+
+    template <typename V, typename VertCrds> KOKKOS_INLINE_FUNCTION
+    void edge_vector(V& evec, const VertCrds& vcrds, const Index e_idx) const {
+      const auto dest_crd = Kokkos::subview(vcrds, dests[e_idx], Kokkos::ALL);
+      const auto orig_crd = Kokkos::subview(vcrds, origs[e_idx], Kokkos::ALL);
+      for (int i=0; i<dest_crd.extent(0); ++i) {
+        evec[i] = dest_crd[i] - orig_crd[i];
+      }
+    }
 
     /** \brief Returns true if the edge is on the boundary of the domain
 

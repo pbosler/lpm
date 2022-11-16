@@ -57,6 +57,10 @@ CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
 
 CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
 
+CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
+
+CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)

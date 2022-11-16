@@ -20,7 +20,7 @@ static std::string sprarr (const std::string& name, const T* const v, const size
   std::ostringstream ss;
   ss << name << ": ";
   for (size_t i = 0; i < n; ++i) ss << " " << v[i];
-  ss << "\n";
+//   ss << "\n";
   return ss.str();
 }
 

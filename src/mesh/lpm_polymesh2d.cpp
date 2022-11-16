@@ -86,6 +86,18 @@ void PolyMesh2d<SeedType>::update_host() const {
     faces.update_host();
 }
 
+template <typename SeedType> template <typename VT>
+void PolyMesh2d<SeedType>::get_leaf_face_crds(VT leaf_crds) const {
+  faces.leaf_crd_view(leaf_crds);
+}
+
+template <typename SeedType>
+typename SeedType::geo::crd_view_type PolyMesh2d<SeedType>::get_leaf_face_crds() const {
+  typename SeedType::geo::crd_view_type result("face_leaf_crds", n_faces_host());
+  faces.leaf_crd_view(result);
+  return result;
+}
+
 template <typename SeedType>
 std::string PolyMesh2d<SeedType>::info_string(const std::string& label, const int& tab_level, const bool& dump_all) const {
   std::ostringstream ss;

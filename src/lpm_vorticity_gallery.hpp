@@ -29,13 +29,15 @@ using Kokkos::Tuple;
 struct SolidBodyRotation {
   static constexpr Real OMEGA = 2*constants::PI;
 
-  inline Real operator() (const Real& x, const Real& y, const Real& z) const  {return 2*OMEGA*z;}
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y, const Real& z) const  {return 2*OMEGA*z;}
 
   inline Real operator() (const Real& x, const Real& y) const  {return 0;}
 
   inline std::string name() const  {return "rotation";}
 
-  inline void init_velocity(Real& u, Real& v, Real& w,
+  KOKKOS_INLINE_FUNCTION
+  void init_velocity(Real& u, Real& v, Real& w,
     const Real& x, const Real& y, const Real& z) const {
     u = -OMEGA*y;
     v =  OMEGA*x;
@@ -48,7 +50,8 @@ struct NitscheStricklandVortex  {
 
   inline Real operator() (const Real& x, const Real& y, const Real& z) const  {return 0;}
 
-  inline Real operator() (const Real& x, const Real& y) const  {
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y) const  {
     const Real rsq = square(x) + square(y);
     const Real r = sqrt(rsq);
     return (3*safe_divide(r) - 2*b*r)*rsq*std::exp(-b*rsq);
@@ -56,7 +59,8 @@ struct NitscheStricklandVortex  {
 
   inline std::string name() const  {return "Nitsche&Strickland";}
 
-  inline void init_velocity(Real& u, Real& v, const Real& x, const Real& y) const {
+  KOKKOS_INLINE_FUNCTION
+  void init_velocity(Real& u, Real& v, const Real& x, const Real& y) const {
     const Real rsq = square(x) + square(y);
     const Real utheta = rsq*std::exp(-b*rsq);
     const Real theta = std::atan2(y,x);
@@ -71,24 +75,56 @@ struct GaussianVortexSphere  {
   Real shape_parameter;
   Kokkos::Tuple<Real,3> xyz_ctr;
 
-  GaussianVortexSphere(const Real str, const Real b, const Tuple<Real,3> ctr) :
+  KOKKOS_INLINE_FUNCTION
+  GaussianVortexSphere(const Real str=4*constants::PI,
+                       const Real b=4,
+                       const Real init_lon = 0,
+                       const Real init_lat = constants::PI/20) :
     gauss_const(0),
     vortex_strength(str),
-    xyz_ctr(ctr) {}
+    xyz_ctr({cos(init_lon)*cos(init_lat),
+             sin(init_lon)*cos(init_lat),
+             sin(init_lat)}) {}
 
+  KOKKOS_INLINE_FUNCTION
   void set_gauss_const(const Real vorticity_sum, const Index n_leaf_faces) {
     gauss_const = vorticity_sum / (4*constants::PI);
   }
 
-  inline Real operator() (const Real& x, const Real& y, const Real& z) const  {
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y, const Real& z) const  {
     const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];
     return vortex_strength * exp(-square(shape_parameter)*distsq) - gauss_const;
   }
 
-  inline Real operator() (const Real& x, const Real& y) const  {return 0;}
+  Real operator() (const Real& x, const Real& y) const  {return 0;}
 
   inline std::string name() const  {return "SphericalGaussianVortex";}
 
+};
+
+struct RossbyHaurwitz54 {
+  Real u0;
+  Real rh54_amplitude;
+
+  KOKKOS_INLINE_FUNCTION
+  RossbyHaurwitz54(const Real zonal_background_velocity=0, const Real wave_amp=1) :
+    u0(zonal_background_velocity),
+    rh54_amplitude(wave_amp) {}
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y) const  {return 0;}
+
+  std::string name() const  {return "RossbyHaurwitz54";}
+
+  KOKKOS_INLINE_FUNCTION
+  Real legendreP54(const Real z) const {return z*square(square(z)-1);}
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y, const Real& z) const  {
+    const Real lon = atan4(y,x);
+    return 2*u0*z + 30*rh54_amplitude*cos(4*lon) * legendreP54(z);
+  }
 };
 
 #ifdef LPM_USE_BOOST
@@ -131,26 +167,7 @@ struct CollidingDipolePairPlane {
 
   std::string name() const  {return "PlanarCollidingDipoles";}
 };
-
-struct RossbyHaurwitz54 {
-  Real u0;
-  Real rh54_amplitude;
-
-  RossbyHaurwitz54(const Real zonal_background_velocity, const Real wave_amp) :
-    u0(zonal_background_velocity),
-    rh54_amplitude(wave_amp) {}
-
-  inline Real operator() (const Real& x, const Real& y) const  {return 0;}
-
-  std::string name() const  {return "RossbyHaurwitz54";}
-
-  inline Real operator() (const Real& x, const Real& y, const Real& z) const  {
-    const Real lon = atan4(y,x);
-    return 2*u0*z + 30*rh54_amplitude*cos(4*lon) * legendre_p(5,4,z);
-  }
-};
 #endif
-
 
 }
 #endif

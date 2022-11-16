@@ -6,6 +6,7 @@
 #include "lpm_constants.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include <cassert>
 
@@ -63,8 +64,8 @@ struct PlaneGeometry {
     return mag(bma);
   }
 
-  template <typename CV, typename CV2> KOKKOS_INLINE_FUNCTION
-  static Real tri_area(const CV& va, const CV2& vb, const CV2& vc) {
+  template <typename CV, typename CV2, typename CV3> KOKKOS_INLINE_FUNCTION
+  static Real tri_area(const CV& va, const CV2& vb, const CV3& vc) {
     Real bma[2], cma[2];
     bma[0] = vb[0] - va[0];
     bma[1] = vb[1] - va[1];
@@ -72,6 +73,11 @@ struct PlaneGeometry {
     cma[1] = vc[1] - va[1];
     const Real ar = bma[0]*cma[1] - bma[1]*cma[0];
     return 0.5*std::abs(ar);
+  }
+
+  template <typename CV, typename CV2, typename CV3> KOKKOS_INLINE_FUNCTION
+  static Real cartesian_tri_area(const CV& a, const CV2& b, const CV3& c) {
+    return tri_area(a, b, c);
   }
 
   template <typename V> KOKKOS_INLINE_FUNCTION
@@ -87,6 +93,21 @@ struct PlaneGeometry {
       v[1] += cv(i,1);
     }
     scale(1.0/n, v);
+  }
+
+  template <typename V, typename CV, typename Poly> KOKKOS_INLINE_FUNCTION
+  static void barycenter(V v, const CV pts, const Poly& poly, const Int n) {
+    set_zero(v);
+    for (int i=0; i<n; ++i) {
+      v[0] += pts(poly[i],0);
+      v[1] += pts(poly[i],1);
+    }
+    scale(1.0/n, v);
+  }
+
+  template <typename V> KOKKOS_INLINE_FUNCTION
+  static void negate(V& v) {
+    scale(-1, v);
   }
 
   template <typename CV> KOKKOS_INLINE_FUNCTION
@@ -298,6 +319,15 @@ struct SphereGeometry {
     c[2] = a[0]*b[1] - a[1]*b[0];
   }
 
+  /** sum y = a*x + y
+  */
+  template <typename CV, typename V> KOKKOS_INLINE_FUNCTION
+  static void axpy (const Real& a, const CV x, V y) {
+    y[0] += a*x[0];
+    y[1] += a*x[1];
+    y[2] += a*x[2];
+  }
+
   /** \brief Computes the dot product of two vectors
 
     \param a view of a position vector a = [a0,a1,a2]
@@ -424,6 +454,18 @@ struct SphereGeometry {
     normalize(v);
   }
 
+  template <typename V, typename CV, typename Poly> KOKKOS_INLINE_FUNCTION
+  static void barycenter(V v, const CV pts, const Poly& poly, const Int n) {
+    set_zero(v);
+    for (int i=0; i<n; ++i) {
+      v[0] += pts(poly[i], 0);
+      v[1] += pts(poly[i], 1);
+      v[2] += pts(poly[i], 2);
+    }
+    scale(1.0/n, v);
+    normalize(v);
+  }
+
   /** \brief Computes the spherical midpoint between two vectors on the sphere
 
     \param v output vector, contains the coordinates of the midpoint
@@ -450,9 +492,26 @@ struct SphereGeometry {
     const Real s2 = distance(b, c);
     const Real s3 = distance(c, a);
     const Real half_perim = 0.5*(s1 + s2 + s3);
-    const Real zz = std::tan(0.5*half_perim) * std::tan(0.5*(half_perim-s1)) * std::tan(0.5*(half_perim-s2)) *
+    Real zz = std::tan(0.5*half_perim) * std::tan(0.5*(half_perim-s1)) * std::tan(0.5*(half_perim-s2)) *
       std::tan(0.5*(half_perim-s3));
-    return 4*std::atan(std::sqrt(zz));
+    if (FloatingPoint<Real>::zero(zz)) {
+      // guard against (0 - epsilon)
+      zz = 0;
+    }
+    return 4*atan(sqrt(zz));
+  }
+
+  template <typename CV, typename CV2, typename CV3> KOKKOS_INLINE_FUNCTION
+  static Real cartesian_tri_area(const CV& a, const CV2& b, const CV3& c) {
+    Real ab[3];
+    Real ac[3];
+    for (Int i=0; i<3; ++i) {
+      ab[i] = b[i] - a[i];
+      ac[i] = c[i] - a[i];
+    }
+    Real cp[3];
+    cross(cp, ab, ac);
+    return 0.5*mag(cp);
   }
 
   /** \brief  Computes the area of the spherical polygon, given its vertices and centroid

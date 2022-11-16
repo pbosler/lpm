@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_field.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
@@ -16,6 +17,7 @@ namespace Lpm {
 template <typename Geo> class NcWriter; // fwd decl
 class PolymeshReader;
 #endif
+
 
 /** @brief Faces define panels.  Connected to Coords and Edges.
 
@@ -32,16 +34,20 @@ All initialization / changes occur on host.  Device arrays are const.
 */
 template <typename FaceKind, typename Geo> class Faces {
   public:
+    typedef FaceKind faceKind;
+    typedef Geo geo;
     typedef ko::View<Index*[FaceKind::nverts]> vertex_view_type;
     typedef vertex_view_type edge_view_type;
     typedef ko::View<Index*[4]> face_tree_view;
-    template <typename Geom, typename FaceType> friend struct FaceDivider;
     static constexpr Int nverts = FaceKind::nverts;
     typedef typename face_tree_view::HostMirror face_tree_host;
     typedef typename index_view_type::HostMirror host_index_view;
     typedef typename vertex_view_type::HostMirror host_vertex_view;
     typedef host_vertex_view host_edge_view;
     typedef typename scalar_view_type::HostMirror host_scalar;
+
+    template <typename Geom, typename FaceType> friend struct FaceDivider;
+    template <typename MeshSeedType> friend class PolyMesh2d;
 
 #ifdef LPM_USE_NETCDF
     friend class NcWriter<Geo>;
@@ -58,6 +64,7 @@ template <typename FaceKind, typename Geo> class Faces {
     n_view_type n; ///< number of Faces currently defined
     n_view_type n_leaves; ///< number of leaf Faces
     scalar_view_type area; ///< Areas of each face
+    index_view_type leaf_idx; ///< index of leaf in leaf-only face array
 
     /** @brief Constructor.
 
@@ -75,7 +82,8 @@ template <typename FaceKind, typename Geo> class Faces {
       area("area", nmax),
       n_leaves("n_leaves"),
       mask("mask",nmax),
-      level("level",nmax) {
+      level("level",nmax),
+      leaf_idx("leaf_idx", nmax) {
       _hostverts = ko::create_mirror_view(verts);
       _hostedges = ko::create_mirror_view(edges);
       _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -120,7 +128,7 @@ template <typename FaceKind, typename Geo> class Faces {
       }
 
 #ifdef LPM_USE_NETCDF
-  Faces(const PolymeshReader& reader);
+  explicit Faces(const PolymeshReader& reader);
 #endif
 
     inline host_vertex_view verts_host() const {return _hostverts;}
@@ -147,6 +155,7 @@ template <typename FaceKind, typename Geo> class Faces {
       ko::deep_copy(level, _hlevel);
       phys_crds->update_device();
       lag_crds->update_device();
+      scan_leaves();
     }
 
     /** @brief Copies data from device to Host
@@ -210,6 +219,27 @@ template <typename FaceKind, typename Geo> class Faces {
       ko::View<Index*,Host> edgeinds, const Index prt=constants::NULL_IND, const Real ar = 0.0);
 
 
+    /** Populate a view of coordinates that only includes leaf faces.
+
+      View must have been allocated already.
+    */
+    void leaf_crd_view(const typename Geo::crd_view_type leaf_crds) const;
+
+    /** Allocate and populate a view of coordinates that only includes
+      leaf faces.
+    */
+    typename Geo::crd_view_type leaf_crd_view() const;
+
+
+    void leaf_field_vals(const scalar_view_type vals, const ScalarField<FaceField>& field) const;
+
+    scalar_view_type leaf_field_vals(const ScalarField<FaceField>& field) const;
+
+    void leaf_field_vals(const typename Geo::vec_view_type vals, const VectorField<Geo,FaceField>& field) const;
+
+    typename Geo::vec_view_type leaf_field_vals(const VectorField<Geo,FaceField>& field) const;
+
+
     /** @brief Returns true if a face has been divided
 
       @hostfn
@@ -230,6 +260,7 @@ template <typename FaceKind, typename Geo> class Faces {
     */
     template <typename CV>
     void set_kids_host(const Index ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (int i=0; i<4; ++i) {
         _hostkids(ind, i) = v(i);
       }
@@ -252,6 +283,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     template <typename CV>
     void set_verts_host(const Index& ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (Short i=0; i<nverts; ++i) {
         _hostverts(ind,i) = v[i];
       }
@@ -259,6 +291,7 @@ template <typename FaceKind, typename Geo> class Faces {
 
     template <typename CV>
     void set_edges_host(const Index& ind, const CV v) {
+      LPM_ASSERT(ind < _nh());
       for (Short i=0; i<nverts; ++i) {
         _hostedges(ind,i) = v[i];
       }
@@ -368,6 +401,8 @@ template <typename FaceKind, typename Geo> class Faces {
     host_scalar _hostarea;
 
     Index _nmax;
+
+    void scan_leaves() const;
 };
 
 template <typename Geo, typename FaceType> struct FaceDivider {

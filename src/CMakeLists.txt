@@ -15,8 +15,10 @@ set(LPM_SOURCES lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
+                lpm_compadre.cpp
                 lpm_error.cpp
                 lpm_field.cpp
+                lpm_lat_lon_pts.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
@@ -78,9 +80,12 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
               lpm_coords.hpp
+              lpm_compadre.hpp
               lpm_geometry.hpp
               lpm_logger.hpp
               lpm_sphere_functions.hpp
+              lpm_lat_lon_pts.hpp
+              lpm_matlab_io.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp

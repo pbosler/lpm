@@ -7,8 +7,19 @@
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
 #include "lpm_logger.hpp"
+#include "util/lpm_floating_point.hpp"
+
 #include "Kokkos_Core.hpp"
 
+#ifdef LPM_USE_COMPOSE
+#include "compose/siqk_sqr.hpp"
+#endif
+
+#ifndef NDEBUG
+#include "util/lpm_string_util.hpp"
+#include <iostream>
+#include <sstream>
+#endif
 
 #include <memory>
 
@@ -59,7 +70,8 @@ template <typename SeedType> class PolyMesh2d {
   PolyMesh2d(const Index nmaxverts, const Index nmaxedges, const Index nmaxfaces) :
     vertices(nmaxverts),
     edges(nmaxedges),
-    faces(nmaxfaces) {
+    faces(nmaxfaces),
+    radius(1) {
       vertices.phys_crds = coords_ptr(new coords_type(nmaxverts));
       vertices.lag_crds = coords_ptr(new coords_type(nmaxverts));
       faces.phys_crds = coords_ptr(new coords_type(nmaxfaces));
@@ -69,7 +81,9 @@ template <typename SeedType> class PolyMesh2d {
   PolyMesh2d(const PolyMeshParameters<SeedType>& params) :
     vertices(params.nmaxverts),
     edges(params.nmaxedges),
-    faces(params.nmaxfaces) {
+    faces(params.nmaxfaces),
+    radius(params.radius)
+     {
       vertices.phys_crds = coords_ptr(new coords_type(params.nmaxverts));
       vertices.lag_crds = coords_ptr(new coords_type(params.nmaxverts));
       faces.phys_crds = coords_ptr(new coords_type(params.nmaxfaces));
@@ -85,6 +99,9 @@ template <typename SeedType> class PolyMesh2d {
       Adaptive refinement adds to this level.
     */
     Int base_tree_depth;
+
+    /// initial radius of mesh
+    Real radius;
 
     /** @brief Return a subview of all initialized vertices' physical coordinates
 
@@ -143,6 +160,11 @@ template <typename SeedType> class PolyMesh2d {
     KOKKOS_INLINE_FUNCTION
     Index n_faces() const {return faces.n();}
 
+    template <typename VT>
+    void get_leaf_face_crds(VT leaf_crds) const;
+
+    typename SeedType::geo::crd_view_type get_leaf_face_crds() const;
+
 
     /** @brief Number of initialized vertices
 
@@ -167,6 +189,444 @@ template <typename SeedType> class PolyMesh2d {
     Vertices<Coords<Geo>> vertices;
     Edges edges;
     Faces<FaceType, Geo> faces;
+
+    KOKKOS_INLINE_FUNCTION
+    bool edge_is_positive(const Index edge_idx, const Index face_idx) const {
+      return face_idx == edges.lefts(edge_idx);
+    }
+
+    template <typename EdgeList=Index*> KOKKOS_INLINE_FUNCTION
+    void get_leaf_edges_from_parent(EdgeList& edge_list, Int& n_leaves,
+      const Index parent_edge_idx) const {
+      LPM_KERNEL_ASSERT_MSG(parent_edge_idx != LPM_NULL_IDX, "PolyMesh2d::get_leaf_edges_from_parent");
+      edge_list[0] = parent_edge_idx;
+      n_leaves = 1;
+      bool keep_going = edges.has_kids(parent_edge_idx);
+      while (keep_going) {
+        Int n_new = 0;
+        keep_going = false;
+        for (int i=0; i<n_leaves; ++i) {
+          if (edges.has_kids(edge_list[i])) {
+            // replace parent idx in list with its kids
+            const auto kid0 = edges.kids(edge_list[i], 0);
+            const auto kid1 = edges.kids(edge_list[i], 1);
+            // kid0 will replace its parent, but
+            // need to make room for kid1 at idx i + 1
+            for (int j=i+1; j<n_leaves; ++j) {
+              edge_list[j+1] = edge_list[j];
+            }
+            edge_list[i] = kid0;
+            edge_list[i+1] = kid1;
+            if (edges.has_kids(kid0) or edges.has_kids(kid1)) {
+              keep_going = true;
+            }
+            ++n_new;
+          }
+        }
+        n_leaves += n_new;
+      }
+    }
+
+    template <typename EdgeList=Index*> KOKKOS_INLINE_FUNCTION
+    void ccw_edges_around_face(EdgeList& face_leaf_edges, Int& n_leaf_edges,
+      const Index face_idx) const {
+      LPM_KERNEL_ASSERT_MSG(face_idx != LPM_NULL_IDX, "PolyMesh2d::ccw_edges_around_face");
+      n_leaf_edges = 0;
+      for (int i=0; i<SeedType::nfaceverts; ++i) {
+        Index leaf_edge_list[2*LPM_MAX_AMR_LIMIT];
+        Int n_leaves_this_edge = 0;
+        get_leaf_edges_from_parent(leaf_edge_list, n_leaves_this_edge,
+          faces.edges(face_idx, i));
+        if (edge_is_positive(faces.edges(face_idx, i), face_idx)) {
+          for (int j=0; j<n_leaves_this_edge; ++j) {
+            face_leaf_edges[n_leaf_edges+j] = leaf_edge_list[j];
+          }
+        }
+        else {
+          const Int last_idx = n_leaf_edges + n_leaves_this_edge -1;
+          for (int j=0; j<n_leaves_this_edge; ++j) {
+            face_leaf_edges[last_idx - j] = leaf_edge_list[j];
+          }
+        }
+        n_leaf_edges += n_leaves_this_edge;
+      }
+    }
+
+    template <typename FaceList=Index*> KOKKOS_INLINE_FUNCTION
+    void ccw_adjacent_faces(FaceList& adj_faces, Int& n_adj, const Index face_idx) const {
+      LPM_KERNEL_ASSERT_MSG(face_idx != LPM_NULL_IDX, "PolyMesh2d::ccw_adjacent_faces");
+      Index leaf_edge_list[2*SeedType::nfaceverts*LPM_MAX_AMR_LIMIT];
+      Int n_leaf_edges = 0;
+      ccw_edges_around_face(leaf_edge_list, n_leaf_edges, face_idx);
+
+      n_adj = 0;
+      for (int i=0; i<n_leaf_edges; ++i) {
+        if (edge_is_positive(leaf_edge_list[i], face_idx)) {
+          adj_faces[n_adj++] = edges.rights(leaf_edge_list[i]);
+        }
+        else {
+          adj_faces[n_adj++] = edges.lefts(leaf_edge_list[i]);
+        }
+      }
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_pt_walk_search(const Point& query_pt, const Index face_start_idx) const {
+      LPM_KERNEL_ASSERT_MSG(face_start_idx != LPM_NULL_IDX, "PolyMesh2d::locate_pt_walk_search");
+      LPM_KERNEL_ASSERT_MSG(!faces.has_kids(face_start_idx),
+        "PolyMesh2d::locate_pt_walk_search is leaf-only.");
+      Index result;
+      Index current_idx = face_start_idx;
+      auto fcrd = Kokkos::subview(faces.phys_crds->crds, current_idx, Kokkos::ALL);
+      Real dist = SeedType::geo::distance(query_pt, fcrd);
+      // search all adjacent faces
+      bool keep_going = true;
+      while (keep_going) {
+        Index adj_face_list[8*LPM_MAX_AMR_LIMIT];
+        Int n_adj;
+        result = current_idx;
+        ccw_adjacent_faces(adj_face_list, n_adj, current_idx);
+        for (int i=0; i<n_adj; ++i) {
+          if (adj_face_list[i] != LPM_NULL_IDX) { // skip external faces
+            const auto poly = Kokkos::subview(faces.verts, adj_face_list[i], Kokkos::ALL);
+            Real face_centroid[Geo::ndim];
+            Geo::barycenter(face_centroid,
+              vertices.phys_crds->crds, poly,
+              SeedType::nfaceverts);
+            Real test_dist = SeedType::geo::distance(face_centroid, query_pt);
+            // continue search at adjacent face, if it's closer than current
+            if (test_dist < dist) {
+              dist = test_dist;
+              current_idx = adj_face_list[i];
+            }
+          }
+        }
+        keep_going = (current_idx != result);
+      }
+      return result;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index nearest_root_face(const Point& query_pt) const {
+      Index result = 0;
+      auto x0 = Kokkos::subview(faces.phys_crds->crds, 0, Kokkos::ALL);
+      Real dist = SeedType::geo::distance(query_pt, x0);
+      for (int i=1; i<SeedType::nfaces; ++i) {
+        x0 = Kokkos::subview(faces.phys_crds->crds, i, Kokkos::ALL);
+        const Real test_dist = SeedType::geo::distance(x0, query_pt);
+        if (test_dist < dist) {
+          dist = test_dist;
+          result = i;
+        }
+      }
+      return result;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_pt_tree_search(const Point& query_pt, const Index root_face) const {
+      Index current_idx = root_face;
+      Index next_idx;
+      bool keep_going = faces.has_kids(current_idx);
+      while (keep_going) {
+        // initialize with kid 0
+        auto fx = Kokkos::subview(faces.phys_crds->crds, faces.kids(current_idx, 0),
+           Kokkos::ALL);
+        Real dist = Geo::distance(fx, query_pt);
+        next_idx = faces.kids(current_idx, 0);
+        for (int k=1; k<4; ++k) {
+          // replace kid 0 with any closer kids
+          fx = Kokkos::subview(faces.phys_crds->crds, faces.kids(current_idx, k),
+            Kokkos::ALL);
+          const Real test_dist = Geo::distance(query_pt, fx);
+          if (test_dist < dist) {
+            next_idx = faces.kids(current_idx, k);
+            dist = test_dist;
+          }
+        }
+        current_idx = next_idx;
+        // continue if not at a leaf
+        keep_going = faces.has_kids(current_idx);
+      }
+      return current_idx;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    bool pt_is_outside_mesh(const Point& pt, const Index face_idx) const {
+      bool result = false;
+      if constexpr (std::is_same<Geo, PlaneGeometry>::value) {
+        Index leaf_edge_list[2*SeedType::nfaceverts*LPM_MAX_AMR_LIMIT];
+        Int n_leaf_edges = 0;
+        ccw_edges_around_face(leaf_edge_list, n_leaf_edges, face_idx);
+        Int boundary_edges = 0;
+        for (int i=0; i<n_leaf_edges; ++i) {
+          if (edges.on_boundary(leaf_edge_list[i])) {
+            ++boundary_edges;
+          }
+        }
+        if (boundary_edges > 0) {
+          const auto poly = Kokkos::subview(faces.verts, face_idx, Kokkos::ALL);
+          Real face_centroid[2];
+          Geo::barycenter(face_centroid,
+            vertices.phys_crds->crds, poly,
+            SeedType::nfaceverts);
+          const Real intr_dist = Geo::distance(pt, face_centroid);
+          for (int i=0; i<n_leaf_edges; ++i) {
+            if (edges.on_boundary(leaf_edge_list[i])) {
+              Real q_vec[2];
+              edges.edge_vector(q_vec, vertices.phys_crds->crds, leaf_edge_list[i]);
+              auto v0 = Kokkos::subview(vertices.phys_crds->crds,
+                 edges.origs(leaf_edge_list[i]), Kokkos::ALL);
+              if (!edge_is_positive(leaf_edge_list[i], face_idx)) {
+                Geo::negate(q_vec);
+                v0 = Kokkos::subview(vertices.phys_crds->crds,
+                  edges.dests(leaf_edge_list[i]), Kokkos::ALL);
+              }
+              Geo::normalize(q_vec);
+              Real p_vec[2];
+              for (int i=0; i<2; ++i) {
+                p_vec[i] = face_centroid[i] - v0[i];
+              }
+              Real reflection[2];
+              const Real dotp = Geo::dot(p_vec, q_vec);
+              for (int i=0; i<2; ++i) {
+                reflection[i] = face_centroid[i] - 2*(p_vec[i] - dotp*q_vec[i]);
+              }
+              const Real extr_dist = Geo::distance(pt, reflection);
+              if (extr_dist < intr_dist) {
+                result = true;
+              }
+            }
+          }
+        }
+      }
+      return result;
+    }
+
+    template <typename Point> KOKKOS_INLINE_FUNCTION
+    Index locate_face_containing_pt(const Point& query_pt) const {
+      const auto tree_start = nearest_root_face(query_pt);
+      const auto walk_start = locate_pt_tree_search(query_pt, tree_start);
+      if constexpr (std::is_same<Geo, PlaneGeometry>::value) {
+        if (pt_is_outside_mesh(query_pt, walk_start)) {
+          return LPM_NULL_IDX;
+        }
+      }
+      return locate_pt_walk_search(query_pt, walk_start);
+    }
+
+    template <typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    void triangular_barycentric_coords(VT& bc, const CVT& pt) const {
+      const auto f_idx = locate_face_containing_pt(pt);
+      LPM_KERNEL_ASSERT( f_idx != LPM_NULL_IDX );
+      const auto tri = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
+      const auto vertexA = Kokkos::subview(vertices.phys_crds->crds, tri[0], Kokkos::ALL);
+      const auto vertexB = Kokkos::subview(vertices.phys_crds->crds, tri[1], Kokkos::ALL);
+      const auto vertexC = Kokkos::subview(vertices.phys_crds->crds, tri[2], Kokkos::ALL);
+      const Real total_area = Geo::tri_area(vertexA, vertexB, vertexC);
+      const Real area_a = Geo::tri_area(pt, vertexB, vertexC);
+      const Real area_b = Geo::tri_area(pt, vertexC, vertexA);
+      const Real area_c = Geo::tri_area(pt, vertexA, vertexB);
+      LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(total_area, faces.area[f_idx]));
+      LPM_KERNEL_ASSERT(area_a >= 0);
+      LPM_KERNEL_ASSERT(area_b >= 0);
+      LPM_KERNEL_ASSERT(area_c >= 0);
+      LPM_KERNEL_ASSERT(total_area >= 0);
+      bc[0] = area_a / total_area;
+      bc[1] = area_b / total_area;
+      bc[2] = area_c / total_area;
+    }
+
+    template <typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    void ref_elem_coords(VT& ref, const CVT& pt) const {
+      return ref_elem_impl<FaceType, VT, CVT>(ref, pt);
+    }
+
+    template <typename Face, typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    typename std::enable_if<
+      std::is_same<Face, TriFace>::value, void>::type
+    ref_elem_impl(VT& ref, const CVT& pt) const {
+      triangular_barycentric_coords(ref, pt);
+    }
+
+
+    template <typename Face, typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    typename std::enable_if<
+      std::is_same<Face, QuadFace>::value, void>::type
+    ref_elem_impl(VT& ref, const CVT& pt) const {
+      quad_ref<Geo, VT, CVT>(ref, pt);
+    }
+
+    Real KOKKOS_INLINE_FUNCTION
+    quad_quadratic_solve(const Real a, const Real b, const Real c) const {
+      const Real disc = square(b) - 4*a*c;
+      LPM_KERNEL_ASSERT(disc >= 0);
+      const Real r0 = (-b + sqrt(disc))/(2*a);
+      const Real r1 = (-b - sqrt(disc))/(2*a);
+      if (FloatingPoint<Real>::in_bounds(r0, -1, 1)) {
+        LPM_KERNEL_ASSERT(!FloatingPoint<Real>::in_bounds(r1, -1, 1));
+        return r0;
+      }
+      else {
+        LPM_KERNEL_ASSERT(FloatingPoint<Real>::in_bounds(r1, -1, 1));
+        return r1;
+      }
+    }
+
+    template <typename GeoType, typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    typename std::enable_if<std::is_same<GeoType, SphereGeometry>::value,
+      void>::type
+      quad_ref(VT& ref, const CVT& pt) const {
+#ifndef LPM_USE_COMPOSE
+      static_assert(false, "Compose TPL required.");
+#else
+      const auto f_idx = locate_face_containing_pt(pt);
+      LPM_KERNEL_ASSERT( f_idx != LPM_NULL_IDX );
+      auto quad = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
+      Index quad_cyc[4];
+      for (Int i=0; i<4; ++i) {
+        quad_cyc[i] = quad[(i+1)%4];
+      }
+      Real rpt[3];
+      for (int i=0; i<3; ++i) {
+        rpt[i] = pt[i];
+      }
+      siqk::sqr::calc_sphere_to_ref(vertices.phys_crds->crds, quad_cyc,
+        rpt, ref[0], ref[1]);
+#endif
+    }
+
+    template <typename GeoType, typename VT, typename CVT> KOKKOS_INLINE_FUNCTION
+    typename std::enable_if<std::is_same<GeoType, PlaneGeometry>::value,
+      void>::type
+      quad_ref(VT& ref, const CVT& pt) const {
+      Real a1, a2;
+      Real b1, b2;
+      Real c1, c2;
+      Real d1, d2;
+      const auto f_idx = locate_face_containing_pt(pt);
+      LPM_KERNEL_ASSERT( f_idx != LPM_NULL_IDX );
+      const auto quad = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
+      Real vx[4];
+      Real vy[4];
+      d1 = 4*pt[0];
+      d2 = 4*pt[1];
+      for (int i=0; i<4; ++i) {
+        vx[i] = vertices.phys_crds->crds(quad[i], 0);
+        vy[i] = vertices.phys_crds->crds(quad[i], 1);
+        d1 -= vx[i];
+        d2 -= vy[i];
+      }
+      a1 = -vx[0] + vx[1] - vx[2] + vx[3];
+      a2 = -vy[0] + vy[1] - vy[2] + vy[3];
+      b1 = -vx[0] - vx[1] + vx[2] + vx[3];
+      b2 = -vy[0] - vy[1] + vy[2] + vy[3];
+      c1 =  vx[0] - vx[1] - vx[2] + vx[3];
+      c2 =  vy[0] - vy[1] - vy[2] + vy[3];
+      if (FloatingPoint<Real>::zero(a1)) {
+        // Case I
+        if (FloatingPoint<Real>::zero(a2)) {
+          // Case I.A
+          ref[0] = (d1*c2 - d2*c1) / (b1*c2 - b2*c1);
+          ref[1] = (b1*d2 - b2*d1) / (b1*c2 - b2*c1);
+        }
+        else {
+          // Case I.B
+          LPM_KERNEL_ASSERT(!FloatingPoint<Real>::zero(b1));
+          if (FloatingPoint<Real>::zero(c1)) {
+            // Case I.B.a
+            ref[0] = d1/b1;
+            ref[1] = (b1*d2 - b2*d1) / (a2*d1 + b1*c2);
+          }
+          else {
+            // Case I.B.b
+            const Real qa = a2*b1;
+            const Real qb = c2*b1 - a2*d1 - b2*c1;
+            const Real qc = d2*c1 - c2*d1;
+            ref[0] = quad_quadratic_solve(qa, qb, qc);
+            ref[1] = (d1 - b1*ref[0])/c1;
+          }
+        }
+      }
+      else {
+        // Case II
+        if (!FloatingPoint<Real>::zero(a2)) {
+          // Case II.A
+          const Real ab = a1*b2 - a2*b1;
+          const Real ac = a1*c2 - a2*c1;
+          const Real ad = a1*d2 - d2*a1;
+          const Real cb = c1*b2 - c2*b1;
+          const Real dc = d1*c2 - d2*c1;
+          const Real db = d1*b2 - d2*b1;
+          if (!FloatingPoint<Real>::zero(ab)) {
+            // Case II.A.a
+            if (!FloatingPoint<Real>::zero(ac)) {
+              // Case II.A.a.1
+              const Real qa = ab;
+              const Real qb = cb - ad;
+              const Real qc = dc;
+              ref[0] = quad_quadratic_solve(qa, qb, qc);
+              ref[1] = (ad - ab*ref[0]) / ac;
+            }
+            else {
+              // Case II.A.a.2
+              ref[0] = ad/ab;
+              ref[1] = a1*db/(c1*ab + a1*ad);
+            }
+          }
+          else {
+            // Case II.A.b
+            ref[0] = a1*dc/(b1*ac + a1*ad);
+            ref[1] = ad/ac;
+          }
+        }
+        else {
+          // Case II.B
+          if (FloatingPoint<Real>::zero(b2)) {
+            // Case II.B.a
+            ref[0] = (d1*c2 - c1*d2) / (a1*d2 + b1*c2);
+            ref[1] = d2/c2;
+          }
+          else {
+            // Case II.B.b
+            const Real qa = a1*b2;
+            const Real qb = c1*b2 - a1*d2 - b1*c2;
+            const Real qc = d1*c2 - c1*d2;
+            ref[0] = quad_quadratic_solve(qa, qb, qc);
+            ref[1] = (d2 - b2*ref[0])/c2;
+          }
+        }
+      }
+    }
+
+    void scalar_interpolate(scalar_view_type& dst,
+      const typename Coords<Geo>::crd_view_type dst_crds,
+      const ScalarField<VertexField>& src) const {
+      Kokkos::parallel_for(dst.extent(0),
+        KOKKOS_LAMBDA (const Index i) {
+          Real ref[3];
+          const auto mcrd = Kokkos::subview(dst_crds, i, Kokkos::ALL);
+          const auto f_idx = locate_face_containing_pt(mcrd);
+          if (f_idx != LPM_NULL_IDX) {
+            ref_elem_coords(ref, mcrd);
+            const auto poly = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
+            dst(i) = 0;
+            if (FaceType::nverts == 3) {
+              for (Int j=0; j<3; ++j) {
+                dst(i) += ref[j]*src.view(poly[j]);
+              }
+            }
+            else if (FaceType::nverts == 4) {
+              dst(i) += 0.25*(1 - ref[0])*(1 + ref[1]) * src.view(poly[0]);
+              dst(i) += 0.25*(1 - ref[0])*(1 - ref[1]) * src.view(poly[1]);
+              dst(i) += 0.25*(1 + ref[0])*(1 - ref[1]) * src.view(poly[2]);
+              dst(i) += 0.25*(1 + ref[0])*(1 + ref[1]) * src.view(poly[3]);
+            }
+          }
+          else {
+            dst(i) = 0;
+          }
+        });
+    }
 
     Real surface_area_host() const {
       return faces.surface_area_host();

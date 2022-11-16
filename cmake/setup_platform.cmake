@@ -39,6 +39,7 @@ macro(setup_platform)
   include(lpm_build_spdlog)
   include(lpm_find_netcdf)
   include(lpm_find_vtk)
+  include(lpm_find_compose)
 
 
 #
