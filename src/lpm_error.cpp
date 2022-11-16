@@ -44,7 +44,7 @@ std::string ErrNorms::info_string(const std::string& label, const int tab_level)
     std::ostringstream ss;
     std::string tabstr;
     for (int i=0; i<tab_level; ++i) tabstr += "\t";
-    ss << tabstr << label << " ErrNorms: l1 = " << l1 << " l2 = " << l2 << " linf = " << linf << "\n";
+    ss << tabstr << label << " ErrNorms: l1 = " << l1 << " l2 = " << l2 << " linf = " << linf;
     return ss.str();
 }
 

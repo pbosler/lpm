@@ -18,6 +18,8 @@ struct LatLonPts {
   Real dlambda;
   Real dtheta;
 
+  explicit LatLonPts(const int n_unif, const Real r=1);
+
   LatLonPts(const int n_lat, const int n_lon);
 
   KOKKOS_INLINE_FUNCTION
@@ -44,6 +46,16 @@ struct LatLonPts {
     write_array_matlab(os, name, grid_vals);
   }
 
+  KOKKOS_INLINE_FUNCTION
+  Int nx() const {return nlon;}
+
+  KOKKOS_INLINE_FUNCTION
+  Int ny() const {return nlat;}
+
+  KOKKOS_INLINE_FUNCTION
+  Index size() const {return pts.extent(0);}
+
+  void init();
 };
 
 } // namespace Lpm

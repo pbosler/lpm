@@ -288,8 +288,12 @@ template <typename SeedType> class PolyMesh2d {
         ccw_adjacent_faces(adj_face_list, n_adj, current_idx);
         for (int i=0; i<n_adj; ++i) {
           if (adj_face_list[i] != LPM_NULL_IDX) { // skip external faces
-            fcrd = Kokkos::subview(faces.phys_crds->crds, adj_face_list[i], Kokkos::ALL);
-            Real test_dist = SeedType::geo::distance(fcrd, query_pt);
+            const auto poly = Kokkos::subview(faces.verts, adj_face_list[i], Kokkos::ALL);
+            Real face_centroid[Geo::ndim];
+            Geo::barycenter(face_centroid,
+              vertices.phys_crds->crds, poly,
+              SeedType::nfaceverts);
+            Real test_dist = SeedType::geo::distance(face_centroid, query_pt);
             // continue search at adjacent face, if it's closer than current
             if (test_dist < dist) {
               dist = test_dist;
@@ -422,6 +426,11 @@ template <typename SeedType> class PolyMesh2d {
       const Real area_a = Geo::tri_area(pt, vertexB, vertexC);
       const Real area_b = Geo::tri_area(pt, vertexC, vertexA);
       const Real area_c = Geo::tri_area(pt, vertexA, vertexB);
+      LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(total_area, faces.area[f_idx]));
+      LPM_KERNEL_ASSERT(area_a >= 0);
+      LPM_KERNEL_ASSERT(area_b >= 0);
+      LPM_KERNEL_ASSERT(area_c >= 0);
+      LPM_KERNEL_ASSERT(total_area >= 0);
       bc[0] = area_a / total_area;
       bc[1] = area_b / total_area;
       bc[2] = area_c / total_area;

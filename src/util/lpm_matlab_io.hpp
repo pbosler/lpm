@@ -10,7 +10,8 @@ namespace Lpm {
 template <typename HVT>
 void write_vector_matlab(std::ostream& os, const std::string name,
   const HVT v) {
-
+  static_assert(Kokkos::SpaceAccessibility<typename HVT::execution_space,
+    Kokkos::HostSpace>::accessible, "HostSpace required for i/o.");
   const auto last_idx = v.extent(0)-1;
   os << name << " = [";
   for (Index i=0; i<last_idx; ++i) {
@@ -22,7 +23,8 @@ void write_vector_matlab(std::ostream& os, const std::string name,
 template <typename HVT>
 void write_array_matlab(std::ostream& os, const std::string name,
   const HVT a) {
-
+  static_assert(Kokkos::SpaceAccessibility<typename HVT::execution_space,
+    Kokkos::HostSpace>::accessible, "HostSpace required for i/o.");
   const auto nrow = a.extent(0);
   const auto last_row = nrow-1;
   const auto ncol = a.extent(1);

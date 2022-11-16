@@ -400,6 +400,20 @@ struct LatitudeTracer {
   }
 };
 
+struct SphereXYZTrigTracer {
+  typedef SphereGeometry geo;
+
+  KOKKOS_INLINE_FUNCTION
+  SphereXYZTrigTracer() = default;
+
+  inline std::string name() const {return "SphereXYZTrigTracer";}
+
+  template <typename CVT> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CVT xyz) const {
+    return 0.5*(1 + sin(3*xyz[0])*sin(3*xyz[1])*sin(4*xyz[2]));
+  }
+};
+
 
 } // namespace Lpm
 

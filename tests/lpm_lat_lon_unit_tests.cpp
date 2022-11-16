@@ -13,6 +13,8 @@ TEST_CASE("lat_lon_unit_tests", "") {
   Comm comm;
   Logger<> logger("lat_lon_tests", Log::level::debug, comm);
 
+SECTION("constructor 1") {
+
   const std::vector<Int> nlats = {91, 181, 361, 721};
   const std::vector<Int> nlons = {180, 360, 720, 1440};
 
@@ -48,5 +50,25 @@ TEST_CASE("lat_lon_unit_tests", "") {
     }
 
   }
-
 }
+SECTION("constructor 2") {
+
+  const std::vector<Int> nunif = {45, 90};
+
+  for (int i=0; i<nunif.size(); ++i) {
+    LatLonPts ll(nunif[i]);
+
+    logger.info("ll({}) : nlat = {}, nlon = {} dtheta = {}, dlambda = {}",
+      nunif[i], ll.nlat, ll.nlon, ll.dtheta, ll.dlambda);
+
+    Real surf_area = 0;
+    Kokkos::parallel_reduce(ll.size(), KOKKOS_LAMBDA (const Index& i, Real& a) {
+      a += ll.wts(i);
+    }, surf_area);
+
+    logger.info("ll resolution {} surface area error = {}",
+      ll.dlambda * constants::RAD2DEG, std::abs(4*constants::PI - surf_area) / (4*constants::PI));
+  }
+}
+}
+
