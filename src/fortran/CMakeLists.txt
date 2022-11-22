@@ -5,7 +5,6 @@ FortranCInterface_HEADER(lpm_fortran_c.h
                          SYMBOLS idbvip)
 
 add_library(lpm_fortran STATIC
-                        lpm_f_interp.cpp
                         bivar.f90
                         stripack.f
                         ssrfpack.f)

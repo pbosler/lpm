@@ -5,7 +5,7 @@ set( LPM_CMAKE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake CACHE INTERNAL "")
 list(APPEND CMAKE_MODULE_PATH ${LPM_CMAKE_PATH})
 
 project(LPM)
-enable_language(CXX)
+enable_language(CXX C Fortran)
 
 # Set LPM version metadata
 set(LPM_VERSION_MAJOR 3)
@@ -84,7 +84,11 @@ printvar(LPM_LIBRARIES)
 
 add_subdirectory(src)
 set(LPM_LIBRARIES lpm
+                  lpm_fortran
                   ${LPM_LIBRARIES})
+
+printvar(LPM_LIBRARIES)
+
 add_subdirectory(tests)
 add_subdirectory(examples)
 

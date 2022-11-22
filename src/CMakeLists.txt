@@ -91,6 +91,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_lat_lon_pts.hpp
               lpm_matlab_io.hpp
               fortran/lpm_f_interp.hpp
+              fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp

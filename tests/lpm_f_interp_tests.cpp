@@ -8,14 +8,18 @@
 #include "lpm_error_impl.hpp"
 #include "lpm_2d_transport_mesh.hpp"
 #include "lpm_2d_transport_mesh_impl.hpp"
-#include "lpm_pse.hpp"
+#include "lpm_planar_grid.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_test_utils.hpp"
 #include "util/lpm_matlab_io.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "fortran/lpm_f_interp.hpp"
+#include "fortran/lpm_f_interp_impl.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
+#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data.hpp"
+#include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -26,50 +30,6 @@
 #include <iomanip>
 
 using namespace Lpm;
-
-struct PlanarGrid {
-  Kokkos::View<Real*[2]> pts;
-  Kokkos::View<Real*> wts;
-  typename Kokkos::View<Real*[2]>::HostMirror h_pts;
-  typename Kokkos::View<Real*>::HostMirror h_wts;
-  Real xmin;
-  Real xmax;
-  Real ymin;
-  Real ymax;
-
-  PlanarGrid(const int n, const Real maxr) :
-    pts("pts", n*n),
-    wts("wts", n*n),
-    xmin(-maxr),
-    xmax(maxr),
-    ymin(-maxr),
-    ymax(maxr) {
-
-    h_pts = Kokkos::create_mirror_view(pts);
-    h_wts = Kokkos::create_mirror_view(wts);
-
-    const Real dx = (xmax - xmin)/(n-1);
-    const Real dy = (ymax - ymin)/(n-1);
-    for (int i=0; i<n*n; ++i) {
-      const Int ii = i/n;
-      const Int jj = i%n;
-      h_pts(i, 0) = xmin + ii*dx;
-      h_pts(i, 1) = ymin + jj*dy;
-      h_wts(i) = dx*dy;
-    }
-    Kokkos::deep_copy(pts, h_pts);
-    Kokkos::deep_copy(wts, h_wts);
-  }
-
-  inline int size() const {return pts.extent(0);}
-
-  inline int n() const {return int(sqrt(pts.extent(0)));}
-
-  inline int nx() const {return n();}
-
-  inline int ny() const {return n();}
-};
-
 
 template <typename VelocityType, typename SeedType>
 struct BivarConvergenceTest {
@@ -90,13 +50,19 @@ struct BivarConvergenceTest {
     radius(r) {}
 
   void run() {
+    /*
+      set up test infrastructure
+    */
     Comm comm;
 
     PlanarGaussian tracer;
 
-    Logger<> logger("planar_bivar_conv", Log::level::debug, comm);
+    Logger<> logger("planar_bivar_conv", Log::level::info, comm);
     logger.debug("test run called.");
 
+    /*
+      set up output grid
+    */
     const int n_unif = 60;
     const Real radius = 6;
     PlanarGrid grid(n_unif, radius);
@@ -104,11 +70,12 @@ struct BivarConvergenceTest {
     scalar_view_type grid_tracer_interp("tracer_interp", grid.size());
     scalar_view_type grid_error("error", grid.size());
 
-    Kokkos::parallel_for(grid.size(),
+    Kokkos::parallel_for("init_tracer_exact", grid.size(),
       KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(grid.pts, i, Kokkos::ALL);
         grid_tracer(i) = tracer(xy);
       });
+
 
     for (int i=0; i<(end_depth - start_depth) + 1; ++i) {
       const int depth = start_depth + i;
@@ -121,7 +88,9 @@ struct BivarConvergenceTest {
       timer.start();
 
       logger.info("starting test: {} {}", test_name, depth);
-
+      /*
+        Initialize mesh
+      */
       PolyMeshParameters<SeedType> params(depth, radius);
       const auto pm = std::shared_ptr<TransportMesh2d<SeedType>>(new
          TransportMesh2d<SeedType>(params));
@@ -129,23 +98,33 @@ struct BivarConvergenceTest {
       pm->initialize_tracer(tracer);
       pm->initialize_scalar_tracer("tracer_interp");
       pm->initialize_scalar_tracer("tracer_error");
+
       dxs.push_back(pm->appx_mesh_size());
 
-      GatherSourceData<SeedType> gathered_data(pm);
+      /*
+        Collect only active faces and vertices (no divided faces)
+      */
+      GatherMeshData<SeedType> gathered_data(pm);
       gathered_data.init_scalar_fields(pm->tracer_verts, pm->tracer_faces);
       gathered_data.gather_scalar_fields(pm->tracer_verts, pm->tracer_faces);
+      gathered_data.update_host();
 
-      logger.debug("gathered bivar input data.");
+      /*
+        Set up uniform grid for output
+      */
+      GatherMeshData<SeedType> gathered_grid(grid);
+      gathered_grid.init_scalar_field(tracer.name(), grid_tracer);
+      gathered_grid.init_scalar_field("tracer_interp", grid_tracer_interp);
 
-      auto xo = Kokkos::subview(grid.pts, Kokkos::ALL, 0);
-      auto yo = Kokkos::subview(grid.pts, Kokkos::ALL, 1);
-      auto h_gt = Kokkos::create_mirror_view(grid_tracer_interp);
-      BivarInterface bivar(grid.size(), gathered_data);
-      Kokkos::deep_copy(bivar.x_out, xo);
-      Kokkos::deep_copy(bivar.y_out, yo);
-      bivar.z_out = h_gt;
-      bivar.interpolate_scalar();
-      Kokkos::deep_copy(grid_tracer_interp, h_gt);
+      /*
+        Set up bivar for grid
+      */
+      std::map<std::string, std::string> in_out_map;
+      in_out_map.emplace(tracer.name(), "tracer_interp");
+
+      BivarInterface bivar_grid(gathered_data, gathered_grid, in_out_map);
+      bivar_grid.interpolate();
+      logger.debug("finished uniform grid interp");
 
       ErrNorms grid_interp_err(grid_error, grid_tracer_interp, grid_tracer,
         grid.wts);
@@ -154,30 +133,24 @@ struct BivarConvergenceTest {
       grid_interp_l2.push_back(grid_interp_err.l2);
       grid_interp_linf.push_back(grid_interp_err.linf);
 
-      scalar_view_type mesh_interp("tracer_interp", gathered_data.n());
-      xo = Kokkos::subview(gathered_data.src_crds, Kokkos::ALL, 0);
-      yo = Kokkos::subview(gathered_data.src_crds, Kokkos::ALL, 1);
-      auto h_zo = Kokkos::create_mirror_view(mesh_interp);
-      auto h_xo = Kokkos::create_mirror_view(xo);
-      auto h_yo = Kokkos::create_mirror_view(yo);
-      bivar.reset_output_pts(h_xo, h_yo, h_zo);
-      bivar.interpolate_scalar();
-      Kokkos::deep_copy(mesh_interp, h_zo);
+      /*
+         set up bivar for mesh
+      */
+      BivarInterface bivar_mesh(gathered_data, gathered_data, in_out_map);
+      bivar_mesh.interpolate();
+      logger.debug("finished mesh interp");
 
       std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(pm);
-      ScatterViewToMesh scatter_data(gathered_data.scalar_fields.at("tracer_interp"),
-        pm->tracer_verts.at("tracer_interp").view,
-        pm->tracer_faces.at("tracer_interp").view,
-        base_ptr);
-      scatter_data.scatter();
+      ScatterMeshData<SeedType> scatter(gathered_data, base_ptr);
+      scatter.scatter(pm->tracer_verts, pm->tracer_faces);
 
       compute_error(pm->tracer_verts.at("tracer_error").view,
         pm->tracer_verts.at("tracer_interp").view,
-        pm->tracer_verts.at("tracer").view);
+        pm->tracer_verts.at(tracer.name()).view);
 
       ErrNorms face_interp_err(pm->tracer_faces.at("tracer_error").view,
         pm->tracer_faces.at("tracer_interp").view,
-        pm->tracer_faces.at("tracer").view,
+        pm->tracer_faces.at(tracer.name()).view,
         pm->faces.area);
 
       logger.info("face interp error : {}", face_interp_err.info_string());
@@ -188,6 +161,12 @@ struct BivarConvergenceTest {
 
 #ifdef LPM_USE_VTK
       VtkPolymeshInterface<SeedType> vtk(pm);
+      vtk.add_scalar_point_data(pm->tracer_verts.at(tracer.name()).view);
+      vtk.add_scalar_point_data(pm->tracer_verts.at("tracer_interp").view);
+      vtk.add_scalar_point_data(pm->tracer_verts.at("tracer_error").view);
+      vtk.add_scalar_cell_data(pm->tracer_faces.at(tracer.name()).view);
+      vtk.add_scalar_cell_data(pm->tracer_faces.at("tracer_interp").view);
+      vtk.add_scalar_cell_data(pm->tracer_faces.at("tracer_error").view);
       vtk.write(test_name + vtp_suffix());
 #endif
 
@@ -210,21 +189,21 @@ struct BivarConvergenceTest {
     const auto grid_interp_l1_rate = convergence_rates(dxs, grid_interp_l1);
     const auto grid_interp_l2_rate = convergence_rates(dxs, grid_interp_l2);
     const auto grid_interp_linf_rate = convergence_rates(dxs, grid_interp_linf);
-    logger.info(convergence_table("dx", dxs, "grid_interp_l1", grid_interp_l1, grid_interp_l1_rate));
-    logger.info(convergence_table("dx", dxs, "grid_interp_l2", grid_interp_l2, grid_interp_l2_rate));
-    logger.info(convergence_table("dx", dxs, "grid_interp_linf", grid_interp_linf, grid_interp_linf_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "grid_interp_l1", grid_interp_l1, grid_interp_l1_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "grid_interp_l2", grid_interp_l2, grid_interp_l2_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "grid_interp_linf", grid_interp_linf, grid_interp_linf_rate));
     const auto face_interp_l1_rate = convergence_rates(dxs, face_interp_l1);
     const auto face_interp_l2_rate = convergence_rates(dxs, face_interp_l2);
     const auto face_interp_linf_rate = convergence_rates(dxs, face_interp_linf);
-    logger.info(convergence_table("dx", dxs, "face_interp_l1", face_interp_l1, face_interp_l1_rate));
-    logger.info(convergence_table("dx", dxs, "face_interp_l2", face_interp_l2, face_interp_l2_rate));
-    logger.info(convergence_table("dx", dxs, "face_interp_linf", face_interp_linf, face_interp_linf_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_l1", face_interp_l1, face_interp_l1_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_l2", face_interp_l2, face_interp_l2_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_linf", face_interp_linf, face_interp_linf_rate));
   }
 };
 
 TEST_CASE("planar_bivar", "") {
   const int start_depth = 2;
-  int end_depth = 3;
+  int end_depth = 5;
   const Real radius = 6;
 
   SECTION("tri_hex_seed") {

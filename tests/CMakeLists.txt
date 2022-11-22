@@ -61,6 +61,8 @@ CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
 
 CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
 
+CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
+
 CreateUnitTest(fortran_interp lpm_f_interp_tests.cpp)
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
