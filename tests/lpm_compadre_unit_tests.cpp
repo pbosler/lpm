@@ -146,12 +146,12 @@ TEST_CASE("compadre_unit_tests", "") {
     Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
 
     auto gaussian_gmls =
-      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         src_data,
         Compadre::ScalarPointEvaluation,
         Compadre::PointSample);
     auto lap_gaussian_gmls =
-      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         src_data,
         Compadre::LaplacianOfScalarPointEvaluation,
         Compadre::PointSample);
@@ -238,12 +238,12 @@ TEST_CASE("compadre_unit_tests", "") {
 
     auto src_data = trisphere->faces.leaf_field_vals(rh54_faces);
     auto rh54_gmls =
-      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         src_data,
         Compadre::ScalarPointEvaluation,
         Compadre::PointSample);
     auto lap_rh54_gmls =
-      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMem>(
+      gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         src_data,
         Compadre::LaplacianOfScalarPointEvaluation,
         Compadre::PointSample);

@@ -2,7 +2,10 @@ include(FortranCInterface)
 FortranCInterface_VERIFY(CXX)
 
 FortranCInterface_HEADER(lpm_fortran_c.h
-                         SYMBOLS idbvip)
+                         SYMBOLS trmesh
+                                 getsig
+                                 intrc1
+                                 gradl)
 
 add_library(lpm_fortran STATIC
                         bivar.f90

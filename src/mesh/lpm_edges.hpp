@@ -87,9 +87,20 @@ class Edges {
       ko::deep_copy(n_leaves, _hn_leaves);
     }
 
-    // currently, edges are modified only the host (for AMR).
+    /** @brief Copies edge data from device to host.
+
+     currently, edges are modified only the host (for AMR),
+     so this function is unnecessary.  Future impls may include
+     mesh handling on the device.
+    */
     void update_host() const {}
 
+    /** @brief Return a vector pointing from an edge's origin to its destination
+
+      @param [in/out] evec edge vector
+      @param [in] vcrds vertex coordinates
+      @param [in] e_idx index of edge
+    */
     template <typename V, typename VertCrds> KOKKOS_INLINE_FUNCTION
     void edge_vector(V& evec, const VertCrds& vcrds, const Index e_idx) const {
       const auto dest_crd = Kokkos::subview(vcrds, dests[e_idx], Kokkos::ALL);

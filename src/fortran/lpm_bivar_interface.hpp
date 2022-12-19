@@ -1,9 +1,8 @@
-#ifndef LPM_F_INTERP_HPP
-#define LPM_F_INTERP_HPP
+#ifndef LPM_BIVAR_INTERFACE_HPP
+#define LPM_BIVAR_INTERFACE_HPP
 
 #include "LpmConfig.h"
 #include "mesh/lpm_gather_mesh_data.hpp"
-// #include "lpm_fortran_c.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,20 +15,17 @@ extern void idbvip(int* md, int*, double*, double*, double*,
 }
 #endif
 
+namespace Lpm {
+
 void c_idbvip(int md, int nsrc, double* xin, double* yin, double* zin,
   int ndst, double* xout, double* yout, double* zout, int* iwk, double* rwk);
-
-namespace Lpm {
 
 template <typename SeedType>
 struct BivarInterface {
   const GatherMeshData<SeedType>& input;
   const GatherMeshData<SeedType>& output;
-  Kokkos::View<Int*, Host> integer_work;
-  Kokkos::View<Real*, Host> real_work;
   std::map<std::string, std::string> scalar_in_out_map;
   std::map<std::string, std::string> vector_in_out_map;
-  Int md;
 
   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
     "planar geometry required.");
@@ -41,7 +37,14 @@ struct BivarInterface {
       std::map<std::string, std::string>());
 
   void interpolate();
+
+  private:
+    Kokkos::View<int*, Host> integer_work;
+    Kokkos::View<double*, Host> real_work;
+    Int md;
 };
 
-}
+
+} // namespace Lpm
+
 #endif

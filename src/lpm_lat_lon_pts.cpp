@@ -50,9 +50,9 @@ LatLonPts::LatLonPts(const int n_lat, const int n_lon) :
 
 
 void LatLonPts::write_grid_matlab(std::ostream& os, const std::string& name) const {
-  Kokkos::View<Real**,HostMem> lats("lats", nlat, nlon);
-  Kokkos::View<Real**,HostMem> lons("lons", nlat, nlon);
-  Kokkos::View<Real**,HostMem> weights("weights", nlat, nlon);
+  Kokkos::View<Real**,HostMemory> lats("lats", nlat, nlon);
+  Kokkos::View<Real**,HostMemory> lons("lons", nlat, nlon);
+  Kokkos::View<Real**,HostMemory> weights("weights", nlat, nlon);
   for (int i=0; i<nlat; ++i) {
     for (int j=0; j<nlon; ++j) {
       const Index k = i*nlon + j;

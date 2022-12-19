@@ -14,8 +14,8 @@
 #include "util/lpm_matlab_io.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_velocity_gallery.hpp"
-#include "fortran/lpm_f_interp.hpp"
-#include "fortran/lpm_f_interp_impl.hpp"
+#include "fortran/lpm_bivar_interface.hpp"
+#include "fortran/lpm_bivar_interface_impl.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
@@ -60,6 +60,8 @@ struct BivarConvergenceTest {
     Logger<> logger("planar_bivar_conv", Log::level::info, comm);
     logger.debug("test run called.");
 
+    Timer run_timer("BivarConvergenceTest");
+    run_timer.start();
     /*
       set up output grid
     */
@@ -184,7 +186,8 @@ struct BivarConvergenceTest {
       write_vector_matlab(mfile, "error", h_grid_error);
       mfile.close();
 
-
+      timer.stop();
+      logger.info(timer.info_string());
     }
     const auto grid_interp_l1_rate = convergence_rates(dxs, grid_interp_l1);
     const auto grid_interp_l2_rate = convergence_rates(dxs, grid_interp_l2);
@@ -198,17 +201,22 @@ struct BivarConvergenceTest {
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_l1", face_interp_l1, face_interp_l1_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_l2", face_interp_l2, face_interp_l2_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_linf", face_interp_linf, face_interp_linf_rate));
+
+    run_timer.stop();
+    logger.info("Tests complete : {}", run_timer.info_string());
   }
 };
+
 
 TEST_CASE("planar_bivar", "") {
   const int start_depth = 2;
   int end_depth = 5;
   const Real radius = 6;
+  typedef PlanarConstantEastward velocity_type;
 
   SECTION("tri_hex_seed") {
     typedef TriHexSeed seed_type;
-    typedef PlanarConstantEastward velocity_type;
+
     BivarConvergenceTest<velocity_type,seed_type>
       bivar_test(start_depth, end_depth, radius);
     bivar_test.run();
@@ -216,7 +224,7 @@ TEST_CASE("planar_bivar", "") {
   }
   SECTION("quad_rect_seed") {
     typedef QuadRectSeed seed_type;
-    typedef PlanarConstantEastward velocity_type;
+
     BivarConvergenceTest<velocity_type,seed_type>
       bivar_test(start_depth, end_depth, radius);
     bivar_test.run();

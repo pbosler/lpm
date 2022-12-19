@@ -1,12 +1,7 @@
-#ifndef LPM_F_INTERP_IMPL_HPP
-#define LPM_F_INTERP_IMPL_HPP
+#ifndef LPM_BIVAR_INTERFACE_IMPL_HPP
+#define LPM_BIVAR_INTERFACE_IMPL_HPP
 
-#include "fortran/lpm_f_interp.hpp"
-
-#ifndef NDEBUG
-  #include <iostream>
-  #include <sstream>
-#endif
+#include "lpm_bivar_interface.hpp"
 
 namespace Lpm {
 
@@ -97,7 +92,6 @@ void BivarInterface<SeedType>::interpolate() {
   }
   output.update_device();
 }
-
 
 } // namespace Lpm
 
