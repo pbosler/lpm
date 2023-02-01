@@ -69,6 +69,9 @@ target_link_libraries(lpm lpm_fortran
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
 endif()
+if (LPM_USE_COMPOSE)
+  target_link_libraries(lpm compose)
+endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm ${VTK_LIBRARIES})
 endif()
@@ -131,7 +134,7 @@ install(TARGETS lpm DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main util/lpm_catch_main.cpp)
-target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS})
+target_link_libraries(lpm_test_main PRIVATE lpm ${CMAKE_DL_LIBS})
 target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets
