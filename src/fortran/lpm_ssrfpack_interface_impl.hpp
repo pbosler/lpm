@@ -367,6 +367,7 @@ void SSRFPackInterface<SeedType>::interpolate(
     int tri_idx = 1;
     for (int i=0; i<output_pts.extent(0); ++i) {
       const auto xyz = Kokkos::subview(output_pts, i, Kokkos::ALL);
+      LPM_ASSERT(xyz.extent(0) == 3);
       const Real lon = SphereGeometry::longitude(xyz);
       const Real lat = SphereGeometry::latitude(xyz);
 

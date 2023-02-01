@@ -88,7 +88,7 @@ struct SSRFPackConvergenceTest {
     set up output polymesh
 
     */
-    const int output_depth = 5;
+    const int output_depth = 4;
     PolyMeshParameters<OtherSeedType> oparams(output_depth);
     const auto opm = std::shared_ptr<TransportMesh2d<OtherSeedType>>(new
       TransportMesh2d<OtherSeedType>(oparams));
@@ -193,7 +193,7 @@ struct SSRFPackConvergenceTest {
       ovtk.add_scalar_cell_data(opm->tracer_faces.at(tracer.name()).view);
       ovtk.add_scalar_cell_data(opm->tracer_faces.at("tracer_interp").view);
       ovtk.add_scalar_cell_data(opm->tracer_faces.at("tracer_error").view);
-      ovtk.write(test_name + "_other_" + vtp_suffix());
+      ovtk.write("other_tgt_" + test_name + vtp_suffix());
 #endif
 
       itimer.stop();
@@ -241,7 +241,7 @@ struct SSRFPackConvergenceTest {
 
 TEST_CASE("planar_bivar", "") {
   const int start_depth = 2;
-  int end_depth = 5;
+  int end_depth = 6;
 
   typedef SphericalRigidRotation velocity_type;
   SECTION("icostri_sphere") {
