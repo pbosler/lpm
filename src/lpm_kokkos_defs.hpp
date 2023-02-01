@@ -20,12 +20,12 @@ typedef ko::HostSpace::execution_space HostExe;
 typedef typename ko::TeamPolicy<>::member_type member_type;
 
 /// Memory spaces
-typedef ko::DefaultExecutionSpace::memory_space DevMem;
-typedef ko::HostSpace::memory_space HostMem;
+typedef ko::DefaultExecutionSpace::memory_space DevMemory;
+typedef ko::HostSpace::memory_space HostMemory;
 
 /// Devices
-typedef ko::Device<DevExe, DevMem> Dev;
-typedef ko::Device<HostExe, HostMem> Host;
+typedef ko::Device<DevExe, DevMemory> Dev;
+typedef ko::Device<HostExe, HostMemory> Host;
 
 /// View to a single integer
 typedef ko::View<Index,Dev> n_view_type; // view() = n

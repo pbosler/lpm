@@ -1,6 +1,10 @@
 include_directories(${LPM_INCLUDE_DIRS}
                     ${Trilinos_INCLUDE_DIRS}
-                    ${Trilinos_TPL_INCLUDE_DIRS})
+                    ${Trilinos_TPL_INCLUDE_DIRS}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran)
+
+add_subdirectory(fortran)
+
 if (LPM_USE_BOOST)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
@@ -50,12 +54,12 @@ endif()
 
 add_library(lpm ${LPM_SOURCES})
 
-
-
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
+
 add_dependencies(lpm spdlog)
 
-target_link_libraries(lpm KokkosAlgorithms::kokkosalgorithms
+target_link_libraries(lpm lpm_fortran
+                          KokkosAlgorithms::kokkosalgorithms
                           KokkosContainers::kokkoscontainers
                           KokkosCore::kokkoscore
                           KokkosKernels::kokkoskernels
@@ -64,6 +68,9 @@ target_link_libraries(lpm KokkosAlgorithms::kokkosalgorithms
                           )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
+endif()
+if (LPM_USE_COMPOSE)
+  target_link_libraries(lpm compose)
 endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm ${VTK_LIBRARIES})
@@ -86,6 +93,8 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_sphere_functions.hpp
               lpm_lat_lon_pts.hpp
               lpm_matlab_io.hpp
+              fortran/lpm_f_interp.hpp
+              fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
@@ -107,6 +116,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
 
+
 #              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
 #              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
 #              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
@@ -124,7 +134,7 @@ install(TARGETS lpm DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main util/lpm_catch_main.cpp)
-target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS})
+target_link_libraries(lpm_test_main PRIVATE lpm ${CMAKE_DL_LIBS})
 target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets

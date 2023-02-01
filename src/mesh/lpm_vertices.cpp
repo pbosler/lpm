@@ -35,6 +35,7 @@ Vertices<CoordsType>::Vertices(const Index nmax, std::shared_ptr<CoordsType> pcr
 
 template <typename CoordsType>
 void Vertices<CoordsType>::insert_host(const Index crd_idx, const std::vector<Index>& edge_list) {
+  LPM_ASSERT(verts_are_dual());
   LPM_ASSERT(edge_list.size() <= edges.extent(1));
   LPM_REQUIRE(n_max() >= _nh()+1);
 
@@ -70,13 +71,20 @@ std::string Vertices<CoordsType>::info_string(const std::string& label, const in
   else {
     ss << tabstr << "phys_crds = NULL\n";
   }
-//   ss << lag_crds->info_string(label, tab_level+1, dump_all);
+  if (dump_all) {
+    if (lag_crds) {
+      ss << lag_crds->info_string(label, tab_level+1, dump_all);
+    }
+    else {
+      ss << tabstr << "lag_crds = NULL\n";
+    }
+  }
   return ss.str();
 }
 
 // ETI
 template class Vertices<Coords<PlaneGeometry>>;
 template class Vertices<Coords<SphereGeometry>>;
-template class Vertices<Coords<CircularPlaneGeometry>>;
+// template class Vertices<Coords<CircularPlaneGeometry>>;
 
 }

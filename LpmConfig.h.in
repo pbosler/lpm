@@ -16,6 +16,8 @@
 #define LPM_MAX_AMR_LIMIT 6
 #define LPM_NULL_IDX -1
 
+#include "Kokkos_Core.hpp"
+
 namespace Lpm {
 
 	typedef int Index;

@@ -726,12 +726,12 @@ template <typename SeedType> struct FaceCentroidFunctor {
   @param pm PolyMesh2d mesh used as data source
 */
 template <typename SeedType>
-ko::View<Real*[3]> source_coords(const PolyMesh2d<SeedType>& pm) {
+ko::View<Real*[SeedType::geo::ndim]> source_coords(const PolyMesh2d<SeedType>& pm) {
   const Index nv = pm.nvertsHost();
   const Index nl = pm.faces.nLeavesHost();
-  ko::View<Real*[3]> result("source_coords", nv + nl);
+  ko::View<Real*[SeedType::geo::ndim]> result("source_coords", nv + nl);
   ko::parallel_for(nv, KOKKOS_LAMBDA (int i) {
-    for (int j=0; j<3; ++j) {
+    for (int j=0; j<SeedType::geo::ndim; ++j) {
       result(i,j) = pm.vertices.phys_crds->crds(i,j);
     }
   });
@@ -739,9 +739,10 @@ ko::View<Real*[3]> source_coords(const PolyMesh2d<SeedType>& pm) {
     Int offset = nv;
     for (int j=0; j<pm.nfaces(); ++j) {
       if (!pm.faces.mask(j)) {
-        result(offset,0) = pm.faces.phys_crds->crds(j,0);
-        result(offset,1) = pm.faces.phys_crds->crds(j,1);
-        result(offset++,2) = pm.faces.phys_crds->crds(j,2);
+        for (int k=0; k<SeedType::geo::ndim; ++k) {
+          result(offset, k) = pm.faces.phys_crds->crds(j,k);
+        }
+        ++offset;
       }
     }
   });

@@ -36,7 +36,7 @@ struct LatLonPts {
   template <typename HVT>
   void write_scalar_field_matlab(std::ostream& os, const std::string& name,
     const HVT vals) const {
-    Kokkos::View<Real**, HostMem> grid_vals("grid_vals", nlat, nlon);
+    Kokkos::View<Real**, HostMemory> grid_vals("grid_vals", nlat, nlon);
     for (Int i=0; i<nlat; ++i) {
       for (Int j=0; j<nlon; ++j) {
         const Index k = i*nlon + j;
