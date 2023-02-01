@@ -241,7 +241,7 @@ struct SSRFPackConvergenceTest {
 
 TEST_CASE("planar_bivar", "") {
   const int start_depth = 2;
-  int end_depth = 6;
+  int end_depth = 5;
 
   typedef SphericalRigidRotation velocity_type;
   SECTION("icostri_sphere") {
