@@ -25,15 +25,23 @@
 
 namespace Lpm {
 
+/** @brief Parameters that define a mesh for initialization.
+
+  @param depth initial depth of mesh quadtree, uniform resolution
+  @param r radius of initial mesh in physical space
+  @param amr values > 0 allocate additional memory for adaptive refinement
+*/
 template <typename SeedType>
 struct PolyMeshParameters {
-  Index nmaxverts;
-  Index nmaxedges;
-  Index nmaxfaces;
-  Int init_depth;
-  Real radius;
-  Int amr_limit;
-  MeshSeed<SeedType> seed;
+  Index nmaxverts;  /// max number of vertices to allocate in memory
+  Index nmaxedges;  /// max number of edges to allocate in memory
+  Index nmaxfaces;  /// max number of faces to allocated in memory
+  Int init_depth;   /// initial depth of mesh quadtree
+  Real radius;      /// radius of initial mesh in physical space
+  Int amr_limit;    /// if > 0, the allocated memory includes space for adaptive
+                    /// refinement
+  MeshSeed<SeedType> seed;  /// instance of the MeshSeed that initializes the
+                            /// particles and panels
 
   PolyMeshParameters(const Int depth, const Real r = 1, const Int amr = 0)
       : init_depth(depth), amr_limit(amr), seed(r) {
@@ -52,11 +60,44 @@ struct PolyMeshParameters {
 template <typename SeedType>
 class PolyMesh2d {
  public:
+  /*
+
+      Type defs
+
+  */
   typedef SeedType seed_type;
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
   typedef Coords<Geo> coords_type;
   typedef std::shared_ptr<Coords<Geo>> coords_ptr;
+  typedef FaceDivider<Geo, FaceType> divider;
+
+  /*
+
+      Member variables
+
+  */
+  // mesh topology & coordinates
+  Vertices<Coords<Geo>> vertices;  /// vertex particles, typically "passive"
+  Edges edges;  /// edges, typically only used for mesh initialization and
+                /// refinement
+  Faces<FaceType, Geo> faces;  /// face particles, typically "active"
+
+  /** @brief initial refinement level.  All panels in the MeshSeed will be
+    refined to this level.
+
+    Adaptive refinement adds to this level.
+  */
+  Int base_tree_depth;
+
+  /// initial radius of mesh
+  Real radius;
+
+  /*
+
+      Member functions
+
+  */
 
   /** @brief Constructor.  Allocates memory for a PolyMesh2d instance.
 
@@ -75,6 +116,10 @@ class PolyMesh2d {
     faces.lag_crds = coords_ptr(new coords_type(nmaxfaces));
   }
 
+  /** @brief Constructor.  Allocates memory, does not initialize values.
+
+    @param params PolyMeshParameters that define a mesh.
+  */
   PolyMesh2d(const PolyMeshParameters<SeedType>& params)
       : vertices(params.nmaxverts),
         edges(params.nmaxedges),
@@ -87,18 +132,24 @@ class PolyMesh2d {
     tree_init(params.init_depth, params.seed);
   }
 
+  /** @brief Constructor.  Allocates memory, does not initialize values.
+
+    @param params PolyMeshParameters that define a mesh.
+  */
+  PolyMesh2d(const std::shared_ptr<PolyMeshParameters<SeedType>> params)
+      : vertices(params->nmaxverts),
+        edges(params->nmaxedges),
+        faces(params->nmaxfaces),
+        radius(params->radius) {
+    vertices.phys_crds = coords_ptr(new coords_type(params->nmaxverts));
+    vertices.lag_crds = coords_ptr(new coords_type(params->nmaxverts));
+    faces.phys_crds = coords_ptr(new coords_type(params->nmaxfaces));
+    faces.lag_crds = coords_ptr(new coords_type(params->nmaxfaces));
+    tree_init(params->init_depth, params->seed);
+  }
+
   /// Destructor
   virtual ~PolyMesh2d() {}
-
-  /** @brief initial refinement level.  All panels in the MeshSeed will be
-    refined to this level.
-
-    Adaptive refinement adds to this level.
-  */
-  Int base_tree_depth;
-
-  /// initial radius of mesh
-  Real radius;
 
   /** @brief Return a subview of all initialized vertices' physical coordinates
 
@@ -183,16 +234,31 @@ class PolyMesh2d {
   */
   Index n_faces_host() const { return faces.nh(); }
 
-  // mesh topology & coordinates
-  Vertices<Coords<Geo>> vertices;
-  Edges edges;
-  Faces<FaceType, Geo> faces;
+  /** @brief Returns true if an edge has positive (CCW) orientation
+    relative to a face.
 
+    @warning This function does not verify connectivity; it will not detect
+    whether or not edge(edge_idx) is associated with face(face_idx). It will
+    return false in such a case.
+
+    @param edge_idx
+    @param face_idx
+  */
   KOKKOS_INLINE_FUNCTION
   bool edge_is_positive(const Index edge_idx, const Index face_idx) const {
     return face_idx == edges.lefts(edge_idx);
   }
 
+  /** @brief Returns a list of a panel's leaf edges.
+
+    Required for AMR meshes.  If a panel's neighbor has been refined, its own
+    edges will have been divided.
+
+    @param [out] edge_list  List of leaves that are children of parent_edge_idx,
+    with the same orientation as their parents.
+    @param [out] n_leaves number of leaf edges, >= number of panel edges
+    @param [in] parent_edge_idx index of edge that may have been divided
+  */
   template <typename EdgeList = Index*>
   KOKKOS_INLINE_FUNCTION void get_leaf_edges_from_parent(
       EdgeList& edge_list, Int& n_leaves, const Index parent_edge_idx) const {
@@ -226,6 +292,12 @@ class PolyMesh2d {
     }
   }
 
+  /** @brief Returns a counter-clockwise list of leaf edges around a face.
+
+    @param [out] face_leaf_edges ccw list of edges
+    @param [out] n_leaf_edges number of leaf edges
+    @param [in] face_idx
+  */
   template <typename EdgeList = Index*>
   KOKKOS_INLINE_FUNCTION void ccw_edges_around_face(
       EdgeList& face_leaf_edges, Int& n_leaf_edges,
@@ -252,6 +324,12 @@ class PolyMesh2d {
     }
   }
 
+  /** @brief Returns a counter-clockwise list of adjacent faces
+
+    @param [out] adj_faces ccw list of face(face_idx)'s neighbors
+    @param [out] n_adj number of neighbors
+    @param [in] face_idx index of face whose neighbors are needed
+  */
   template <typename FaceList = Index*>
   KOKKOS_INLINE_FUNCTION void ccw_adjacent_faces(FaceList& adj_faces,
                                                  Int& n_adj,
@@ -272,6 +350,14 @@ class PolyMesh2d {
     }
   }
 
+  /** @brief Returns the index of a face that contains the query_pt
+
+    Worst-case scaling as @f$\sqrt(N)@f$, where N is the number of panels.
+
+    @param [in] query_pt physical coordinates of point to locate within the mesh
+    @param [in] face_start_idx initial guess for face containing point
+    @return index of face containing query_pt
+  */
   template <typename Point>
   KOKKOS_INLINE_FUNCTION Index locate_pt_walk_search(
       const Point& query_pt, const Index face_start_idx) const {
@@ -311,6 +397,12 @@ class PolyMesh2d {
     return result;
   }
 
+  /** @brief Returns the index of the root face containing query_pt.
+  Used to initialize a tree search.
+
+    @param [in] query_pt physical coordinates of point to locate in a face
+    @return index of root face containing query_pt
+  */
   template <typename Point>
   KOKKOS_INLINE_FUNCTION Index nearest_root_face(const Point& query_pt) const {
     Index result = 0;
@@ -327,6 +419,15 @@ class PolyMesh2d {
     return result;
   }
 
+  /** @brief Returns the index of the leaf face closest to query_pt.
+
+    @warning A face's kids may have moved outside of the convex region enclosed
+    by its edges.
+
+    @param [in] query_pt physical coordinates of point to locate
+    @param [in] index of root face that's closest to query_pt
+    @return index of closest leaf face to query pt
+  */
   template <typename Point>
   KOKKOS_INLINE_FUNCTION Index
   locate_pt_tree_search(const Point& query_pt, const Index root_face) const {
@@ -356,6 +457,14 @@ class PolyMesh2d {
     return current_idx;
   }
 
+  /** @brief Returns true if a query_pt is located outside the boundaries of a
+    mesh.
+
+    @param [in] pt physical coordinates of point
+    @param [in] face_idx index of facec closest to query_pt, output from
+    locate_pt_walk_search or locate_face_containing_pt
+    @return false if point is contained inside a mesh, true if not.
+  */
   template <typename Point>
   KOKKOS_INLINE_FUNCTION bool pt_is_outside_mesh(const Point& pt,
                                                  const Index face_idx) const {
@@ -411,6 +520,11 @@ class PolyMesh2d {
     return result;
   }
 
+  /** @brief Returns the index of the face whose barycenter is closest to
+    query_pt
+
+    @param [in] query_pt physical coordinates of point to locate
+  */
   template <typename Point>
   KOKKOS_INLINE_FUNCTION Index
   locate_face_containing_pt(const Point& query_pt) const {
@@ -424,6 +538,15 @@ class PolyMesh2d {
     return locate_pt_walk_search(query_pt, walk_start);
   }
 
+  /** @brief Computes the barycentric coordinates of a point within a triangular
+    panel.
+
+    Ensures that a point is inside the mesh by verifying that all barycentric
+    coordinates are nonnegative.
+
+    @param [out] bc barycentric coordinates of point
+    @param [in] pt physical coordinates of point
+  */
   template <typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION void triangular_barycentric_coords(
       VT& bc, const CVT& pt) const {
@@ -451,11 +574,19 @@ class PolyMesh2d {
     bc[2] = area_c / total_area;
   }
 
+  /** @brief Finds the coordinates of a point within reference space.
+
+    @param [out] ref reference coordinates
+    @param [in] pt physical coordinates of a point
+  */
   template <typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION void ref_elem_coords(VT& ref, const CVT& pt) const {
     return ref_elem_impl<FaceType, VT, CVT>(ref, pt);
   }
 
+  /** @brief Implementation (private) of reference coordinates for triangular
+   * faces.
+   */
   template <typename Face, typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION
       typename std::enable_if<std::is_same<Face, TriFace>::value, void>::type
@@ -463,6 +594,9 @@ class PolyMesh2d {
     triangular_barycentric_coords(ref, pt);
   }
 
+  /** @brief Implementation (private) of reference coordinates for quadrilateral
+   * faces.
+   */
   template <typename Face, typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION
       typename std::enable_if<std::is_same<Face, QuadFace>::value, void>::type
@@ -470,6 +604,15 @@ class PolyMesh2d {
     quad_ref<Geo, VT, CVT>(ref, pt);
   }
 
+  /** @brief Private. Solves the quadratic equation. Required for planar
+    quadrilateral reference coordinates.
+
+    Solves a x^2 + bx + c == 0.
+
+    @param [in] a coefficient a
+    @param [in] b coefficient b
+    @param [in] c coefficient c
+  */
   Real KOKKOS_INLINE_FUNCTION quad_quadratic_solve(const Real a, const Real b,
                                                    const Real c) const {
     const Real disc = square(b) - 4 * a * c;
@@ -485,6 +628,9 @@ class PolyMesh2d {
     }
   }
 
+  /** @brief Private. Uses SIQK to find reference coordinates of a point on a
+    sphere in a mesh of quadrilateral panels.
+  */
   template <typename GeoType, typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION
       typename std::enable_if<std::is_same<GeoType, SphereGeometry>::value,
@@ -509,6 +655,13 @@ class PolyMesh2d {
 #endif
   }
 
+  /** @brief Private. Computes the reference coordinates of a point in a
+    planar quadrilateral mesh.
+
+    Follows C. Hua, 1990, An inverse transformation for quadrilateral
+    isoparametric elements: Analysis and application, Finite Elements in
+    Analysis and Design 7:159--166.
+  */
   template <typename GeoType, typename VT, typename CVT>
   KOKKOS_INLINE_FUNCTION
       typename std::enable_if<std::is_same<GeoType, PlaneGeometry>::value,
@@ -606,6 +759,16 @@ class PolyMesh2d {
     }
   }
 
+  /** @brief Interpolates a scalar field using "native" interpolation.
+
+  "Native" implies the highest order interpolation degree for each face type,
+  e.g., linear interpolation on triangles, bilinear interpolation on
+  quadrilaterals.
+
+    @param [out] dst destination view for interpolated values.
+    @param [in] dst_crds physical coordinates of interpolation output points.
+    @param [in] src scalar field values defined on this mesh.
+  */
   void scalar_interpolate(scalar_view_type& dst,
                           const typename Coords<Geo>::crd_view_type dst_crds,
                           const ScalarField<VertexField>& src) const {
@@ -634,6 +797,10 @@ class PolyMesh2d {
         });
   }
 
+  /** @brief @return surface area
+
+    @hostfn
+  */
   Real surface_area_host() const { return faces.surface_area_host(); }
 
   void reset_face_centroids();
@@ -657,6 +824,11 @@ class PolyMesh2d {
   */
   void tree_init(const Int initDepth, const MeshSeed<SeedType>& seed);
 
+  /** @brief divides (refines) a face
+
+  @param [in] face_idx index of face to divide
+  @param [in/out] logger console output logger
+  */
   template <typename LoggerType>
   void divide_face(const Index face_idx, LoggerType& logger);
 
@@ -672,6 +844,9 @@ class PolyMesh2d {
   /// @brief Copies data from device to host
   virtual void update_host() const;
 
+  /** @brief Returns the approximate mesh size; assumes quasi-uniform
+   * discretization in space (not adaptively refined meshes).
+   */
   inline Real appx_mesh_size() const { return faces.appx_mesh_size(); }
 
   /** @brief Writes basic info about a PolyMesh2d instance to a string.
@@ -683,8 +858,10 @@ class PolyMesh2d {
                                   const bool& dump_all = false) const;
 
  protected:
-  typedef FaceDivider<Geo, FaceType> divider;
+  /** @brief Initializes a mesh from a MeshSeed.
 
+    @param [in] seed MeshSeed instance.
+  */
   void seed_init(const MeshSeed<SeedType>& seed);
 };
 
