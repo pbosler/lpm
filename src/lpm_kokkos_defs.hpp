@@ -1,8 +1,8 @@
 #ifndef LPM_KOKKOS_DEFS_HPP
 #define LPM_KOKKOS_DEFS_HPP
 
-#include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
+#include "LpmConfig.h"
 
 namespace Lpm {
 namespace ko = Kokkos;
@@ -28,16 +28,16 @@ typedef ko::Device<DevExe, DevMemory> Dev;
 typedef ko::Device<HostExe, HostMemory> Host;
 
 /// View to a single integer
-typedef ko::View<Index,Dev> n_view_type; // view() = n
+typedef ko::View<Index, Dev> n_view_type;  // view() = n
 /// View to a scalar array
-typedef ko::View<Real*,Dev> scalar_view_type;
+typedef ko::View<Real*, Dev> scalar_view_type;
 /// View to an index array
-typedef ko::View<Index*,Dev> index_view_type;
-typedef ko::View<Index*[4],Dev> quad_tree_view;
+typedef ko::View<Index*, Dev> index_view_type;
+typedef ko::View<Index* [4], Dev> quad_tree_view;
 /// View to a bool array
-typedef ko::View<bool*,Dev> mask_view_type;
-typedef ko::View<const bool*,Dev> const_mask_view_type;
+typedef ko::View<bool*, Dev> mask_view_type;
+typedef ko::View<const bool*, Dev> const_mask_view_type;
 
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif

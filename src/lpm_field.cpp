@@ -1,25 +1,27 @@
 #include "lpm_field.hpp"
-#include "util/lpm_string_util.hpp"
+
 #include <sstream>
+
+#include "util/lpm_string_util.hpp"
 
 namespace Lpm {
 
 std::string field_loc_string(const FieldLocation& floc) {
   std::string result;
   switch (floc) {
-    case (ParticleField) : {
+    case (ParticleField): {
       result = "particle_field";
       break;
     }
-    case (VertexField) : {
+    case (VertexField): {
       result = "vertex_field";
       break;
     }
-    case (EdgeField) : {
+    case (EdgeField): {
       result = "edge_field";
       break;
     }
-    case (FaceField) : {
+    case (FaceField): {
       result = "face_field";
       break;
     }
@@ -51,5 +53,4 @@ std::string VectorField<Geo, FL>::info_string(const int tab_level) const {
   return ss.str();
 };
 
-
-}
+}  // namespace Lpm
