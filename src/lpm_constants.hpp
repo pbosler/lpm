@@ -36,7 +36,7 @@ static constexpr Index LOCK_IND = -2;
 /// Maximum number of edges incident to any vertex
 static constexpr Int MAX_VERTEX_DEGREE = 10;
 
-} // namespace constants
-} // namespace Lpm
+}  // namespace constants
+}  // namespace Lpm
 
 #endif

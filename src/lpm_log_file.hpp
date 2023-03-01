@@ -1,20 +1,21 @@
 #ifndef LPM_LOG_FILE_HPP
 #define LPM_LOG_FILE_HPP
 
-#include "LpmConfig.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/null_sink.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/sinks/rotating_file_sink.h"
-#include <string>
 #include <memory>
+#include <string>
+
+#include "LpmConfig.h"
+#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/null_sink.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/spdlog.h"
 
 namespace Lpm {
 
-// To support large logging tasks, you can optionally distribute output across a range
-// of files using the "rotating_file_sink".
-// These two #defines are used only by the LogBigFiles policy.
-// LPM_LOG_N_FILES sets the number of rotating files
+// To support large logging tasks, you can optionally distribute output across a
+// range of files using the "rotating_file_sink". These two #defines are used
+// only by the LogBigFiles policy. LPM_LOG_N_FILES sets the number of rotating
+// files
 #define LPM_LOG_N_FILES 5
 // LPM_LOG_MAX_FILE_SIZE_MB sets the max size of each file
 #define LPM_LOG_MAX_FILE_SIZE_MB 8
@@ -22,9 +23,10 @@ namespace Lpm {
 // No file output; only console logging.
 struct LogNoFile {
   static constexpr bool has_filename = false;
-  static std::shared_ptr<spdlog::sinks::null_sink_mt>
-    get_file_sink(const std::string& logfilename="") {
-    return std::make_shared<spdlog::sinks::null_sink_mt>();}
+  static std::shared_ptr<spdlog::sinks::null_sink_mt> get_file_sink(
+      const std::string& logfilename = "") {
+    return std::make_shared<spdlog::sinks::null_sink_mt>();
+  }
 };
 
 // Basic file output.  Each Logger (usually, 1 per MPI rank) writes to its own
@@ -33,8 +35,9 @@ template <spdlog::level::level_enum FileLogLevel = spdlog::level::debug>
 struct LogBasicFile {
   static constexpr bool has_filename = true;
   static std::shared_ptr<spdlog::sinks::basic_file_sink_mt> get_file_sink(
-    const std::string& logfilename) {
-    auto result = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logfilename, true);
+      const std::string& logfilename) {
+    auto result =
+        std::make_shared<spdlog::sinks::basic_file_sink_mt>(logfilename, true);
     result->set_level(FileLogLevel);
     return result;
   }
@@ -54,14 +57,14 @@ struct LogBigFiles {
   static constexpr int n_files = LPM_LOG_N_FILES;
   static constexpr int mb_per_file = LPM_LOG_MAX_FILE_SIZE_MB;
   static std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> get_file_sink(
-    const std::string& logfilename) {
+      const std::string& logfilename) {
     auto result = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-      logfilename, mb_per_file * one_mb, n_files);
+        logfilename, mb_per_file * one_mb, n_files);
     result->set_level(FileLogLevel);
     return result;
   }
 };
 
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif

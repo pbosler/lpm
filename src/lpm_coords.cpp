@@ -16,8 +16,7 @@ std::string Coords<Geo>::info_string(const std::string& label,
       << ") of nmax = " << _nmax << " in memory" << std::endl;
   if (dump_all) {
     for (Index i = 0; i < _nmax; ++i) {
-      if (i == _nh())
-        oss << tabstr << "---------------------------------\n";
+      if (i == _nh()) oss << tabstr << "---------------------------------\n";
       oss << tabstr << "\t" << label << ": (" << i << ") : ";
       for (Int j = 0; j < Geo::ndim; ++j) oss << "\t" << _hostcrds(i, j) << " ";
       oss << std::endl;

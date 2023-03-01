@@ -1,8 +1,8 @@
 #ifndef LPM_FLOATING_POINT_UTIL_HPP
 #define LPM_FLOATING_POINT_UTIL_HPP
 
-#include "LpmConfig.h"
 #include "Kokkos_Core.hpp"
+#include "LpmConfig.h"
 #include "lpm_assert.hpp"
 
 namespace Lpm {
@@ -43,7 +43,7 @@ struct FloatingPoint {
   static bool rel(const T x0, const T x1, const T tol = zero_tol) {
     LPM_KERNEL_ASSERT(tol > 0);
     const T max = std::abs(x0) < std::abs(x1) ? std::abs(x1) : std::abs(x0);
-    return  std::abs(x0 - x1) / max < tol;
+    return std::abs(x0 - x1) / max < tol;
   }
 
   /** Define floating point in bounds as @f$ l - \epsilon_{tol} < x < u +
@@ -79,7 +79,6 @@ struct FloatingPoint {
   }
 };
 
-
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif

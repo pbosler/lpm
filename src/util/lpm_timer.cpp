@@ -1,4 +1,5 @@
 #include "util/lpm_timer.hpp"
+
 #include <sstream>
 
 namespace Lpm {
@@ -9,4 +10,4 @@ std::string Timer::info_string() const {
   return ss.str();
 }
 
-}
+}  // namespace Lpm
