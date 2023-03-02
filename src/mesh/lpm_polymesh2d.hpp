@@ -93,6 +93,7 @@ class PolyMesh2d {
   /// initial radius of mesh
   Real radius;
 
+  std::shared_ptr<PolyMeshParameters<SeedType>> params_;
   /*
 
       Member functions
@@ -140,7 +141,8 @@ class PolyMesh2d {
       : vertices(params->nmaxverts),
         edges(params->nmaxedges),
         faces(params->nmaxfaces),
-        radius(params->radius) {
+        radius(params->radius),
+        params_(params) {
     vertices.phys_crds = coords_ptr(new coords_type(params->nmaxverts));
     vertices.lag_crds = coords_ptr(new coords_type(params->nmaxverts));
     faces.phys_crds = coords_ptr(new coords_type(params->nmaxfaces));
@@ -856,6 +858,57 @@ class PolyMesh2d {
   virtual std::string info_string(const std::string& label = "",
                                   const int& tab_level = 0,
                                   const bool& dump_all = false) const;
+
+  /** @brief Divides faces that have been flagged for refinement.
+
+    @param [in] flags flags(i) = true for faces that need to be divided
+    @param [in/out] logger console output
+  */
+  template <typename LoggerType = Logger<>>
+  void divide_flagged_faces(const Kokkos::View<bool*> flags,
+        LoggerType& logger) {
+
+    if (!params_) {
+      logger.warn("divide_flagged_faces: mesh parameters not stored; AMR is disabled, exiting.");
+      return;
+    }
+
+    Index flag_count;
+    Kokkos::parallel_reduce(
+      n_faces_host(),
+      KOKKOS_LAMBDA (const Index i, Index& s) {
+        s += (flags(i) ? 1 : 0);
+      }, flag_count);
+    const Index space_left = params_->nmaxfaces - n_faces_host();
+
+    if (flag_count > space_left / 4) {
+      logger.warn("divide_flagged_faces: not enough memory (flag count = {}, nfaces = {}, nmaxfaces = {})", flag_count, n_faces_host(), params_->nmaxfaces);
+      return;
+    }
+    const Index n_faces_in = n_faces_host();
+    auto host_flags = Kokkos::create_mirror_view(flags);
+    Kokkos::deep_copy(host_flags, flags);
+    Index refine_count = 0;
+    bool limit_reached = false;
+    for (Index i=0; i< n_faces_in; ++i) {
+      if (host_flags(i)) {
+        if (faces.host_level(i) < params_->init_depth + params_->amr_limit) {
+          divide_face(i);
+          ++refine_count;
+        }
+        else {
+          limit_reached = true;
+        }
+      }
+    }
+    if (limit_reached) {
+      logger.warn("divide_flagged_faces: local refinement limit reached; divided {} of {} flagged faces.", refine_count, flag_count);
+    }
+    else {
+      LPM_ASSERT(refine_count == flag_count);
+      logger.info("divide_flagged_faces: {} faces divided.", refine_count);
+    }
+  }
 
  protected:
   /** @brief Initializes a mesh from a MeshSeed.
