@@ -1,3 +1,4 @@
+include(create_unit_test)
 enable_testing()
 
 #######################
@@ -51,6 +52,20 @@ CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
 CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
 
 CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
+
+CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
+
+CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
+
+CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
+
+CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
+
+CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
+
+CreateUnitTest(bivar lpm_bivar_tests.cpp)
+
+CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})

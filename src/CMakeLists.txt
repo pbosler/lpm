@@ -1,6 +1,10 @@
 include_directories(${LPM_INCLUDE_DIRS}
                     ${Trilinos_INCLUDE_DIRS}
-                    ${Trilinos_TPL_INCLUDE_DIRS})
+                    ${Trilinos_TPL_INCLUDE_DIRS}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran)
+
+add_subdirectory(fortran)
+
 if (LPM_USE_BOOST)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
@@ -11,55 +15,62 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-# Generate a blank lpm_version.cpp file
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Generating initial lpm_version.cpp ..."
-)
-
-# update lpm version info
-add_custom_target(update_version_info ALL
-  COMMAND ${BASH} ${PROJECT_SOURCE_DIR}/tools/update_version_info.sh ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-  COMMENT "Updating lpm version info ..."
-)
-
-add_library(lpm
-                ${CMAKE_CURRENT_BINARY_DIR}/lpm_version.cpp
-                lpm_bve_sphere.cpp
+set(LPM_SOURCES lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
+                lpm_compadre.cpp
                 lpm_error.cpp
                 lpm_field.cpp
+                lpm_lat_lon_pts.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
-                netcdf/lpm_netcdf.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/ekat_string_utils.cpp
                 util/ekat_assert.cpp
-                util/lpm_timer.cpp
-                vtk/lpm_vtk_io.cpp
+                util/lpm_timer.cpp)
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmOctreeLUT.cpp
 #    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
 #    LpmSWEGallery.cpp
-                )
-add_dependencies(lpm update_version_info
-                     yaml-cpp
-                     spdlog
-                     )
+#                )
 
-target_link_libraries(lpm ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
+if (LPM_USE_NETCDF)
+  LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
+    netcdf/lpm_polymesh_reader.cpp
+    netcdf/lpm_polymesh_writer.cpp)
+endif()
+
+if (LPM_USE_VTK)
+  LIST(APPEND LPM_SOURCES vtk/lpm_vtk_io.cpp)
+endif()
+
+add_library(lpm ${LPM_SOURCES})
+
+target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
+
+add_dependencies(lpm spdlog)
+
+target_link_libraries(lpm lpm_fortran
+                          KokkosAlgorithms::kokkosalgorithms
+                          KokkosContainers::kokkoscontainers
+                          KokkosCore::kokkoscore
+                          KokkosKernels::kokkoskernels
+                          Compadre::compadre
+                          spdlog
+                          )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
+endif()
+if (LPM_USE_COMPOSE)
+  target_link_libraries(lpm compose)
 endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm ${VTK_LIBRARIES})
@@ -76,9 +87,14 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
               lpm_coords.hpp
+              lpm_compadre.hpp
               lpm_geometry.hpp
               lpm_logger.hpp
               lpm_sphere_functions.hpp
+              lpm_lat_lon_pts.hpp
+              lpm_matlab_io.hpp
+              fortran/lpm_f_interp.hpp
+              fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
               mesh/lpm_edges.hpp
@@ -100,6 +116,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
 
+
 #              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
 #              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
 #              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
@@ -116,8 +133,8 @@ install(TARGETS lpm DESTINATION lib)
 
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
-add_library(lpm_test_main lpm_catch_main.cpp)
-target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS})
+add_library(lpm_test_main util/lpm_catch_main.cpp)
+target_link_libraries(lpm_test_main PRIVATE lpm ${CMAKE_DL_LIBS})
 target_include_directories(lpm_test_main PUBLIC ${PROJECT_SOURCE_DIR}/ext/catch2/include)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets

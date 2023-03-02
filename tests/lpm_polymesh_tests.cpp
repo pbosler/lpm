@@ -1,4 +1,4 @@
-  #include <iostream>
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 #include "LpmConfig.h"
@@ -10,8 +10,6 @@
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "netcdf/lpm_netcdf.hpp"
-#include "netcdf/lpm_netcdf_impl.hpp"
 #include "lpm_constants.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"

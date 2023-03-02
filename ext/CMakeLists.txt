@@ -29,99 +29,99 @@ include_directories(${PROJECT_BINARY_DIR})
 #----------------------------------------------------------------------------
 # Catch2 test framework
 #----------------------------------------------------------------------------
-list(APPEND LPM_EXT_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/ext/catch2/include)
+list(APPEND LPM_EXT_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/ext/catch2/include PARENT_SCOPE)
 
 #----------------------------------------------------------------------------
 # spdlog logging utilities
 #----------------------------------------------------------------------------
-
-add_library(spdlog STATIC IMPORTED GLOBAL)
-set_target_properties(spdlog PROPERTIES IMPORTED_LOCATION ${SPDLOG_LIBRARY})
-list(APPEND LPM_EXT_INCLUDE_DIRS ${SPDLOG_INCLUDE_DIR})
-set(LPM_EXT_LIBRARIES spdlog;${LPM_EXT_LIBRARIES})
-if (LPM_NEEDS_SPDLOG_BUILD)
-  update_submodules()
-  set(SPDLOG_CMAKE_OPTS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
-                      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                      -DCMAKE_BUILD_TYPE=RelWithDebInfo
-                      -DBUILD_SHARED_LIBS=OFF
-                      -DSPDLOG_BUILD_EXAMPLES=OFF
-                      -DSPDLOG_BUILD_TESTS=OFF
-                      -DSPDLOG_INSTALL=ON
-                      )
-
-  ExternalProject_Add(spdlog_proj
-          PREFIX ${CMAKE_CURRENT_BINARY_DIR}/spdlog
-          SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
-          BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/spdlog
-          INSTALL_DIR ${PROJECT_BINARY_DIR}
-          CMAKE_ARGS ${SPDLOG_CMAKE_OPTS}
-          BUILD_COMMAND ${MAKE} -j
-          LOG_CONFIGURE TRUE
-          LOG_BUILD TRUE
-          LOG_INSTALL TRUE
-          )
-  add_dependencies(spdlog spdlog_proj)
-endif()
+#
+#add_library(spdlog STATIC IMPORTED GLOBAL)
+#set_target_properties(spdlog PROPERTIES IMPORTED_LOCATION ${SPDLOG_LIBRARY})
+#list(APPEND LPM_EXT_INCLUDE_DIRS ${SPDLOG_INCLUDE_DIR})
+#set(LPM_EXT_LIBRARIES spdlog;${LPM_EXT_LIBRARIES})
+#if (LPM_NEEDS_SPDLOG_BUILD)
+#  update_submodules()
+#  set(SPDLOG_CMAKE_OPTS -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
+#                      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+#                      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+#                      -DCMAKE_BUILD_TYPE=RelWithDebInfo
+#                      -DBUILD_SHARED_LIBS=OFF
+#                      -DSPDLOG_BUILD_EXAMPLES=OFF
+#                      -DSPDLOG_BUILD_TESTS=OFF
+#                      -DSPDLOG_INSTALL=ON
+#                      )
+#
+#  ExternalProject_Add(spdlog_proj
+#          PREFIX ${CMAKE_CURRENT_BINARY_DIR}/spdlog
+#          SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
+#          BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/spdlog
+#          INSTALL_DIR ${PROJECT_BINARY_DIR}
+#          CMAKE_ARGS ${SPDLOG_CMAKE_OPTS}
+#          BUILD_COMMAND ${MAKE} -j
+#          LOG_CONFIGURE TRUE
+#          LOG_BUILD TRUE
+#          LOG_INSTALL TRUE
+#          )
+#  add_dependencies(spdlog spdlog_proj)
+#endif()
 
 
 
 #----------------------------------------------------------------------------
 # yaml-cpp
 #----------------------------------------------------------------------------
-if (YAMLCPP_LIBRARY MATCHES ".so")
-    add_library(yaml-cpp SHARED IMPORTED GLOBAL)
-else()
-  add_library(yaml-cpp STATIC IMPORTED GLOBAL)
-endif()
-list(APPEND LPM_EXT_INCLUDE_DIRS ${YAMLCPP_INCLUDE_DIR})
-set(LPM_EXT_LIBRARIES yaml-cpp;${LPM_EXT_LIBRARIES})
-set_target_properties(yaml-cpp PROPERTIES IMPORTED_LOCATION ${YAMLCPP_LIBRARY})
-if (LPM_NEEDS_YAMLCPP_BUILD)
-  update_submodules()
-
-  set(YAMLCPP_CMAKE_OPTS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-                          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-                          -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
-                          -DYAML_CPP_BUILD_SHARED_LIBS=OFF
-                          -DYAML_CPP_BUILD_TESTS=OFF
-                          -DYAML_CPP_BUILD_TOOLS=OFF
-                          )
-
-  ExternalProject_Add(yaml-cpp_proj
-                      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp
-                      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp
-                      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp
-                      INSTALL_DIR ${PROJECT_BINARY_DIR}
-                      CMAKE_ARGS ${YAMLCPP_CMAKE_OPTS}
-                      BUILD_COMMAND ${MAKE} -j
-                      LOG_CONFIGURE TRUE
-                      LOG_BUILD TRUE
-                      LOG_INSTALL TRUE
-                      )
-
-  add_dependencies(yaml-cpp yaml-cpp_proj)
-endif()
+#if (YAMLCPP_LIBRARY MATCHES ".so")
+#    add_library(yaml-cpp SHARED IMPORTED GLOBAL)
+#else()
+#  add_library(yaml-cpp STATIC IMPORTED GLOBAL)
+#endif()
+#list(APPEND LPM_EXT_INCLUDE_DIRS ${YAMLCPP_INCLUDE_DIR})
+#set(LPM_EXT_LIBRARIES yaml-cpp;${LPM_EXT_LIBRARIES})
+#set_target_properties(yaml-cpp PROPERTIES IMPORTED_LOCATION ${YAMLCPP_LIBRARY})
+#if (LPM_NEEDS_YAMLCPP_BUILD)
+#  update_submodules()
+#
+#  set(YAMLCPP_CMAKE_OPTS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+#                          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+#                          -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}
+#                          -DYAML_CPP_BUILD_SHARED_LIBS=OFF
+#                          -DYAML_CPP_BUILD_TESTS=OFF
+#                          -DYAML_CPP_BUILD_TOOLS=OFF
+#                          )
+#
+#  ExternalProject_Add(yaml-cpp_proj
+#                      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp
+#                      SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp
+#                      BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp
+#                      INSTALL_DIR ${PROJECT_BINARY_DIR}
+#                      CMAKE_ARGS ${YAMLCPP_CMAKE_OPTS}
+#                      BUILD_COMMAND ${MAKE} -j
+#                      LOG_CONFIGURE TRUE
+#                      LOG_BUILD TRUE
+#                      LOG_INSTALL TRUE
+#                      )
+#
+#  add_dependencies(yaml-cpp yaml-cpp_proj)
+#endif()
 #get_filename_component(YAMLCPP_LIBRARY_DIR ${YAMLCPP_LIBRARY} DIRECTORY)
 
 
 #----------------------------------------------------------------------------
 # HDF5 parallel I/O library, dependency of netCDF
 #----------------------------------------------------------------------------
-if (LPM_USE_NETCDF)
-  set(LPM_EXT_LIBRARIES ${ZLIB_LIBRARIES};${LPM_EXT_LIBRARIES})
-  list(APPEND LPM_EXT_INCLUDE_DIRS ${ZLIB_INCLUDE_DIRS})
-
-  if (HDF5_LIBRARY MATCHES ".so")
-    add_library(hdf5 SHARED IMPORTED GLOBAL)
-    add_library(hdf5_hl SHARED IMPORTED GLOBAL)
-  else()
-    add_library(hdf5 STATIC IMPORTED GLOBAL)
-    add_library(hdf5_hl STATIC IMPORTED GLOBAL)
-  endif()
-  set_target_properties(hdf5 PROPERTIES IMPORTED_LOCATION ${HDF5_LIBRARY})
-  set_target_properties(hdf5_hl PROPERTIES IMPORTED_LOCATION ${HDF5_HL_LIBRARY})
+#if (LPM_USE_NETCDF)
+#  set(LPM_EXT_LIBRARIES ${ZLIB_LIBRARIES};${LPM_EXT_LIBRARIES})
+#  list(APPEND LPM_EXT_INCLUDE_DIRS ${ZLIB_INCLUDE_DIRS})
+#
+#  if (HDF5_LIBRARY MATCHES ".so")
+#    add_library(hdf5 SHARED IMPORTED GLOBAL)
+#    add_library(hdf5_hl SHARED IMPORTED GLOBAL)
+#  else()
+#    add_library(hdf5 STATIC IMPORTED GLOBAL)
+#    add_library(hdf5_hl STATIC IMPORTED GLOBAL)
+#  endif()
+#  set_target_properties(hdf5 PROPERTIES IMPORTED_LOCATION ${HDF5_LIBRARY})
+#  set_target_properties(hdf5_hl PROPERTIES IMPORTED_LOCATION ${HDF5_HL_LIBRARY})
 
 #if (NOT EXISTS ${HDF5_LIBRARY})
 # if (${HDF5_LIBRARY} MATCHES ${PROJECT_BINARY_DIR})
@@ -169,14 +169,14 @@ if (LPM_USE_NETCDF)
     #----------------------------------------------------------------------------
     # netCDF c
     #----------------------------------------------------------------------------
-    list(APPEND LPM_EXT_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
-    set(LPM_EXT_LIBRARIES netcdf;${LPM_EXT_LIBRARIES})
-    if (NETCDF_LIBRARY MATCHES ".so")
-      add_library(netcdf SHARED IMPORTED GLOBAL)
-    else()
-      add_library(netcdf STATIC IMPORTED GLOBAL)
-    endif()
-    set_target_properties(netcdf PROPERTIES IMPORTED_LOCATION ${NETCDF_LIBRARY})
+#    list(APPEND LPM_EXT_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
+#    set(LPM_EXT_LIBRARIES netcdf;${LPM_EXT_LIBRARIES})
+#    if (NETCDF_LIBRARY MATCHES ".so")
+#      add_library(netcdf SHARED IMPORTED GLOBAL)
+#    else()
+#      add_library(netcdf STATIC IMPORTED GLOBAL)
+#    endif()
+#    set_target_properties(netcdf PROPERTIES IMPORTED_LOCATION ${NETCDF_LIBRARY})
 #if (NOT EXISTS ${NETCDF_LIBRARY})
 #  update_submodules()
 #
@@ -220,7 +220,7 @@ if (LPM_USE_NETCDF)
 #                      LOG_INSTALL TRUE)
 #  add_dependencies(netcdf netcdf_proj)
 #endif()
-endif()
+#endif()
 
 
 
@@ -378,27 +378,27 @@ endif()
 #----------------------------------------------------------------------------
 # Add all external libraries to the build system
 #----------------------------------------------------------------------------
-set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS};${LPM_EXT_LIBRARIES})
-set(LPM_EXT_LIBRARIES ${LPM_EXT_LIBRARIES} PARENT_SCOPE)
-list(REMOVE_DUPLICATES LPM_EXT_INCLUDE_DIRS)
-set(LPM_EXT_INCLUDE_DIRS ${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
-set(LPM_LIBRARIES ${LPM_EXT_LIBRARIES};${LPM_LIBRARIES} PARENT_SCOPE)
-set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
-
-#----------------------------------------------------------------------------
-# Installation targets
-#----------------------------------------------------------------------------
-
-install(DIRECTORY ${PROJECT_BINARY_DIR}/include/ DESTINATION include)
-if (${HDF5_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built hdf5
-  install(FILES ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} DESTINATION lib)
-endif()
-if (${NETCDF_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built netcdf
-  install(FILES ${NETCDF_LIBRARY} DESTINATION lib)
-endif()
-if (${YAMLCPP_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built yamlcpp
-  install(FILES ${YAMLCPP_LIBRARY} DESTINATION lib)
-endif()
+#set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS};${LPM_EXT_LIBRARIES})
+#set(LPM_EXT_LIBRARIES ${LPM_EXT_LIBRARIES} PARENT_SCOPE)
+#list(REMOVE_DUPLICATES LPM_EXT_INCLUDE_DIRS)
+#set(LPM_EXT_INCLUDE_DIRS ${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
+#set(LPM_LIBRARIES ${LPM_EXT_LIBRARIES};${LPM_LIBRARIES} PARENT_SCOPE)
+#set(LPM_INCLUDE_DIRS ${LPM_INCLUDE_DIRS};${LPM_EXT_INCLUDE_DIRS} PARENT_SCOPE)
+#
+##----------------------------------------------------------------------------
+## Installation targets
+##----------------------------------------------------------------------------
+#
+#install(DIRECTORY ${PROJECT_BINARY_DIR}/include/ DESTINATION include)
+#if (${HDF5_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built hdf5
+#  install(FILES ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} DESTINATION lib)
+#endif()
+#if (${NETCDF_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built netcdf
+#  install(FILES ${NETCDF_LIBRARY} DESTINATION lib)
+#endif()
+#if (${YAMLCPP_LIBRARY_DIR} MATCHES ${PROJECT_BINARY_DIR}) # we built yamlcpp
+#  install(FILES ${YAMLCPP_LIBRARY} DESTINATION lib)
+#endif()
 #if (LPM_TRILINOS_NEEDS_BUILD) # we built trilinos
 #  foreach(lib ${LPM_TRILINOS_LIBS})
 #    install(FILES lib${lib}.a DESTINATION lib)

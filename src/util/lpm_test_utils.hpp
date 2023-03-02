@@ -12,10 +12,10 @@ struct TestSession {
     return s;
   }
 
-  std::map<std::string,std::string> params;
+  std::map<std::string, std::string> params;
 
-  private:
-    TestSession() = default;
+ private:
+  TestSession() = default;
 };
 
 // This routine tries to detect the device id that the current MPI rank
@@ -40,10 +40,11 @@ struct TestSession {
 //         logic is completely innocuous with older cmake versions, and since
 //         older versions do not set any CTEST_XYZ env variable, this function
 //         will simply return -1 also on CUDA, which means that Kokkos will
-//         autonomously decide which device to use on GPU (usually, the first one).
+//         autonomously decide which device to use on GPU (usually, the first
+//         one).
 // Note 4: it only does something on CUDA builds; with every other
 //         kokkos device, it returns -1.
-int get_test_device (const int mpi_rank);
+int get_test_device(const int mpi_rank);
 
-} // namespace Lpm
+}  // namespace Lpm
 #endif

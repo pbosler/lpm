@@ -1,6 +1,6 @@
 #include "lpm_bve_sphere.hpp"
-#include "lpm_bve_sphere_impl.hpp"
 
+#include "lpm_bve_sphere_impl.hpp"
 
 namespace Lpm {
 
@@ -8,4 +8,4 @@ namespace Lpm {
 template class BVESphere<IcosTriSphereSeed>;
 template class BVESphere<CubedSphereSeed>;
 
-}
+}  // namespace Lpm

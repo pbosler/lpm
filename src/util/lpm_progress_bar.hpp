@@ -1,8 +1,9 @@
 #ifndef LPM_PROGRESS_BAR_HPP
 #define LPM_PROGRESS_BAR_HPP
 
-#include "LpmConfig.h"
 #include <iostream>
+
+#include "LpmConfig.h"
 
 namespace Lpm {
 
@@ -14,13 +15,13 @@ class ProgressBar {
   Real next_;
   std::ostream& os_;
 
-  public:
-    ProgressBar(const std::string& name, const Int niterations,
-      const Real write_freq = 10.0, std::ostream& os = std::cout);
+ public:
+  ProgressBar(const std::string& name, const Int niterations,
+              const Real write_freq = 10.0, std::ostream& os = std::cout);
 
-    void update();
+  void update();
 };
 
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif

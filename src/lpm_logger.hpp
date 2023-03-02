@@ -1,33 +1,37 @@
 #ifndef LPM_LOGGER_HPP
 #define LPM_LOGGER_HPP
 
+#include <cstdio>
+#include <iostream>
+
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
-#include "lpm_log_file.hpp"
 #include "lpm_comm.hpp"
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include "lpm_log_file.hpp"
 #include "spdlog/sinks/null_sink.h"
-#include <iostream>
-#include <cstdio>
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/spdlog.h"
 
 namespace Lpm {
 
 // expose the default logger; this is the easiest one to use
-namespace Log = spdlog; // capitalized to avoid conflict with logarithm
+namespace Log = spdlog;  // capitalized to avoid conflict with logarithm
 
 /* A Logger class customized for console and file output.
 
   Each log has two "sinks" for output, the first is for the console, the second
-  is for files.  Either sink can be null (to suppress output), but they both always exist.
+  is for files.  Either sink can be null (to suppress output), but they both
+  always exist.
 
-  The default Logger<> sets up colored output to the console only (no log files),
-  for all mpi ranks. The LogFilePolicy template parameter determines whether or not the
-  log will also write output to a file. Files and console can have different logging levels.
+  The default Logger<> sets up colored output to the console only (no log
+  files), for all mpi ranks. The LogFilePolicy template parameter determines
+  whether or not the log will also write output to a file. Files and console can
+  have different logging levels.
 
   Logs have a logging level.  Messages with priorities below this level will
-  be ignored by all sinks.  Independently, each Log's sink has its own level, and messages
-  with priority below the sink's priority level will be ignored by that sink.
+  be ignored by all sinks.  Independently, each Log's sink has its own level,
+  and messages with priority below the sink's priority level will be ignored by
+  that sink.
 
   Logging levels (increasing priority):
   - off
@@ -38,9 +42,9 @@ namespace Log = spdlog; // capitalized to avoid conflict with logarithm
   - err
   - critical
 
-  For example, the log level for the LogBasicFile policy could be "debug," while the
-  level of the console logger could be set to "info".  In this case, no debug
-  messages will show up on the console, but they will be in the log files.
+  For example, the log level for the LogBasicFile policy could be "debug," while
+  the level of the console logger could be set to "info".  In this case, no
+  debug messages will show up on the console, but they will be in the log files.
 
   The default priority for the spdlog library is "info."  For LPM, we've set the
   default to "debug."  Both are easy to change.
@@ -49,29 +53,28 @@ namespace Log = spdlog; // capitalized to avoid conflict with logarithm
   These loggers can share output files; see multiple_log_example.cpp.
 
   The Logger class is a subclass of spdlog::logger class, to simplify the many
-  features of that library to the ones LPM is most likely to use, while retaining all
-  of its functionality.
+  features of that library to the ones LPM is most likely to use, while
+  retaining all of its functionality.
 */
-template <typename LogFilePolicy = LogNoFile> // see ekat_log_file.hpp
+template <typename LogFilePolicy = LogNoFile>  // see ekat_log_file.hpp
 class Logger : public spdlog::logger {
-  private:
-    std::string logfile_name_;
+ private:
+  std::string logfile_name_;
 
-    std::string name_with_rank(const std::string& name, const Comm& comm) const {
-      return name + "_rank" + std::to_string(comm.rank());
-    }
+  std::string name_with_rank(const std::string& name, const Comm& comm) const {
+    return name + "_rank" + std::to_string(comm.rank());
+  }
 
-    Logger() = default;
+  Logger() = default;
 
-  public:
-
+ public:
   // primary constructor
   Logger(const std::string& log_name, const Log::level::level_enum lev,
-    const Comm& comm) :
-    spdlog::logger(name_with_rank(log_name, comm)),
-    logfile_name_( (LogFilePolicy::has_filename ?
-      name_with_rank(log_name, comm) + "_logfile.txt" : "null") )
-  {
+         const Comm& comm)
+      : spdlog::logger(name_with_rank(log_name, comm)),
+        logfile_name_((LogFilePolicy::has_filename
+                           ? name_with_rank(log_name, comm) + "_logfile.txt"
+                           : "null")) {
     // make the console sink; default console level = log level
     auto csink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     csink->set_level(lev);
@@ -88,11 +91,11 @@ class Logger : public spdlog::logger {
   // shared file sink constructor
   template <typename FP>
   Logger(const std::string& log_name, const Log::level::level_enum lev,
-    Logger<FP>& other_log, const Comm& comm) :
-    spdlog::logger(name_with_rank(log_name, comm)),
-    logfile_name_( (LogFilePolicy::has_filename ?
-      name_with_rank(log_name, comm) + "_logfile.txt" : "null") )
-  {
+         Logger<FP>& other_log, const Comm& comm)
+      : spdlog::logger(name_with_rank(log_name, comm)),
+        logfile_name_((LogFilePolicy::has_filename
+                           ? name_with_rank(log_name, comm) + "_logfile.txt"
+                           : "null")) {
     // make a new console sink for this log; default console level = log level
     auto csink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     csink->set_level(lev);
@@ -107,31 +110,30 @@ class Logger : public spdlog::logger {
 
   // Constructor for externally created sinks
   Logger(const std::string& log_name, const Log::level::level_enum lev,
-    spdlog::sink_ptr csink, spdlog::sink_ptr fsink, const Comm& comm) :
-    spdlog::logger(name_with_rank(log_name, comm), {csink, fsink}),
-    logfile_name_( (LogFilePolicy::has_filename ?
-      name_with_rank(log_name, comm) + "_logfile.txt" : "null") ) {}
+         spdlog::sink_ptr csink, spdlog::sink_ptr fsink, const Comm& comm)
+      : spdlog::logger(name_with_rank(log_name, comm), {csink, fsink}),
+        logfile_name_((LogFilePolicy::has_filename
+                           ? name_with_rank(log_name, comm) + "_logfile.txt"
+                           : "null")) {}
 
   // accessors
-  spdlog::sink_ptr get_console_sink() const {
-    return this->sinks()[0];
+  spdlog::sink_ptr get_console_sink() const { return this->sinks()[0]; }
+
+  spdlog::sink_ptr get_file_sink() const { return this->sinks()[1]; }
+
+  std::string logfile_name() const { return logfile_name_; }
+
+  Log::level::level_enum log_level() const { return this->level(); }
+
+  Log::level::level_enum console_level() const {
+    return this->get_console_sink()->level();
   }
 
-  spdlog::sink_ptr get_file_sink() const {
-    return this->sinks()[1];
+  Log::level::level_enum file_level() const {
+    return this->get_file_sink()->level();
   }
 
-  std::string logfile_name() const {return logfile_name_;}
-
-  Log::level::level_enum log_level() const {return this->level();}
-
-  Log::level::level_enum console_level() const {return this->get_console_sink()->level();}
-
-  Log::level::level_enum file_level() const {return this->get_file_sink()->level();}
-
-  void set_log_level(const Log::level::level_enum lev) {
-    this->set_level(lev);
-  }
+  void set_log_level(const Log::level::level_enum lev) { this->set_level(lev); }
 
   void set_console_level(const Log::level::level_enum lev) {
     this->get_console_sink()->set_level(lev);
@@ -145,7 +147,8 @@ class Logger : public spdlog::logger {
   void console_output_rank0_only(const Comm& comm) {
     if (!comm.i_am_root()) {
       this->sinks()[0] = std::make_shared<spdlog::sinks::null_sink_mt>();
-      LPM_ASSERT( dynamic_cast<spdlog::sinks::null_sink_mt*>(this->get_console_sink().get()) );
+      LPM_ASSERT(dynamic_cast<spdlog::sinks::null_sink_mt*>(
+          this->get_console_sink().get()));
     }
   }
 
@@ -155,11 +158,11 @@ class Logger : public spdlog::logger {
       this->sinks()[1] = std::make_shared<spdlog::sinks::null_sink_mt>();
       std::remove(logfile_name_.c_str());
       this->logfile_name_ = "null";
-      LPM_ASSERT( dynamic_cast<spdlog::sinks::null_sink_mt*>(this->get_file_sink().get()));
+      LPM_ASSERT(dynamic_cast<spdlog::sinks::null_sink_mt*>(
+          this->get_file_sink().get()));
     }
   }
 };
 
-
-} // namespace Lpm
+}  // namespace Lpm
 #endif
