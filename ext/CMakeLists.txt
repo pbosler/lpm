@@ -3,25 +3,28 @@ include(GNUInstallDirs)
 include(${PROJECT_SOURCE_DIR}/cmake/cmake_helpers.cmake)
 include_directories(${PROJECT_BINARY_DIR})
 
-# create top-level directories for each third-party library (tpl)
-foreach(dir include;lib;bin;share)
-  set(top_level_dir ${PROJECT_BINARY_DIR}/${dir})
-  if (NOT EXISTS ${top_level_dir})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${top_level_dir})
-  endif()
-endforeach()
 
-# keep track of submodules
-set(SUBMODULES_UPDATED FALSE)
-macro(update_submodules)
-  if (NOT SUBMODULES_UPDATED)
-#    message(STATUS "Updating git submodules recursively...")
-#    execute_process(COMMAND ${GIT} submodule update --init --recursive
-#                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-    message(WARNING "git submodules may need updating...\n...consider running 'git submodule update --init --recursive'")
-    set(SUBMODULES_UPDATED TRUE)
-  endif()
-endmacro()
+
+#
+## create top-level directories for each third-party library (tpl)
+#foreach(dir include;lib;bin;share)
+#  set(top_level_dir ${PROJECT_BINARY_DIR}/${dir})
+#  if (NOT EXISTS ${top_level_dir})
+#    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${top_level_dir})
+#  endif()
+#endforeach()
+#
+## keep track of submodules
+#set(SUBMODULES_UPDATED FALSE)
+#macro(update_submodules)
+#  if (NOT SUBMODULES_UPDATED)
+##    message(STATUS "Updating git submodules recursively...")
+##    execute_process(COMMAND ${GIT} submodule update --init --recursive
+##                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+#    message(WARNING "git submodules may need updating...\n...consider running 'git submodule update --init --recursive'")
+#    set(SUBMODULES_UPDATED TRUE)
+#  endif()
+#endmacro()
 
 #----------------------------------------------------------------------------
 # Catch2 test framework

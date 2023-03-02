@@ -10,7 +10,7 @@
 #include "LpmSWERK4.hpp"
 #include "LpmSWERK4_Impl.hpp"
 #include "LpmPSE.hpp"
-#include "LpmUtilities.hpp"
+#include "lpm_progress_bar.hpp"
 
 #include "Kokkos_Core.hpp"
 
