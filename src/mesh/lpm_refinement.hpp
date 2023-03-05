@@ -10,19 +10,28 @@
 
 namespace Lpm {
 
+typedef Kokkos::View<bool*> flag_view;
+
+/** @brief Given a relative tolerance in [0,1], convert to an absolute tolerance that accounts for mesh size.
+Enables the same tolerance values to be used even as the background uniform mesh is refined.
+*/
+inline Real convert_to_absolute_tol(const Real rel_tol, const Real max_val) {
+  return rel_tol * max_val;
+}
+
 template <typename MeshSeedType>
-struct FlowMapVariationFlagFunctor {
+struct FlowMapVariationFlag {
   typedef typename MeshSeedType::geo::crd_view_type crd_view_type;
 
-  Kokkos::View<bool*> flags;
+  flag_view flags;
   crd_view_type vertex_lag_crds;
   Kokkos::View<Index**> face_vertex_view;
   mask_view_type facemask;
   Real tol;
   static constexpr Int nverts = MeshSeedType::faceKind::nverts;
 
-  FlowMapVariationFlagFunctor(
-      Kokkos::View<bool*> f,
+  FlowMapVariationFlag(
+      flag_view f,
       const std::shared_ptr<const PolyMesh2d<MeshSeedType>> mesh,
       const Real tol_)
       : flags(f),
@@ -33,7 +42,7 @@ struct FlowMapVariationFlagFunctor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
-    if (!flags(i) and !facemask(i)) {
+    if (!facemask(i)) {
       Real min_lag_crds[MeshSeedType::geo::ndim];
       Real max_lag_crds[MeshSeedType::geo::ndim];
       for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
@@ -55,40 +64,47 @@ struct FlowMapVariationFlagFunctor {
         dsum += max_lag_crds[j] - min_lag_crds[j];
       }
 
-      if (!flags(i)) flags(i) = (dsum > tol);
+      flags(i) = ( flags(i) or (dsum > tol) );
     }
   }
 };
 
-struct ScalarIntegralFlagFunctor {
-  Kokkos::View<bool*> flags;
+struct ScalarIntegralFlag {
+  flag_view flags;
   scalar_view_type face_vals;
   scalar_view_type area;
   mask_view_type facemask;
   Real tol;
 
-  ScalarIntegralFlagFunctor(Kokkos::View<bool*> f, const scalar_view_type fv,
-                            const scalar_view_type a, const Real eps)
-      : flags(f), face_vals(fv), area(a), tol(eps) {}
+  ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
+   const scalar_view_type a, const mask_view_type m, const Real eps)
+      : flags(f), face_vals(fv), area(a), facemask(m), tol(eps) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
-    if (!flags(i) and !facemask(i)) {
-      flags(i) = (face_vals(i) * area(i) > tol);
+    if (!facemask(i)) {
+      flags(i) = ( flags(i) or (face_vals(i) * area(i) > tol) );
     }
   }
 };
 
-struct ScalarVariationFlagFunctor {
-  Kokkos::View<bool*> flags;
+struct ScalarVariationFlag {
+  flag_view flags;
   scalar_view_type face_vals;
   scalar_view_type vert_vals;
   Kokkos::View<Index**> face_vertex_view;
   mask_view_type facemask;
+  Real tol;
+
+  ScalarVariationFlag(flag_view f, const scalar_view_type fv,
+    const scalar_view_type vv, const Kokkos::View<Index**> verts,
+    const mask_view_type m, const Real eps) :
+    flags(f), face_vals(fv), vert_vals(vv), face_vertex_view(verts),
+    facemask(m), tol(eps) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
-    if (!flags(i) and !facemask(i)) {
+    if (!facemask(i)) {
       Real minval = face_vals(i);
       Real maxval = face_vals(i);
       for (int j = 0; j < face_vertex_view.extent(1); ++j) {
@@ -96,55 +112,11 @@ struct ScalarVariationFlagFunctor {
         if (vert_vals(vidx) < minval) minval = vert_vals(vidx);
         if (vert_vals(vidx) > maxval) maxval = vert_vals(vidx);
       }
-      if (!flags(i)) flags(i) = (maxval - minval > tol);
+      flags(i) = ( flags(i) or (maxval - minval > tol));
     }
   }
 };
 
-template <typename SeedType, typename LoggerType = Logger<>>
-void divide_flagged_faces(std::shared_ptr<PolyMesh2d<SeedType>> mesh,
-                          const Kokkos::View<bool*> flags,
-                          const PolyMeshParameters& params,
-                          LoggerType& logger) {
-  Index flag_count;
-  Kokkos::parallel_reduce(
-      mesh->faces.n_host(),
-      KOKKOS_LAMBDA(const Index i, Index& s) { s += (flags(i) : 1 : 0); },
-      flag_count);
-  const Index space_left = params.nmaxfaces - mesh->faces.n_host();
-
-  if (flag_count > space_left / 4) {
-    logger.warn(
-        "divide_flagged_faces: not enough memory for AMR (flag_count = {}, "
-        "nfaces = {}, nmaxfaces = {})",
-        flag_count, mesh->faces.n_host(), params.nmaxfaces);
-  } else {
-    const Index n_faces_in = mesh->faces.n_host();
-    auto host_flags = Kokkos::create_mirror_view(flags);
-    Kokkos::deep_copy(host_flags, flags);
-    Index refine_count = 0;
-    bool limit_reached = false;
-    for (Index i = 0; i < n_faces_in; ++i) {
-      if (host_flags(i)) {
-        if (mesh->faces.host_level(i) < params.init_depth + params.amr_limit) {
-          mesh->divide_face(i);
-          ++refine_count;
-        } else {
-          limit_reached = true;
-        }
-      }
-    }
-    if (limit_reached) {
-      logger.warn(
-          "divide_flagged_faces: local refinement limit reached; divided {} of "
-          "{} flagged faces.",
-          refine_count, flag_count);
-    } else {
-      LPM_ASSERT(refine_count == flag_count);
-      logger.info("divide_flagged_faces: {} faces divided", refine_count);
-    }
-  }
-}
 
 }  // namespace Lpm
 
