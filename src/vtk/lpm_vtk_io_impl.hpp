@@ -23,6 +23,8 @@ VtkPolymeshInterface<SeedType>::VtkPolymeshInterface(
   polydata_->SetPoints(pts);
   polydata_->SetPolys(polys);
   polydata_->GetCellData()->AddArray(cell_area);
+  this->add_vector_point_data(pm->vertices.lag_crds->get_host_crd_view(),"lag_crds");
+  this->add_vector_cell_data(pm->faces.lag_crds->get_host_crd_view(),"lag_crds");
 }
 
 template <typename SeedType>
