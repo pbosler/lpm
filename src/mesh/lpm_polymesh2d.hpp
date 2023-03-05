@@ -893,7 +893,7 @@ class PolyMesh2d {
     for (Index i=0; i< n_faces_in; ++i) {
       if (host_flags(i)) {
         if (faces.host_level(i) < params_->init_depth + params_->amr_limit) {
-          divide_face(i);
+          divide_face(i, logger);
           ++refine_count;
         }
         else {
