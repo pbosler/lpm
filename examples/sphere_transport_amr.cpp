@@ -41,8 +41,8 @@ inline Real courant_number(const Real dt, const Real dlam) {
   typedef. Changing the mesh seed will therefore require recompiling this
   program.
 */
-typedef CubedSphereSeed seed_type;
-// typedef IcosTriSphereSeed seed_type;
+// typedef CubedSphereSeed seed_type;
+typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
 typedef SphericalGaussianHills tracer_type;
 
@@ -56,6 +56,7 @@ struct Input {
   Input(int argc, char* argv[]);
   Real dt;
   Real tfinal;
+  Int nsteps;
   std::string base_output_name;
   Int init_depth;
   Int amr_limit;
@@ -75,13 +76,16 @@ struct Input {
 
 int main(int argc, char* argv[]) {
   /**
-    program setup
+    program initialize
   */
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
+    /**
+      program run
+    */
     /**
       initialize problem
     */
@@ -243,6 +247,21 @@ int main(int argc, char* argv[]) {
     }
 #endif
 
+    /**
+      problem run
+    */
+    Transport2dRK4<seed_type> solver(input.dt, sphere);
+    for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
+      solver.template advance_timestep<velocity_type>();
+
+#ifdef LPM_USE_VTK
+      if (write_output and (time_idx + 1)%input.output_interval == 0) {
+        VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+        vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) + vtp_suffix());
+      }
+#endif
+    }
+
   }  // Kokkos scope
   /**
     program finalize
@@ -252,8 +271,9 @@ int main(int argc, char* argv[]) {
 }
 
 Input::Input(int argc, char* argv[]) {
-  dt = 0.03;
+  dt = 0.0125;
   tfinal = 5;
+  nsteps = 400;
   base_output_name = "sphere_transport_amr_";
   init_depth = 4;
   amr_limit = 0;
@@ -261,14 +281,18 @@ Input::Input(int argc, char* argv[]) {
   tracer_mass_tol = 0.1;
   tracer_var_tol = 0.1;
   remesh_interval = 20;
-  output_interval = 1;
+  output_interval = 8;
   output_dir = "";
   help_and_exit = false;
   radius = 1;
+  bool use_dt = false;
+  bool use_nsteps = false;
   for (int i = 1; i < argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-dt") {
       dt = std::stod(argv[++i]);
+      use_dt = true;
+      use_nsteps = false;
       LPM_REQUIRE(dt > 0);
     } else if (token == "-tf") {
       tfinal = std::stod(argv[++i]);
@@ -300,13 +324,23 @@ Input::Input(int argc, char* argv[]) {
       output_dir = argv[++i];
     } else if (token == "-h") {
       help_and_exit = true;
+    } else if (token == "-nsteps") {
+      nsteps = std::stoi(argv[++i]);
+      use_nsteps = true;
+      use_dt = false;
     }
+  }
+  if (use_nsteps) {
+    dt = tfinal / nsteps;
+  }
+  else if (use_dt) {
+    nsteps = int(tfinal/dt);
   }
   vtk_base_name = output_dir + (output_dir.empty() ? "" : "/") +
                   base_output_name + seed_type::id_string() + "_d" +
                   std::to_string(init_depth) + "_";
   if (amr_limit > 0) {
-    vtk_base_name += "amr" + std::to_string(amr_limit);
+    vtk_base_name += "amr" + std::to_string(amr_max)+"_";
   }
   const char* fmt = "dt%.2f";
   int sz = std::snprintf(nullptr, 0, fmt, dt);
@@ -328,10 +362,11 @@ std::string Input::usage() const {
   auto tabstr = indent_string(1);
   ss << tabstr << "optional arguments:\n";
   ss << tabstr
-     << "-dt [nonnegative real number] time step size (default: 0.03)\n";
+     << "-dt [nonnegative real number] time step size (default: 0.03); this will be overridden by -nsteps if both are present.\n";
   ss << tabstr
      << "-tf [nonnegative real number] final time for integration (default: "
         "5)\n";
+  ss << tabstr << "-nsteps [nonnegative integer] number of timesteps.\n";
   ss << tabstr
      << "-o [string] output filename root (default: "
         "\"sphere_transport_amr_example\"\n";
@@ -369,6 +404,7 @@ std::string Input::info_string() const {
   ss << tabstr << "Initializing sphere mesh seed: " << seed_type::id_string()
      << " to uniform depth " << init_depth << "; amr is "
      << (amr_limit > 0 ? "" : "not ") << "enabled.\n";
+  ss << tabstr << "dt = " << dt << " tfinal = " << tfinal << " nsteps = " << nsteps << "\n";
   if (amr_limit > 0) {
     ss << tabstr << "amr mass tol = " << tracer_mass_tol
        << "; amr var tol = " << tracer_var_tol << "\n";
