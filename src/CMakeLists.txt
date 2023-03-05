@@ -100,6 +100,8 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
               mesh/lpm_polymesh2d.hpp
+              mesh/lpm_polymesh2d_impl.hpp
+              mesh/lpm_refinement.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_box3d.hpp

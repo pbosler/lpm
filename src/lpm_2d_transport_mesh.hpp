@@ -64,8 +64,18 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
         t(0),
         t_idx(0) {}
 
+  TransportMesh2d(const std::shared_ptr<PolyMeshParameters<SeedType>>& params)
+    : PolyMesh2d<SeedType>(params),
+    velocity_verts("velocity", params->nmaxverts),
+        velocity_faces("velocity", params->nmaxfaces),
+        t(0),
+        t_idx(0) {}
+
   template <typename ICType>
   void initialize_tracer(const ICType& tracer_ic);
+
+  template <typename ICType>
+  void initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx, const Index face_start_idx);
 
   void initialize_scalar_tracer(const std::string name);
 

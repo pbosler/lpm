@@ -57,6 +57,27 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 }
 
 template <typename SeedType>
+template <typename ICType>
+void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx, const Index face_start_idx) {
+static_assert(std::is_same<typename SeedType::geo, typename ICType::geo>::value, "Geometry types must match.");
+
+auto vertview = tracer_verts.at(tracer_ic.name()).view;
+auto faceview = tracer_faces.at(tracer_ic.name()).view;
+const auto vlag_crds = this->vertices.lag_crds->crds;
+const auto flag_crds = this->faces.lag_crds->crds;
+Kokkos::parallel_for(Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+  KOKKOS_LAMBDA (const Index i) {
+    const auto crd = Kokkos::subview(vlag_crds, i, Kokkos::ALL);
+    vertview(i) = tracer_ic(crd);
+  });
+Kokkos::parallel_for(Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+  KOKKOS_LAMBDA (const Index i) {
+    const auto crd = Kokkos::subview(flag_crds, i, Kokkos::ALL);
+    faceview(i) = tracer_ic(crd);
+  });
+}
+
+template <typename SeedType>
 void TransportMesh2d<SeedType>::initialize_scalar_tracer(
     const std::string name) {
   tracer_verts.emplace(name, ScalarField<VertexField>(

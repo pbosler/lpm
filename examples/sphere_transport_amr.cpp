@@ -132,9 +132,16 @@ int main(int argc, char* argv[]) {
 
     Kokkos::View<bool*> flags("refinement_flags", sphere->n_faces_host());
 
+
+    Index verts_start_idx = 0;
+    Index faces_start_idx = 0;
     for (int i=0; i<input.amr_max; ++i) {
 
-      Kokkos::parallel_for(sphere->n_faces_host(),
+      Index verts_end_idx = sphere->n_vertices_host();
+      Index faces_end_idx = sphere->n_faces_host();
+
+
+      Kokkos::parallel_for(Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
       ScalarIntegralFlag(flags, sphere->tracer_faces.at(tracer.name()).view, sphere->faces.area, sphere->faces.mask, tracer_mass_tol));
     Index mass_refinement_count;
     Kokkos::parallel_reduce(sphere->n_faces_host(),
@@ -143,21 +150,26 @@ int main(int argc, char* argv[]) {
       }, mass_refinement_count);
     logger.info("amr iteration {}: initial mass_refinement_count = {}", i, mass_refinement_count);
 
-    Kokkos::parallel_for(sphere->n_faces_host(),
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
       ScalarVariationFlag(flags, sphere->tracer_faces.at(tracer.name()).view, sphere->tracer_verts.at(tracer.name()).view, sphere->faces.verts, sphere->faces.mask, tracer_var_tol));
     Index total_refinement_count;
     Kokkos::parallel_reduce(sphere->n_faces_host(),
       KOKKOS_LAMBDA(const Index i, Index& ct) {
         ct += Index(flags(i));
       }, total_refinement_count);
+
     logger.info("amr iteration {}: variation_refinement_count = {}", i, total_refinement_count - mass_refinement_count);
 
       sphere->divide_flagged_faces(flags, logger);
+      Kokkos::deep_copy(flags, false);
+      verts_start_idx = verts_end_idx;
+      faces_start_idx = faces_end_idx;
+      sphere->initialize_tracer(tracer, verts_start_idx, faces_start_idx);
 
     }
   }
 
-    logger.info(sphere->info_string());
+  logger.info(sphere->info_string());
   int frame_counter = 0;
   #ifdef LPM_USE_VTK
     if (write_output) {
