@@ -46,8 +46,8 @@ struct FlowMapVariationFlag {
       Real min_lag_crds[MeshSeedType::geo::ndim];
       Real max_lag_crds[MeshSeedType::geo::ndim];
       for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
-        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(j), 0);
-        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(j), 0);
+        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(i,j), 0);
+        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(i,j), 0);
       }
 
       for (int j = 1; j < nverts; ++j) {

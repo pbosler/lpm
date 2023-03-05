@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
         Adaptive refinement: for each iteration, all leaves in the mesh face
         tree are are checked and flagged if any amr criteria are met.
       */
-      Kokkos::View<bool*> flags("refinement_flags", sphere->n_faces_host());
+      Kokkos::View<bool*> flags("refinement_flags", mesh_params->nmaxfaces);
       Index verts_start_idx = 0;
       Index faces_start_idx = 0;
       for (int i = 0; i < input.amr_max; ++i) {
