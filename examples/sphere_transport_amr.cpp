@@ -62,6 +62,7 @@ struct Input {
   Int amr_limit;
   Int amr_max;
   Int remesh_interval;
+  Int reset_lagrangian_interval;
   Int output_interval;
   std::string output_dir;
   Real tracer_mass_tol;
@@ -251,16 +252,86 @@ int main(int argc, char* argv[]) {
       problem run
     */
     Transport2dRK4<seed_type> solver(input.dt, sphere);
+    Int remesh_ctr = 0;
+    const bool do_remesh = (input.remesh_interval != LPM_NULL_IDX and input.remesh_interval > 0);
+    const bool do_reset = (do_remesh and input.reset_lagrangian_interval != LPM_NULL_IDX and input.reset_lagrangian_interval > 0);
+
     for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
+      /**
+        Remesh before timestep
+      */
+      if (do_remesh) {
+        if ((time_idx + 1)%input.remesh_interval == 0) {
+          ++remesh_ctr;
+          /// choose remeshing procedure
+          if (remesh_ctr < input.reset_lagrangian_interval or !do_reset) {
+            /// remesh using t=0 reference
+          }
+          else if (do_reset and remesh_ctr == input.reset_lagrangian_interval) {
+            /// remesh to t=0 reference, and create new reference to current time
+          }
+          else if (do_reset and remesh_ctr>input.reset_lagrangian_interval and remesh_ctr%input.reset_lagrangian_interval == 0) {
+            /// remesh to existing reference, then create a new reference to the current time
+          }
+          else {
+            /// remesh to existing reference
+          }
+        }
+      }
+      /// time step
       solver.template advance_timestep<velocity_type>();
 
 #ifdef LPM_USE_VTK
-      if (write_output and (time_idx + 1)%input.output_interval == 0) {
+      /// write intermediate output
+      if (write_output and (time_idx + 1)%input.output_interval == 0 and (time_idx+1) != input.nsteps) {
         VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
         vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) + vtp_suffix());
       }
 #endif
-    }
+    } // time step loop
+
+    /// compute tracer error
+    Kokkos::View<Real*> tracer_error_faces("tracer_error", sphere->n_faces_host());
+    Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->n_vertices_host());
+    const auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
+    const auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
+    const auto lag_crd_verts = sphere->vertices.lag_crds->crds;
+    const auto lag_crd_faces = sphere->faces.lag_crds->crds;
+    const auto face_mask = sphere->faces.mask;
+    Kokkos::parallel_for("compute_tracer_error_verts", sphere->n_vertices_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto mcrd = Kokkos::subview(lag_crd_verts, i, Kokkos::ALL);
+        tracer_error_verts(i) = vert_tracer(i) - tracer(mcrd);
+      });
+    Kokkos::View<Real*> tracer_exact_faces("tracer_exact", sphere->n_faces_host());
+    Kokkos::parallel_for("compute_tracer_exact_faces", sphere->n_faces_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        if (!face_mask(i)) {
+          const auto mcrd = Kokkos::subview(lag_crd_faces, i, Kokkos::ALL);
+          tracer_exact_faces(i) = tracer(mcrd);
+        }
+      });
+    const auto face_tracer_err_norms = ErrNorms(tracer_error_faces,
+      Kokkos::subview(face_tracer, std::make_pair(0, sphere->n_faces_host())),
+      tracer_exact_faces,
+      Kokkos::subview(sphere->faces.area, std::make_pair(0, sphere->n_faces_host())),
+      Kokkos::subview(sphere->faces.mask, std::make_pair(0, sphere->n_faces_host())));
+
+    logger.info("Face tracer error : nsteps = {}, n_faces_final = {}, l1 = {}, l2 = {}, linf = {}",
+      input.nsteps, sphere->faces.n_leaves_host(), face_tracer_err_norms.l1, face_tracer_err_norms.l2,
+      face_tracer_err_norms.linf);
+
+
+#ifdef LPM_USE_VTK
+      /// write final output
+      if (write_output) {
+        VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+        vtk.add_scalar_point_data(tracer_error_verts);
+        vtk.add_scalar_cell_data(tracer_error_faces);
+        vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) + vtp_suffix());
+      }
+#endif
+
 
   }  // Kokkos scope
   /**
@@ -281,6 +352,7 @@ Input::Input(int argc, char* argv[]) {
   tracer_mass_tol = 0.1;
   tracer_var_tol = 0.1;
   remesh_interval = 20;
+  reset_lagrangian_interval = LPM_NULL_IDX;
   output_interval = 8;
   output_dir = "";
   help_and_exit = false;
@@ -328,6 +400,9 @@ Input::Input(int argc, char* argv[]) {
       nsteps = std::stoi(argv[++i]);
       use_nsteps = true;
       use_dt = false;
+    } else if (token == "-reset") {
+      reset_lagrangian_interval = std::stoi(argv[++i]);
+      LPM_REQUIRE(reset_lagrangian_interval > 0 or reset_lagrangian_interval == LPM_NULL_IDX);
     }
   }
   if (use_nsteps) {
@@ -342,7 +417,7 @@ Input::Input(int argc, char* argv[]) {
   if (amr_limit > 0) {
     vtk_base_name += "amr" + std::to_string(amr_max)+"_";
   }
-  const char* fmt = "dt%.2f";
+  const char* fmt = "dt%.3f";
   int sz = std::snprintf(nullptr, 0, fmt, dt);
   std::vector<char> buf(sz + 1);
   std::snprintf(&buf[0], buf.size(), fmt, dt);
@@ -393,6 +468,8 @@ std::string Input::usage() const {
   ss << tabstr
      << "-of [positive integer or -1] frequency of vtk output; setting value "
         "to -1 will disable vtk output (default: 1)\n";
+  ss << tabstr
+      << "-reset [positive integer] number of remeshing steps to allow before creating a new reference (default: disabled)\n";
   ss << tabstr << "-h Print help message and exit.\n";
   return ss.str();
 }
@@ -411,6 +488,7 @@ std::string Input::info_string() const {
   }
   if (remesh_interval > 0) {
     ss << tabstr << "remesh frequency is " << remesh_interval << "\n";
+    ss << tabstr << "reset_lagrangian_interval is " << reset_lagrangian_interval << "\n";
   } else {
     ss << tabstr << "remeshing is disabled.\n";
   }
