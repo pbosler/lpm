@@ -12,7 +12,33 @@ ScatterMeshData<SeedType>::ScatterMeshData(
     : output(out), mesh(pm) {}
 
 template <typename SeedType>
-void ScatterMeshData<SeedType>::scatter(
+void ScatterMeshData<SeedType>::scatter_lag_crds() {
+  const auto face_mask = mesh->faces.mask;
+  const auto face_leaf_idx = mesh->faces.leaf_idx;
+  const Index n_verts = mesh->n_vertices_host();
+  const Index n_faces = mesh->n_faces_host();
+
+  const auto src_view = output.lag_crds;
+  auto v_lag_crds = mesh->vertices.lag_crds->crds;
+  const auto vert_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{n_verts, SeedType::geo::ndim});
+
+  Kokkos::parallel_for("scatter_vert_lag_crds", vert_policy,
+    KOKKOS_LAMBDA (const Index i, const int j) {
+      v_lag_crds(i,j) = src_view(i,j);
+  });
+
+  const auto face_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {n_faces, SeedType::geo::ndim});
+  auto f_lag_crds = mesh->faces.lag_crds->crds;
+  Kokkos::parallel_for("scatter_face_lag_crds", face_policy,
+    KOKKOS_LAMBDA (const Index i, const Int j) {
+      if (!face_mask(i)) {
+        f_lag_crds(i, j) = src_view(n_verts + face_leaf_idx(i), j);
+      }
+    });
+}
+
+template <typename SeedType>
+void ScatterMeshData<SeedType>::scatter_fields(
     const std::map<std::string, ScalarField<VertexField>> vertex_scalar_fields,
     const std::map<std::string, ScalarField<FaceField>> face_scalar_fields,
     const std::map<std::string,

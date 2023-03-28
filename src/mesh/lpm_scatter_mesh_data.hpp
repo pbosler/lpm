@@ -17,7 +17,9 @@ struct ScatterMeshData {
   ScatterMeshData(const GatherMeshData<SeedType>& out,
                   const std::shared_ptr<PolyMesh2d<SeedType>> pm);
 
-  void scatter(
+  void scatter_lag_crds();
+
+  void scatter_fields(
       const std::map<std::string, ScalarField<VertexField>>
           vertex_scalar_fields,
       const std::map<std::string, ScalarField<FaceField>> face_scalar_fields,

@@ -29,36 +29,40 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
                              const host_crd_view host_tgt_crds,
                              const Params& params) {
   auto point_cloud_search = Compadre::PointCloudSearch(host_src_crds);
-  const Int est_max_neighbors =
+  /**
+
+    Compadre's neighbor list size estimator assumes that points are
+    distributed quasi-uniformly.
+
+    todo: create issue/PR in compadre to use dry_run for this.
+
+  */
+  Int est_max_neighbors =
       point_cloud_search.getEstimatedNumberNeighborsUpperBound(
           params.min_neighbors, params.topo_dim, params.eps_multiplier);
-
-  neighbor_lists = Kokkos::View<Index**>(
-      "neighbor_lists", host_tgt_crds.extent(0), est_max_neighbors);
+  neighbor_lists = Kokkos::View<Index**>("neighbor_lists", host_tgt_crds.extent(0),4*est_max_neighbors);
   auto h_neighbors = Kokkos::create_mirror_view(neighbor_lists);
 
   neighborhood_radii =
       Kokkos::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
   auto h_radii = Kokkos::create_mirror_view(neighborhood_radii);
+  Index max_neighbors = 0;
 
-  {
-    std::cout << "min neighbors = " << params.min_neighbors << "\n";
-    std::cout << "est_max_neighbors = " << est_max_neighbors << "\n";
-    std::cout << "extents = " << neighbor_lists.extent(0) << " "
-              << neighbor_lists.extent(1) << "\n";
-    constexpr bool dry_run = true;
-    point_cloud_search.generate2DNeighborListsFromKNNSearch(
-        dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
-        params.eps_multiplier);
+  bool dry_run = true;
+  point_cloud_search.generate2DNeighborListsFromKNNSearch(
+      dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
+      params.eps_multiplier);
 
-    Index max_n = 0;
-    for (Index i = 0; i < h_neighbors.extent(0); ++i) {
-      if (h_neighbors(i, 0) > max_n) max_n = h_neighbors(i, 0);
-    }
-    std::cout << "max_n = " << max_n << "\n";
+  /// todo: this can be a parallel_reduce on host
+  Index max_n = 0;
+  for (Index i = 0; i < h_neighbors.extent(0); ++i) {
+    if (h_neighbors(i,0) > max_n) max_n = h_neighbors(i,0);
   }
+  Kokkos::resize(neighbor_lists, host_tgt_crds.extent(0), max_n+1);
+  Kokkos::resize(h_neighbors, host_tgt_crds.extent(0), max_n+1);
 
-  constexpr bool dry_run = false;
+  /// with allocation size determined, we can do the real neighbor search
+  dry_run = false;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(
       dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
       params.eps_multiplier);
@@ -66,9 +70,15 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
   Kokkos::deep_copy(neighbor_lists, h_neighbors);
   Kokkos::deep_copy(neighborhood_radii, h_radii);
 
-  compute_bds();
+#ifndef NDEBUG
+  std::cout << "quasi-uniform estimate max neighbors = " << est_max_neighbors << "\n";
+  std::cout << "min neighbors = " << params.min_neighbors << "\n";
+  std::cout << "max_neighbors = " << max_n << "\n";
+  std::cout << "n_tgts = " << host_tgt_crds.extent(0) << "\n";
+  std::cout << "extents(neighbor_lists) = (" << neighbor_lists.extent(0) << ", " << neighbor_lists.extent(1) << ")\n";
+#endif
 
-  Kokkos::resize(neighbor_lists, host_tgt_crds.extent(0), n_max);
+  compute_bds();
 }
 
 void Neighborhoods::compute_bds() {
@@ -95,7 +105,8 @@ std::string Neighborhoods::info_string(const int tab_lev) const {
   auto tab_str = indent_string(tab_lev);
   ss << tab_str << "gmls::Neighborhoods info:\n";
   tab_str += "\t";
-  ss << tab_str << "min_neighbors = " << n_min << "\n"
+  ss << tab_str << "neighbors.extents = (" << neighbor_lists.extent(0) << ", " << neighbor_lists.extent(1) << ")\n"
+     << tab_str << "min_neighbors = " << n_min << "\n"
      << tab_str << "max_neighbors = " << n_max << "\n"
      << tab_str << "min_radius = " << r_min << "\n"
      << tab_str << "max_radius = " << r_max << "\n";

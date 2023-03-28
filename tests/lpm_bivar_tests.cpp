@@ -107,6 +107,7 @@ struct BivarConvergenceTest {
         Collect only active faces and vertices (no divided faces)
       */
       GatherMeshData<SeedType> gathered_data(pm);
+      gathered_data.unpack_coordinates();
       gathered_data.init_scalar_fields(pm->tracer_verts, pm->tracer_faces);
       gathered_data.gather_scalar_fields(pm->tracer_verts, pm->tracer_faces);
       gathered_data.update_host();
@@ -144,7 +145,7 @@ struct BivarConvergenceTest {
 
       std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(pm);
       ScatterMeshData<SeedType> scatter(gathered_data, base_ptr);
-      scatter.scatter(pm->tracer_verts, pm->tracer_faces);
+      scatter.scatter_fields(pm->tracer_verts, pm->tracer_faces);
 
       compute_error(pm->tracer_verts.at("tracer_error").view,
         pm->tracer_verts.at("tracer_interp").view,

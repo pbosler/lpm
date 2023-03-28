@@ -126,26 +126,76 @@ void GatherMeshData<SeedType>::init_scalar_field(const std::string& name,
 }
 
 template <typename SeedType>
+void GatherMeshData<SeedType>::unpack_coordinates() {
+  this->template unpack_helper<SeedType::geo::ndim>();
+}
+
+template <typename SeedType>
+template <int ndim>
+typename std::enable_if<ndim == 3, void>::type
+GatherMeshData<SeedType>::unpack_helper() {
+  x = scalar_view_type("gathered_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  y = scalar_view_type("gathered_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  lag_x = scalar_view_type("gathered_lag_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  lag_y = scalar_view_type("gathered_lag_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  z = scalar_view_type("gathered_z", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  lag_z = scalar_view_type("gathered_lag_z", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  h_x = Kokkos::create_mirror_view(x);
+  h_y = Kokkos::create_mirror_view(y);
+  h_lag_x = Kokkos::create_mirror_view(lag_x);
+  h_lag_y = Kokkos::create_mirror_view(lag_y);
+  h_z = Kokkos::create_mirror_view(z);
+  h_lag_z = Kokkos::create_mirror_view(lag_z);
+  Kokkos::parallel_for(mesh->n_vertices_host() + mesh->faces.n_leaves_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      x(i) = phys_crds(i,0);
+      y(i) = phys_crds(i,1);
+      z(i) = phys_crds(i,2);
+      lag_x(i) = lag_crds(i,0);
+      lag_y(i) = lag_crds(i,1);
+      lag_z(i) = lag_crds(i,2);
+    });
+  unpacked = true;
+}
+
+template <typename SeedType>
+template <int ndim>
+typename std::enable_if<ndim == 2, void>::type
+GatherMeshData<SeedType>::unpack_helper() {
+  x = scalar_view_type("gathered_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  y = scalar_view_type("gathered_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  lag_x = scalar_view_type("gathered_lag_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  lag_y = scalar_view_type("gathered_lag_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  h_x = Kokkos::create_mirror_view(x);
+  h_y = Kokkos::create_mirror_view(y);
+  h_lag_x = Kokkos::create_mirror_view(lag_x);
+  h_lag_y = Kokkos::create_mirror_view(lag_y);
+  Kokkos::parallel_for(mesh->n_vertices_host() + mesh->faces.n_leaves_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      x(i) = phys_crds(i,0);
+      y(i) = phys_crds(i,1);
+      lag_x(i) = lag_crds(i,0);
+      lag_y(i) = lag_crds(i,1);
+    });
+  unpacked = true;
+}
+
+template <typename SeedType>
 GatherMeshData<SeedType>::GatherMeshData(
     const std::shared_ptr<PolyMesh2d<SeedType>> pm)
     : mesh(pm),
-      x("gathered_x", pm->n_vertices_host() + pm->faces.n_leaves_host()),
-      y("gathered_y", pm->n_vertices_host() + pm->faces.n_leaves_host()) {
-  if constexpr (SeedType::geo::ndim == 3) {
-    z = scalar_view_type("gathered_z",
-                         pm->n_vertices_host() + pm->faces.n_leaves_host());
-  }
-  gather_coordinates<SeedType::geo::ndim>();
-  h_x = Kokkos::create_mirror_view(x);
-  h_y = Kokkos::create_mirror_view(y);
-  if constexpr (SeedType::geo::ndim == 3) {
-    h_z = Kokkos::create_mirror_view(z);
-  }
+      phys_crds("gathered_phys_crds",pm->n_vertices_host() + pm->faces.n_leaves_host()),
+      lag_crds("gathered_phys_crds",pm->n_vertices_host() + pm->faces.n_leaves_host()),
+      unpacked(false) {
+  h_phys_crds = Kokkos::create_mirror_view(phys_crds);
+  h_lag_crds = Kokkos::create_mirror_view(lag_crds);
+  gather_coordinates();
 }
 
 template <typename SeedType>
 GatherMeshData<SeedType>::GatherMeshData(const PlanarGrid& grid)
-    : x("gathered_x", grid.size()), y("gathered_y", grid.size()) {
+    : x("gathered_x", grid.size()), y("gathered_y", grid.size()),
+    unpacked(true) {
   h_x = Kokkos::create_mirror_view(x);
   h_y = Kokkos::create_mirror_view(y);
   auto xx = x;
@@ -160,10 +210,19 @@ GatherMeshData<SeedType>::GatherMeshData(const PlanarGrid& grid)
 
 template <typename SeedType>
 void GatherMeshData<SeedType>::update_host() const {
-  Kokkos::deep_copy(h_x, x);
-  Kokkos::deep_copy(h_y, y);
-  if constexpr (SeedType::geo::ndim == 3) {
-    Kokkos::deep_copy(h_z, z);
+  if (unpacked) {
+    Kokkos::deep_copy(h_x, x);
+    Kokkos::deep_copy(h_lag_x, lag_x);
+    Kokkos::deep_copy(h_y, y);
+    Kokkos::deep_copy(h_lag_y, lag_y);
+    if constexpr (SeedType::geo::ndim == 3) {
+      Kokkos::deep_copy(h_z, z);
+      Kokkos::deep_copy(h_lag_z, z);
+    }
+  }
+  else {
+    Kokkos::deep_copy(h_phys_crds, phys_crds);
+    Kokkos::deep_copy(h_lag_crds, lag_crds);
   }
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(h_scalar_fields.at(sf.first), sf.second);
@@ -175,10 +234,19 @@ void GatherMeshData<SeedType>::update_host() const {
 
 template <typename SeedType>
 void GatherMeshData<SeedType>::update_device() const {
-  Kokkos::deep_copy(x, h_x);
-  Kokkos::deep_copy(y, h_y);
-  if constexpr (SeedType::geo::ndim == 3) {
-    Kokkos::deep_copy(z, h_z);
+  if (unpacked) {
+    Kokkos::deep_copy(x, h_x);
+    Kokkos::deep_copy(y, h_y);
+    Kokkos::deep_copy(lag_x, h_lag_x);
+    Kokkos::deep_copy(lag_y, h_lag_y);
+    if constexpr (SeedType::geo::ndim == 3) {
+      Kokkos::deep_copy(z, h_z);
+      Kokkos::deep_copy(lag_z, h_lag_z);
+    }
+  }
+  else {
+    Kokkos::deep_copy(phys_crds, h_phys_crds);
+    Kokkos::deep_copy(lag_crds, h_lag_crds);
   }
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(sf.second, h_scalar_fields.at(sf.first));
@@ -189,54 +257,28 @@ void GatherMeshData<SeedType>::update_device() const {
 }
 
 template <typename SeedType>
-template <int ndim>
-typename std::enable_if<ndim == 3, void>::type
-GatherMeshData<SeedType>::gather_coordinates() {
-  auto xx = x;
-  auto yy = y;
-  auto zz = z;
-  auto mesh_vert_xyz = mesh->vertices.phys_crds->crds;
-  Kokkos::parallel_for(
-      mesh->n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
-        xx(i) = mesh_vert_xyz(i, 0);
-        yy(i) = mesh_vert_xyz(i, 1);
-        zz(i) = mesh_vert_xyz(i, 2);
+void GatherMeshData<SeedType>::gather_coordinates() {
+  auto gathered_xyz = phys_crds;
+  auto gathered_lag_xyz = lag_crds;
+  const auto mesh_vert_xyz = mesh->vertices.phys_crds->crds;
+  const auto mesh_vert_lag_xyz = mesh->vertices.lag_crds->crds;
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy({0,0},{mesh->n_vertices_host(), SeedType::geo::ndim});
+  Kokkos::parallel_for(vert_policy,
+    KOKKOS_LAMBDA(const Index i, const Int j) {
+        phys_crds(i, j) = mesh_vert_xyz(i,j);
+        lag_crds(i,j) = mesh_vert_lag_xyz(i,j);
       });
   const auto vert_offset = mesh->n_vertices_host();
   const auto mesh_face_xyz = mesh->faces.phys_crds->crds;
+  const auto mesh_face_lag_xyz = mesh->faces.lag_crds->crds;
   const auto face_mask = mesh->faces.mask;
   const auto face_leaf_idx = mesh->faces.leaf_idx;
-  Kokkos::parallel_for(
-      mesh->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy({0,0}, {mesh->n_faces_host(), SeedType::geo::ndim});
+  Kokkos::parallel_for(face_policy,
+    KOKKOS_LAMBDA(const Index i, const Int j) {
         if (!face_mask(i)) {
-          x(vert_offset + face_leaf_idx(i)) = mesh_face_xyz(i, 0);
-          y(vert_offset + face_leaf_idx(i)) = mesh_face_xyz(i, 1);
-          z(vert_offset + face_leaf_idx(i)) = mesh_face_xyz(i, 2);
-        }
-      });
-}
-
-template <typename SeedType>
-template <int ndim>
-typename std::enable_if<ndim == 2, void>::type
-GatherMeshData<SeedType>::gather_coordinates() {
-  auto xx = x;
-  auto yy = y;
-  auto mesh_vert_xyz = mesh->vertices.phys_crds->crds;
-  Kokkos::parallel_for(
-      mesh->n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
-        xx(i) = mesh_vert_xyz(i, 0);
-        yy(i) = mesh_vert_xyz(i, 1);
-      });
-  const auto vert_offset = mesh->n_vertices_host();
-  const auto mesh_face_xyz = mesh->faces.phys_crds->crds;
-  const auto face_mask = mesh->faces.mask;
-  const auto face_leaf_idx = mesh->faces.leaf_idx;
-  Kokkos::parallel_for(
-      mesh->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
-        if (!face_mask(i)) {
-          x(vert_offset + face_leaf_idx(i)) = mesh_face_xyz(i, 0);
-          y(vert_offset + face_leaf_idx(i)) = mesh_face_xyz(i, 1);
+          phys_crds(vert_offset + face_leaf_idx(i), j) = mesh_face_xyz(i, j);
+          lag_crds(vert_offset + face_leaf_idx(i), j) = mesh_face_lag_xyz(i,j);
         }
       });
 }

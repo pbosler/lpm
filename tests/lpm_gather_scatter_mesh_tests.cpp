@@ -50,6 +50,7 @@ struct GatherScatterTest {
     logger.info(pm->info_string("2 divides", tab_level, verbose));
 
     GatherMeshData<SeedType> gather(pm);
+    gather.unpack_coordinates();
     gather.init_scalar_fields(vert_scalar_fields, face_scalar_fields);
     gather.gather_scalar_fields(vert_scalar_fields, face_scalar_fields);
     auto new_scalar = gather.scalar_fields.at("scalar");
@@ -86,7 +87,7 @@ struct GatherScatterTest {
     REQUIRE(n_duplicates == 0);
 
     ScatterMeshData<SeedType> scatter(gather, pm);
-    scatter.scatter(vert_scalar_fields, face_scalar_fields);
+    scatter.scatter_fields(vert_scalar_fields, face_scalar_fields);
 
     Index n_vert_threes = 0;
     Kokkos::parallel_reduce(pm->n_vertices_host(),

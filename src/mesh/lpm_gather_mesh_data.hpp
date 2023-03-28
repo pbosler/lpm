@@ -2,6 +2,7 @@
 #define LPM_GATHER_MESH_DATA_HPP
 
 #include "LpmConfig.h"
+#include "lpm_coords.hpp"
 #include "lpm_field.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 
@@ -16,20 +17,34 @@ struct PlanarGrid;  // fwd decl
   This struct is the main entry point for clients.
 */
 template <typename SeedType>
-struct GatherMeshData {
-  scalar_view_type x;
-  scalar_view_type y;
-  scalar_view_type z;
+class GatherMeshData final {
+  public:
+  typename SeedType::geo::crd_view_type phys_crds;
+  typename SeedType::geo::crd_view_type lag_crds;
   std::shared_ptr<PolyMesh2d<SeedType>> mesh;
   std::map<std::string, scalar_view_type> scalar_fields;
   std::map<std::string, typename SeedType::geo::vec_view_type> vector_fields;
+  bool unpacked;
+  scalar_view_type x;
+  scalar_view_type y;
+  scalar_view_type z;
+  scalar_view_type lag_x;
+  scalar_view_type lag_y;
+  scalar_view_type lag_z;
 
   typename scalar_view_type::HostMirror h_x;
   typename scalar_view_type::HostMirror h_y;
   typename scalar_view_type::HostMirror h_z;
+  typename scalar_view_type::HostMirror h_lag_x;
+  typename scalar_view_type::HostMirror h_lag_y;
+  typename scalar_view_type::HostMirror h_lag_z;
+  typename SeedType::geo::crd_view_type::HostMirror h_phys_crds;
+  typename SeedType::geo::crd_view_type::HostMirror h_lag_crds;
   std::map<std::string, typename scalar_view_type::HostMirror> h_scalar_fields;
   std::map<std::string, typename SeedType::geo::vec_view_type::HostMirror>
       h_vector_fields;
+
+  void unpack_coordinates();
 
   explicit GatherMeshData(const std::shared_ptr<PolyMesh2d<SeedType>> pm);
 
@@ -44,11 +59,7 @@ struct GatherMeshData {
 
   void update_device() const;
 
-  template <int ndim>
-  typename std::enable_if<ndim == 3, void>::type gather_coordinates();
-
-  template <int ndim>
-  typename std::enable_if<ndim == 2, void>::type gather_coordinates();
+  void gather_coordinates();
 
   void init_scalar_field(const std::string& name, const scalar_view_type& view);
 
@@ -76,6 +87,10 @@ struct GatherMeshData {
 
  private:
   bool _host_initialized;
+  template <int ndim>
+  typename std::enable_if<ndim==2, void>::type unpack_helper();
+  template <int ndim>
+  typename std::enable_if<ndim==3, void>::type unpack_helper();
 };
 
 }  // namespace Lpm

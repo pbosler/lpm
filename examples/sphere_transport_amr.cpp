@@ -296,7 +296,7 @@ int main(int argc, char* argv[]) {
 
               /// collect nearest neighbors for GMLS approximation
               gmls::Neighborhoods neighbors(gather_src.h_phys_crds, gather_dst.h_phys_crds, gmls_params);
-
+              logger.debug(neighbors.info_string());
               logger.debug("created neighbor lists.");
 
               /// create GMLS solution operator

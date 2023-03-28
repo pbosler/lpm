@@ -123,6 +123,7 @@ struct SSRFPackConvergenceTest {
       collect only active faces and vertices (no divided faces)
       */
       GatherMeshData<SeedType> gathered(pm);
+      gathered.unpack_coordinates();
       gathered.init_scalar_fields(pm->tracer_verts, pm->tracer_faces);
       gathered.gather_scalar_fields(pm->tracer_verts, pm->tracer_faces);
       gathered.update_host();
