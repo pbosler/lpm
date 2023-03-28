@@ -82,6 +82,9 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   template <typename VelocityType>
   void initialize_velocity();
 
+  template <typename VelocityType>
+  void set_velocity(const Real t, const Index vert_start_idx=0, const Index face_start_idx=0);
+
   inline Int ntracers() const { return tracer_verts.size(); }
 
   std::string info_string(const int tab_lev = 0) const /*override*/;

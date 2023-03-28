@@ -5,12 +5,17 @@
 #include "lpm_2d_transport_rk4_impl.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_compadre.hpp"
 #include "lpm_error.hpp"
 #include "lpm_error_impl.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
+#include "mesh/lpm_gather_mesh_data.hpp"
+#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data.hpp"
+#include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_polymesh2d_impl.hpp"
 #include "mesh/lpm_refinement.hpp"
@@ -41,8 +46,8 @@ inline Real courant_number(const Real dt, const Real dlam) {
   typedef. Changing the mesh seed will therefore require recompiling this
   program.
 */
-// typedef CubedSphereSeed seed_type;
-typedef IcosTriSphereSeed seed_type;
+typedef CubedSphereSeed seed_type;
+// typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
 typedef SphericalGaussianHills tracer_type;
 
@@ -68,6 +73,7 @@ struct Input {
   Real tracer_mass_tol;
   Real tracer_var_tol;
   Real radius;
+  Int gmls_order;
 
   bool help_and_exit;
   std::string info_string() const;
@@ -255,17 +261,63 @@ int main(int argc, char* argv[]) {
     Int remesh_ctr = 0;
     const bool do_remesh = (input.remesh_interval != LPM_NULL_IDX and input.remesh_interval > 0);
     const bool do_reset = (do_remesh and input.reset_lagrangian_interval != LPM_NULL_IDX and input.reset_lagrangian_interval > 0);
+    gmls::Params gmls_params(input.gmls_order);
+    const std::vector<Compadre::TargetOperation> gmls_ops({Compadre::VectorPointEvaluation});
 
+    logger.debug("initiating time step loop.");
     for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
+      logger.debug("t = {}", sphere->t);
       /**
         Remesh before timestep
       */
       if (do_remesh) {
+        /// build new (destination) mesh
+        auto new_sphere = std::make_shared<TransportMesh2d<seed_type>>(mesh_params);
         if ((time_idx + 1)%input.remesh_interval == 0) {
           ++remesh_ctr;
           /// choose remeshing procedure
+          /// gather data from current (source) mesh
+              GatherMeshData<seed_type> gather_src(sphere);
+              logger.debug("created gather object");
+              gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
+              logger.debug("gathered fields");
+              gather_src.update_host();
+
+              logger.debug("gathered src data");
           if (remesh_ctr < input.reset_lagrangian_interval or !do_reset) {
-            /// remesh using t=0 reference
+            /// remesh using t=0
+            logger.debug("initiating remesh {} to t=0", remesh_ctr);
+
+            for (int i=0; i<=input.amr_max; ++i) {
+              /// gather coordinates from new (destination) mesh
+              GatherMeshData<seed_type> gather_dst(new_sphere);
+              gather_dst.update_host();
+              logger.debug("gathered dst data");
+
+              /// collect nearest neighbors for GMLS approximation
+              gmls::Neighborhoods neighbors(gather_src.h_phys_crds, gather_dst.h_phys_crds, gmls_params);
+
+              logger.debug("created neighbor lists.");
+
+              /// create GMLS solution operator
+              auto vector_gmls = gmls::sphere_vector_gmls(gather_src.phys_crds, gather_dst.phys_crds, neighbors, gmls_params, gmls_ops);
+              Compadre::Evaluator gmls_eval_vector(&vector_gmls);
+
+              logger.debug("created gmls objects");
+
+              auto src_data = gather_src.lag_crds;
+              auto dst_data = gmls_eval_vector.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(src_data,
+                Compadre::VectorPointEvaluation);
+              logger.debug("applied gmls approximation operator");
+
+              gather_dst.lag_crds = dst_data;
+              gather_dst.update_device();
+
+              ScatterMeshData<seed_type> scatter(gather_dst, new_sphere);
+              scatter.scatter_lag_crds();
+
+              new_sphere->initialize_tracer(tracer);
+            }
           }
           else if (do_reset and remesh_ctr == input.reset_lagrangian_interval) {
             /// remesh to t=0 reference, and create new reference to current time
@@ -276,6 +328,9 @@ int main(int argc, char* argv[]) {
           else {
             /// remesh to existing reference
           }
+
+          /// set velocity on new mesh
+          new_sphere->template set_velocity<velocity_type>(sphere->t);
         }
       }
       /// time step
@@ -357,6 +412,7 @@ Input::Input(int argc, char* argv[]) {
   output_dir = "";
   help_and_exit = false;
   radius = 1;
+  gmls_order = 5;
   bool use_dt = false;
   bool use_nsteps = false;
   for (int i = 1; i < argc; ++i) {
@@ -403,6 +459,9 @@ Input::Input(int argc, char* argv[]) {
     } else if (token == "-reset") {
       reset_lagrangian_interval = std::stoi(argv[++i]);
       LPM_REQUIRE(reset_lagrangian_interval > 0 or reset_lagrangian_interval == LPM_NULL_IDX);
+    } else if (token == "-gmls") {
+      gmls_order = std::stoi(argv[++i]);
+      LPM_REQUIRE(gmls_order >= 2);
     }
   }
   if (use_nsteps) {
@@ -469,7 +528,9 @@ std::string Input::usage() const {
      << "-of [positive integer or -1] frequency of vtk output; setting value "
         "to -1 will disable vtk output (default: 1)\n";
   ss << tabstr
-      << "-reset [positive integer] number of remeshing steps to allow before creating a new reference (default: disabled)\n";
+     << "-reset [positive integer] number of remeshing steps to allow before creating a new reference (default: disabled)\n";
+  ss << tabstr
+     <<  "-gmls [positive integer >= 2] order of polynomial approximation for GMLS remeshing (default: 5)\n";
   ss << tabstr << "-h Print help message and exit.\n";
   return ss.str();
 }
@@ -489,6 +550,7 @@ std::string Input::info_string() const {
   if (remesh_interval > 0) {
     ss << tabstr << "remesh frequency is " << remesh_interval << "\n";
     ss << tabstr << "reset_lagrangian_interval is " << reset_lagrangian_interval << "\n";
+    ss << tabstr << "gmls order = " << gmls_order << "\n";
   } else {
     ss << tabstr << "remeshing is disabled.\n";
   }

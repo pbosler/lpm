@@ -25,6 +25,20 @@ void TransportMesh2d<SeedType>::initialize_velocity() {
 }
 
 template <typename SeedType>
+template <typename VelocityType>
+void TransportMesh2d<SeedType>::set_velocity(const Real t, const Index vert_start_idx, const Index face_start_idx) {
+  static_assert(
+      std::is_same<typename SeedType::geo, typename VelocityType::geo>::value,
+      "Geometry types must match.");
+
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+    VelocityKernel<VelocityType>(this->velocity_verts.view,
+      this->vertices.phys_crds->crds, t));
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+    VelocityKernel<VelocityType>(this->velocity_faces.view, this->faces.phys_crds->crds, t));
+}
+
+template <typename SeedType>
 template <typename ICType>
 void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
   static_assert(
