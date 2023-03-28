@@ -35,11 +35,16 @@ macro(setup_platform)
     message(FATAL_ERROR "Make is required, but is not available on this system.")
   endif()
 
+if (Trilinos_DIR)
   include(lpm_find_trilinos)
-  include(lpm_build_spdlog)
-  include(lpm_find_netcdf)
-  include(lpm_find_vtk)
-  include(lpm_find_compose)
+else()
+  message(STATUS "Trilinos_DIR not specified; looking for standalone TPLs")
+  include(lpm_find_kokkos)
+endif()
+include(lpm_build_spdlog)
+include(lpm_find_netcdf)
+include(lpm_find_vtk)
+include(lpm_find_compose)
 
 
 #

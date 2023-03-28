@@ -59,10 +59,8 @@ target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 add_dependencies(lpm spdlog)
 
 target_link_libraries(lpm lpm_fortran
-                          KokkosAlgorithms::kokkosalgorithms
-                          KokkosContainers::kokkoscontainers
-                          KokkosCore::kokkoscore
-                          KokkosKernels::kokkoskernels
+                          Kokkos::kokkos
+                          Kokkos::kokkoskernels
                           Compadre::compadre
                           spdlog
                           )
