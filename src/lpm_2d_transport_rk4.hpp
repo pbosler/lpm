@@ -35,8 +35,10 @@ class Transport2dRK4 {
   template <typename VelocityFtor>
   void advance_timestep();
 
- protected:
   std::shared_ptr<TransportMesh2d<SeedType>> tmesh;
+
+ protected:
+
 
   void init();
 

@@ -266,15 +266,16 @@ int main(int argc, char* argv[]) {
 
     logger.debug("initiating time step loop.");
     for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
-      logger.debug("t = {}", sphere->t);
+      logger.debug("time step {} of {}; t = {}", sphere->t_idx, input.nsteps, sphere->t);
       /**
         Remesh before timestep
       */
       if (do_remesh) {
-        /// build new (destination) mesh
-        auto new_sphere = std::make_shared<TransportMesh2d<seed_type>>(mesh_params);
         if ((time_idx + 1)%input.remesh_interval == 0) {
           ++remesh_ctr;
+          /// build new (destination) mesh
+          auto new_sphere = std::make_shared<TransportMesh2d<seed_type>>(mesh_params);
+          new_sphere->t = sphere->t;
           /// choose remeshing procedure
           /// gather data from current (source) mesh
               GatherMeshData<seed_type> gather_src(sphere);
@@ -287,36 +288,37 @@ int main(int argc, char* argv[]) {
           if (remesh_ctr < input.reset_lagrangian_interval or !do_reset) {
             /// remesh using t=0
             logger.debug("initiating remesh {} to t=0", remesh_ctr);
+            /// gather coordinates from new (destination) mesh
+            GatherMeshData<seed_type> gather_dst(new_sphere);
+            gather_dst.update_host();
+            logger.debug("gathered dst data");
 
-            for (int i=0; i<=input.amr_max; ++i) {
-              /// gather coordinates from new (destination) mesh
-              GatherMeshData<seed_type> gather_dst(new_sphere);
-              gather_dst.update_host();
-              logger.debug("gathered dst data");
+            /// collect nearest neighbors for GMLS approximation
+            gmls::Neighborhoods neighbors(gather_src.h_phys_crds, gather_dst.h_phys_crds, gmls_params);
+            logger.debug(neighbors.info_string());
+            logger.debug("created neighbor lists.");
 
-              /// collect nearest neighbors for GMLS approximation
-              gmls::Neighborhoods neighbors(gather_src.h_phys_crds, gather_dst.h_phys_crds, gmls_params);
-              logger.debug(neighbors.info_string());
-              logger.debug("created neighbor lists.");
+            /// create GMLS solution operator
+            auto vector_gmls = gmls::sphere_vector_gmls(gather_src.phys_crds, gather_dst.phys_crds, neighbors, gmls_params, gmls_ops);
+            Compadre::Evaluator gmls_eval_vector(&vector_gmls);
 
-              /// create GMLS solution operator
-              auto vector_gmls = gmls::sphere_vector_gmls(gather_src.phys_crds, gather_dst.phys_crds, neighbors, gmls_params, gmls_ops);
-              Compadre::Evaluator gmls_eval_vector(&vector_gmls);
+            logger.debug("created gmls objects");
 
-              logger.debug("created gmls objects");
+            auto src_data = gather_src.lag_crds;
+            auto dst_data = gmls_eval_vector.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(src_data,
+              Compadre::VectorPointEvaluation);
+            logger.debug("applied gmls approximation operator");
 
-              auto src_data = gather_src.lag_crds;
-              auto dst_data = gmls_eval_vector.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(src_data,
-                Compadre::VectorPointEvaluation);
-              logger.debug("applied gmls approximation operator");
+            gather_dst.lag_crds = dst_data;
+            gather_dst.update_device();
 
-              gather_dst.lag_crds = dst_data;
-              gather_dst.update_device();
+            ScatterMeshData<seed_type> scatter(gather_dst, new_sphere);
+            scatter.scatter_lag_crds();
 
-              ScatterMeshData<seed_type> scatter(gather_dst, new_sphere);
-              scatter.scatter_lag_crds();
+            new_sphere->initialize_tracer(tracer);
 
-              new_sphere->initialize_tracer(tracer);
+            for (int i=0; i<input.amr_max; ++i) {
+
             }
           }
           else if (do_reset and remesh_ctr == input.reset_lagrangian_interval) {
@@ -331,8 +333,12 @@ int main(int argc, char* argv[]) {
 
           /// set velocity on new mesh
           new_sphere->template set_velocity<velocity_type>(sphere->t);
+          sphere = new_sphere;
+          solver.tmesh = new_sphere;
         }
-      }
+
+      } // do remesh
+
       /// time step
       solver.template advance_timestep<velocity_type>();
 
