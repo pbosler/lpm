@@ -15,8 +15,9 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-set(LPM_SOURCES lpm_bve_sphere.cpp
-                lpm_bve_rk4.cpp
+set(LPM_SOURCES
+#                lpm_bve_sphere.cpp
+#                lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
                 lpm_compadre.cpp

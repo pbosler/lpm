@@ -19,9 +19,9 @@ vtkSmartPointer<vtkPolyData> VtkInterface<Geo, FaceKind>::toVtkPolyData(
   auto result = vtkSmartPointer<vtkPolyData>::New();
   auto pts = vtkSmartPointer<vtkPoints>::New();
   Real crdvec[Geo::ndim];
-  for (Index i = 0; i < verts.phys_crds->nh(); ++i) {
+  for (Index i = 0; i < verts.phys_crds.nh(); ++i) {
     for (int j = 0; j < Geo::ndim; ++j) {
-      crdvec[j] = verts.phys_crds->get_crd_component_host(i, j);
+      crdvec[j] = verts.phys_crds.get_crd_component_host(i, j);
     }
     pts->InsertNextPoint(crdvec[0], crdvec[1],
                          (Geo::ndim == 3 ? crdvec[2] : 0.0));

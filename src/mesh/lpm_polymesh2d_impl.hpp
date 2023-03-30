@@ -12,15 +12,15 @@ namespace Lpm {
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::seed_init(const MeshSeed<SeedType>& seed) {
-  vertices.phys_crds->init_vert_crds_from_seed(seed);
-  vertices.lag_crds->init_vert_crds_from_seed(seed);
+  vertices.phys_crds.init_vert_crds_from_seed(seed);
+  vertices.lag_crds.init_vert_crds_from_seed(seed);
   for (int i = 0; i < SeedType::nverts; ++i) {
     vertices.insert_host(i);
   }
   edges.init_from_seed(seed);
   faces.init_from_seed(seed);
-  faces.phys_crds->init_interior_crds_from_seed(seed);
-  faces.lag_crds->init_interior_crds_from_seed(seed);
+  faces.phys_crds.init_interior_crds_from_seed(seed);
+  faces.lag_crds.init_interior_crds_from_seed(seed);
 }
 
 template <typename SeedType>
@@ -57,8 +57,8 @@ void PolyMesh2d<SeedType>::divide_face(const Index face_idx,
 template <typename SeedType>
 void PolyMesh2d<SeedType>::reset_face_centroids() {
   ko::parallel_for(n_faces_host(), FaceCentroidFunctor<SeedType>(
-                                       faces.phys_crds->crds, faces.crd_inds,
-                                       vertices.phys_crds->crds,
+                                       faces.phys_crds.view, faces.crd_inds,
+                                       vertices.phys_crds.view,
                                        vertices.crd_inds, faces.verts));
 }
 

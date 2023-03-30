@@ -18,7 +18,7 @@ std::string Coords<Geo>::info_string(const std::string& label,
     for (Index i = 0; i < _nmax; ++i) {
       if (i == _nh()) oss << tabstr << "---------------------------------\n";
       oss << tabstr << "\t" << label << ": (" << i << ") : ";
-      for (Int j = 0; j < Geo::ndim; ++j) oss << "\t" << _hostcrds(i, j) << " ";
+      for (Int j = 0; j < Geo::ndim; ++j) oss << "\t" << _hostview(i, j) << " ";
       oss << std::endl;
     }
   }
@@ -31,7 +31,7 @@ void Coords<Geo>::write_matlab(std::ostream& os,
   os << name << " = [";
   for (Index i = 0; i < _nh(); ++i) {
     for (int j = 0; j < Geo::ndim; ++j) {
-      os << _hostcrds(i, j)
+      os << _hostview(i, j)
          << (j == Geo::ndim - 1 ? (i == _nh() - 1 ? "];" : ";") : ",");
     }
   }
@@ -40,6 +40,7 @@ void Coords<Geo>::write_matlab(std::ostream& os,
 
 template <typename Geo>
 void Coords<Geo>::init_random(const Real max_range, const Int ss) {
+  // todo: replace this with kokkos random parallel_for.
   unsigned seed = 0 + ss;
   std::default_random_engine generator(seed);
   std::uniform_real_distribution<Real> randDist(-max_range, max_range);
@@ -55,6 +56,7 @@ void Coords<Geo>::init_random(const Real max_range, const Int ss) {
 
 template <>
 void Coords<SphereGeometry>::init_random(const Real max_range, const Int ss) {
+  // todo: replace this with kokkos random parallel_for.
   unsigned seed = 0 + ss;
   std::default_random_engine generator(seed);
   std::uniform_real_distribution<Real> randDist(-1.0, 1.0);
@@ -77,7 +79,7 @@ void Coords<SphereGeometry>::init_random(const Real max_range, const Int ss) {
 template <typename Geo>
 Real Coords<Geo>::max_radius() const {
   Real result = 0;
-  const auto local_crds = this->crds;
+  const auto local_crds = this->view;
   Kokkos::parallel_reduce(
       _nh(),
       KOKKOS_LAMBDA(const Index i, Real& m) {
@@ -96,7 +98,7 @@ void Coords<Geo>::init_vert_crds_from_seed(const MeshSeed<SeedType>& seed) {
                   "coords::init_vert_crds_from_seed memory limit error");
   for (int i = 0; i < SeedType::nverts; ++i) {
     for (int j = 0; j < Geo::ndim; ++j) {
-      _hostcrds(i, j) = seed.seed_crds(i, j);
+      _hostview(i, j) = seed.seed_crds(i, j);
     }
   }
   _nh() = SeedType::nverts;
@@ -109,7 +111,7 @@ void Coords<Geo>::init_interior_crds_from_seed(const MeshSeed<SeedType>& seed) {
                   "Coords::init_interior_crds_from_seed memory limit error.");
   for (int i = 0; i < SeedType::nfaces; ++i) {
     for (int j = 0; j < Geo::ndim; ++j) {
-      _hostcrds(i, j) = seed.seed_crds(SeedType::nverts + i, j);
+      _hostview(i, j) = seed.seed_crds(SeedType::nverts + i, j);
     }
   }
   _nh() = SeedType::nfaces;
@@ -118,7 +120,7 @@ void Coords<Geo>::init_interior_crds_from_seed(const MeshSeed<SeedType>& seed) {
 template <typename Geo>
 Kokkos::MinMaxScalar<Real> Coords<Geo>::min_max_extent(const int dim) const {
   Kokkos::MinMaxScalar<Real> minmax;
-  const auto local_crds = this->crds;
+  const auto local_crds = this->view;
   Kokkos::parallel_reduce(
       _nh(),
       KOKKOS_LAMBDA(const Index i, Kokkos::MinMaxScalar<Real>& mm) {

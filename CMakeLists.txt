@@ -90,7 +90,7 @@ set(LPM_LIBRARIES lpm
 printvar(LPM_LIBRARIES)
 
 add_subdirectory(tests)
-add_subdirectory(examples)
+#add_subdirectory(examples)
 
 
 

@@ -38,10 +38,13 @@ class Vertices {
                 of edges incident to each vertex.
   */
   Vertices(const Index nmax, const bool verts_are_dual = false)
-      : crd_inds("vert_crd_inds", nmax), n("n") {
+      : crd_inds("vert_crd_inds", nmax), n("n"), phys_crds(nmax),
+      lag_crds(nmax) {
+
     _nh = ko::create_mirror_view(n);
     _nh() = 0;
     _host_crd_inds = ko::create_mirror_view(crd_inds);
+
     if (verts_are_dual) {
       edges = ko::View<Index**>("edges_at_vertex", nmax,
                                 constants::MAX_VERTEX_DEGREE);
@@ -69,8 +72,7 @@ class Vertices {
     @param [in] pcrds pointer to physical coordinates
     @param [in] lcrds pointer to Lagrangian coordinates
   */
-  Vertices(const Index nmax, std::shared_ptr<CoordsType> pcrds,
-           std::shared_ptr<CoordsType> lcrds);
+  Vertices(const Index nmax, CoordsType& pcrds, CoordsType& lcrds);
 
   /** @brief return the maximum allowed number of vertices in memory
 
@@ -87,8 +89,8 @@ class Vertices {
   /** @brief  deep-copy all data from host to device
    */
   void update_device() const {
-    phys_crds->update_device();
-    lag_crds->update_device();
+    phys_crds.update_device();
+    lag_crds.update_device();
     ko::deep_copy(n, _nh);
     if (verts_are_dual()) {
       ko::deep_copy(edges, _host_edges);
@@ -98,8 +100,8 @@ class Vertices {
   /** @brief deep-copy all data from device to host
    */
   void update_host() const {
-    phys_crds->update_host();
-    lag_crds->update_host();
+    phys_crds.update_host();
+    lag_crds.update_host();
     ko::deep_copy(_nh, n);
     if (verts_are_dual()) {
       ko::deep_copy(_host_edges, edges);
@@ -146,11 +148,9 @@ class Vertices {
   */
   template <typename PtViewType>
   void insert_host(const PtViewType physcrd, const PtViewType lagcrd) {
-    const Index crd_insert_idx = phys_crds->nh();
-    LPM_ASSERT(phys_crds);
-    LPM_ASSERT(lag_crds);
-    phys_crds->insert_host(physcrd);
-    lag_crds->insert_host(lagcrd);
+    const Index crd_insert_idx = phys_crds.nh();
+    phys_crds.insert_host(physcrd);
+    lag_crds.insert_host(lagcrd);
     this->insert_host(crd_insert_idx);
   }
 
@@ -169,12 +169,10 @@ class Vertices {
   template <typename PtViewType>
   void insert_host(const PtViewType physcrd, const PtViewType lagcrd,
                    const std::vector<Index>& edge_list) {
-    LPM_ASSERT(phys_crds);
-    LPM_ASSERT(lag_crds);
     LPM_ASSERT(verts_are_dual());
-    const Index crd_insert_idx = phys_crds->nh();
-    phys_crds->insert_host(physcrd);
-    lag_crds->insert_host(lagcrd);
+    const Index crd_insert_idx = phys_crds.nh();
+    phys_crds.insert_host(physcrd);
+    lag_crds.insert_host(lagcrd);
     this->insert_host(crd_insert_idx, edge_list);
   }
 
@@ -214,15 +212,17 @@ class Vertices {
   */
   ko::View<Index**> edges;
 
-  /** @brief Smart pointer to a Coords object containing the physical
+  /** @brief coords object containing the physical
     coordinates of each vertex.
   */
-  std::shared_ptr<CoordsType> phys_crds;
+//   std::unique_ptr<CoordsType> phys_crds;
+  CoordsType phys_crds;
 
-  /** @brief Smart pointer to a Coords object containing the Lagrangian
+  /** @brief coords object containing the Lagrangian
     coordinates of each vertex.
   */
-  std::shared_ptr<CoordsType> lag_crds;
+  // std::unique_ptr<CoordsType> lag_crds;
+  CoordsType lag_crds;
 
   /** @brief Create and return a string containing info about this Vertices
     instance.

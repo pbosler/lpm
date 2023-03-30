@@ -43,6 +43,12 @@ struct PolyMeshParameters {
   MeshSeed<SeedType> seed;  /// instance of the MeshSeed that initializes the
                             /// particles and panels
 
+  PolyMeshParameters() = default;
+
+  PolyMeshParameters(const PolyMeshParameters& other) = default;
+
+  PolyMeshParameters(const Index nmv, const Index nme, const Index nmf) : nmaxverts(nmv), nmaxedges(nme), nmaxfaces(nmf), init_depth(0), radius(1), amr_limit(0) {}
+
   PolyMeshParameters(const Int depth, const Real r = 1, const Int amr = 0)
       : init_depth(depth), amr_limit(amr), seed(r) {
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr);
@@ -93,7 +99,7 @@ class PolyMesh2d {
   /// initial radius of mesh
   Real radius;
 
-  std::shared_ptr<PolyMeshParameters<SeedType>> params_;
+  PolyMeshParameters<SeedType> params_;
   /*
 
       Member functions
@@ -110,11 +116,12 @@ class PolyMesh2d {
   */
   PolyMesh2d(const Index nmaxverts, const Index nmaxedges,
              const Index nmaxfaces)
-      : vertices(nmaxverts), edges(nmaxedges), faces(nmaxfaces), radius(1) {
-    vertices.phys_crds = coords_ptr(new coords_type(nmaxverts));
-    vertices.lag_crds = coords_ptr(new coords_type(nmaxverts));
-    faces.phys_crds = coords_ptr(new coords_type(nmaxfaces));
-    faces.lag_crds = coords_ptr(new coords_type(nmaxfaces));
+      : vertices(nmaxverts), edges(nmaxedges), faces(nmaxfaces), radius(1),
+      params_(nmaxverts, nmaxedges, nmaxfaces) {
+      params_.nmaxverts = nmaxverts;
+      params_.nmaxedges = nmaxedges;
+      params_.nmaxfaces = nmaxfaces;
+      params_.radius = radius;
   }
 
   /** @brief Constructor.  Allocates memory, does not initialize values.
@@ -125,11 +132,8 @@ class PolyMesh2d {
       : vertices(params.nmaxverts),
         edges(params.nmaxedges),
         faces(params.nmaxfaces),
-        radius(params.radius) {
-    vertices.phys_crds = coords_ptr(new coords_type(params.nmaxverts));
-    vertices.lag_crds = coords_ptr(new coords_type(params.nmaxverts));
-    faces.phys_crds = coords_ptr(new coords_type(params.nmaxfaces));
-    faces.lag_crds = coords_ptr(new coords_type(params.nmaxfaces));
+        radius(params.radius),
+        params_(params) {
     tree_init(params.init_depth, params.seed);
   }
 
@@ -142,11 +146,7 @@ class PolyMesh2d {
         edges(params->nmaxedges),
         faces(params->nmaxfaces),
         radius(params->radius),
-        params_(params) {
-    vertices.phys_crds = coords_ptr(new coords_type(params->nmaxverts));
-    vertices.lag_crds = coords_ptr(new coords_type(params->nmaxverts));
-    faces.phys_crds = coords_ptr(new coords_type(params->nmaxfaces));
-    faces.lag_crds = coords_ptr(new coords_type(params->nmaxfaces));
+        params_() {
     tree_init(params->init_depth, params->seed);
   }
 
@@ -158,7 +158,7 @@ class PolyMesh2d {
     @device
   */
   auto get_vert_crds() const {
-    return ko::subview(vertices.phys_crds->crds,
+    return ko::subview(vertices.phys_crds.view,
                        std::make_pair(0, vertices.nh()), ko::ALL());
   }
 
@@ -168,7 +168,7 @@ class PolyMesh2d {
   @device
   */
   auto get_face_crds() const {
-    return ko::subview(faces.phys_crds->crds, std::make_pair(0, faces.nh()),
+    return ko::subview(faces.phys_crds.view, std::make_pair(0, faces.nh()),
                        ko::ALL());
   }
 
@@ -370,7 +370,7 @@ class PolyMesh2d {
     Index result;
     Index current_idx = face_start_idx;
     auto fcrd =
-        Kokkos::subview(faces.phys_crds->crds, current_idx, Kokkos::ALL);
+        Kokkos::subview(faces.phys_crds.view, current_idx, Kokkos::ALL);
     Real dist = SeedType::geo::distance(query_pt, fcrd);
     // search all adjacent faces
     bool keep_going = true;
@@ -384,7 +384,7 @@ class PolyMesh2d {
           const auto poly =
               Kokkos::subview(faces.verts, adj_face_list[i], Kokkos::ALL);
           Real face_centroid[Geo::ndim];
-          Geo::barycenter(face_centroid, vertices.phys_crds->crds, poly,
+          Geo::barycenter(face_centroid, vertices.phys_crds.view, poly,
                           SeedType::nfaceverts);
           Real test_dist = SeedType::geo::distance(face_centroid, query_pt);
           // continue search at adjacent face, if it's closer than current
@@ -408,10 +408,10 @@ class PolyMesh2d {
   template <typename Point>
   KOKKOS_INLINE_FUNCTION Index nearest_root_face(const Point& query_pt) const {
     Index result = 0;
-    auto x0 = Kokkos::subview(faces.phys_crds->crds, 0, Kokkos::ALL);
+    auto x0 = Kokkos::subview(faces.phys_crds.view, 0, Kokkos::ALL);
     Real dist = SeedType::geo::distance(query_pt, x0);
     for (int i = 1; i < SeedType::nfaces; ++i) {
-      x0 = Kokkos::subview(faces.phys_crds->crds, i, Kokkos::ALL);
+      x0 = Kokkos::subview(faces.phys_crds.view, i, Kokkos::ALL);
       const Real test_dist = SeedType::geo::distance(x0, query_pt);
       if (test_dist < dist) {
         dist = test_dist;
@@ -438,13 +438,13 @@ class PolyMesh2d {
     bool keep_going = faces.has_kids(current_idx);
     while (keep_going) {
       // initialize with kid 0
-      auto fx = Kokkos::subview(faces.phys_crds->crds,
+      auto fx = Kokkos::subview(faces.phys_crds.view,
                                 faces.kids(current_idx, 0), Kokkos::ALL);
       Real dist = Geo::distance(fx, query_pt);
       next_idx = faces.kids(current_idx, 0);
       for (int k = 1; k < 4; ++k) {
         // replace kid 0 with any closer kids
-        fx = Kokkos::subview(faces.phys_crds->crds, faces.kids(current_idx, k),
+        fx = Kokkos::subview(faces.phys_crds.view, faces.kids(current_idx, k),
                              Kokkos::ALL);
         const Real test_dist = Geo::distance(query_pt, fx);
         if (test_dist < dist) {
@@ -484,20 +484,20 @@ class PolyMesh2d {
       if (boundary_edges > 0) {
         const auto poly = Kokkos::subview(faces.verts, face_idx, Kokkos::ALL);
         Real face_centroid[2];
-        Geo::barycenter(face_centroid, vertices.phys_crds->crds, poly,
+        Geo::barycenter(face_centroid, vertices.phys_crds.view, poly,
                         SeedType::nfaceverts);
         const Real intr_dist = Geo::distance(pt, face_centroid);
         for (int i = 0; i < n_leaf_edges; ++i) {
           if (edges.on_boundary(leaf_edge_list[i])) {
             Real q_vec[2];
-            edges.edge_vector(q_vec, vertices.phys_crds->crds,
+            edges.edge_vector(q_vec, vertices.phys_crds.view,
                               leaf_edge_list[i]);
             auto v0 =
-                Kokkos::subview(vertices.phys_crds->crds,
+                Kokkos::subview(vertices.phys_crds.view,
                                 edges.origs(leaf_edge_list[i]), Kokkos::ALL);
             if (!edge_is_positive(leaf_edge_list[i], face_idx)) {
               Geo::negate(q_vec);
-              v0 = Kokkos::subview(vertices.phys_crds->crds,
+              v0 = Kokkos::subview(vertices.phys_crds.view,
                                    edges.dests(leaf_edge_list[i]), Kokkos::ALL);
             }
             Geo::normalize(q_vec);
@@ -556,11 +556,11 @@ class PolyMesh2d {
     LPM_KERNEL_ASSERT(f_idx != LPM_NULL_IDX);
     const auto tri = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
     const auto vertexA =
-        Kokkos::subview(vertices.phys_crds->crds, tri[0], Kokkos::ALL);
+        Kokkos::subview(vertices.phys_crds.view, tri[0], Kokkos::ALL);
     const auto vertexB =
-        Kokkos::subview(vertices.phys_crds->crds, tri[1], Kokkos::ALL);
+        Kokkos::subview(vertices.phys_crds.view, tri[1], Kokkos::ALL);
     const auto vertexC =
-        Kokkos::subview(vertices.phys_crds->crds, tri[2], Kokkos::ALL);
+        Kokkos::subview(vertices.phys_crds.view, tri[2], Kokkos::ALL);
     const Real total_area = Geo::tri_area(vertexA, vertexB, vertexC);
     const Real area_a = Geo::tri_area(pt, vertexB, vertexC);
     const Real area_b = Geo::tri_area(pt, vertexC, vertexA);
@@ -652,7 +652,7 @@ class PolyMesh2d {
     for (int i = 0; i < 3; ++i) {
       rpt[i] = pt[i];
     }
-    siqk::sqr::calc_sphere_to_ref(vertices.phys_crds->crds, quad_cyc, rpt,
+    siqk::sqr::calc_sphere_to_ref(vertices.phys_crds.view, quad_cyc, rpt,
                                   ref[0], ref[1]);
 #endif
   }
@@ -681,8 +681,8 @@ class PolyMesh2d {
     d1 = 4 * pt[0];
     d2 = 4 * pt[1];
     for (int i = 0; i < 4; ++i) {
-      vx[i] = vertices.phys_crds->crds(quad[i], 0);
-      vy[i] = vertices.phys_crds->crds(quad[i], 1);
+      vx[i] = vertices.phys_crds.view(quad[i], 0);
+      vy[i] = vertices.phys_crds.view(quad[i], 1);
       d1 -= vx[i];
       d2 -= vy[i];
     }
@@ -813,7 +813,7 @@ class PolyMesh2d {
 
   */
   typename Coords<Geo>::crd_view_type::HostMirror faces_phys_crds() {
-    return faces.phys_crds->get_host_crd_view();
+    return faces.phys_crds.get_host_crd_view();
   }
 
   /** @brief Starting with a MeshSeed, uniformly refines each panel until the
@@ -879,10 +879,10 @@ class PolyMesh2d {
       KOKKOS_LAMBDA (const Index i, Index& s) {
         s += (flags(i) ? 1 : 0);
       }, flag_count);
-    const Index space_left = params_->nmaxfaces - n_faces_host();
+    const Index space_left = params_.nmaxfaces - n_faces_host();
 
     if (flag_count > space_left / 4) {
-      logger.warn("divide_flagged_faces: not enough memory (flag count = {}, nfaces = {}, nmaxfaces = {})", flag_count, n_faces_host(), params_->nmaxfaces);
+      logger.warn("divide_flagged_faces: not enough memory (flag count = {}, nfaces = {}, nmaxfaces = {})", flag_count, n_faces_host(), params_.nmaxfaces);
       return;
     }
     const Index n_faces_in = n_faces_host();
@@ -892,7 +892,7 @@ class PolyMesh2d {
     bool limit_reached = false;
     for (Index i=0; i< n_faces_in; ++i) {
       if (host_flags(i)) {
-        if (faces.host_level(i) < params_->init_depth + params_->amr_limit) {
+        if (faces.host_level(i) < params_.init_depth + params_.amr_limit) {
           divide_face(i, logger);
           ++refine_count;
         }
@@ -969,7 +969,7 @@ ko::View<Real* [SeedType::geo::ndim]> source_coords(
   ko::parallel_for(
       nv, KOKKOS_LAMBDA(int i) {
         for (int j = 0; j < SeedType::geo::ndim; ++j) {
-          result(i, j) = pm.vertices.phys_crds->crds(i, j);
+          result(i, j) = pm.vertices.phys_crds.view(i, j);
         }
       });
   ko::parallel_for(
@@ -978,7 +978,7 @@ ko::View<Real* [SeedType::geo::ndim]> source_coords(
         for (int j = 0; j < pm.nfaces(); ++j) {
           if (!pm.faces.mask(j)) {
             for (int k = 0; k < SeedType::geo::ndim; ++k) {
-              result(offset, k) = pm.faces.phys_crds->crds(j, k);
+              result(offset, k) = pm.faces.phys_crds.view(j, k);
             }
             ++offset;
           }

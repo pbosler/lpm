@@ -17,21 +17,23 @@ void Vertices<CoordsType>::insert_host(const Index crd_idx) {
 
 template <typename CoordsType>
 Vertices<CoordsType>::Vertices(const Index nmax,
-                               std::shared_ptr<CoordsType> pcrds,
-                               std::shared_ptr<CoordsType> lcrds)
+                               CoordsType& pcrds,
+                               CoordsType& lcrds)
     : crd_inds("vert_crd_inds", nmax),
       n("n"),
       phys_crds(pcrds),
       lag_crds(lcrds) {
   _nh = ko::create_mirror_view(n);
-  _nh() = pcrds->nh();
+  _nh() = pcrds.nh();
   _host_crd_inds = ko::create_mirror_view(crd_inds);
-  for (Index i = 0; i < pcrds->nh(); ++i) {
+  for (Index i = 0; i < pcrds.nh(); ++i) {
     _host_crd_inds(i) = i;
   }
-  for (Index i = pcrds->nh(); i < nmax; ++i) {
+  for (Index i = pcrds.nh(); i < nmax; ++i) {
     _host_crd_inds(i) = constants::NULL_IND;
   }
+//   phys_crds.reset(pcrds);
+//   lag_crds.reset(lcrds);
   ko::deep_copy(crd_inds, _host_crd_inds);
 }
 
@@ -71,17 +73,9 @@ std::string Vertices<CoordsType>::info_string(const std::string& label,
   ss << tabstr << "nh() = " << nh() << "\n";
   ss << tabstr << "verts_are_dual() = " << std::boolalpha << verts_are_dual()
      << "\n";
-  if (phys_crds) {
-    ss << tabstr << phys_crds->info_string(label, tab_level + 1, dump_all);
-  } else {
-    ss << tabstr << "phys_crds = NULL\n";
-  }
+  ss << tabstr << phys_crds.info_string(label, tab_level + 1, dump_all);
   if (dump_all) {
-    if (lag_crds) {
-      ss << lag_crds->info_string(label, tab_level + 1, dump_all);
-    } else {
-      ss << tabstr << "lag_crds = NULL\n";
-    }
+    ss << lag_crds.info_string(label, tab_level + 1, dump_all);
   }
   return ss.str();
 }

@@ -29,10 +29,10 @@ namespace Lpm {
 template <typename SeedType>
 class VtkPolymeshInterface {
  public:
-  VtkPolymeshInterface(const std::shared_ptr<PolyMesh2d<SeedType>> pm);
+  VtkPolymeshInterface(const PolyMesh2d<SeedType>& pm);
 
   VtkPolymeshInterface(
-      const std::shared_ptr<PolyMesh2d<SeedType>> pm,
+      const PolyMesh2d<SeedType>& pm,
       const typename scalar_view_type::HostMirror height_field);
 
   void write(const std::string& ofilename);
@@ -55,7 +55,7 @@ class VtkPolymeshInterface {
                    const std::vector<scalar_view_type>& cell_tracers);
 
  protected:
-  std::shared_ptr<PolyMesh2d<SeedType>> mesh_;
+  const PolyMesh2d<SeedType>& mesh_;
 
   vtkSmartPointer<vtkPolyData> polydata_;
   vtkSmartPointer<vtkPointData> pointdata_;

@@ -21,7 +21,7 @@ void Faces<FaceKind, Geo>::leaf_crd_view(
       "Faces::leaf_crd_view", _nh(), KOKKOS_LAMBDA(const Index i) {
         if (!has_kids(i)) {
           for (int j = 0; j < Geo::ndim; ++j) {
-            leaf_crds(l_idx(i), j) = phys_crds->crds(i, j);
+            leaf_crds(l_idx(i), j) = phys_crds.view(i, j);
           }
         }
       });
@@ -202,13 +202,13 @@ std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
       oss << "area = (" << _hostarea(i) << ")";
       oss << std::endl;
     }
-    oss << phys_crds->info_string("faces.phys_crds", tab_level + 1, dump_all);
+    oss << phys_crds.info_string("faces.phys_crds", tab_level + 1, dump_all);
   }
   oss << bigidnt << "total area = " << std::setprecision(18)
       << surface_area_host() << std::endl;
   oss << bigidnt << "avg. mesh size = " << appx_mesh_size() << std::endl;
-  oss << phys_crds->info_string(label, tab_level + 1, dump_all);
-  //   oss << lag_crds->info_string(label, tab_level+1, dump_all);
+  oss << phys_crds.info_string(label, tab_level + 1, dump_all);
+  //   oss << lag_crds.info_string(label, tab_level+1, dump_all);
   return oss.str();
 }
 
@@ -295,7 +295,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
       new_face_vert_inds(3, 1) = c1dest;
     }
   }
-  LPM_ASSERT(verts.nh() == verts.phys_crds->nh());
+  LPM_ASSERT(verts.nh() == verts.phys_crds.nh());
 
   // debug: check vertex connectivity
   for (int i = 0; i < 4; ++i) {
@@ -329,9 +329,9 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
   for (int i = 0; i < 4; ++i) {              // loop over child Faces
     for (int j = 0; j < 3; ++j) {            // loop over vertices
       for (int k = 0; k < Geo::ndim; ++k) {  // loop over components
-        vert_crds(j, k) = verts.phys_crds->get_crd_component_host(
+        vert_crds(j, k) = verts.phys_crds.get_crd_component_host(
             verts.host_crd_ind(new_face_vert_inds(i, j)), k);
-        vert_lag_crds(j, k) = verts.lag_crds->get_crd_component_host(
+        vert_lag_crds(j, k) = verts.lag_crds.get_crd_component_host(
             verts.host_crd_ind(new_face_vert_inds(i, j)), k);
       }
     }
@@ -344,10 +344,10 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
   }
 
   /// create new child Faces
-  const int crd_insert_pt = faces.phys_crds->nh();
+  const int crd_insert_pt = faces.phys_crds.nh();
   for (int i = 0; i < 4; ++i) {
-    faces.phys_crds->insert_host(ko::subview(face_crds, i, ko::ALL));
-    faces.lag_crds->insert_host(ko::subview(face_lag_crds, i, ko::ALL));
+    faces.phys_crds.insert_host(ko::subview(face_crds, i, ko::ALL));
+    faces.lag_crds.insert_host(ko::subview(face_lag_crds, i, ko::ALL));
     faces.insert_host(
         crd_insert_pt + i, ko::subview(new_face_vert_inds, i, ko::ALL()),
         ko::subview(new_face_edge_inds, i, ko::ALL()), faceInd, face_area(i));
@@ -365,8 +365,6 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
                                         Edges& edges,
                                         Faces<QuadFace, Geo>& faces) {
   LPM_ASSERT(faceInd < faces.nh());
-  LPM_ASSERT(faces.phys_crds);
-  LPM_ASSERT(faces.lag_crds);
   LPM_REQUIRE_MSG(faces.n_max() >= faces.nh() + 4,
                   "Faces::divide error: not enough memory.");
   LPM_REQUIRE_MSG(!faces.has_kids_host(faceInd),
@@ -429,7 +427,7 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
     new_face_vert_inds((i + 1) % 4, i) = c1dest;
   }
 
-  LPM_ASSERT(verts.nh() == verts.phys_crds->nh());
+  LPM_ASSERT(verts.nh() == verts.phys_crds.nh());
 
   /// special case for QuadFace: parent center becomes a vertex
   // we don't overwrite the face coordinate because it's still the face
@@ -438,8 +436,8 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
   ko::View<Real[Geo::ndim], Host> newcrd("newcrd");
   ko::View<Real[Geo::ndim], Host> newlagcrd("newlagcrd");
   for (int i = 0; i < Geo::ndim; ++i) {
-    newcrd(i) = faces.phys_crds->get_crd_component_host(parent_center_ind, i);
-    newlagcrd(i) = faces.lag_crds->get_crd_component_host(parent_center_ind, i);
+    newcrd(i) = faces.phys_crds.get_crd_component_host(parent_center_ind, i);
+    newlagcrd(i) = faces.lag_crds.get_crd_component_host(parent_center_ind, i);
   }
   Index vert_insert_pt = verts.nh();
   verts.insert_host(newcrd, newlagcrd);
@@ -475,10 +473,10 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
   for (int i = 0; i < 4; ++i) {              // loop over child faces
     for (int j = 0; j < 4; ++j) {            // loop over vertices
       for (int k = 0; k < Geo::ndim; ++k) {  // loop over components
-        vert_crds(j, k) = verts.phys_crds->get_crd_component_host(
+        vert_crds(j, k) = verts.phys_crds.get_crd_component_host(
             new_face_vert_inds(i, j), k);
         vert_lag_crds(j, k) =
-            verts.lag_crds->get_crd_component_host(new_face_vert_inds(i, j), k);
+            verts.lag_crds.get_crd_component_host(new_face_vert_inds(i, j), k);
       }
     }
     auto ctr = ko::subview(face_crds, i, ko::ALL());
@@ -487,11 +485,11 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
     Geo::barycenter(lagctr, vert_lag_crds, 4);
     face_area(i) = Geo::polygon_area(ctr, vert_crds, 4);
   }
-  const Index face_crd_ins_pt = faces.phys_crds->nh();
+  const Index face_crd_ins_pt = faces.phys_crds.nh();
 
   for (int i = 0; i < 4; ++i) {
-    faces.phys_crds->insert_host(ko::subview(face_crds, i, ko::ALL));
-    faces.lag_crds->insert_host(ko::subview(face_lag_crds, i, ko::ALL));
+    faces.phys_crds.insert_host(ko::subview(face_crds, i, ko::ALL));
+    faces.lag_crds.insert_host(ko::subview(face_lag_crds, i, ko::ALL));
     faces.insert_host(
         face_crd_ins_pt + i, ko::subview(new_face_vert_inds, i, ko::ALL()),
         ko::subview(new_face_edge_inds, i, ko::ALL()), faceInd, face_area(i));

@@ -75,10 +75,10 @@ void Edges::divide(const Index edge_idx, Vertices<CoordsType>& verts) {
   const Index orig_crd_idx = verts.host_crd_ind(_ho(edge_idx));
   const Index dest_crd_idx = verts.host_crd_ind(_hd(edge_idx));
   for (int i = 0; i < Geo::ndim; ++i) {
-    endpts(0, i) = verts.phys_crds->get_crd_component_host(orig_crd_idx, i);
-    lag_endpts(0, i) = verts.lag_crds->get_crd_component_host(orig_crd_idx, i);
-    endpts(1, i) = verts.phys_crds->get_crd_component_host(dest_crd_idx, i);
-    lag_endpts(1, i) = verts.phys_crds->get_crd_component_host(dest_crd_idx, i);
+    endpts(0, i) = verts.phys_crds.get_crd_component_host(orig_crd_idx, i);
+    lag_endpts(0, i) = verts.lag_crds.get_crd_component_host(orig_crd_idx, i);
+    endpts(1, i) = verts.phys_crds.get_crd_component_host(dest_crd_idx, i);
+    lag_endpts(1, i) = verts.phys_crds.get_crd_component_host(dest_crd_idx, i);
   }
   Geo::midpoint(midpt, ko::subview(endpts, 0, ko::ALL),
                 ko::subview(endpts, 1, ko::ALL));
