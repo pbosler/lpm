@@ -45,8 +45,8 @@ TEST_CASE("planar mesh", "") {
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
-    auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
-    logger.info(pm->info_string());
+    auto pm = PolyMesh2d<seed_type>(params);
+    logger.info(pm.info_string());
 
     std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
     std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
@@ -65,8 +65,8 @@ TEST_CASE("planar mesh", "") {
     auto pdv = tracer_verts.at(pd.name()).view;
     auto pcv = tracer_verts.at(pc.name()).view;
     auto sav = tracer_verts.at("sum_all").view;
-    auto xyv = pm->vertices.phys_crds->crds;
-    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+    auto xyv = pm.vertices.phys_crds.view;
+    Kokkos::parallel_for(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(xyv, i, Kokkos::ALL);
         phv(i) = ph(xy);
         pdv(i) = pd(xy);
@@ -78,8 +78,8 @@ TEST_CASE("planar mesh", "") {
     auto pdf = tracer_faces.at(pd.name()).view;
     auto pcf = tracer_faces.at(pc.name()).view;
     auto saf = tracer_faces.at("sum_all").view;
-    auto xyf = pm->faces.phys_crds->crds;
-    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+    auto xyf = pm.faces.phys_crds.view;
+    Kokkos::parallel_for(pm.faces.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(xyf, i, Kokkos::ALL);
         phf(i) = ph(xy);
         pdf(i) = pd(xy);
@@ -103,7 +103,7 @@ TEST_CASE("planar mesh", "") {
 #endif
 
     typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
-    Kokkos::parallel_reduce(pm->vertices.nh(),
+    Kokkos::parallel_reduce(pm.vertices.nh(),
       KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
         if (pdv(i) < mm.min_val) mm.min_val = pdv(i);
         if (pdv(i) > mm.max_val) mm.max_val = pdv(i);
@@ -118,8 +118,8 @@ TEST_CASE("planar mesh", "") {
   {
     typedef QuadRectSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
-    auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
-    logger.info(pm->info_string());
+    auto pm = PolyMesh2d<seed_type>(params);
+    logger.info(pm.info_string());
 
     std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
     std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
@@ -138,8 +138,8 @@ TEST_CASE("planar mesh", "") {
     auto pdv = tracer_verts.at(pd.name()).view;
     auto pcv = tracer_verts.at(pc.name()).view;
     auto sav = tracer_verts.at("sum_all").view;
-    auto xyv = pm->vertices.phys_crds->crds;
-    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+    auto xyv = pm.vertices.phys_crds.view;
+    Kokkos::parallel_for(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(xyv, i, Kokkos::ALL);
         phv(i) = ph(xy);
         pdv(i) = pd(xy);
@@ -151,8 +151,8 @@ TEST_CASE("planar mesh", "") {
     auto pdf = tracer_faces.at(pd.name()).view;
     auto pcf = tracer_faces.at(pc.name()).view;
     auto saf = tracer_faces.at("sum_all").view;
-    auto xyf = pm->faces.phys_crds->crds;
-    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+    auto xyf = pm.faces.phys_crds.view;
+    Kokkos::parallel_for(pm.faces.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(xyf, i, Kokkos::ALL);
         phf(i) = ph(xy);
         pdf(i) = pd(xy);
@@ -176,7 +176,7 @@ TEST_CASE("planar mesh", "") {
 #endif
 
     typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
-    Kokkos::parallel_reduce(pm->vertices.nh(),
+    Kokkos::parallel_reduce(pm.vertices.nh(),
       KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
         if (pdv(i) < mm.min_val) mm.min_val = pdv(i);
         if (pdv(i) > mm.max_val) mm.max_val = pdv(i);
@@ -210,8 +210,8 @@ TEST_CASE("spherical mesh", "") {
   SECTION("triangular panels") {
     typedef IcosTriSphereSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
-    auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
-    logger.info(pm->info_string());
+    auto pm = PolyMesh2d<seed_type>(params);
+    logger.info(pm.info_string());
 
     std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
     std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
@@ -236,9 +236,9 @@ TEST_CASE("spherical mesh", "") {
     auto mvviewv = tracer_verts.at(mv.name()).view;
     auto ltviewv = tracer_verts.at(lt.name()).view;
 
-    const auto pcrdsv = pm->vertices.phys_crds->crds;
+    const auto pcrdsv = pm.vertices.phys_crds.view;
 
-    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+    Kokkos::parallel_for(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i) {
       const auto xyz = Kokkos::subview(pcrdsv, i, Kokkos::ALL);
       ghviewv(i) = gh(xyz);
       cbviewv(i) = cb(xyz);
@@ -249,7 +249,7 @@ TEST_CASE("spherical mesh", "") {
 
     tracer_verts.at(sc.name()).update_host();
     const auto schview = tracer_verts.at(sc.name()).hview;
-    for (Index i=0; i<pm->vertices.nh(); ++i) {
+    for (Index i=0; i<pm.vertices.nh(); ++i) {
         if ( !(FloatingPoint<Real>::equiv(schview(i), 0.1) or FloatingPoint<Real>::equiv(schview(i), 1))) {
         logger.error("unexpected value at vertex {}: sc = {}", i, schview(i));
       }
@@ -262,8 +262,8 @@ TEST_CASE("spherical mesh", "") {
     auto mvviewf = tracer_faces.at(mv.name()).view;
     auto ltviewf = tracer_faces.at(lt.name()).view;
 
-    const auto pcrdsf = pm->faces.phys_crds->crds;
-    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+    const auto pcrdsf = pm.faces.phys_crds.view;
+    Kokkos::parallel_for(pm.faces.nh(), KOKKOS_LAMBDA (const Index i) {
       const auto xyz = Kokkos::subview(pcrdsf, i, Kokkos::ALL);
       ghviewf(i) = gh(xyz);
       cbviewf(i) = cb(xyz);
@@ -290,7 +290,7 @@ TEST_CASE("spherical mesh", "") {
 #endif
     const auto sc_verts = tracer_verts.at("SphericalSlottedCylinders").view;
     typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
-    Kokkos::parallel_reduce(pm->vertices.nh(),
+    Kokkos::parallel_reduce(pm.vertices.nh(),
       KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
         if (sc_verts(i) > mm.max_val) mm.max_val = sc_verts(i);
         if (sc_verts(i) < mm.min_val) mm.min_val = sc_verts(i);
@@ -299,10 +299,10 @@ TEST_CASE("spherical mesh", "") {
 
     Real sc_vert_min;
     Real sc_vert_max;
-    Kokkos::parallel_reduce(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i, Real& m) {
+    Kokkos::parallel_reduce(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i, Real& m) {
       if (sc_verts(i) < m) m = sc_verts(i);
     }, Kokkos::Min<Real>(sc_vert_min));
-    Kokkos::parallel_reduce(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i, Real& m) {
+    Kokkos::parallel_reduce(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i, Real& m) {
       if (sc_verts(i) > m) m = sc_verts(i);
     }, Kokkos::Max<Real>(sc_vert_max));
     logger.debug("(sc_min, sc_max) = ({}, {})", sc_vert_min, sc_vert_max);
@@ -317,11 +317,11 @@ TEST_CASE("spherical mesh", "") {
   SECTION("quadrilateral panels") {
     typedef CubedSphereSeed seed_type;
     PolyMeshParameters<seed_type> params(tree_lev, radius, amr_limit);
-    auto pm = std::shared_ptr<PolyMesh2d<seed_type>>(new PolyMesh2d<seed_type>(params));
+    auto pm = PolyMesh2d<seed_type>(params);
     std::map<std::string, ScalarField<VertexField>> tracer_verts; /// passive tracers at passive particles
     std::map<std::string, ScalarField<FaceField>> tracer_faces; /// passive tracers at active particles
 
-    logger.info(pm->info_string());
+    logger.info(pm.info_string());
 
     tracer_verts.emplace(gh.name(), ScalarField<VertexField>(gh.name(), params.nmaxverts));
     tracer_verts.emplace(cb.name(), ScalarField<VertexField>(cb.name(), params.nmaxverts));
@@ -343,9 +343,9 @@ TEST_CASE("spherical mesh", "") {
     auto mvviewv = tracer_verts.at(mv.name()).view;
     auto ltviewv = tracer_verts.at(lt.name()).view;
 
-    const auto pcrdsv = pm->vertices.phys_crds->crds;
+    const auto pcrdsv = pm.vertices.phys_crds.view;
 
-    Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+    Kokkos::parallel_for(pm.vertices.nh(), KOKKOS_LAMBDA (const Index i) {
       const auto xyz = Kokkos::subview(pcrdsv, i, Kokkos::ALL);
       ghviewv(i) = gh(xyz);
       cbviewv(i) = cb(xyz);
@@ -360,8 +360,8 @@ TEST_CASE("spherical mesh", "") {
     auto mvviewf = tracer_faces.at(mv.name()).view;
     auto ltviewf = tracer_faces.at(lt.name()).view;
 
-    const auto pcrdsf = pm->faces.phys_crds->crds;
-    Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+    const auto pcrdsf = pm.faces.phys_crds.view;
+    Kokkos::parallel_for(pm.faces.nh(), KOKKOS_LAMBDA (const Index i) {
       const auto xyz = Kokkos::subview(pcrdsf, i, Kokkos::ALL);
       ghviewf(i) = gh(xyz);
       cbviewf(i) = cb(xyz);
@@ -388,7 +388,7 @@ TEST_CASE("spherical mesh", "") {
 #endif
     const auto sc_verts = tracer_verts.at("SphericalSlottedCylinders").view;
     typename Kokkos::MinMax<Real>::value_type sc_minmax_verts;
-    Kokkos::parallel_reduce(pm->vertices.nh(),
+    Kokkos::parallel_reduce(pm.vertices.nh(),
       KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
         if (sc_verts(i) > mm.max_val) mm.max_val = sc_verts(i);
         if (sc_verts(i) < mm.min_val) mm.min_val = sc_verts(i);

@@ -84,10 +84,10 @@ class PolyMesh2d {
 
   */
   // mesh topology & coordinates
-  Vertices<Coords<Geo>> vertices;  /// vertex particles, typically "passive"
+  Vertices<Coords<Geo>> vertices;  /// vertex particles, aka "passive," because they don't participate in quadrature
   Edges edges;  /// edges, typically only used for mesh initialization and
                 /// refinement
-  Faces<FaceType, Geo> faces;  /// face particles, typically "active"
+  Faces<FaceType, Geo> faces;  /// face particles, aka "active," because they do contribute to quadrature.
 
   /** @brief initial refinement level.  All panels in the MeshSeed will be
     refined to this level.

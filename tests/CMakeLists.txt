@@ -44,11 +44,11 @@ CreateUnitTest(edges_test lpm_edges_tests.cpp)
 CreateUnitTest(faces_test lpm_faces_tests.cpp)
 
 CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
-#
-#CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
-#
-#CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
-#
+
+CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
+
+CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
+
 #CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
 #
 #CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
