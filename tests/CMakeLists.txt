@@ -43,7 +43,7 @@ CreateUnitTest(edges_test lpm_edges_tests.cpp)
 
 CreateUnitTest(faces_test lpm_faces_tests.cpp)
 
-#CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
+CreateUnitTest(polymesh_test lpm_polymesh_tests.cpp)
 #
 #CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
 #
