@@ -227,6 +227,15 @@ class Faces {
                    ko::View<Index*, Host> edgeinds,
                    const Index prt = constants::NULL_IND, const Real ar = 0.0);
 
+  template <typename PtViewType>
+  void insert_host(const PtViewType& pcrd,
+    const PtViewType& lcrd,
+    const Index ctr_idx,
+    const Kokkos::View<Index*, Host> vertinds,
+    const Kokkos::View<Index*, Host> edgeinds,
+    const Index parent_idx = constants::NULL_IND,
+    const Real ar = 0);
+
   /** Populate a view of coordinates that only includes leaf faces.
 
     View must have been allocated already.

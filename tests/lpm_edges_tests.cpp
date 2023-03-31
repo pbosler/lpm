@@ -6,6 +6,7 @@
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
 #include "mesh/lpm_vertices.hpp"
+#include "mesh/lpm_vertices_impl.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
@@ -25,36 +26,21 @@ TEST_CASE("edges test", "[mesh]")  {
     using crd_type = Coords<SphereGeometry>;
     using vert_type = Vertices<crd_type>;
 
+    // create the vertices
+    auto verts = vert_type(nmax_verts);
+
     // create 4 coordinates for a simple Vertices object
-    auto sc4 = std::shared_ptr<crd_type>(new crd_type(nmax_verts));
     const Real p0[3] = {0.57735026918962584,  -0.57735026918962584,  0.57735026918962584};
     const Real p1[3] = {0.57735026918962584,  -0.57735026918962584,  -0.57735026918962584};
     const Real p2[3] = {0.57735026918962584,  0.57735026918962584,  -0.57735026918962584};
     const Real p3[3] = {0.57735026918962584,  0.57735026918962584, 0.57735026918962584};
-    sc4->insert_host(p0);
-    sc4->insert_host(p1);
-    sc4->insert_host(p2);
-    sc4->insert_host(p3);
-    sc4->update_device();
+    verts.insert_host(p0, p0);
+    verts.insert_host(p1, p1);
+    verts.insert_host(p2, p2);
+    verts.insert_host(p3, p3);
+    verts.update_device();
 
-    logger.info("spherical crds init: {}", sc4->info_string("sc4 init"));;
-
-    // create 4 Lagrangian coordinates
-    auto sc4lag = std::shared_ptr<crd_type>(new crd_type(nmax_verts));
-    sc4lag->insert_host(p0);
-    sc4lag->insert_host(p1);
-    sc4lag->insert_host(p2);
-    sc4lag->insert_host(p3);
-    sc4lag->update_device();
-
-    // create the vertices
-    auto verts = std::shared_ptr<vert_type>(new vert_type(nmax_verts));
-    for (int i=0; i<4; ++i) {
-      verts->insert_host(i);
-    }
-    verts->phys_crds = sc4;
-    verts->lag_crds = sc4lag;
-    REQUIRE(verts->nh() == 4);
+    REQUIRE(verts.nh() == 4);
 
     // create a set of edges with the above vertices
     Edges edges(6);
@@ -73,13 +59,13 @@ TEST_CASE("edges test", "[mesh]")  {
     logger.info(edges.info_string("insert"));
 
     logger.debug("calling divide");
-    edges.divide(0, *verts);
+    edges.divide(0, verts);
     logger.debug("returned from divide");
     edges.update_device();
-    verts->update_device();
+    verts.update_device();
     REQUIRE(edges.nh() == 5);
     REQUIRE(edges.n_leaves_host() == 4);
-    logger.info("sph. crds after divide:\n{}", sc4->info_string("after"));
+    logger.info("sph. crds after divide:\n{}", verts.info_string("after"));
     logger.info("edges after divide:\n{}", edges.info_string("after divide"));
 
     REQUIRE(edges.has_kids_host(0));

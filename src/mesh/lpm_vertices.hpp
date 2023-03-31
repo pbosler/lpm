@@ -54,7 +54,7 @@ class Vertices {
     }
   }
 
-  template <typename MeshSeedType>
+  template <typename SeedType>
   friend class PolyMesh2d;
 
 #ifdef LPM_USE_NETCDF
@@ -73,6 +73,9 @@ class Vertices {
     @param [in] lcrds pointer to Lagrangian coordinates
   */
   Vertices(const Index nmax, CoordsType& pcrds, CoordsType& lcrds);
+
+  template <typename SeedType>
+  void init_from_seed(SeedType& seed);
 
   /** @brief return the maximum allowed number of vertices in memory
 
@@ -122,6 +125,9 @@ class Vertices {
     @param [in] crd_idx index of coordinates associated with the new vertex
   */
   void insert_host(const Index crd_idx);
+
+  template <typename PtViewType>
+  void insert_host(const Index crd_idx, const PtViewType& pcrd, const PtViewType& lcrd);
 
   /** @brief Insert a new vertex
 

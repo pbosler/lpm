@@ -128,7 +128,7 @@ class Coords {
     for (int i = 0; i < Geo::ndim; ++i) {
       _hostview(_nh(), i) = v[i];
     }
-    _nh() += 1;
+    ++_nh();
   }
 
   /** \brief overwrites a coordinate vector with new data

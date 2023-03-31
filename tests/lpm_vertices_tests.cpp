@@ -3,7 +3,9 @@
 #include "lpm_logger.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_coords_impl.hpp"
 #include "mesh/lpm_vertices.hpp"
+#include "mesh/lpm_vertices_impl.hpp"
 #include "catch.hpp"
 #include <vector>
 

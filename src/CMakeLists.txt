@@ -86,6 +86,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
               lpm_coords.hpp
+              lpm_coords_impl.hpp
               lpm_compadre.hpp
               lpm_geometry.hpp
               lpm_logger.hpp
@@ -96,8 +97,10 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
+              mesh/lpm_vertices_impl.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
+              mesh/lpm_faces_impl.hpp
               mesh/lpm_polymesh2d.hpp
               mesh/lpm_polymesh2d_impl.hpp
               mesh/lpm_refinement.hpp

@@ -5,12 +5,15 @@
 #include "lpm_logger.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_coords_impl.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #endif
 #include "mesh/lpm_vertices.hpp"
+#include "mesh/lpm_vertices_impl.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
+#include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "catch.hpp"
@@ -28,69 +31,47 @@ TEST_CASE ("faces test", "[mesh]") {
   SECTION("triangle, plane") {
     using coords_type = Coords<PlaneGeometry>;
 
-    Faces<TriFace, PlaneGeometry> plane_tri(11);
     const MeshSeed<TriHexSeed> thseed;
-    Index nmaxverts;
-    Index nmaxfaces;
-    Index nmaxedges;
+    Int nmaxverts, nmaxedges, nmaxfaces;
     thseed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, 1);
 
     logger.info("plane, tri memory allocations: {} vertices, {} edges, {} faces.",
       nmaxverts, nmaxedges, nmaxfaces);
 
     const int nmax_verts = 11;
+    Vertices<Coords<PlaneGeometry>> tri_hex_verts(nmax_verts);
+    tri_hex_verts.init_from_seed(thseed);
+    logger.info("verts:\n {}", tri_hex_verts.info_string());
 
-    auto tri_hex_pcrd_verts = std::shared_ptr<coords_type>(
-      new coords_type(nmax_verts));
-    auto tri_hex_lcrd_verts = std::shared_ptr<coords_type>(
-      new coords_type(nmax_verts));
-    auto tri_hex_pcrd_face_crds = std::shared_ptr<coords_type>(new coords_type(nmax_verts));
-    auto tri_hex_lcrd_face_crds = std::shared_ptr<coords_type>(new coords_type(nmax_verts));
-    Edges tri_hex_edges(24);
-
-    tri_hex_pcrd_verts->init_vert_crds_from_seed(thseed);
-    tri_hex_lcrd_verts->init_vert_crds_from_seed(thseed);
-    std::stringstream ss;
-    tri_hex_pcrd_verts->write_matlab(ss, "vert_crds0");
-    logger.info("matlab output:\n {}", ss.str());
-    ss.str("");
-
-    Vertices<Coords<PlaneGeometry>> verts(nmax_verts, tri_hex_pcrd_verts, tri_hex_lcrd_verts);
-    logger.info("verts:\n {}", verts.info_string());
-
-
-    tri_hex_pcrd_face_crds->init_interior_crds_from_seed(thseed);
-    tri_hex_lcrd_face_crds->init_interior_crds_from_seed(thseed);
+    Edges tri_hex_edges(nmaxedges);
     tri_hex_edges.init_from_seed(thseed);
     logger.info("edges:\n {}", tri_hex_edges.info_string());
 
-    plane_tri.phys_crds = tri_hex_pcrd_face_crds;
-    plane_tri.lag_crds = tri_hex_lcrd_face_crds;
-    logger.debug("calling init_from_seed");
-    plane_tri.init_from_seed(thseed);
+    Faces<TriFace, PlaneGeometry> tri_hex_faces(11);
+    tri_hex_faces.init_from_seed(thseed);
 
-    logger.info("surface area = {}", plane_tri.surface_area_host());
-    REQUIRE(FloatingPoint<Real>::equiv(plane_tri.surface_area_host(), 2.59807621135331512,
+    logger.info("surface area = {}", tri_hex_faces.surface_area_host());
+    REQUIRE(FloatingPoint<Real>::equiv(tri_hex_faces.surface_area_host(), 2.59807621135331512,
       constants::ZERO_TOL));
 
     typedef FaceDivider<PlaneGeometry,TriFace> tri_hex_divider;
     logger.debug("calling divide.");
-    tri_hex_divider::divide(0, verts, tri_hex_edges, plane_tri);
+    tri_hex_divider::divide(0, tri_hex_verts, tri_hex_edges, tri_hex_faces);
     logger.debug("returned from divide.");
 
-    REQUIRE(FloatingPoint<Real>::equiv(plane_tri.surface_area_host(), 2.59807621135331512,
+    REQUIRE(FloatingPoint<Real>::equiv(tri_hex_faces.surface_area_host(), 2.59807621135331512,
       constants::ZERO_TOL));
-    logger.info("tri hex faces:\n {}", plane_tri.info_string("divide face 0"));
+    logger.info("tri hex faces:\n {}", tri_hex_faces.info_string("divide face 0"));
 
-    plane_tri.update_device();
-    auto fcrds = plane_tri.phys_crds->get_host_crd_view();
-    auto leaf_crds = plane_tri.leaf_crd_view();
+    tri_hex_faces.update_device();
+    auto fcrds = tri_hex_faces.phys_crds.get_host_crd_view();
+    auto leaf_crds = tri_hex_faces.leaf_crd_view();
     auto h_leaf_crds = Kokkos::create_mirror_view(leaf_crds);
-    auto h_leaf_idx = Kokkos::create_mirror_view(plane_tri.leaf_idx);
+    auto h_leaf_idx = Kokkos::create_mirror_view(tri_hex_faces.leaf_idx);
     Kokkos::deep_copy(h_leaf_crds, leaf_crds);
-    Kokkos::deep_copy(h_leaf_idx, plane_tri.leaf_idx);
+    Kokkos::deep_copy(h_leaf_idx, tri_hex_faces.leaf_idx);
 
-    for (int i=0; i<plane_tri.nh(); ++i) {
+    for (int i=0; i<tri_hex_faces.nh(); ++i) {
       logger.info("face idx {} leaf idx {} (x, y) = ({}, {}), leaf(x,y) = ({}, {})",
         i, h_leaf_idx(i), fcrds(i,0), fcrds(i,1),
         leaf_crds(h_leaf_idx(i), 0), leaf_crds(h_leaf_idx(i),1));
@@ -101,18 +82,19 @@ TEST_CASE ("faces test", "[mesh]") {
     std::cout << "face tree:" << std::endl;
     ko::parallel_for(1, KOKKOS_LAMBDA (const int& i) {
         printf("------------Parallel region------------\n");
-        printf("face 0 has kids = %s\n", (plane_tri.has_kids(0) ? "true" : "false"));
-        printf("face 0 has mask = %s\n", (plane_tri.mask(0) ? "true" : "false"));
-        for (int j=0; j<plane_tri.n(); ++j) {
-            printf("face %d has parent %d and kids = (%d,%d,%d,%d)\n", j, plane_tri.parent(j),
-                plane_tri.kids(j,0), plane_tri.kids(j,1), plane_tri.kids(j,2), plane_tri.kids(j,3));
+        printf("face 0 has kids = %s\n", (tri_hex_faces.has_kids(0) ? "true" : "false"));
+        printf("face 0 has mask = %s\n", (tri_hex_faces.mask(0) ? "true" : "false"));
+        for (int j=0; j<tri_hex_faces.n(); ++j) {
+            printf("face %d has parent %d and kids = (%d,%d,%d,%d)\n", j, tri_hex_faces.parent(j),
+                tri_hex_faces.kids(j,0), tri_hex_faces.kids(j,1), tri_hex_faces.kids(j,2), tri_hex_faces.kids(j,3));
         }
         printf("-----------end parallel region----------\n");
     });
-    tri_hex_pcrd_verts->write_matlab(ss, "vert_crds1");
+    std::ostringstream ss;
+    tri_hex_verts.phys_crds.write_matlab(ss, "vert_crds1");
     logger.info("matlab output:\n {}", ss.str());
     ss.str("");
-    tri_hex_pcrd_face_crds->write_matlab(ss, "face_crds1");
+    tri_hex_faces.phys_crds.write_matlab(ss, "face_crds1");
     logger.info("matlab output:\n {}", ss.str());
   }
 
@@ -130,12 +112,8 @@ TEST_CASE ("faces test", "[mesh]") {
         logger.info("quad, sphere memory allocations: {} vertices, {} edges, {} faces.",
       nmaxverts, nmaxedges, nmaxfaces);
 
-        auto cs_verts_pcrd = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
-        auto cs_verts_lcrd = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
-        cs_verts_pcrd->init_vert_crds_from_seed(seed);
-        cs_verts_lcrd->init_vert_crds_from_seed(seed);
-
-        Vertices<coords_type> csverts(nmaxverts, cs_verts_pcrd, cs_verts_lcrd);
+        Vertices<coords_type> csverts(nmaxverts);
+        csverts.init_from_seed(seed);
         logger.info("verts:\n {}", csverts.info_string());
 
         Edges csedges(nmaxedges);
@@ -143,20 +121,13 @@ TEST_CASE ("faces test", "[mesh]") {
         logger.info("edges:\n {}", csedges.info_string());
 
         Faces<QuadFace, SphereGeometry> csfaces(nmaxfaces);
-        auto csfacecrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
-        auto cslagfacecrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
-        csfacecrds->init_interior_crds_from_seed(seed);
-        cslagfacecrds->init_interior_crds_from_seed(seed);
         csfaces.init_from_seed(seed);
-
-        csfaces.phys_crds = csfacecrds;
-        csfaces.lag_crds = cslagfacecrds;
 
         logger.debug("cubed sphere init:\n {}", csfaces.info_string("", 0, true));
 
         REQUIRE(FloatingPoint<Real>::equiv(csfaces.surface_area_host(),
           4*constants::PI, constants::ZERO_TOL));
-        REQUIRE(csfaces.nh() == csfaces.phys_crds->nh());
+        REQUIRE(csfaces.nh() == csfaces.phys_crds.nh());
 
         typedef FaceDivider<geo,face_type> csdiv;
         for (int i=0; i<maxlev; ++i) {
@@ -192,23 +163,16 @@ TEST_CASE ("faces test", "[mesh]") {
         seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, maxlev);
 
         using coords_type = Coords<SphereGeometry>;
-
-        auto icvertcrds = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
-        auto icvertlagcrds = std::shared_ptr<coords_type>(new coords_type(nmaxverts));
-        icvertcrds->init_vert_crds_from_seed(seed);
-        icvertlagcrds->init_vert_crds_from_seed(seed);
-        Vertices<coords_type> icverts(nmaxverts, icvertcrds, icvertlagcrds);
+        Vertices<coords_type> icverts(nmaxverts);
+        icverts.init_from_seed(seed);
 
         Edges icedges(nmaxedges);
-
-        auto icfacecrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
-        auto icfacelagcrds = std::shared_ptr<coords_type>(new coords_type(nmaxfaces));
-        icfacecrds->init_interior_crds_from_seed(seed);
-        icfacelagcrds->init_interior_crds_from_seed(seed);
-        Faces<TriFace,SphereGeometry> icfaces(nmaxfaces, icfacecrds, icfacelagcrds);
-
-        icfaces.init_from_seed(seed);
         icedges.init_from_seed(seed);
+
+        Faces<TriFace,SphereGeometry> icfaces(nmaxfaces);
+        icfaces.init_from_seed(seed);
+
+        REQUIRE(icfaces.nh() == IcosTriSphereSeed::nfaces);
         typedef FaceDivider<SphereGeometry,TriFace> icdiv;
         for (int i=0; i<maxlev; ++i) {
             const Index stopInd = icfaces.nh();
