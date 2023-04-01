@@ -24,18 +24,18 @@ class Transport2dRK4 {
   Index nfaces;
 
   Transport2dRK4(const Real timestep,
-                 std::shared_ptr<TransportMesh2d<SeedType>> m)
+                 TransportMesh2d<SeedType>& m)
       : tmesh(m),
         dt(timestep),
-        nverts(m->n_vertices_host()),
-        nfaces(m->n_faces_host()) {
+        nverts(m.n_vertices_host()),
+        nfaces(m.n_faces_host()) {
     init();
   }
 
   template <typename VelocityFtor>
   void advance_timestep();
 
-  std::shared_ptr<TransportMesh2d<SeedType>> tmesh;
+  TransportMesh2d<SeedType>& tmesh;
 
  protected:
 

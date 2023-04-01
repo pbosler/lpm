@@ -72,7 +72,7 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       logger.info("starting test: {} {}", test_name, depth);
 
       PolyMeshParameters<SeedType> params(depth, radius, amr_limit);
-      const auto pm = std::shared_ptr<TransportMesh2d<SeedType>>(new
+      const auto pm = std::unique_ptr<TransportMesh2d<SeedType>>(new
          TransportMesh2d<SeedType>(params));
       pm->template initialize_velocity<VelocityType>();
       pm->initialize_tracer(tracer);
@@ -83,13 +83,13 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       pm->initialize_scalar_tracer("tracer_laplacian_error");
 
       const auto rlap_verts = pm->tracer_verts.at("tracer_laplacian").view;
-      const auto vlxy = pm->vertices.lag_crds->crds;
+      const auto vlxy = pm->vertices.lag_crds.view;
       Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(vlxy, i, Kokkos::ALL);
         rlap_verts(i) = tracer.laplacian(xy);
       });
       const auto rlap_faces = pm->tracer_faces.at("tracer_laplacian").view;
-      const auto flxy = pm->faces.lag_crds->crds;
+      const auto flxy = pm->faces.lag_crds.view;
       Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(flxy, i, Kokkos::ALL);
         rlap_faces(i) = tracer.laplacian(xy);
@@ -137,7 +137,7 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       ErrNorms lap_err(face_lap_error, faces_pse_lap, rlap_faces, face_area);
 
 #ifdef LPM_USE_VTK
-      VtkPolymeshInterface<SeedType> vtk = vtk_interface(pm);
+      VtkPolymeshInterface<SeedType> vtk = vtk_interface(*pm);
       vtk.write(test_name + vtp_suffix());
 #endif
 

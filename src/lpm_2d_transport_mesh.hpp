@@ -99,7 +99,7 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
 #ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(
-    const std::shared_ptr<TransportMesh2d<SeedType>> tm);
+    const TransportMesh2d<SeedType>& tm);
 #endif
 
 }  // namespace Lpm

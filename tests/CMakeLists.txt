@@ -49,14 +49,14 @@ CreateUnitTest(box3d_test lpm_box3d_tests.cpp)
 
 CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
 
-#CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
-#
-#CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
-#
-#CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
-#
-#CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
-#
+CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
+
+CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
+
+CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
+
+CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
+
 #CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
 #
 #CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)

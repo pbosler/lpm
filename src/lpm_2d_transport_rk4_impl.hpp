@@ -28,13 +28,13 @@ struct RK4Update {
 
 template <typename SeedType>
 void Transport2dRK4<SeedType>::init() {
-  vertx = Kokkos::subview(tmesh->vertices.phys_crds->crds,
+  vertx = Kokkos::subview(tmesh.vertices.phys_crds.view,
                           std::make_pair(0, nverts), Kokkos::ALL);
-  vertvel = Kokkos::subview(tmesh->velocity_verts.view,
+  vertvel = Kokkos::subview(tmesh.velocity_verts.view,
                             std::make_pair(0, nverts), Kokkos::ALL);
-  facex = Kokkos::subview(tmesh->faces.phys_crds->crds,
+  facex = Kokkos::subview(tmesh.faces.phys_crds.view,
                           std::make_pair(0, nfaces), Kokkos::ALL);
-  facevel = Kokkos::subview(tmesh->velocity_faces.view,
+  facevel = Kokkos::subview(tmesh.velocity_faces.view,
                             std::make_pair(0, nfaces), Kokkos::ALL);
 
   vertx1 = crd_view("vertx1", nverts);
@@ -53,7 +53,7 @@ void Transport2dRK4<SeedType>::init() {
 template <typename SeedType>
 template <typename VelocityFtor>
 void Transport2dRK4<SeedType>::advance_timestep() {
-  const Real t = tmesh->t;
+  const Real t = tmesh.t;
 
   // RK Stage 1: velocity is already stored
   vertx1 = vertvel;
@@ -91,13 +91,13 @@ void Transport2dRK4<SeedType>::advance_timestep() {
   Kokkos::parallel_for(nfaces,
                        RK4Update(facex, facex1, facex2, facex3, facex4, dt));
 
-  tmesh->t_idx++;
-  tmesh->t = tmesh->t_idx * dt;
+  tmesh.t_idx++;
+  tmesh.t = tmesh.t_idx * dt;
   //  Set velocity
   Kokkos::parallel_for(nverts,
-                       VelocityKernel<VelocityFtor>(vertvel, vertx, tmesh->t));
+                       VelocityKernel<VelocityFtor>(vertvel, vertx, tmesh.t));
   Kokkos::parallel_for(nfaces,
-                       VelocityKernel<VelocityFtor>(facevel, facex, tmesh->t));
+                       VelocityKernel<VelocityFtor>(facevel, facex, tmesh.t));
 }
 
 }  // namespace Lpm

@@ -1,4 +1,6 @@
 #include "mesh/lpm_polymesh2d.hpp"
+#include "mesh/lpm_vertices_impl.hpp"
+#include "mesh/lpm_faces_impl.hpp"
 #include "lpm_kokkos_defs.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
@@ -12,15 +14,9 @@ namespace Lpm {
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::seed_init(const MeshSeed<SeedType>& seed) {
-  vertices.phys_crds.init_vert_crds_from_seed(seed);
-  vertices.lag_crds.init_vert_crds_from_seed(seed);
-  for (int i = 0; i < SeedType::nverts; ++i) {
-    vertices.insert_host(i);
-  }
+  vertices.init_from_seed(seed);
   edges.init_from_seed(seed);
   faces.init_from_seed(seed);
-  faces.phys_crds.init_interior_crds_from_seed(seed);
-  faces.lag_crds.init_interior_crds_from_seed(seed);
 }
 
 template <typename SeedType>
