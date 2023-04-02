@@ -1,13 +1,13 @@
 #ifndef LPM_FACES_IMPL_HPP
 #define LPM_FACES_IMPL_HPP
 
-#include "lpm_faces.hpp"
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
 #include "lpm_assert.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_faces.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_string_util.hpp"
 
@@ -131,34 +131,32 @@ void Faces<FaceKind, Geo>::insert_host(const Index ctr_ind,
   _hn_leaves() += 1;
 }
 
-template <typename FaceKind, typename Geo> template <typename PtViewType>
-void Faces<FaceKind, Geo>::insert_host(const PtViewType& pcrd,
-    const PtViewType& lcrd,
-    const Index ctr_idx,
+template <typename FaceKind, typename Geo>
+template <typename PtViewType>
+void Faces<FaceKind, Geo>::insert_host(
+    const PtViewType& pcrd, const PtViewType& lcrd, const Index ctr_idx,
     const Kokkos::View<Index*, Host> vertinds,
-    const Kokkos::View<Index*, Host> edgeinds,
-    const Index parent_idx,
+    const Kokkos::View<Index*, Host> edgeinds, const Index parent_idx,
     const Real ar) {
+  LPM_REQUIRE(_nh() + 1 <= _nmax);
 
-    LPM_REQUIRE(_nh()+1 <= _nmax);
-
-    const Index insert_idx = _nh();
-    phys_crds.insert_host(pcrd);
-    lag_crds.insert_host(lcrd);
-    for (int i=0; i<FaceKind::nverts; ++i) {
-      _hostverts(insert_idx, i) = vertinds(i);
-      _hostedges(insert_idx, i) = edgeinds(i);
-    }
-    for (int i=0; i<4; ++i) {
-      _hostkids(insert_idx, i) = constants::NULL_IND;
-    }
-    _host_crd_inds(insert_idx) = ctr_idx;
-    _hostparent(insert_idx) = parent_idx;
-    _hostarea(insert_idx) = ar;
-    _hlevel(insert_idx) = _hlevel(parent_idx) + 1;
-    _hmask(insert_idx) = false;
-    ++_nh();
-    ++_hn_leaves();
+  const Index insert_idx = _nh();
+  phys_crds.insert_host(pcrd);
+  lag_crds.insert_host(lcrd);
+  for (int i = 0; i < FaceKind::nverts; ++i) {
+    _hostverts(insert_idx, i) = vertinds(i);
+    _hostedges(insert_idx, i) = edgeinds(i);
+  }
+  for (int i = 0; i < 4; ++i) {
+    _hostkids(insert_idx, i) = constants::NULL_IND;
+  }
+  _host_crd_inds(insert_idx) = ctr_idx;
+  _hostparent(insert_idx) = parent_idx;
+  _hostarea(insert_idx) = ar;
+  _hlevel(insert_idx) = _hlevel(parent_idx) + 1;
+  _hmask(insert_idx) = false;
+  ++_nh();
+  ++_hn_leaves();
 }
 
 template <typename FaceKind, typename Geo>
@@ -169,9 +167,11 @@ void Faces<FaceKind, Geo>::init_from_seed(const MeshSeed<SeedType>& seed) {
   for (int i = 0; i < SeedType::nfaces; ++i) {
     const auto mverts = ko::subview(seed.seed_face_verts, i, ko::ALL);
     const auto medges = ko::subview(seed.seed_face_edges, i, ko::ALL);
-    const auto mcrd = ko::subview(seed.seed_crds, SeedType::nverts + i, ko::ALL);
+    const auto mcrd =
+        ko::subview(seed.seed_crds, SeedType::nverts + i, ko::ALL);
 
-    this->insert_host(mcrd, mcrd, i, mverts, medges, constants::NULL_IND, seed.face_area(i));
+    this->insert_host(mcrd, mcrd, i, mverts, medges, constants::NULL_IND,
+                      seed.face_area(i));
   }
 #ifndef NDEBUG
   if (std::is_same<Geo, SphereGeometry>::value) {
@@ -496,8 +496,8 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
   for (int i = 0; i < 4; ++i) {              // loop over child faces
     for (int j = 0; j < 4; ++j) {            // loop over vertices
       for (int k = 0; k < Geo::ndim; ++k) {  // loop over components
-        vert_crds(j, k) = verts.phys_crds.get_crd_component_host(
-            new_face_vert_inds(i, j), k);
+        vert_crds(j, k) =
+            verts.phys_crds.get_crd_component_host(new_face_vert_inds(i, j), k);
         vert_lag_crds(j, k) =
             verts.lag_crds.get_crd_component_host(new_face_vert_inds(i, j), k);
       }
@@ -525,5 +525,5 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
   faces.decrement_leaves();
 }
 
-}
+}  // namespace Lpm
 #endif

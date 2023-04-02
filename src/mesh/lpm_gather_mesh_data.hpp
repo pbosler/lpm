@@ -18,7 +18,7 @@ struct PlanarGrid;  // fwd decl
 */
 template <typename SeedType>
 class GatherMeshData final {
-  public:
+ public:
   typename SeedType::geo::crd_view_type phys_crds;
   typename SeedType::geo::crd_view_type lag_crds;
   /// input mesh with data to be gathered
@@ -27,15 +27,22 @@ class GatherMeshData final {
   std::map<std::string, scalar_view_type> scalar_fields;
   /// gathered vector data
   std::map<std::string, typename SeedType::geo::vec_view_type> vector_fields;
-  /// boolean indicates whether coordinates are one rank 2 array (packed) or two rank 1 arrays (unpacked)
+  /// boolean indicates whether coordinates are one rank 2 array (packed) or two
+  /// rank 1 arrays (unpacked)
   bool unpacked;
 
-  scalar_view_type x; /// if unpacked, view of gathered x-coordinates; else: null
-  scalar_view_type y; /// if unpacked, view of gathered y-coordinates; else: null
-  scalar_view_type z; /// if unpacked, view of gathered z-coordinates; else: null
-  scalar_view_type lag_x; /// if unpacked, view of gathered x-coordinates; else: null
-  scalar_view_type lag_y; /// if unpacked, view of gathered y-coordinates; else: null
-  scalar_view_type lag_z; /// if unpacked, view of gathered z-coordinates; else: null
+  scalar_view_type
+      x;  /// if unpacked, view of gathered x-coordinates; else: null
+  scalar_view_type
+      y;  /// if unpacked, view of gathered y-coordinates; else: null
+  scalar_view_type
+      z;  /// if unpacked, view of gathered z-coordinates; else: null
+  scalar_view_type
+      lag_x;  /// if unpacked, view of gathered x-coordinates; else: null
+  scalar_view_type
+      lag_y;  /// if unpacked, view of gathered y-coordinates; else: null
+  scalar_view_type
+      lag_z;  /// if unpacked, view of gathered z-coordinates; else: null
 
   typename scalar_view_type::HostMirror h_x;
   typename scalar_view_type::HostMirror h_y;
@@ -93,9 +100,9 @@ class GatherMeshData final {
   void gather_coordinates();
   bool _host_initialized;
   template <int ndim>
-  typename std::enable_if<ndim==2, void>::type unpack_helper();
+  typename std::enable_if<ndim == 2, void>::type unpack_helper();
   template <int ndim>
-  typename std::enable_if<ndim==3, void>::type unpack_helper();
+  typename std::enable_if<ndim == 3, void>::type unpack_helper();
 };
 
 }  // namespace Lpm

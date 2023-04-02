@@ -12,8 +12,9 @@ namespace Lpm {
 
 typedef Kokkos::View<bool*> flag_view;
 
-/** @brief Given a relative tolerance in [0,1], convert to an absolute tolerance that accounts for mesh size.
-Enables the same tolerance values to be used even as the background uniform mesh is refined.
+/** @brief Given a relative tolerance in [0,1], convert to an absolute tolerance
+that accounts for mesh size. Enables the same tolerance values to be used even
+as the background uniform mesh is refined.
 */
 inline Real convert_to_absolute_tol(const Real rel_tol, const Real max_val) {
   return rel_tol * max_val;
@@ -31,8 +32,7 @@ struct FlowMapVariationFlag {
   static constexpr Int nverts = MeshSeedType::faceKind::nverts;
 
   FlowMapVariationFlag(
-      flag_view f,
-      const std::shared_ptr<const PolyMesh2d<MeshSeedType>> mesh,
+      flag_view f, const std::shared_ptr<const PolyMesh2d<MeshSeedType>> mesh,
       const Real tol_)
       : flags(f),
         vertex_lag_crds(mesh->vertices.lag_crds.crds),
@@ -46,8 +46,8 @@ struct FlowMapVariationFlag {
       Real min_lag_crds[MeshSeedType::geo::ndim];
       Real max_lag_crds[MeshSeedType::geo::ndim];
       for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
-        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(i,j), 0);
-        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(i,j), 0);
+        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, j), 0);
+        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, j), 0);
       }
 
       for (int j = 1; j < nverts; ++j) {
@@ -64,7 +64,7 @@ struct FlowMapVariationFlag {
         dsum += max_lag_crds[j] - min_lag_crds[j];
       }
 
-      flags(i) = ( flags(i) or (dsum > tol) );
+      flags(i) = (flags(i) or (dsum > tol));
     }
   }
 };
@@ -77,13 +77,14 @@ struct ScalarIntegralFlag {
   Real tol;
 
   ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
-   const scalar_view_type a, const mask_view_type m, const Real eps)
+                     const scalar_view_type a, const mask_view_type m,
+                     const Real eps)
       : flags(f), face_vals(fv), area(a), facemask(m), tol(eps) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
     if (!facemask(i)) {
-      flags(i) = ( flags(i) or (face_vals(i) * area(i) > tol) );
+      flags(i) = (flags(i) or (face_vals(i) * area(i) > tol));
     }
   }
 };
@@ -97,10 +98,15 @@ struct ScalarVariationFlag {
   Real tol;
 
   ScalarVariationFlag(flag_view f, const scalar_view_type fv,
-    const scalar_view_type vv, const Kokkos::View<Index**> verts,
-    const mask_view_type m, const Real eps) :
-    flags(f), face_vals(fv), vert_vals(vv), face_vertex_view(verts),
-    facemask(m), tol(eps) {}
+                      const scalar_view_type vv,
+                      const Kokkos::View<Index**> verts, const mask_view_type m,
+                      const Real eps)
+      : flags(f),
+        face_vals(fv),
+        vert_vals(vv),
+        face_vertex_view(verts),
+        facemask(m),
+        tol(eps) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
@@ -112,11 +118,10 @@ struct ScalarVariationFlag {
         if (vert_vals(vidx) < minval) minval = vert_vals(vidx);
         if (vert_vals(vidx) > maxval) maxval = vert_vals(vidx);
       }
-      flags(i) = ( flags(i) or (maxval - minval > tol));
+      flags(i) = (flags(i) or (maxval - minval > tol));
     }
   }
 };
-
 
 }  // namespace Lpm
 

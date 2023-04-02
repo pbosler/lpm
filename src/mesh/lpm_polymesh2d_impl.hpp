@@ -1,7 +1,7 @@
+#include "lpm_kokkos_defs.hpp"
+#include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_vertices_impl.hpp"
-#include "mesh/lpm_faces_impl.hpp"
-#include "lpm_kokkos_defs.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #endif
@@ -48,7 +48,6 @@ void PolyMesh2d<SeedType>::divide_face(const Index face_idx,
     divider::divide(face_idx, vertices, edges, faces);
   }
 }
-
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::reset_face_centroids() {
@@ -110,7 +109,6 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
   return ss.str();
 }
 
-
 #endif
 
-}
+}  // namespace Lpm

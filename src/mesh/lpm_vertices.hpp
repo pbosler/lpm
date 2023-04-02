@@ -38,9 +38,10 @@ class Vertices {
                 of edges incident to each vertex.
   */
   Vertices(const Index nmax, const bool verts_are_dual = false)
-      : crd_inds("vert_crd_inds", nmax), n("n"), phys_crds(nmax),
-      lag_crds(nmax) {
-
+      : crd_inds("vert_crd_inds", nmax),
+        n("n"),
+        phys_crds(nmax),
+        lag_crds(nmax) {
     _nh = ko::create_mirror_view(n);
     _nh() = 0;
     _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -127,7 +128,8 @@ class Vertices {
   void insert_host(const Index crd_idx);
 
   template <typename PtViewType>
-  void insert_host(const Index crd_idx, const PtViewType& pcrd, const PtViewType& lcrd);
+  void insert_host(const Index crd_idx, const PtViewType& pcrd,
+                   const PtViewType& lcrd);
 
   /** @brief Insert a new vertex
 
@@ -221,7 +223,7 @@ class Vertices {
   /** @brief coords object containing the physical
     coordinates of each vertex.
   */
-//   std::unique_ptr<CoordsType> phys_crds;
+  //   std::unique_ptr<CoordsType> phys_crds;
   CoordsType phys_crds;
 
   /** @brief coords object containing the Lagrangian

@@ -1,6 +1,6 @@
 #include "lpm_vertices.hpp"
-#include "lpm_vertices_impl.hpp"
 
+#include "lpm_vertices_impl.hpp"
 
 namespace Lpm {
 

@@ -1,4 +1,5 @@
 #include "mesh/lpm_polymesh2d.hpp"
+
 #include "mesh/lpm_polymesh2d_impl.hpp"
 
 namespace Lpm {

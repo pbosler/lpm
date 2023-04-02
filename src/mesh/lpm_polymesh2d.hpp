@@ -47,7 +47,13 @@ struct PolyMeshParameters {
 
   PolyMeshParameters(const PolyMeshParameters& other) = default;
 
-  PolyMeshParameters(const Index nmv, const Index nme, const Index nmf) : nmaxverts(nmv), nmaxedges(nme), nmaxfaces(nmf), init_depth(0), radius(1), amr_limit(0) {}
+  PolyMeshParameters(const Index nmv, const Index nme, const Index nmf)
+      : nmaxverts(nmv),
+        nmaxedges(nme),
+        nmaxfaces(nmf),
+        init_depth(0),
+        radius(1),
+        amr_limit(0) {}
 
   PolyMeshParameters(const Int depth, const Real r = 1, const Int amr = 0)
       : init_depth(depth), amr_limit(amr), seed(r) {
@@ -84,10 +90,12 @@ class PolyMesh2d {
 
   */
   // mesh topology & coordinates
-  Vertices<Coords<Geo>> vertices;  /// vertex particles, aka "passive," because they don't participate in quadrature
+  Vertices<Coords<Geo>> vertices;  /// vertex particles, aka "passive," because
+                                   /// they don't participate in quadrature
   Edges edges;  /// edges, typically only used for mesh initialization and
                 /// refinement
-  Faces<FaceType, Geo> faces;  /// face particles, aka "active," because they do contribute to quadrature.
+  Faces<FaceType, Geo> faces;  /// face particles, aka "active," because they do
+                               /// contribute to quadrature.
 
   /** @brief initial refinement level.  All panels in the MeshSeed will be
     refined to this level.
@@ -116,12 +124,15 @@ class PolyMesh2d {
   */
   PolyMesh2d(const Index nmaxverts, const Index nmaxedges,
              const Index nmaxfaces)
-      : vertices(nmaxverts), edges(nmaxedges), faces(nmaxfaces), radius(1),
-      params_(nmaxverts, nmaxedges, nmaxfaces) {
-      params_.nmaxverts = nmaxverts;
-      params_.nmaxedges = nmaxedges;
-      params_.nmaxfaces = nmaxfaces;
-      params_.radius = radius;
+      : vertices(nmaxverts),
+        edges(nmaxedges),
+        faces(nmaxfaces),
+        radius(1),
+        params_(nmaxverts, nmaxedges, nmaxfaces) {
+    params_.nmaxverts = nmaxverts;
+    params_.nmaxedges = nmaxedges;
+    params_.nmaxfaces = nmaxfaces;
+    params_.radius = radius;
   }
 
   /** @brief Constructor.  Allocates memory, does not initialize values.
@@ -369,8 +380,7 @@ class PolyMesh2d {
                           "PolyMesh2d::locate_pt_walk_search is leaf-only.");
     Index result;
     Index current_idx = face_start_idx;
-    auto fcrd =
-        Kokkos::subview(faces.phys_crds.view, current_idx, Kokkos::ALL);
+    auto fcrd = Kokkos::subview(faces.phys_crds.view, current_idx, Kokkos::ALL);
     Real dist = SeedType::geo::distance(query_pt, fcrd);
     // search all adjacent faces
     bool keep_going = true;
@@ -866,23 +876,26 @@ class PolyMesh2d {
   */
   template <typename LoggerType = Logger<>>
   void divide_flagged_faces(const Kokkos::View<bool*> flags,
-        LoggerType& logger) {
-
+                            LoggerType& logger) {
     if (!params_) {
-      logger.warn("divide_flagged_faces: mesh parameters not stored; AMR is disabled, exiting.");
+      logger.warn(
+          "divide_flagged_faces: mesh parameters not stored; AMR is disabled, "
+          "exiting.");
       return;
     }
 
     Index flag_count;
     Kokkos::parallel_reduce(
-      n_faces_host(),
-      KOKKOS_LAMBDA (const Index i, Index& s) {
-        s += (flags(i) ? 1 : 0);
-      }, flag_count);
+        n_faces_host(),
+        KOKKOS_LAMBDA(const Index i, Index& s) { s += (flags(i) ? 1 : 0); },
+        flag_count);
     const Index space_left = params_.nmaxfaces - n_faces_host();
 
     if (flag_count > space_left / 4) {
-      logger.warn("divide_flagged_faces: not enough memory (flag count = {}, nfaces = {}, nmaxfaces = {})", flag_count, n_faces_host(), params_.nmaxfaces);
+      logger.warn(
+          "divide_flagged_faces: not enough memory (flag count = {}, nfaces = "
+          "{}, nmaxfaces = {})",
+          flag_count, n_faces_host(), params_.nmaxfaces);
       return;
     }
     const Index n_faces_in = n_faces_host();
@@ -890,21 +903,22 @@ class PolyMesh2d {
     Kokkos::deep_copy(host_flags, flags);
     Index refine_count = 0;
     bool limit_reached = false;
-    for (Index i=0; i< n_faces_in; ++i) {
+    for (Index i = 0; i < n_faces_in; ++i) {
       if (host_flags(i)) {
         if (faces.host_level(i) < params_.init_depth + params_.amr_limit) {
           divide_face(i, logger);
           ++refine_count;
-        }
-        else {
+        } else {
           limit_reached = true;
         }
       }
     }
     if (limit_reached) {
-      logger.warn("divide_flagged_faces: local refinement limit reached; divided {} of {} flagged faces.", refine_count, flag_count);
-    }
-    else {
+      logger.warn(
+          "divide_flagged_faces: local refinement limit reached; divided {} of "
+          "{} flagged faces.",
+          refine_count, flag_count);
+    } else {
       LPM_ASSERT(refine_count == flag_count);
       logger.info("divide_flagged_faces: {} faces divided.", refine_count);
     }

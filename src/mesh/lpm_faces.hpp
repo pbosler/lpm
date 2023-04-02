@@ -104,8 +104,7 @@ class Faces {
     _hlevel = ko::create_mirror_view(level);
   }
 
-  Faces(const Index nmax, Coords<Geo>& pcrds,
-        Coords<Geo>& lcrds)
+  Faces(const Index nmax, Coords<Geo>& pcrds, Coords<Geo>& lcrds)
       : verts("faceverts", nmax),
         edges("faceedges", nmax),
         crd_inds("crd_inds", nmax),
@@ -118,8 +117,7 @@ class Faces {
         mask("mask", nmax),
         level("level", nmax),
         phys_crds(pcrds),
-        lag_crds(lcrds)
-        {
+        lag_crds(lcrds) {
     _hostverts = ko::create_mirror_view(verts);
     _hostedges = ko::create_mirror_view(edges);
     _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -228,13 +226,12 @@ class Faces {
                    const Index prt = constants::NULL_IND, const Real ar = 0.0);
 
   template <typename PtViewType>
-  void insert_host(const PtViewType& pcrd,
-    const PtViewType& lcrd,
-    const Index ctr_idx,
-    const Kokkos::View<Index*, Host> vertinds,
-    const Kokkos::View<Index*, Host> edgeinds,
-    const Index parent_idx = constants::NULL_IND,
-    const Real ar = 0);
+  void insert_host(const PtViewType& pcrd, const PtViewType& lcrd,
+                   const Index ctr_idx,
+                   const Kokkos::View<Index*, Host> vertinds,
+                   const Kokkos::View<Index*, Host> edgeinds,
+                   const Index parent_idx = constants::NULL_IND,
+                   const Real ar = 0);
 
   /** Populate a view of coordinates that only includes leaf faces.
 

@@ -1,13 +1,13 @@
 #ifndef LPM_VERTICES_IMPL_HPP
 #define LPM_VERTICES_IMPL_HPP
 
-#include "mesh/lpm_vertices.hpp"
-#include "lpm_coords_impl.hpp"
 #include <sstream>
 #include <string>
 
 #include "lpm_assert.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_coords_impl.hpp"
+#include "mesh/lpm_vertices.hpp"
 #include "util/lpm_string_util.hpp"
 
 namespace Lpm {
@@ -18,26 +18,29 @@ void Vertices<CoordsType>::insert_host(const Index crd_idx) {
   _host_crd_inds(_nh()++) = crd_idx;
 }
 
-template <typename CoordsType> template <typename PtViewType>
-void Vertices<CoordsType>::insert_host(const Index crd_idx, const PtViewType& pcrd, const PtViewType& lcrd) {
+template <typename CoordsType>
+template <typename PtViewType>
+void Vertices<CoordsType>::insert_host(const Index crd_idx,
+                                       const PtViewType& pcrd,
+                                       const PtViewType& lcrd) {
   LPM_REQUIRE(n_max() >= _nh() + 1);
   _host_crd_inds(_nh()++) = crd_idx;
   phys_crds.insert_host(pcrd);
   lag_crds.insert_host(lcrd);
 }
 
-template <typename CoordsType> template <typename MeshSeedType>
+template <typename CoordsType>
+template <typename MeshSeedType>
 void Vertices<CoordsType>::init_from_seed(MeshSeedType& seed) {
   LPM_ASSERT(n_max() >= MeshSeedType::nverts);
-  for (int i=0; i< MeshSeedType::nverts; ++i) {
+  for (int i = 0; i < MeshSeedType::nverts; ++i) {
     const auto mcrd = Kokkos::subview(seed.seed_crds, i, Kokkos::ALL);
     this->insert_host(i, mcrd, mcrd);
   }
 }
 
 template <typename CoordsType>
-Vertices<CoordsType>::Vertices(const Index nmax,
-                               CoordsType& pcrds,
+Vertices<CoordsType>::Vertices(const Index nmax, CoordsType& pcrds,
                                CoordsType& lcrds)
     : crd_inds("vert_crd_inds", nmax),
       n("n"),
@@ -98,5 +101,5 @@ std::string Vertices<CoordsType>::info_string(const std::string& label,
   return ss.str();
 }
 
-}
+}  // namespace Lpm
 #endif
