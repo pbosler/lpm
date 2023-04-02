@@ -182,7 +182,7 @@ GatherMeshData<SeedType>::unpack_helper() {
 
 template <typename SeedType>
 GatherMeshData<SeedType>::GatherMeshData(
-    PolyMesh2d<SeedType>& pm)
+    const PolyMesh2d<SeedType>& pm)
     : mesh(pm),
       phys_crds("gathered_phys_crds",pm.n_vertices_host() + pm.faces.n_leaves_host()),
       lag_crds("gathered_phys_crds",pm.n_vertices_host() + pm.faces.n_leaves_host()),
@@ -190,22 +190,6 @@ GatherMeshData<SeedType>::GatherMeshData(
   h_phys_crds = Kokkos::create_mirror_view(phys_crds);
   h_lag_crds = Kokkos::create_mirror_view(lag_crds);
   gather_coordinates();
-}
-
-template <typename SeedType>
-GatherMeshData<SeedType>::GatherMeshData(const PlanarGrid& grid)
-    : x("gathered_x", grid.size()), y("gathered_y", grid.size()),
-    unpacked(true) {
-  h_x = Kokkos::create_mirror_view(x);
-  h_y = Kokkos::create_mirror_view(y);
-  auto xx = x;
-  auto yy = y;
-  auto gxy = grid.pts;
-  Kokkos::parallel_for(
-      grid.size(), KOKKOS_LAMBDA(const Index i) {
-        xx(i) = gxy(i, 0);
-        yy(i) = gxy(i, 1);
-      });
 }
 
 template <typename SeedType>

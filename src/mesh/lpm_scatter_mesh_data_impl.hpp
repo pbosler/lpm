@@ -39,20 +39,18 @@ void ScatterMeshData<SeedType>::scatter_lag_crds() {
 
 template <typename SeedType>
 void ScatterMeshData<SeedType>::scatter_fields(
-    const std::map<std::string, ScalarField<VertexField>> vertex_scalar_fields,
-    const std::map<std::string, ScalarField<FaceField>> face_scalar_fields,
-    const std::map<std::string,
-                   VectorField<typename SeedType::geo, VertexField>>&
-        vertex_vector_fields,
-    const std::map<std::string, VectorField<typename SeedType::geo, FaceField>>&
-        face_vector_fields) {
+    const vert_scalar_map& vertex_scalar_fields,
+    const face_scalar_map& face_scalar_fields,
+    const vert_vector_map& vertex_vector_fields,
+    const face_vector_map& face_vector_fields) {
   const auto face_mask = mesh.faces.mask;
   const auto face_leaf_idx = mesh.faces.leaf_idx;
   const Index n_verts = mesh.n_vertices_host();
   const Index n_faces = mesh.n_faces_host();
 
   for (const auto& sf : vertex_scalar_fields) {
-    LPM_REQUIRE(face_scalar_fields.find(sf.first) != face_scalar_fields.end());
+    LPM_REQUIRE_MSG(face_scalar_fields.count(sf.first) == 1,
+      "ScatterMeshData::scatter_fields error: scalar output field " + sf.first + " not found.");
     if (output.scalar_fields.find(sf.first) != output.scalar_fields.end()) {
       auto mesh_vert_view = sf.second.view;
       auto mesh_face_view = face_scalar_fields.at(sf.first).view;
@@ -70,7 +68,8 @@ void ScatterMeshData<SeedType>::scatter_fields(
   }
 
   for (const auto& vf : vertex_vector_fields) {
-    LPM_REQUIRE(face_vector_fields.find(vf.first) != face_vector_fields.end());
+    LPM_REQUIRE_MSG(face_vector_fields.count(vf.first) == 1,
+      "ScatterMeshData::scatter_fields error: vector output field " + vf.first + " not found.");
     if (output.vector_fields.find(vf.first) != output.vector_fields.end()) {
       auto mesh_vert_view = vf.second.view;
       auto mesh_face_view = face_vector_fields.at(vf.first).view;
