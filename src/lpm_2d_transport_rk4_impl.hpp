@@ -32,8 +32,8 @@ void Transport2dRK4<SeedType>::init() {
                           std::make_pair(0, nverts), Kokkos::ALL);
   vertvel = Kokkos::subview(tmesh.velocity_verts.view,
                             std::make_pair(0, nverts), Kokkos::ALL);
-  facex = Kokkos::subview(tmesh.faces.phys_crds.view,
-                          std::make_pair(0, nfaces), Kokkos::ALL);
+  facex = Kokkos::subview(tmesh.faces.phys_crds.view, std::make_pair(0, nfaces),
+                          Kokkos::ALL);
   facevel = Kokkos::subview(tmesh.velocity_faces.view,
                             std::make_pair(0, nfaces), Kokkos::ALL);
 

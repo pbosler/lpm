@@ -1,6 +1,6 @@
 #include "lpm_coords.hpp"
-#include "lpm_coords_impl.hpp"
 
+#include "lpm_coords_impl.hpp"
 
 namespace Lpm {
 

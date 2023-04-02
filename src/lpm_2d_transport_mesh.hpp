@@ -65,8 +65,8 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
         t_idx(0) {}
 
   TransportMesh2d(const std::shared_ptr<PolyMeshParameters<SeedType>>& params)
-    : PolyMesh2d<SeedType>(params),
-    velocity_verts("velocity", params->nmaxverts),
+      : PolyMesh2d<SeedType>(params),
+        velocity_verts("velocity", params->nmaxverts),
         velocity_faces("velocity", params->nmaxfaces),
         t(0),
         t_idx(0) {}
@@ -75,7 +75,8 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   void initialize_tracer(const ICType& tracer_ic);
 
   template <typename ICType>
-  void initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx, const Index face_start_idx);
+  void initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx,
+                         const Index face_start_idx);
 
   void initialize_scalar_tracer(const std::string name);
 
@@ -83,7 +84,8 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   void initialize_velocity();
 
   template <typename VelocityType>
-  void set_velocity(const Real t, const Index vert_start_idx=0, const Index face_start_idx=0);
+  void set_velocity(const Real t, const Index vert_start_idx = 0,
+                    const Index face_start_idx = 0);
 
   inline Int ntracers() const { return tracer_verts.size(); }
 

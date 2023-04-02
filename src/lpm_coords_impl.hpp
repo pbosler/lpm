@@ -1,9 +1,9 @@
 #ifndef LPM_COORDS_IMPL_HPP
 #define LPM_COORDS_IMPL_HPP
 
-#include "lpm_coords.hpp"
 #include <random>
 
+#include "lpm_coords.hpp"
 #include "util/lpm_string_util.hpp"
 
 namespace Lpm {
@@ -111,5 +111,5 @@ Kokkos::MinMaxScalar<Real> Coords<Geo>::min_max_extent(const int dim) const {
   return minmax;
 }
 
-}
+}  // namespace Lpm
 #endif

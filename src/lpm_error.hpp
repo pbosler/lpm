@@ -119,7 +119,6 @@ struct ErrNorms {
 
   template <typename V1, typename V2>
   ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt);
-
 };
 
 std::vector<Real> convergence_rates(const std::vector<Real>& dx,
@@ -139,7 +138,8 @@ template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact);
 
 template <typename V1, typename V2, typename V3>
-void compute_error(const V1 err, const V2 appx, const V3 exact, const mask_view_type mask);
+void compute_error(const V1 err, const V2 appx, const V3 exact,
+                   const mask_view_type mask);
 
 }  // namespace Lpm
 #endif

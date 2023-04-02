@@ -26,16 +26,21 @@ void TransportMesh2d<SeedType>::initialize_velocity() {
 
 template <typename SeedType>
 template <typename VelocityType>
-void TransportMesh2d<SeedType>::set_velocity(const Real t, const Index vert_start_idx, const Index face_start_idx) {
+void TransportMesh2d<SeedType>::set_velocity(const Real t,
+                                             const Index vert_start_idx,
+                                             const Index face_start_idx) {
   static_assert(
       std::is_same<typename SeedType::geo, typename VelocityType::geo>::value,
       "Geometry types must match.");
 
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
-    VelocityKernel<VelocityType>(this->velocity_verts.view,
-      this->vertices.phys_crds.view, t));
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
-    VelocityKernel<VelocityType>(this->velocity_faces.view, this->faces.phys_crds.view, t));
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+      VelocityKernel<VelocityType>(this->velocity_verts.view,
+                                   this->vertices.phys_crds.view, t));
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+      VelocityKernel<VelocityType>(this->velocity_faces.view,
+                                   this->faces.phys_crds.view, t));
 }
 
 template <typename SeedType>
@@ -72,23 +77,29 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 
 template <typename SeedType>
 template <typename ICType>
-void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx, const Index face_start_idx) {
-static_assert(std::is_same<typename SeedType::geo, typename ICType::geo>::value, "Geometry types must match.");
+void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic,
+                                                  const Index vert_start_idx,
+                                                  const Index face_start_idx) {
+  static_assert(
+      std::is_same<typename SeedType::geo, typename ICType::geo>::value,
+      "Geometry types must match.");
 
-auto vertview = tracer_verts.at(tracer_ic.name()).view;
-auto faceview = tracer_faces.at(tracer_ic.name()).view;
-const auto vlag_crds = this->vertices.lag_crds.view;
-const auto flag_crds = this->faces.lag_crds.view;
-Kokkos::parallel_for(Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
-  KOKKOS_LAMBDA (const Index i) {
-    const auto crd = Kokkos::subview(vlag_crds, i, Kokkos::ALL);
-    vertview(i) = tracer_ic(crd);
-  });
-Kokkos::parallel_for(Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
-  KOKKOS_LAMBDA (const Index i) {
-    const auto crd = Kokkos::subview(flag_crds, i, Kokkos::ALL);
-    faceview(i) = tracer_ic(crd);
-  });
+  auto vertview = tracer_verts.at(tracer_ic.name()).view;
+  auto faceview = tracer_faces.at(tracer_ic.name()).view;
+  const auto vlag_crds = this->vertices.lag_crds.view;
+  const auto flag_crds = this->faces.lag_crds.view;
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+      KOKKOS_LAMBDA(const Index i) {
+        const auto crd = Kokkos::subview(vlag_crds, i, Kokkos::ALL);
+        vertview(i) = tracer_ic(crd);
+      });
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+      KOKKOS_LAMBDA(const Index i) {
+        const auto crd = Kokkos::subview(flag_crds, i, Kokkos::ALL);
+        faceview(i) = tracer_ic(crd);
+      });
 }
 
 template <typename SeedType>

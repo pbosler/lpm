@@ -19,7 +19,8 @@ class PolymeshReader;
 #endif
 
 #ifdef LPM_USE_VTK
-  template <typename SeedType> class VtkPolymeshInterface;
+template <typename SeedType>
+class VtkPolymeshInterface;
 #endif
 
 /** \brief Coords class handles arrays of vectors in \f$\mathbb{R}^d\f$, where
@@ -43,7 +44,8 @@ class Coords {
   n_view_type n;  ///< number of vectors currently intialized
 
 #ifdef LPM_USE_VTK
-  template <typename SeedType> friend class VtkPolymeshInterface;
+  template <typename SeedType>
+  friend class VtkPolymeshInterface;
 #endif
 
 #ifdef LPM_USE_NETCDF
@@ -58,13 +60,15 @@ class Coords {
 
     @see MeshSeed::setMaxAllocations()
   */
-  explicit Coords(const Index nmax) : view("coords_view", nmax), _nmax(nmax), n("n") {
+  explicit Coords(const Index nmax)
+      : view("coords_view", nmax), _nmax(nmax), n("n") {
     _hostview = ko::create_mirror_view(view);
     _nh = ko::create_mirror_view(n);
     _nh() = 0;
   };
 
-  explicit Coords(const ko::View<Real**> cv) : view(cv), _nmax(cv.extent(0)), n("n") {
+  explicit Coords(const ko::View<Real**> cv)
+      : view(cv), _nmax(cv.extent(0)), n("n") {
     _hostview = ko::create_mirror_view(view);
     _nh = ko::create_mirror_view(n);
     _nh() = cv.extent(0);

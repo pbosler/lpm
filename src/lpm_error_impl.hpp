@@ -16,12 +16,15 @@ struct ComputeErrorFtor {
   mask_view_type mask;
 
   ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex)
-      : err(er), appx(ap), exact(ex), ndim(er.extent(1)),
-      mask("err_mask", er.extent(0)) {}
+      : err(er),
+        appx(ap),
+        exact(ex),
+        ndim(er.extent(1)),
+        mask("err_mask", er.extent(0)) {}
 
-  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex, const mask_view_type m)
-      : err(er), appx(ap), exact(ex), ndim(er.extent(1)),
-      mask(m) {}
+  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex,
+                   const mask_view_type m)
+      : err(er), appx(ap), exact(ex), ndim(er.extent(1)), mask(m) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
@@ -44,7 +47,8 @@ struct ComputeErrorFtor<V1, V2, V3, 1> {
   ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex)
       : err(er), appx(ap), exact(ex), ndim(1), mask("err_mask", er.extent(0)) {}
 
-  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex, const mask_view_type m)
+  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex,
+                   const mask_view_type m)
       : err(er), appx(ap), exact(ex), ndim(1), mask(m) {}
 
   KOKKOS_INLINE_FUNCTION
@@ -117,7 +121,8 @@ void compute_error(const V1 err, const V2 appx, const V3 exact) {
 }
 
 template <typename V1, typename V2, typename V3>
-void compute_error(const V1 err, const V2 appx, const V3 exact, const mask_view_type m) {
+void compute_error(const V1 err, const V2 appx, const V3 exact,
+                   const mask_view_type m) {
   static_assert(V1::Rank == V2::Rank and V2::Rank == V3::Rank,
                 "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and
@@ -125,8 +130,8 @@ void compute_error(const V1 err, const V2 appx, const V3 exact, const mask_view_
   LPM_REQUIRE(err.extent(1) == appx.extent(1) and
               appx.extent(1) == exact.extent(1));
 
-  Kokkos::parallel_for(
-      err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(err, appx, exact, m));
+  Kokkos::parallel_for(err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(
+                                          err, appx, exact, m));
 }
 
 template <typename V1, typename V2>
