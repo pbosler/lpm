@@ -11,7 +11,7 @@
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif
 #include "catch.hpp"
-#include <memory>
+
 #include <sstream>
 
 using namespace Lpm;
@@ -31,13 +31,13 @@ struct GatherScatterTest {
     constexpr Int amr_limit = 1;
 
     PolyMeshParameters<SeedType> pm_params(init_depth, r, amr_limit);
-    const auto pm = std::make_shared<PolyMesh2d<SeedType>>(pm_params);
-    Divider::divide(0, pm->vertices, pm->edges, pm->faces);
-    Divider::divide(pm->faces.kid_host(0,0), pm->vertices, pm->edges, pm->faces);
-    pm->update_device();
+    auto pm = PolyMesh2d<SeedType>(pm_params);
+    Divider::divide(0, pm.vertices, pm.edges, pm.faces);
+    Divider::divide(pm.faces.kid_host(0,0), pm.vertices, pm.edges, pm.faces);
+    pm.update_device();
 
-    ScalarField<VertexField> vert_scalar("scalar", pm->n_vertices_host());
-    ScalarField<FaceField> face_scalar("scalar", pm->n_faces_host());
+    ScalarField<VertexField> vert_scalar("scalar", pm.n_vertices_host());
+    ScalarField<FaceField> face_scalar("scalar", pm.n_faces_host());
     Kokkos::deep_copy(vert_scalar.view, 2.0);
     Kokkos::deep_copy(face_scalar.view, 2.0);
     std::map<std::string, ScalarField<VertexField>> vert_scalar_fields;
@@ -47,7 +47,7 @@ struct GatherScatterTest {
 
     Int tab_level = 0;
     bool verbose = false;
-    logger.info(pm->info_string("2 divides", tab_level, verbose));
+    logger.info(pm.info_string("2 divides", tab_level, verbose));
 
     GatherMeshData<SeedType> gather(pm);
     gather.unpack_coordinates();
@@ -58,7 +58,7 @@ struct GatherScatterTest {
 
     gather.update_host();
 
-    REQUIRE(gather.n() == pm->n_vertices_host() + pm->faces.n_leaves_host());
+    REQUIRE(gather.n() == pm.n_vertices_host() + pm.faces.n_leaves_host());
 
     logger.debug(gather.info_string(tab_level, verbose));
 
@@ -90,31 +90,31 @@ struct GatherScatterTest {
     scatter.scatter_fields(vert_scalar_fields, face_scalar_fields);
 
     Index n_vert_threes = 0;
-    Kokkos::parallel_reduce(pm->n_vertices_host(),
+    Kokkos::parallel_reduce(pm.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i, Index& n) {
         if ( FloatingPoint<Real>::equiv(vert_scalar(i), 3) ) {
           ++n;
         }
       }, n_vert_threes);
-    REQUIRE(n_vert_threes == pm->n_vertices_host());
+    REQUIRE(n_vert_threes == pm.n_vertices_host());
 
     Index n_face_threes = 0;
-    const auto face_mask = pm->faces.mask;
-    Kokkos::parallel_reduce(pm->n_faces_host(),
+    const auto face_mask = pm.faces.mask;
+    Kokkos::parallel_reduce(pm.n_faces_host(),
       KOKKOS_LAMBDA (const Index i, Index& n) {
         if ( FloatingPoint<Real>::equiv(face_scalar(i), 3) ) {
           ++n;
         }
       }, n_face_threes);
     Index n_face_twos = 0;
-    Kokkos::parallel_reduce(pm->n_faces_host(),
+    Kokkos::parallel_reduce(pm.n_faces_host(),
       KOKKOS_LAMBDA (const Index i, Index& n) {
         if (FloatingPoint<Real>::equiv(face_scalar(i), 2)) {
           ++n;
         }
       }, n_face_twos);
-     REQUIRE(n_face_threes == pm->faces.n_leaves_host());
-     REQUIRE(n_face_twos == pm->faces.nh() - pm->faces.n_leaves_host());
+     REQUIRE(n_face_threes == pm.faces.n_leaves_host());
+     REQUIRE(n_face_twos == pm.faces.nh() - pm.faces.n_leaves_host());
 
 
 #ifdef LPM_USE_VTK

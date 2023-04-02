@@ -21,7 +21,7 @@ class GatherMeshData final {
   public:
   typename SeedType::geo::crd_view_type phys_crds;
   typename SeedType::geo::crd_view_type lag_crds;
-  std::shared_ptr<PolyMesh2d<SeedType>> mesh;
+  PolyMesh2d<SeedType>& mesh;
   std::map<std::string, scalar_view_type> scalar_fields;
   std::map<std::string, typename SeedType::geo::vec_view_type> vector_fields;
   bool unpacked;
@@ -46,7 +46,7 @@ class GatherMeshData final {
 
   void unpack_coordinates();
 
-  explicit GatherMeshData(const std::shared_ptr<PolyMesh2d<SeedType>> pm);
+  explicit GatherMeshData(PolyMesh2d<SeedType>& pm);
 
   explicit GatherMeshData(const PlanarGrid& grid);
 

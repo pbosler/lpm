@@ -134,19 +134,19 @@ template <typename SeedType>
 template <int ndim>
 typename std::enable_if<ndim == 3, void>::type
 GatherMeshData<SeedType>::unpack_helper() {
-  x = scalar_view_type("gathered_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  y = scalar_view_type("gathered_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  lag_x = scalar_view_type("gathered_lag_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  lag_y = scalar_view_type("gathered_lag_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  z = scalar_view_type("gathered_z", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  lag_z = scalar_view_type("gathered_lag_z", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  x = scalar_view_type("gathered_x", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  y = scalar_view_type("gathered_y", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  lag_x = scalar_view_type("gathered_lag_x", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  lag_y = scalar_view_type("gathered_lag_y", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  z = scalar_view_type("gathered_z", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  lag_z = scalar_view_type("gathered_lag_z", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
   h_x = Kokkos::create_mirror_view(x);
   h_y = Kokkos::create_mirror_view(y);
   h_lag_x = Kokkos::create_mirror_view(lag_x);
   h_lag_y = Kokkos::create_mirror_view(lag_y);
   h_z = Kokkos::create_mirror_view(z);
   h_lag_z = Kokkos::create_mirror_view(lag_z);
-  Kokkos::parallel_for(mesh->n_vertices_host() + mesh->faces.n_leaves_host(),
+  Kokkos::parallel_for(mesh.n_vertices_host() + mesh.faces.n_leaves_host(),
     KOKKOS_LAMBDA (const Index i) {
       x(i) = phys_crds(i,0);
       y(i) = phys_crds(i,1);
@@ -162,15 +162,15 @@ template <typename SeedType>
 template <int ndim>
 typename std::enable_if<ndim == 2, void>::type
 GatherMeshData<SeedType>::unpack_helper() {
-  x = scalar_view_type("gathered_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  y = scalar_view_type("gathered_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  lag_x = scalar_view_type("gathered_lag_x", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
-  lag_y = scalar_view_type("gathered_lag_y", mesh->n_vertices_host() + mesh->faces.n_leaves_host());
+  x = scalar_view_type("gathered_x", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  y = scalar_view_type("gathered_y", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  lag_x = scalar_view_type("gathered_lag_x", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
+  lag_y = scalar_view_type("gathered_lag_y", mesh.n_vertices_host() + mesh.faces.n_leaves_host());
   h_x = Kokkos::create_mirror_view(x);
   h_y = Kokkos::create_mirror_view(y);
   h_lag_x = Kokkos::create_mirror_view(lag_x);
   h_lag_y = Kokkos::create_mirror_view(lag_y);
-  Kokkos::parallel_for(mesh->n_vertices_host() + mesh->faces.n_leaves_host(),
+  Kokkos::parallel_for(mesh.n_vertices_host() + mesh.faces.n_leaves_host(),
     KOKKOS_LAMBDA (const Index i) {
       x(i) = phys_crds(i,0);
       y(i) = phys_crds(i,1);
@@ -182,10 +182,10 @@ GatherMeshData<SeedType>::unpack_helper() {
 
 template <typename SeedType>
 GatherMeshData<SeedType>::GatherMeshData(
-    const std::shared_ptr<PolyMesh2d<SeedType>> pm)
+    PolyMesh2d<SeedType>& pm)
     : mesh(pm),
-      phys_crds("gathered_phys_crds",pm->n_vertices_host() + pm->faces.n_leaves_host()),
-      lag_crds("gathered_phys_crds",pm->n_vertices_host() + pm->faces.n_leaves_host()),
+      phys_crds("gathered_phys_crds",pm.n_vertices_host() + pm.faces.n_leaves_host()),
+      lag_crds("gathered_phys_crds",pm.n_vertices_host() + pm.faces.n_leaves_host()),
       unpacked(false) {
   h_phys_crds = Kokkos::create_mirror_view(phys_crds);
   h_lag_crds = Kokkos::create_mirror_view(lag_crds);
@@ -260,20 +260,20 @@ template <typename SeedType>
 void GatherMeshData<SeedType>::gather_coordinates() {
   auto gathered_xyz = phys_crds;
   auto gathered_lag_xyz = lag_crds;
-  const auto mesh_vert_xyz = mesh->vertices.phys_crds->crds;
-  const auto mesh_vert_lag_xyz = mesh->vertices.lag_crds->crds;
-  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy({0,0},{mesh->n_vertices_host(), SeedType::geo::ndim});
+  const auto mesh_vert_xyz = mesh.vertices.phys_crds.view;
+  const auto mesh_vert_lag_xyz = mesh.vertices.lag_crds.view;
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy({0,0},{mesh.n_vertices_host(), SeedType::geo::ndim});
   Kokkos::parallel_for(vert_policy,
     KOKKOS_LAMBDA(const Index i, const Int j) {
         phys_crds(i, j) = mesh_vert_xyz(i,j);
         lag_crds(i,j) = mesh_vert_lag_xyz(i,j);
       });
-  const auto vert_offset = mesh->n_vertices_host();
-  const auto mesh_face_xyz = mesh->faces.phys_crds->crds;
-  const auto mesh_face_lag_xyz = mesh->faces.lag_crds->crds;
-  const auto face_mask = mesh->faces.mask;
-  const auto face_leaf_idx = mesh->faces.leaf_idx;
-  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy({0,0}, {mesh->n_faces_host(), SeedType::geo::ndim});
+  const auto vert_offset = mesh.n_vertices_host();
+  const auto mesh_face_xyz = mesh.faces.phys_crds.view;
+  const auto mesh_face_lag_xyz = mesh.faces.lag_crds.view;
+  const auto face_mask = mesh.faces.mask;
+  const auto face_leaf_idx = mesh.faces.leaf_idx;
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy({0,0}, {mesh.n_faces_host(), SeedType::geo::ndim});
   Kokkos::parallel_for(face_policy,
     KOKKOS_LAMBDA(const Index i, const Int j) {
         if (!face_mask(i)) {
@@ -291,8 +291,8 @@ void GatherMeshData<SeedType>::init_scalar_fields(
     LPM_ASSERT(face_fields.find(sf.first) != face_fields.end());
 
     scalar_fields.emplace(
-        sf.first, scalar_view_type(sf.first, mesh->n_vertices_host() +
-                                                 mesh->faces.n_leaves_host()));
+        sf.first, scalar_view_type(sf.first, mesh.n_vertices_host() +
+                                                 mesh.faces.n_leaves_host()));
     h_scalar_fields.emplace(
         sf.first, Kokkos::create_mirror_view(scalar_fields.at(sf.first)));
   }
@@ -310,7 +310,7 @@ void GatherMeshData<SeedType>::init_vector_fields(
     vector_fields.emplace(
         vf.first,
         typename SeedType::geo::vec_view_type(
-            vf.first, mesh->n_vertices_host() + mesh->faces.n_leaves_host()));
+            vf.first, mesh.n_vertices_host() + mesh.faces.n_leaves_host()));
 
     h_vector_fields.emplace(
         vf.first, Kokkos::create_mirror_view(vector_fields.at(vf.first)));
@@ -323,15 +323,15 @@ void GatherMeshData<SeedType>::gather_scalar_fields(
     const std::map<std::string, ScalarField<FaceField>>& face_fields) {
   for (const auto& sf : vert_fields) {
     auto vert_vals = Kokkos::subview(
-        scalar_fields.at(sf.first), std::make_pair(0, mesh->n_vertices_host()));
+        scalar_fields.at(sf.first), std::make_pair(0, mesh.n_vertices_host()));
     Kokkos::deep_copy(
         vert_vals, Kokkos::subview(sf.second.view,
-                                   std::make_pair(0, mesh->n_vertices_host())));
+                                   std::make_pair(0, mesh.n_vertices_host())));
     Kokkos::parallel_for(
-        mesh->n_faces_host(),
+        mesh.n_faces_host(),
         GatherScalarFaceData(
             scalar_fields.at(sf.first), face_fields.at(sf.first).view,
-            mesh->faces.leaf_idx, mesh->faces.mask, mesh->n_vertices_host()));
+            mesh.faces.leaf_idx, mesh.faces.mask, mesh.n_vertices_host()));
   }
 }
 
@@ -343,17 +343,17 @@ void GatherMeshData<SeedType>::gather_vector_fields(
         face_fields) {
   for (const auto& vf : vert_fields) {
     auto vert_vals = Kokkos::subview(vector_fields.at(vf.first),
-                                     std::make_pair(0, mesh->n_vertices_host()),
+                                     std::make_pair(0, mesh.n_vertices_host()),
                                      Kokkos::ALL);
     Kokkos::deep_copy(vert_vals,
                       Kokkos::subview(vf.second.view,
-                                      std::make_pair(0, mesh->n_vertices_host(),
+                                      std::make_pair(0, mesh.n_vertices_host(),
                                                      Kokkos::ALL)));
     Kokkos::parallel_for(
-        mesh->n_faces_host(),
+        mesh.n_faces_host(),
         GatherVectorFaceData(
             vector_fields.at(vf.first), face_fields.at(vf.first).view,
-            mesh->faces.leaf_idx, mesh->faces.mask, mesh->n_vertices_host()));
+            mesh.faces.leaf_idx, mesh.faces.mask, mesh.n_vertices_host()));
   }
 }
 

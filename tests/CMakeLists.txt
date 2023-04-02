@@ -61,8 +61,8 @@ CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
 
 CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
 
-#CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
-#
+CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
+
 #CreateUnitTest(bivar lpm_bivar_tests.cpp)
 #
 #CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)

@@ -12,10 +12,10 @@ namespace Lpm {
 template <typename SeedType>
 struct ScatterMeshData {
   const GatherMeshData<SeedType>& output;
-  std::shared_ptr<PolyMesh2d<SeedType>> mesh;
+  PolyMesh2d<SeedType>& mesh;
 
   ScatterMeshData(const GatherMeshData<SeedType>& out,
-                  const std::shared_ptr<PolyMesh2d<SeedType>> pm);
+                  PolyMesh2d<SeedType>& pm);
 
   void scatter_lag_crds();
 
