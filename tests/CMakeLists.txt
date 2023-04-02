@@ -57,10 +57,10 @@ CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
 
 CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
 
-#CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
-#
-#CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
-#
+CreateUnitTest(latlon_unit_tests lpm_lat_lon_unit_tests.cpp)
+
+CreateUnitTest(compadre_unit_tests lpm_compadre_unit_tests.cpp)
+
 #CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
 #
 #CreateUnitTest(bivar lpm_bivar_tests.cpp)
