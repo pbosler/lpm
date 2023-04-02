@@ -7,12 +7,14 @@
 namespace Lpm {
 
 /**
-  Given source data from a planar Polymesh2d, interpolate using the bivar.f90 module to output locations.
+  Given source data from a planar Polymesh2d, interpolate using the bivar.f90
+  module to output locations.
 */
 template <typename SeedType>
 struct BivarInterface final {
   using sfield_map = std::map<std::string, scalar_view_type>;
-  using vfield_map = std::map<std::string, typename SeedType::geo::vec_view_type>;
+  using vfield_map =
+      std::map<std::string, typename SeedType::geo::vec_view_type>;
   /**
     every source point is included in the bivar algorithm, so we need
     GatherMeshData to avoid duplicate points from divided panels for input.
@@ -30,7 +32,7 @@ struct BivarInterface final {
   std::map<std::string, std::string> vector_in_out_map;
 
   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
-    "planar geometry required.");
+                "planar geometry required.");
 
   /** @brief constructor.
 
@@ -41,21 +43,21 @@ struct BivarInterface final {
     @param [in] v_in_out mapping pairs input -> output names for vector data
   */
   BivarInterface(const GatherMeshData<SeedType>& in,
-    const typename scalar_view_type::HostMirror xo,
-    const typename scalar_view_type::HostMirror yo,
-    const std::map<std::string, std::string>& s_in_out,
-    const std::map<std::string, std::string>& v_in_out =
-      std::map<std::string, std::string>());
+                 const typename scalar_view_type::HostMirror xo,
+                 const typename scalar_view_type::HostMirror yo,
+                 const std::map<std::string, std::string>& s_in_out,
+                 const std::map<std::string, std::string>& v_in_out =
+                     std::map<std::string, std::string>());
 
-  void interpolate(const sfield_map& output_scalars, const vfield_map& output_vectors = vfield_map());
+  void interpolate(const sfield_map& output_scalars,
+                   const vfield_map& output_vectors = vfield_map());
 
-  private:
-    Kokkos::View<int*, Host> integer_work;
-    Kokkos::View<double*, Host> real_work;
-    Int md;
+ private:
+  Kokkos::View<int*, Host> integer_work;
+  Kokkos::View<double*, Host> real_work;
+  Int md;
 };
 
-
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif
