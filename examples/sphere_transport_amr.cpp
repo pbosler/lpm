@@ -108,9 +108,8 @@ int main(int argc, char* argv[]) {
     const bool write_output = input.output_interval > 0;
 
     tracer_type tracer;
-    auto mesh_params = std::make_shared<PolyMeshParameters<seed_type>>(
-        input.init_depth, input.radius, input.amr_limit);
-    auto sphere = std::make_shared<TransportMesh2d<seed_type>>(mesh_params);
+    auto mesh_params = PolyMeshParameters<seed_type>(input.init_depth, input.radius, input.amr_limit);
+    auto sphere = std::make_unique<TransportMesh2d<seed_type>>(mesh_params);
     sphere->template initialize_velocity<velocity_type>();
     sphere->initialize_tracer(tracer);
 
@@ -173,7 +172,7 @@ int main(int argc, char* argv[]) {
         Adaptive refinement: for each iteration, all leaves in the mesh face
         tree are are checked and flagged if any amr criteria are met.
       */
-      Kokkos::View<bool*> flags("refinement_flags", mesh_params->nmaxfaces);
+      Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
       Index verts_start_idx = 0;
       Index faces_start_idx = 0;
       for (int i = 0; i < input.amr_max; ++i) {
@@ -248,7 +247,7 @@ int main(int argc, char* argv[]) {
     int frame_counter = 0;
 #ifdef LPM_USE_VTK
     if (write_output) {
-      VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+      VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
       vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) +
                 vtp_suffix());
     }
@@ -257,7 +256,7 @@ int main(int argc, char* argv[]) {
     /**
       problem run
     */
-    Transport2dRK4<seed_type> solver(input.dt, sphere);
+    auto solver = std::make_unique<Transport2dRK4<seed_type>>(input.dt, *sphere);
     Int remesh_ctr = 0;
     const bool do_remesh = (input.remesh_interval != LPM_NULL_IDX and input.remesh_interval > 0);
     const bool do_reset = (do_remesh and input.reset_lagrangian_interval != LPM_NULL_IDX and input.reset_lagrangian_interval > 0);
@@ -274,11 +273,11 @@ int main(int argc, char* argv[]) {
         if ((time_idx + 1)%input.remesh_interval == 0) {
           ++remesh_ctr;
           /// build new (destination) mesh
-          auto new_sphere = std::make_shared<TransportMesh2d<seed_type>>(mesh_params);
+          auto new_sphere = std::make_unique<TransportMesh2d<seed_type>>(mesh_params);
           new_sphere->t = sphere->t;
           /// choose remeshing procedure
           /// gather data from current (source) mesh
-              GatherMeshData<seed_type> gather_src(sphere);
+              GatherMeshData<seed_type> gather_src(*sphere);
               logger.debug("created gather object");
               gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
               logger.debug("gathered fields");
@@ -289,7 +288,7 @@ int main(int argc, char* argv[]) {
             /// remesh using t=0
             logger.debug("initiating remesh {} to t=0", remesh_ctr);
             /// gather coordinates from new (destination) mesh
-            GatherMeshData<seed_type> gather_dst(new_sphere);
+            GatherMeshData<seed_type> gather_dst(*new_sphere);
             gather_dst.update_host();
             logger.debug("gathered dst data");
 
@@ -312,7 +311,7 @@ int main(int argc, char* argv[]) {
             gather_dst.lag_crds = dst_data;
             gather_dst.update_device();
 
-            ScatterMeshData<seed_type> scatter(gather_dst, new_sphere);
+            ScatterMeshData<seed_type> scatter(gather_dst, *new_sphere);
             scatter.scatter_lag_crds();
 
             new_sphere->initialize_tracer(tracer);
@@ -333,19 +332,20 @@ int main(int argc, char* argv[]) {
 
           /// set velocity on new mesh
           new_sphere->template set_velocity<velocity_type>(sphere->t);
-          sphere = new_sphere;
-          solver.tmesh = new_sphere;
+          sphere = std::move(new_sphere);
+          auto new_solver = std::make_unique<Transport2dRK4<seed_type>>(input.dt, *sphere);
+          solver = std::move(new_solver);
         }
 
       } // do remesh
 
       /// time step
-      solver.template advance_timestep<velocity_type>();
+      solver->template advance_timestep<velocity_type>();
 
 #ifdef LPM_USE_VTK
       /// write intermediate output
       if (write_output and (time_idx + 1)%input.output_interval == 0 and (time_idx+1) != input.nsteps) {
-        VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+        VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
         vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) + vtp_suffix());
       }
 #endif
@@ -356,8 +356,8 @@ int main(int argc, char* argv[]) {
     Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->n_vertices_host());
     const auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
     const auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
-    const auto lag_crd_verts = sphere->vertices.lag_crds->crds;
-    const auto lag_crd_faces = sphere->faces.lag_crds->crds;
+    const auto lag_crd_verts = sphere->vertices.lag_crds.view;
+    const auto lag_crd_faces = sphere->faces.lag_crds.view;
     const auto face_mask = sphere->faces.mask;
     Kokkos::parallel_for("compute_tracer_error_verts", sphere->n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {
@@ -386,7 +386,7 @@ int main(int argc, char* argv[]) {
 #ifdef LPM_USE_VTK
       /// write final output
       if (write_output) {
-        VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+        VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
         vtk.add_scalar_point_data(tracer_error_verts);
         vtk.add_scalar_cell_data(tracer_error_faces);
         vtk.write(input.vtk_base_name + zero_fill_str(frame_counter++) + vtp_suffix());

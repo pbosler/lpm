@@ -44,7 +44,6 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
   typedef Coords<Geo> coords_type;
-  typedef std::shared_ptr<Coords<Geo>> coords_ptr;
 
   std::map<std::string, ScalarField<VertexField>>
       tracer_verts;  /// passive tracers at passive particles
@@ -61,13 +60,6 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
       : PolyMesh2d<SeedType>(params),
         velocity_verts("velocity", params.nmaxverts),
         velocity_faces("velocity", params.nmaxfaces),
-        t(0),
-        t_idx(0) {}
-
-  TransportMesh2d(const std::shared_ptr<PolyMeshParameters<SeedType>>& params)
-      : PolyMesh2d<SeedType>(params),
-        velocity_verts("velocity", params->nmaxverts),
-        velocity_faces("velocity", params->nmaxfaces),
         t(0),
         t_idx(0) {}
 

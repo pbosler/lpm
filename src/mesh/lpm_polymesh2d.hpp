@@ -148,18 +148,6 @@ class PolyMesh2d {
     tree_init(params.init_depth, params.seed);
   }
 
-  /** @brief Constructor.  Allocates memory, does not initialize values.
-
-    @param params PolyMeshParameters that define a mesh.
-  */
-  PolyMesh2d(const std::shared_ptr<PolyMeshParameters<SeedType>> params)
-      : vertices(params->nmaxverts),
-        edges(params->nmaxedges),
-        faces(params->nmaxfaces),
-        radius(params->radius),
-        params_() {
-    tree_init(params->init_depth, params->seed);
-  }
 
   /// Destructor
   virtual ~PolyMesh2d() {}
@@ -877,12 +865,12 @@ class PolyMesh2d {
   template <typename LoggerType = Logger<>>
   void divide_flagged_faces(const Kokkos::View<bool*> flags,
                             LoggerType& logger) {
-    if (!params_) {
-      logger.warn(
-          "divide_flagged_faces: mesh parameters not stored; AMR is disabled, "
-          "exiting.");
-      return;
-    }
+//     if (!params_) {
+//       logger.warn(
+//           "divide_flagged_faces: mesh parameters not stored; AMR is disabled, "
+//           "exiting.");
+//       return;
+//     }
 
     Index flag_count;
     Kokkos::parallel_reduce(

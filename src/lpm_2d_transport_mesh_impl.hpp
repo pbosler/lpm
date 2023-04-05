@@ -155,8 +155,7 @@ void TransportMesh2d<SeedType>::update_host() const {
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(
     const TransportMesh2d<SeedType>& tm) {
-  const PolyMesh2d<SeedType>* base_ptr(&tm);
-  VtkPolymeshInterface<SeedType> vtk(*base_ptr);
+  VtkPolymeshInterface<SeedType> vtk(tm);
   vtk.add_vector_point_data(tm.velocity_verts.view, "velocity");
   vtk.add_vector_cell_data(tm.velocity_faces.view, "velocity");
   for (const auto& tic : tm.tracer_verts) {

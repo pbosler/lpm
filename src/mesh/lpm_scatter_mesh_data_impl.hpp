@@ -18,7 +18,7 @@ void ScatterMeshData<SeedType>::scatter_lag_crds() {
   const Index n_faces = mesh.n_faces_host();
 
   const auto src_view = output.lag_crds;
-  auto v_lag_crds = mesh.vertices.lag_crds->crds;
+  auto v_lag_crds = mesh.vertices.lag_crds.view;
   const auto vert_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
       {0, 0}, {n_verts, SeedType::geo::ndim});
 
@@ -30,7 +30,7 @@ void ScatterMeshData<SeedType>::scatter_lag_crds() {
 
   const auto face_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
       {0, 0}, {n_faces, SeedType::geo::ndim});
-  auto f_lag_crds = mesh.faces.lag_crds->crds;
+  auto f_lag_crds = mesh.faces.lag_crds.view;
   Kokkos::parallel_for(
       "scatter_face_lag_crds", face_policy,
       KOKKOS_LAMBDA(const Index i, const Int j) {
