@@ -124,11 +124,16 @@ struct BivarConvergenceTest {
       */
       std::map<std::string, std::string> in_out_map;
       in_out_map.emplace(tracer.name(), "tracer_interp");
-      std::map<std::string, scalar_view_type> interp_output {{"tracer_interp", grid_tracer_interp}};
+      auto h_grid_tracer_interp = Kokkos::create_mirror_view(grid_tracer_interp);
+      std::map<std::string, typename scalar_view_type::HostMirror> interp_output {{"tracer_interp", h_grid_tracer_interp}};
 
       BivarInterface bivar_grid(gathered_data, x_grid, y_grid, in_out_map);
       bivar_grid.interpolate(interp_output);
+      Kokkos::deep_copy(grid_tracer_interp, h_grid_tracer_interp);
+
       logger.debug("finished uniform grid interp");
+
+      logger.info(bivar_grid.info_string());
 
       ErrNorms grid_interp_err(grid_error, grid_tracer_interp, grid_tracer,
         grid.wts);
@@ -141,9 +146,12 @@ struct BivarConvergenceTest {
          set up bivar for mesh
       */
       BivarInterface bivar_mesh(gathered_data, gathered_data.h_x, gathered_data.h_y, in_out_map);
-      const std::map<std::string, scalar_view_type> mesh_interp_output {{"tracer_interp", gathered_data.scalar_fields.at("tracer_interp")}};
+      auto h_mesh_interp_output = Kokkos::create_mirror_view(gathered_data.scalar_fields.at("tracer_interp"));
+      const std::map<std::string, typename scalar_view_type::HostMirror> mesh_interp_output {{"tracer_interp", h_mesh_interp_output}};
       bivar_mesh.interpolate(mesh_interp_output);
+      Kokkos::deep_copy(gathered_data.scalar_fields.at("tracer_interp"), h_mesh_interp_output);
       logger.debug("finished mesh interp");
+      logger.info(bivar_mesh.info_string());
 
       ScatterMeshData<SeedType> scatter(gathered_data, pm);
       scatter.scatter_fields(pm.tracer_verts, pm.tracer_faces);
@@ -175,7 +183,7 @@ struct BivarConvergenceTest {
 #endif
 
       auto h_grid_tracer = Kokkos::create_mirror_view(grid_tracer);
-      auto h_grid_tracer_interp = Kokkos::create_mirror_view(grid_tracer_interp);
+
       auto h_grid_error = Kokkos::create_mirror_view(grid_error);
       Kokkos::deep_copy(h_grid_tracer, grid_tracer);
       Kokkos::deep_copy(h_grid_tracer_interp, grid_tracer_interp);

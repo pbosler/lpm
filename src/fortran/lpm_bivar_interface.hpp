@@ -12,9 +12,12 @@ namespace Lpm {
 */
 template <typename SeedType>
 struct BivarInterface final {
-  using sfield_map = std::map<std::string, scalar_view_type>;
+  using sfield_map = std::map<std::string, typename scalar_view_type::HostMirror>;
   using vfield_map =
-      std::map<std::string, typename SeedType::geo::vec_view_type>;
+      std::map<std::string, typename SeedType::geo::vec_view_type::HostMirror>;
+
+  static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
+                "planar geometry required.");
   /**
     every source point is included in the bivar algorithm, so we need
     GatherMeshData to avoid duplicate points from divided panels for input.
@@ -31,8 +34,7 @@ struct BivarInterface final {
   /// output to have different name than the input field
   std::map<std::string, std::string> vector_in_out_map;
 
-  static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
-                "planar geometry required.");
+
 
   /** @brief constructor.
 
@@ -52,10 +54,16 @@ struct BivarInterface final {
   void interpolate(const sfield_map& output_scalars,
                    const vfield_map& output_vectors = vfield_map());
 
+  void interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds);
+
+  std::string info_string(const int tab_lev=0) const;
+
  private:
   Kokkos::View<int*, Host> integer_work;
   Kokkos::View<double*, Host> real_work;
   Int md;
+
+  std::string md_str(const int val) const;
 };
 
 }  // namespace Lpm

@@ -2,6 +2,7 @@
 #define LPM_BIVAR_INTERFACE_IMPL_HPP
 
 #include "lpm_bivar_interface.hpp"
+#include "util/lpm_string_util.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -118,6 +119,61 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
       }
     }
   }
+}
+
+template <typename SeedType>
+void BivarInterface<SeedType>::interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds) {
+  Kokkos::View<Real*, Host> lag_x_out("bivar_lag_x_out", x_out.extent(0));
+  Kokkos::View<Real*, Host> lag_y_out("bivar_lag_x_out", x_out.extent(0));
+
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_x.data(),
+    x_out.data(), y_out.data(), lag_x_out.data(), integer_work.data(),
+    real_work.data());
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_y.data(),
+    x_out.data(), y_out.data(), lag_y_out.data(), integer_work.data(),
+    real_work.data());
+
+  for (int i=0; i<x_out.extent(0); ++i) {
+    lcrds(i, 0) = lag_x_out(i);
+    lcrds(i, 1) = lag_y_out(i);
+  }
+}
+
+template <typename SeedType>
+std::string BivarInterface<SeedType>::info_string(const int tab_lev) const {
+  auto tabstr = indent_string(tab_lev);
+  std::ostringstream ss;
+  ss << tabstr << "BivarInterface<" << SeedType::id_string() << "> info:\n";
+  tabstr += "\t";
+  ss << tabstr << "nsrc pts = " << input.n() << "\n";
+  ss << tabstr << "ntgt pts = " << x_out.extent(0) << "\n";
+  ss << tabstr << "scalar_in_out_map.size() = " << scalar_in_out_map.size() << "\n";
+  ss << tabstr << "vector_in_out_map.size() = " << vector_in_out_map.size() << "\n";
+  ss << tabstr << "md = " << md << "(" << md_str(md) << ")\n";
+  return ss.str();
+}
+
+template <typename SeedType>
+std::string BivarInterface<SeedType>::md_str(const int val) const {
+  std::string result;
+  switch (val) {
+    case 1 : {
+      result = "first interpolation, or new source data locations";
+      break;
+    }
+    case 2 : {
+      result = "second or later interpolation of same source data locations, but new target locations";
+      break;
+    }
+    case 3 : {
+      result = "second or later interpolation of same source data locations and same target locations, but new function data";
+      break;
+    }
+    default : {
+      break;
+    }
+  }
+  return result;
 }
 
 }  // namespace Lpm
