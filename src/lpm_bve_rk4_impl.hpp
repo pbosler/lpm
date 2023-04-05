@@ -53,12 +53,12 @@ struct BVERK4Update {
 };
 
 template <typename SeedType>
-void BVERK4::advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph) {
-  return advance_timestep(sph->vertices.phys_crds->crds,
-                          sph->rel_vort_verts.view, sph->velocity_verts.view,
-                          sph->faces.phys_crds->crds, sph->rel_vort_faces.view,
-                          sph->velocity_faces.view, sph->faces.area,
-                          sph->faces.mask);
+void BVERK4::advance_timestep(BVESphere<SeedType>& sph) {
+  return advance_timestep(sph.vertices.phys_crds.view,
+                          sph.rel_vort_verts.view, sph.velocity_verts.view,
+                          sph.faces.phys_crds.view, sph.rel_vort_faces.view,
+                          sph.velocity_faces.view, sph.faces.area,
+                          sph.faces.mask);
 }
 
 void BVERK4::advance_timestep(crd_view& vx, scalar_view_type& vzeta,

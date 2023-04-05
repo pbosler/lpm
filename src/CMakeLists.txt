@@ -16,8 +16,8 @@ if (LPM_USE_VTK)
 endif()
 
 set(LPM_SOURCES
-#                lpm_bve_sphere.cpp
-#                lpm_bve_rk4.cpp
+                lpm_bve_sphere.cpp
+                lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
                 lpm_compadre.cpp

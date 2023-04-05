@@ -27,17 +27,17 @@ class BVERK4 {
   Index nfaces;
 
   template <typename SeedType>
-  BVERK4(const Real timestep, std::shared_ptr<BVESphere<SeedType>> sph)
+  BVERK4(const Real timestep, BVESphere<SeedType>& sph)
       : dt(timestep),
-        Omega(sph->Omega),
-        nverts(sph->n_vertices_host()),
-        nfaces(sph->n_faces_host()),
+        Omega(sph.Omega),
+        nverts(sph.n_vertices_host()),
+        nfaces(sph.n_faces_host()),
         is_initialized(false) {
-    init(sph->n_vertices_host(), sph->n_faces_host());
+    init(sph.n_vertices_host(), sph.n_faces_host());
   }
 
   template <typename SeedType>
-  void advance_timestep(std::shared_ptr<BVESphere<SeedType>> sph);
+  void advance_timestep(BVESphere<SeedType>& sph);
 
   void init(const Index nv, const Index nf);
 
