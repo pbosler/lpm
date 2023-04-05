@@ -275,15 +275,17 @@ int main(int argc, char* argv[]) {
           /// build new (destination) mesh
           auto new_sphere = std::make_unique<TransportMesh2d<seed_type>>(mesh_params);
           new_sphere->t = sphere->t;
-          /// choose remeshing procedure
-          /// gather data from current (source) mesh
-              GatherMeshData<seed_type> gather_src(*sphere);
-              logger.debug("created gather object");
-              gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
-              logger.debug("gathered fields");
-              gather_src.update_host();
 
-              logger.debug("gathered src data");
+          /// gather data from current (source) mesh
+          GatherMeshData<seed_type> gather_src(*sphere);
+          logger.debug("created gather object");
+          gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
+          logger.debug("gathered fields");
+          gather_src.update_host();
+
+          logger.debug("gathered src data");
+
+          /// choose remeshing procedure
           if (remesh_ctr < input.reset_lagrangian_interval or !do_reset) {
             /// remesh using t=0
             logger.debug("initiating remesh {} to t=0", remesh_ctr);
@@ -332,12 +334,16 @@ int main(int argc, char* argv[]) {
 
           /// set velocity on new mesh
           new_sphere->template set_velocity<velocity_type>(sphere->t);
+
+          /// replace old mesh with new mesh
           sphere = std::move(new_sphere);
+
+          /// replace old solver with new solver
           auto new_solver = std::make_unique<Transport2dRK4<seed_type>>(input.dt, *sphere);
           solver = std::move(new_solver);
         }
 
-      } // do remesh
+      } // end if do remesh
 
       /// time step
       solver->template advance_timestep<velocity_type>();
