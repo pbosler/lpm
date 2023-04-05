@@ -33,8 +33,6 @@ set(LPM_SOURCES
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
-                util/ekat_string_utils.cpp
-                util/ekat_assert.cpp
                 util/lpm_timer.cpp)
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
@@ -114,9 +112,6 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
               util/lpm_tuple.hpp
-              util/ekat_rational_constant.hpp
-              util/ekat_scaling_factor.hpp
-              util/ekat_units.hpp
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
 
