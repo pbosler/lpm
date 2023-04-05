@@ -90,12 +90,11 @@ struct SSRFPackConvergenceTest {
     */
     const int output_depth = 4;
     PolyMeshParameters<OtherSeedType> oparams(output_depth);
-    const auto opm = std::shared_ptr<TransportMesh2d<OtherSeedType>>(new
-      TransportMesh2d<OtherSeedType>(oparams));
-    opm->template initialize_velocity<VelocityType>();
-    opm->initialize_tracer(tracer);
-    opm->initialize_scalar_tracer("tracer_interp");
-    opm->initialize_scalar_tracer("tracer_error");
+    auto opm = TransportMesh2d<OtherSeedType>(oparams);
+    opm.template initialize_velocity<VelocityType>();
+    opm.initialize_tracer(tracer);
+    opm.initialize_scalar_tracer("tracer_interp");
+    opm.initialize_scalar_tracer("tracer_error");
 
     for (int i=0; i<(end_depth - start_depth) + 1; ++i ) {
       const int depth = start_depth + i;
@@ -110,22 +109,21 @@ struct SSRFPackConvergenceTest {
       logger.info("starting test: {}", test_name);
       // initialize mesh
       PolyMeshParameters<SeedType> params(depth);
-      const auto pm = std::shared_ptr<TransportMesh2d<SeedType>>(new
-        TransportMesh2d<SeedType>(params));
-      pm->template initialize_velocity<VelocityType>();
-      pm->initialize_tracer(tracer);
-      pm->initialize_scalar_tracer("tracer_interp");
-      pm->initialize_scalar_tracer("tracer_error");
+      auto pm = TransportMesh2d<SeedType>(params);
+      pm.template initialize_velocity<VelocityType>();
+      pm.initialize_tracer(tracer);
+      pm.initialize_scalar_tracer("tracer_interp");
+      pm.initialize_scalar_tracer("tracer_error");
 
-      dxs.push_back(pm->appx_mesh_size());
+      dxs.push_back(pm.appx_mesh_size());
 
       /*
       collect only active faces and vertices (no divided faces)
       */
       GatherMeshData<SeedType> gathered(pm);
       gathered.unpack_coordinates();
-      gathered.init_scalar_fields(pm->tracer_verts, pm->tracer_faces);
-      gathered.gather_scalar_fields(pm->tracer_verts, pm->tracer_faces);
+      gathered.init_scalar_fields(pm.tracer_verts, pm.tracer_faces);
+      gathered.gather_scalar_fields(pm.tracer_verts, pm.tracer_faces);
       gathered.update_host();
 
       std::map<std::string, std::string> in_out_map;
@@ -135,31 +133,32 @@ struct SSRFPackConvergenceTest {
       const auto ll_interp_view = Kokkos::create_mirror_view(ll_tracer_interp);
       std::map<std::string, typename scalar_view_type::HostMirror> ll_map;
       ll_map.emplace("tracer_interp", ll_interp_view);
+      logger.info(ssrfpack.info_string());
       ssrfpack.interpolate(ll.h_pts, ll_map);
 
-      ssrfpack.interpolate(pm, pm->tracer_verts, pm->tracer_faces);
+      ssrfpack.interpolate(pm, pm.tracer_verts, pm.tracer_faces);
 
-      ssrfpack.interpolate(opm, opm->tracer_verts, opm->tracer_faces);
+      ssrfpack.interpolate(opm, opm.tracer_verts, opm.tracer_faces);
 
-      compute_error(pm->tracer_verts.at("tracer_error").view,
-                    pm->tracer_verts.at("tracer_interp").view,
-                    pm->tracer_verts.at(tracer.name()).view);
+      compute_error(pm.tracer_verts.at("tracer_error").view,
+                    pm.tracer_verts.at("tracer_interp").view,
+                    pm.tracer_verts.at(tracer.name()).view);
 
-      compute_error(opm->tracer_verts.at("tracer_error").view,
-                    opm->tracer_verts.at("tracer_interp").view,
-                    opm->tracer_verts.at(tracer.name()).view);
+      compute_error(opm.tracer_verts.at("tracer_error").view,
+                    opm.tracer_verts.at("tracer_interp").view,
+                    opm.tracer_verts.at(tracer.name()).view);
 
       ErrNorms ll_err_norms(ll_error, ll_tracer_interp, ll_tracer, ll.wts);
 
-      ErrNorms self_face_interp_err(pm->tracer_faces.at("tracer_error").view,
-        pm->tracer_faces.at("tracer_interp").view,
-        pm->tracer_faces.at(tracer.name()).view,
-        pm->faces.area);
+      ErrNorms self_face_interp_err(pm.tracer_faces.at("tracer_error").view,
+        pm.tracer_faces.at("tracer_interp").view,
+        pm.tracer_faces.at(tracer.name()).view,
+        pm.faces.area);
 
-      ErrNorms other_face_interp_err(opm->tracer_faces.at("tracer_error").view,
-        opm->tracer_faces.at("tracer_interp").view,
-        opm->tracer_faces.at(tracer.name()).view,
-        opm->faces.area);
+      ErrNorms other_face_interp_err(opm.tracer_faces.at("tracer_error").view,
+        opm.tracer_faces.at("tracer_interp").view,
+        opm.tracer_faces.at(tracer.name()).view,
+        opm.faces.area);
 
       logger.info("ll interp error: {}", ll_err_norms.info_string());
       logger.info("self face interp error: {}", self_face_interp_err.info_string());
@@ -179,21 +178,21 @@ struct SSRFPackConvergenceTest {
 
 #ifdef LPM_USE_VTK
       VtkPolymeshInterface<SeedType> vtk(pm);
-      vtk.add_scalar_point_data(pm->tracer_verts.at(tracer.name()).view);
-      vtk.add_scalar_point_data(pm->tracer_verts.at("tracer_interp").view);
-      vtk.add_scalar_point_data(pm->tracer_verts.at("tracer_error").view);
-      vtk.add_scalar_cell_data(pm->tracer_faces.at(tracer.name()).view);
-      vtk.add_scalar_cell_data(pm->tracer_faces.at("tracer_interp").view);
-      vtk.add_scalar_cell_data(pm->tracer_faces.at("tracer_error").view);
+      vtk.add_scalar_point_data(pm.tracer_verts.at(tracer.name()).view);
+      vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_interp").view);
+      vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_error").view);
+      vtk.add_scalar_cell_data(pm.tracer_faces.at(tracer.name()).view);
+      vtk.add_scalar_cell_data(pm.tracer_faces.at("tracer_interp").view);
+      vtk.add_scalar_cell_data(pm.tracer_faces.at("tracer_error").view);
       vtk.write(test_name + vtp_suffix());
 
       VtkPolymeshInterface<OtherSeedType> ovtk(opm);
-      ovtk.add_scalar_point_data(opm->tracer_verts.at(tracer.name()).view);
-      ovtk.add_scalar_point_data(opm->tracer_verts.at("tracer_interp").view);
-      ovtk.add_scalar_point_data(opm->tracer_verts.at("tracer_error").view);
-      ovtk.add_scalar_cell_data(opm->tracer_faces.at(tracer.name()).view);
-      ovtk.add_scalar_cell_data(opm->tracer_faces.at("tracer_interp").view);
-      ovtk.add_scalar_cell_data(opm->tracer_faces.at("tracer_error").view);
+      ovtk.add_scalar_point_data(opm.tracer_verts.at(tracer.name()).view);
+      ovtk.add_scalar_point_data(opm.tracer_verts.at("tracer_interp").view);
+      ovtk.add_scalar_point_data(opm.tracer_verts.at("tracer_error").view);
+      ovtk.add_scalar_cell_data(opm.tracer_faces.at(tracer.name()).view);
+      ovtk.add_scalar_cell_data(opm.tracer_faces.at("tracer_interp").view);
+      ovtk.add_scalar_cell_data(opm.tracer_faces.at("tracer_error").view);
       ovtk.write("other_tgt_" + test_name + vtp_suffix());
 #endif
 

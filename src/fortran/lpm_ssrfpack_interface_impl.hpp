@@ -3,6 +3,7 @@
 
 #include "fortran/lpm_ssrfpack_interface.hpp"
 #include "lpm_fortran_c.h"
+#include "util/lpm_string_util.hpp"
 
 #ifndef NDEBUG
 #include <iostream>
@@ -188,6 +189,7 @@ STRIPACKInterface::STRIPACKInterface(const GatherMeshData<SeedType>& input)
       n(input.n()) {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
                 "STRIPACKInterface:: sphere geometry required.");
+  LPM_REQUIRE_MSG(input.unpacked, "STRIPACKInterface requires unpacked coordinates.");
   build_triangulation(input);
 }
 
@@ -233,27 +235,34 @@ SSRFPackInterface<SeedType>::SSRFPackInterface(
       del_tri(input),
       sigma_flag(0),
       grad_flag(1),
-      sigma_tol(0.01) {}
+      sigma_tol(0.01) {
+      LPM_REQUIRE_MSG(in.unpacked, "SSRFPackInterface requires unpacked coordinates.");
+    }
 
 template <typename SeedType>
-template <typename PolyMeshPointer>
+template <typename PolyMeshType>
 void SSRFPackInterface<SeedType>::interpolate(
-    const PolyMeshPointer pm,
-    const std::map<std::string, ScalarField<VertexField>> vert_scalar_fields,
-    const std::map<std::string, ScalarField<FaceField>> face_scalar_fields,
-    const std::map<std::string, VectorField<SphereGeometry, VertexField>>
+    PolyMeshType& pm,
+    std::map<std::string, ScalarField<VertexField>> vert_scalar_fields,
+    std::map<std::string, ScalarField<FaceField>> face_scalar_fields,
+    std::map<std::string, VectorField<SphereGeometry, VertexField>>
         vert_vector_fields,
-    const std::map<std::string, VectorField<SphereGeometry, FaceField>>
+    std::map<std::string, VectorField<SphereGeometry, FaceField>>
         face_vector_fields) {
+
+  const auto h_vert_crds = pm.vertices.phys_crds.get_host_crd_view();
+  const auto h_face_crds = pm.faces.phys_crds.get_host_crd_view();
+
+  // Loop over scalar fields
   for (const auto& sio : scalar_in_out_map) {
     LPM_REQUIRE_MSG(
-        input.h_scalar_fields.find(sio.first) != input.h_scalar_fields.end(),
+        input.h_scalar_fields.count(sio.first) == 1,
         "SSRFPACK interpolate : input scalar not found.");
     LPM_REQUIRE_MSG(
-        vert_scalar_fields.find(sio.second) != vert_scalar_fields.end(),
+        vert_scalar_fields.count(sio.second) == 1,
         "SSRFPACK interpolate : vert output scalar not found.");
     LPM_REQUIRE_MSG(
-        face_scalar_fields.find(sio.second) != face_scalar_fields.end(),
+        face_scalar_fields.count(sio.second) == 1,
         "SSRFPACK intperolate : face output scalar not found.");
 
     set_scalar_source_data(sio.first);
@@ -261,9 +270,9 @@ void SSRFPackInterface<SeedType>::interpolate(
     const auto face_out_view = face_scalar_fields.at(sio.second).hview;
 
     int tri_idx = 1;
-    for (int i = 0; i < pm->n_vertices_host(); ++i) {
-      const auto xyz = Kokkos::subview(
-          pm->vertices.phys_crds->get_host_crd_view(), i, Kokkos::ALL);
+
+    for (int i = 0; i < pm.n_vertices_host(); ++i) {
+      const auto xyz = Kokkos::subview(h_vert_crds, i, Kokkos::ALL);
       const Real lon = SphereGeometry::longitude(xyz);
       const Real lat = SphereGeometry::latitude(xyz);
 
@@ -273,9 +282,8 @@ void SSRFPackInterface<SeedType>::interpolate(
           del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
           sigma_flag, sigma1.data(), grad_flag, grad1.data(), tri_idx);
     }
-    for (int i = 0; i < pm->n_faces_host(); ++i) {
-      const auto xyz = Kokkos::subview(pm->faces.phys_crds->get_host_crd_view(),
-                                       i, Kokkos::ALL);
+    for (int i = 0; i < pm.n_faces_host(); ++i) {
+      const auto xyz = Kokkos::subview(h_face_crds, i, Kokkos::ALL);
       const Real lon = SphereGeometry::longitude(xyz);
       const Real lat = SphereGeometry::latitude(xyz);
 
@@ -288,16 +296,18 @@ void SSRFPackInterface<SeedType>::interpolate(
 
     vert_scalar_fields.at(sio.second).update_device();
     face_scalar_fields.at(sio.second).update_device();
-  }
+  } // scalar field loop
+
+  // loop over vector fields
   for (const auto& vio : vector_in_out_map) {
     LPM_REQUIRE_MSG(
-        input.h_vector_fields.find(vio.first) != input.h_vector_fields.end(),
+        input.h_vector_fields.count(vio.first) == 1,
         "SSRFPACK interpolate : input vector not found.");
     LPM_REQUIRE_MSG(
-        vert_vector_fields.find(vio.second) != vert_vector_fields.end(),
+        vert_vector_fields.count(vio.second) == 1,
         "SSRFPACK interpolate : vert output vector not found.");
     LPM_REQUIRE_MSG(
-        face_vector_fields.find(vio.second) != face_vector_fields.end(),
+        face_vector_fields.count(vio.second) == 1,
         "SSRFPACK intperolate : face output vector not found.");
 
     set_vector_source_data(vio.first);
@@ -305,11 +315,11 @@ void SSRFPackInterface<SeedType>::interpolate(
     const auto vert_out_view = vert_vector_fields.at(vio.second).hview;
     const auto face_out_view = face_vector_fields.at(vio.second).hview;
     int tri_idx = 1;
-    for (int i = 0; i < pm->n_vertices_host(); ++i) {
-      const auto xyz = Kokkos::subview(
-          pm->vertices.phys_crds->get_host_crd_view(), i, Kokkos::ALL);
+    for (int i = 0; i < pm.n_vertices_host(); ++i) {
+      const auto xyz = Kokkos::subview(h_vert_crds, i, Kokkos::ALL);
       const Real lon = SphereGeometry::longitude(xyz);
       const Real lat = SphereGeometry::latitude(xyz);
+
       vert_out_view(i, 0) =
           c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
                    input.h_z.data(), comp1.data(), del_tri.list.data(),
@@ -326,11 +336,11 @@ void SSRFPackInterface<SeedType>::interpolate(
                    del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
                    sigma3.data(), grad_flag, grad3.data(), tri_idx);
     }
-    for (int i = 0; i < pm->n_faces_host(); ++i) {
-      const auto xyz = Kokkos::subview(pm->faces.phys_crds->get_host_crd_view(),
-                                       i, Kokkos::ALL);
+    for (int i = 0; i < pm.n_faces_host(); ++i) {
+      const auto xyz = Kokkos::subview(h_face_crds, i, Kokkos::ALL);
       const Real lon = SphereGeometry::longitude(xyz);
       const Real lat = SphereGeometry::latitude(xyz);
+
       face_out_view(i, 0) =
           c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
                    input.h_z.data(), comp1.data(), del_tri.list.data(),
@@ -350,21 +360,45 @@ void SSRFPackInterface<SeedType>::interpolate(
 
     vert_vector_fields.at(vio.second).update_device();
     face_vector_fields.at(vio.second).update_device();
+  } // vector field loop
+}
+
+template <typename SeedType> template <typename PolyMeshType>
+void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out) {
+
+  static_assert(std::is_same<typename PolyMeshType::Geo, SphereGeometry>::value,
+    "sphere geometry required");
+
+  set_lag_crd_source_data();
+
+  const auto h_vert_crds = mesh_out.vertices.phys_crds.get_host_crd_view();
+  const auto h_face_crds = mesh_out.faces.phys_crds.get_host_crd_view();
+  auto h_vert_lag_crds = mesh_out.vertices.lag_crds.get_host_crd_view();
+  auto h_face_lag_crds = mesh_out.faces.lag_crds.get_host_crd_view();
+  int tri_idx = 1;
+  for (int i=0; i<mesh_out.n_vertices_host(); ++i) {
+    const auto xyz = Kokkos::subview(h_vert_crds, i, Kokkos::ALL);
+    const Real lon = SphereGeometry::longitude(xyz);
+    const Real lat = SphereGeometry::latitude(xyz);
+
+    h_vert_lag_crds(i, 0) =
+      c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_x.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma1.data(), grad_flag, grad1.data(), tri_idx);
   }
 }
 
 template <typename SeedType>
 void SSRFPackInterface<SeedType>::interpolate(
     const typename Kokkos::View<Real* [3]>::HostMirror output_pts,
-    const std::map<std::string, typename scalar_view_type::HostMirror>&
-        scalar_fields,
-    const std::map<std::string, typename Kokkos::View<Real* [3]>::HostMirror>&
-        vector_fields) {
+    const sfield_map& scalar_fields,
+    const vfield_map& vector_fields) {
   for (const auto& sio : scalar_in_out_map) {
     LPM_REQUIRE_MSG(
-        input.h_scalar_fields.find(sio.first) != input.h_scalar_fields.end(),
+        input.h_scalar_fields.count(sio.first) == 1,
         "SSRFPACK interpolate : input scalar not found.");
-    LPM_REQUIRE_MSG(scalar_fields.find(sio.second) != scalar_fields.end(),
+    LPM_REQUIRE_MSG(scalar_fields.count(sio.second) == 1,
                     "SSRFPACK interpolate : output scalar not found.");
 
     set_scalar_source_data(sio.first);
@@ -386,9 +420,9 @@ void SSRFPackInterface<SeedType>::interpolate(
   }
   for (const auto& vio : vector_in_out_map) {
     LPM_REQUIRE_MSG(
-        input.h_vector_fields.find(vio.first) != input.h_vector_fields.end(),
+        input.h_vector_fields.count(vio.first) == 1,
         "SSRFPACK interpolate: input vector not found.");
-    LPM_REQUIRE_MSG(vector_fields.find(vio.second) != vector_fields.end(),
+    LPM_REQUIRE_MSG(vector_fields.count(vio.second) == 1,
                     "SSRFPACK interpolate: output vector not found.");
 
     set_vector_source_data(vio.first);
@@ -511,6 +545,94 @@ void SSRFPackInterface<SeedType>::set_vector_source_data(
                    sigma_tol, sigma3.data(), dsig);
     LPM_ASSERT(ier > 0);
   }
+}
+
+template <typename SeedType>
+void SSRFPackInterface<SeedType>::set_lag_crd_source_data() {
+
+  for (int i=0; i<input.n(); ++i) {
+      const auto lag_x_grad_vals = Kokkos::subview(grad1, i, Kokkos::ALL);
+      const auto lag_y_grad_vals = Kokkos::subview(grad2, i, Kokkos::ALL);
+      const auto lag_z_grad_vals = Kokkos::subview(grad3, i, Kokkos::ALL);
+
+      LPM_ASSERT(lag_x_grad_vals.extent(0) == 3);
+
+      int ier;
+
+      ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
+        input.h_lag_x.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+        lag_x_grad_vals.data());
+      LPM_ASSERT(ier >= 6);
+      ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
+        input.h_lag_y.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+        lag_y_grad_vals.data());
+      LPM_ASSERT(ier >= 6);
+      ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
+        input.h_lag_z.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+        lag_z_grad_vals.data());
+      LPM_ASSERT(ier >= 6);
+  }
+
+  if (sigma_flag > 0) {
+    double dsig;
+    int ier;
+
+    ier = c_getsig(input.n(), input.h_x.data(), input.h_y.data(), input.h_z.data(),
+      input.h_lag_x.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+      grad1.data(), sigma_tol, sigma1.data(), dsig);
+    LPM_ASSERT(ier >= 6);
+
+    ier = c_getsig(input.n(), input.h_x.data(), input.h_y.data(), input.h_z.data(),
+      input.h_lag_y.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+      grad2.data(), sigma_tol, sigma2.data(), dsig);
+    LPM_ASSERT(ier >= 6);
+
+    ier = c_getsig(input.n(), input.h_x.data(), input.h_y.data(), input.h_z.data(),
+      input.h_lag_z.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
+      grad3.data(), sigma_tol, sigma3.data(), dsig);
+    LPM_ASSERT(ier >= 6);
+  }
+}
+
+template <typename SeedType>
+std::string SSRFPackInterface<SeedType>::info_string(const int tab_lev) const {
+  auto tabstr = indent_string(tab_lev);
+  std::ostringstream ss;
+  ss << tabstr << "SSRFPackInterface<" << SeedType::id_string() << "> info:\n";
+  tabstr += "\t";
+  ss << tabstr << "n input pts = " << input.n() << "\n";
+  ss << tabstr << "scalar_in_out_map.size() = " << scalar_in_out_map.size() << "\n";
+  ss << tabstr << "vector_in_out_map.size() = " << vector_in_out_map.size() << "\n";
+  ss << tabstr << sigma_str() << "\n";
+  ss << tabstr << grad_str() << "\n";
+  return ss.str();
+}
+
+template <typename SeedType>
+std::string SSRFPackInterface<SeedType>::sigma_str() const {
+  std::ostringstream ss;
+  ss << "sigma (tension factor) flag = " << sigma_flag << " ";
+  if (sigma_flag <= 0) {
+    ss << "(uniform (constant) tension factor for all triangles)";
+  }
+  else {
+    ss << "(variable tension factors)";
+  }
+  return ss.str();
+}
+
+
+template <typename SeedType>
+std::string SSRFPackInterface<SeedType>::grad_str() const {
+  std::ostringstream ss;
+  ss << "gradient flag = " << grad_flag << " ";
+  if (grad_flag <= 0) {
+    ss << "(interpolator will estimate gradients)";
+  }
+  else {
+    ss << "(gradient estimates are pre-computed, relative to interpolation)";
+  }
+  return ss.str();
 }
 
 }  // namespace Lpm

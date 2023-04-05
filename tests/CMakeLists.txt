@@ -65,7 +65,7 @@ CreateUnitTest(gather_scatter lpm_gather_scatter_mesh_tests.cpp)
 
 CreateUnitTest(bivar lpm_bivar_tests.cpp)
 
-#CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)
+CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
