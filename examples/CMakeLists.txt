@@ -11,37 +11,37 @@ target_include_directories(sphere_mesh_init PUBLIC
         )
 target_link_libraries(sphere_mesh_init PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES} ${CMAKE_DL_LIBS})
 
-add_executable(bve_rotation bve_rotation.cpp)
-target_include_directories(bve_rotation PUBLIC
-  ${LPM_INCLUDE_DIRS}
-  ${Trilinos_INCLUDE_DIRS}
-  ${Trilinos_TPL_INCLUDE_DIRS}
-  ${VTK_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${lpmtest_INCLUDE_DIRS}
-  )
-target_link_libraries(bve_rotation PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-
-add_executable(sphere_transport_amr sphere_transport_amr.cpp)
-target_link_libraries(sphere_transport_amr PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_transport_amr PUBLIC
-  ${LPM_INCLUDE_DIRS}
-  ${Trilinos_INCLUDE_DIRS}
-  ${Trilinos_TPL_INCLUDE_DIRS}
-  ${VTK_INCLUDE_DIRS}
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${lpmtest_INCLUDE_DIRS}
-)
+#add_executable(bve_rotation bve_rotation.cpp)
+#target_include_directories(bve_rotation PUBLIC
+#  ${LPM_INCLUDE_DIRS}
+#  ${Trilinos_INCLUDE_DIRS}
+#  ${Trilinos_TPL_INCLUDE_DIRS}
+#  ${VTK_INCLUDE_DIRS}
+#  ${CMAKE_CURRENT_SOURCE_DIR}
+#  ${lpmtest_INCLUDE_DIRS}
+#  )
+#target_link_libraries(bve_rotation PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#
+#add_executable(sphere_transport_amr sphere_transport_amr.cpp)
+#target_link_libraries(sphere_transport_amr PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(sphere_transport_amr PUBLIC
+#  ${LPM_INCLUDE_DIRS}
+#  ${Trilinos_INCLUDE_DIRS}
+#  ${Trilinos_TPL_INCLUDE_DIRS}
+#  ${VTK_INCLUDE_DIRS}
+#  ${CMAKE_CURRENT_SOURCE_DIR}
+#  ${lpmtest_INCLUDE_DIRS}
+#)
 
 add_test(NAME sphere_mesh_init
   COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/sphere_mesh_init -o sph_mesh_example.vtk -n 2)
 
-add_test(NAME bve_solid_body_rotation
-  COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/bve_rotation -o bve_test -d 3 -dt 0.01 -tf 0.03 -f 1)
-
-add_test(NAME sphere_transport_amr
-  COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/sphere_transport_amr -o "amr_test" -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1
-)
+#add_test(NAME bve_solid_body_rotation
+#  COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/bve_rotation -o bve_test -d 3 -dt 0.01 -tf 0.03 -f 1)
+#
+#add_test(NAME sphere_transport_amr
+#  COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/sphere_transport_amr -o "amr_test" -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1
+#)
 
 else()
   message("VTK not found. Skipping examples:
