@@ -34,14 +34,13 @@ target_include_directories(sphere_transport_amr PUBLIC
 )
 
 add_test(NAME sphere_mesh_init
-  COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/sphere_mesh_init -o sph_mesh_example.vtk -n 2)
+  COMMAND sphere_mesh_init -o sph_mesh_example.vtk -n 2)
 
 add_test(NAME bve_solid_body_rotation
- COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/bve_rotation -o bve_test -d 3 -dt 0.01 -tf 0.03 -f 1)
+ COMMAND bve_rotation -o bve_test -d 3 -dt 0.01 -tf 0.03 -f 1)
 
 add_test(NAME sphere_transport_amr
- COMMAND sh -c ${CMAKE_CURRENT_BINARY_DIR}/sphere_transport_amr -o "amr_test" -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1
-)
+ COMMAND sphere_transport_amr -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
 
 else()
   message("VTK not found. Skipping examples:

@@ -18,7 +18,7 @@
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_polymesh2d_impl.hpp"
-#include "mesh/lpm_refinement.hpp"
+#include "mesh/lpm_refinement_flags.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_string_util.hpp"
 #ifdef LPM_USE_VTK
@@ -101,6 +101,8 @@ int main(int argc, char* argv[]) {
     Input input(argc, argv);
     if (input.help_and_exit) {
       std::cout << input.usage();
+      Kokkos::finalize();
+      MPI_Finalize();
       return 1;
     }
     logger.info(input.info_string());
