@@ -7,7 +7,6 @@
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
 #include "lpm_geometry.hpp"
-#include "util/ekat_units.hpp"
 
 namespace Lpm {
 
@@ -33,12 +32,12 @@ struct ScalarField {
 
   ScalarField(
       const std::string& mname, const Index nmax,
-      const ekat::units::Units& u = ekat::units::Units::nondimensional(),
+      const std::string& u = "null_unit",
       const metadata_type& mdata = metadata_type())
       : name(mname), view(mname, nmax), units(u), metadata(mdata) {
     metadata.emplace("name", mname);
     metadata.emplace("location", field_loc_string(FL));
-    metadata.emplace("units", ekat::units::to_string(u));
+    metadata.emplace("units", u);
     hview = ko::create_mirror_view(view);
   }
 
@@ -46,7 +45,7 @@ struct ScalarField {
   Real operator()(const Index i) const { return view(i); }
 
   std::string name;
-  ekat::units::Units units;
+  std::string units;
   metadata_type metadata;
 
   void update_device() const { ko::deep_copy(view, hview); }
@@ -66,17 +65,17 @@ struct VectorField {
 
   VectorField(
       const std::string& mname, const Index nmax,
-      const ekat::units::Units& u = ekat::units::Units::nondimensional(),
+      const std::string& u = "null_unit",
       const metadata_type& mdata = metadata_type())
       : name(mname), view(mname, nmax), units(u), metadata(mdata) {
     metadata.emplace("name", mname);
     metadata.emplace("location", field_loc_string(FL));
-    metadata.emplace("units", ekat::units::to_string(u));
+    metadata.emplace("units", u);
     hview = ko::create_mirror_view(view);
   }
 
   std::string name;
-  ekat::units::Units units;
+  std::string units;
   metadata_type metadata;
 
   KOKKOS_INLINE_FUNCTION

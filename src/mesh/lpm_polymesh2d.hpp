@@ -864,54 +864,7 @@ class PolyMesh2d {
   */
   template <typename LoggerType = Logger<>>
   void divide_flagged_faces(const Kokkos::View<bool*> flags,
-                            LoggerType& logger) {
-//     if (!params_) {
-//       logger.warn(
-//           "divide_flagged_faces: mesh parameters not stored; AMR is disabled, "
-//           "exiting.");
-//       return;
-//     }
-
-    Index flag_count;
-    Kokkos::parallel_reduce(
-        n_faces_host(),
-        KOKKOS_LAMBDA(const Index i, Index& s) { s += (flags(i) ? 1 : 0); },
-        flag_count);
-    const Index space_left = params_.nmaxfaces - n_faces_host();
-
-    if (flag_count > space_left / 4) {
-      logger.warn(
-          "divide_flagged_faces: not enough memory (flag count = {}, nfaces = "
-          "{}, nmaxfaces = {})",
-          flag_count, n_faces_host(), params_.nmaxfaces);
-      return;
-    }
-    const Index n_faces_in = n_faces_host();
-    auto host_flags = Kokkos::create_mirror_view(flags);
-    Kokkos::deep_copy(host_flags, flags);
-    Index refine_count = 0;
-    bool limit_reached = false;
-    for (Index i = 0; i < n_faces_in; ++i) {
-      if (host_flags(i)) {
-        if (faces.host_level(i) < params_.init_depth + params_.amr_limit) {
-          divide_face(i, logger);
-          ++refine_count;
-        } else {
-          limit_reached = true;
-        }
-      }
-    }
-    if (limit_reached) {
-      logger.warn(
-          "divide_flagged_faces: local refinement limit reached; divided {} of "
-          "{} flagged faces.",
-          refine_count, flag_count);
-    } else {
-      LPM_ASSERT(refine_count == flag_count);
-      logger.info("divide_flagged_faces: {} faces divided.", refine_count);
-    }
-  }
-
+                            LoggerType& logger);
  protected:
   /** @brief Initializes a mesh from a MeshSeed.
 
