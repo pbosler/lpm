@@ -105,8 +105,8 @@ struct BivarConvergenceTest {
       auto pm = TransportMesh2d<SeedType>(params);
       pm.template initialize_velocity<VelocityType>();
       pm.initialize_tracer(tracer);
-      pm.initialize_scalar_tracer("tracer_interp");
-      pm.initialize_scalar_tracer("tracer_error");
+      pm.allocate_scalar_tracer("tracer_interp");
+      pm.allocate_scalar_tracer("tracer_error");
 
       dxs.push_back(pm.appx_mesh_size());
 

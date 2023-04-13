@@ -48,7 +48,8 @@ struct SSRFPackInterface final {
                 "SSRFPackInterface:: sphere geometry required.");
 
   SSRFPackInterface(const GatherMeshData<SeedType>& in,
-                    const std::map<std::string, std::string>& s_in_out,
+                    const std::map<std::string, std::string>& s_in_out =
+                      std::map<std::string, std::string>(),
                     const std::map<std::string, std::string>& v_in_out =
                         std::map<std::string, std::string>());
 
@@ -92,9 +93,9 @@ struct SSRFPackInterface final {
   Kokkos::View<double*, HostMemory> comp1;
   Kokkos::View<double*, HostMemory> comp2;
   Kokkos::View<double*, HostMemory> comp3;
-  Kokkos::View<double* [3], HostMemory> grad1;
-  Kokkos::View<double* [3], Kokkos::LayoutLeft, HostMemory> grad2;
-  Kokkos::View<double* [3], Kokkos::LayoutLeft, HostMemory> grad3;
+  Kokkos::View<double**, Kokkos::LayoutLeft, HostMemory> grad1;
+  Kokkos::View<double**, Kokkos::LayoutLeft, HostMemory> grad2;
+  Kokkos::View<double**, Kokkos::LayoutLeft, HostMemory> grad3;
   Kokkos::View<double*, HostMemory> sigma1;
   Kokkos::View<double*, HostMemory> sigma2;
   Kokkos::View<double*, HostMemory> sigma3;

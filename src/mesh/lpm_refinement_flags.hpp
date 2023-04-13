@@ -1,24 +1,12 @@
-#ifndef LPM_REFINEMENT_HPP
-#define LPM_REFINEMENT_HPP
+#ifndef LPM_REFINEMENT_FLAGS_HPP
+#define LPM_REFINEMENT_FLAGS_HPP
 
 #include "LpmConfig.h"
-#include "lpm_assert.hpp"
-#include "lpm_field.hpp"
-#include "lpm_geometry.hpp"
-#include "lpm_logger.hpp"
-#include "mesh/lpm_polymesh2d.hpp"
+
 
 namespace Lpm {
 
 typedef Kokkos::View<bool*> flag_view;
-
-/** @brief Given a relative tolerance in [0,1], convert to an absolute tolerance
-that accounts for mesh size. Enables the same tolerance values to be used even
-as the background uniform mesh is refined.
-*/
-inline Real convert_to_absolute_tol(const Real rel_tol, const Real max_val) {
-  return rel_tol * max_val;
-}
 
 template <typename MeshSeedType>
 struct FlowMapVariationFlag {
@@ -46,8 +34,8 @@ struct FlowMapVariationFlag {
       Real min_lag_crds[MeshSeedType::geo::ndim];
       Real max_lag_crds[MeshSeedType::geo::ndim];
       for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
-        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, j), 0);
-        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, j), 0);
+        min_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, 0), j);
+        max_lag_crds[j] = vertex_lag_crds(face_vertex_view(i, 0), j);
       }
 
       for (int j = 1; j < nverts; ++j) {
@@ -74,17 +62,39 @@ struct ScalarIntegralFlag {
   scalar_view_type face_vals;
   scalar_view_type area;
   mask_view_type facemask;
+  Index nfaces;
   Real tol;
+
 
   ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
                      const scalar_view_type a, const mask_view_type m,
+                     const Index n,
                      const Real eps)
-      : flags(f), face_vals(fv), area(a), facemask(m), tol(eps) {}
+      : flags(f), face_vals(fv), area(a), facemask(m), nfaces(n), tol(eps) {}
+
+  struct MaxAbsValTag {};
+
+  void set_tol_from_relative_value() {
+    Real max_abs;
+    Kokkos::parallel_reduce(Kokkos::RangePolicy<MaxAbsValTag>(0, nfaces),
+    *this, Kokkos::Max<Real>(max_abs));
+    tol *= max_abs;
+  }
+
+  /// Kernel for parallel reduce.
+  /// Returns the maximum absolute value of the flag-associated quantity.
+  KOKKOS_INLINE_FUNCTION
+  void operator () (MaxAbsValTag, const Index i, Real& m) const {
+    if (!facemask(i)) {
+      const Real val = abs(face_vals(i)) * area(i);
+      m = (val > m ? val : m);
+    }
+  }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
     if (!facemask(i)) {
-      flags(i) = (flags(i) or (face_vals(i) * area(i) > tol));
+      flags(i) = (flags(i) or (abs(face_vals(i)) * area(i) > tol));
     }
   }
 };
@@ -95,18 +105,47 @@ struct ScalarVariationFlag {
   scalar_view_type vert_vals;
   Kokkos::View<Index**> face_vertex_view;
   mask_view_type facemask;
+  Index nfaces;
   Real tol;
 
   ScalarVariationFlag(flag_view f, const scalar_view_type fv,
                       const scalar_view_type vv,
                       const Kokkos::View<Index**> verts, const mask_view_type m,
+                      const Index n,
                       const Real eps)
       : flags(f),
         face_vals(fv),
         vert_vals(vv),
         face_vertex_view(verts),
         facemask(m),
+        nfaces(n),
         tol(eps) {}
+
+  struct MaxAbsValTag {};
+
+  void set_tol_from_relative_value() {
+    Real max_abs;
+    Kokkos::parallel_reduce(Kokkos::RangePolicy<MaxAbsValTag>(0, nfaces),
+    *this, Kokkos::Max<Real>(max_abs));
+    tol *= max_abs;
+  }
+
+  /// Kernel for parallel reduce.
+  /// Returns the maximum absolute value of the flag-associated quantity.
+  KOKKOS_INLINE_FUNCTION
+  void operator() (MaxAbsValTag, const Index i, Real& m) const {
+    if (!facemask(i)) {
+      Real minval = face_vals(i);
+      Real maxval = face_vals(i);
+      for (int j=0; j<face_vertex_view.extent(1); ++j) {
+        const auto v_idx = face_vertex_view(i,j);
+        if (vert_vals(v_idx) < minval) minval = vert_vals(v_idx);
+        if (vert_vals(v_idx) > maxval) maxval = vert_vals(v_idx);
+      }
+      Real dval = maxval - minval;
+      m = (dval > m ? dval : m);
+    }
+  }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {

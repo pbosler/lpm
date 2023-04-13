@@ -67,10 +67,10 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   void initialize_tracer(const ICType& tracer_ic);
 
   template <typename ICType>
-  void initialize_tracer(const ICType& tracer_ic, const Index vert_start_idx,
-                         const Index face_start_idx);
+  void set_tracer_from_lag_crds(const ICType& tracer_ic, const Index vert_start_idx=0,
+                         const Index face_start_idx=0);
 
-  void initialize_scalar_tracer(const std::string name);
+  void allocate_scalar_tracer(const std::string name);
 
   template <typename VelocityType>
   void initialize_velocity();

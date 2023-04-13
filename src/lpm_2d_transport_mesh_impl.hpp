@@ -77,7 +77,7 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 
 template <typename SeedType>
 template <typename ICType>
-void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic,
+void TransportMesh2d<SeedType>::set_tracer_from_lag_crds(const ICType& tracer_ic,
                                                   const Index vert_start_idx,
                                                   const Index face_start_idx) {
   static_assert(
@@ -103,7 +103,7 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic,
 }
 
 template <typename SeedType>
-void TransportMesh2d<SeedType>::initialize_scalar_tracer(
+void TransportMesh2d<SeedType>::allocate_scalar_tracer(
     const std::string name) {
   tracer_verts.emplace(name, ScalarField<VertexField>(
                                  name, this->velocity_verts.view.extent(0)));

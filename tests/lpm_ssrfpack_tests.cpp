@@ -93,8 +93,8 @@ struct SSRFPackConvergenceTest {
     auto opm = TransportMesh2d<OtherSeedType>(oparams);
     opm.template initialize_velocity<VelocityType>();
     opm.initialize_tracer(tracer);
-    opm.initialize_scalar_tracer("tracer_interp");
-    opm.initialize_scalar_tracer("tracer_error");
+    opm.allocate_scalar_tracer("tracer_interp");
+    opm.allocate_scalar_tracer("tracer_error");
 
     for (int i=0; i<(end_depth - start_depth) + 1; ++i ) {
       const int depth = start_depth + i;
@@ -112,8 +112,8 @@ struct SSRFPackConvergenceTest {
       auto pm = TransportMesh2d<SeedType>(params);
       pm.template initialize_velocity<VelocityType>();
       pm.initialize_tracer(tracer);
-      pm.initialize_scalar_tracer("tracer_interp");
-      pm.initialize_scalar_tracer("tracer_error");
+      pm.allocate_scalar_tracer("tracer_interp");
+      pm.allocate_scalar_tracer("tracer_error");
 
       dxs.push_back(pm.appx_mesh_size());
 

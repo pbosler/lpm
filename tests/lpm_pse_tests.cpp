@@ -76,11 +76,11 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
          TransportMesh2d<SeedType>(params));
       pm->template initialize_velocity<VelocityType>();
       pm->initialize_tracer(tracer);
-      pm->initialize_scalar_tracer("tracer_laplacian");
-      pm->initialize_scalar_tracer("tracer_pse");
-      pm->initialize_scalar_tracer("tracer_pse_laplacian");
-      pm->initialize_scalar_tracer("tracer_error");
-      pm->initialize_scalar_tracer("tracer_laplacian_error");
+      pm->allocate_scalar_tracer("tracer_laplacian");
+      pm->allocate_scalar_tracer("tracer_pse");
+      pm->allocate_scalar_tracer("tracer_pse_laplacian");
+      pm->allocate_scalar_tracer("tracer_error");
+      pm->allocate_scalar_tracer("tracer_laplacian_error");
 
       const auto rlap_verts = pm->tracer_verts.at("tracer_laplacian").view;
       const auto vlxy = pm->vertices.lag_crds.view;

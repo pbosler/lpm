@@ -7,55 +7,6 @@
 
 namespace Lpm {
 
-/** Gathers face leaf coordinates from the full array of face coordinates
-  (which includes parent faces).  Use this to avoid duplicate coordinate
-  entries for divided faces.
-*/
-template <typename SeedType>
-struct GatherFaceLeafCrds {
-  scalar_view_type x;
-  scalar_view_type y;
-  scalar_view_type z;
-  typename SeedType::geo::crd_view_type face_crds;
-  index_view_type face_leaf_idx;
-  mask_view_type face_mask;
-  Index vert_offset;
-
-  GatherFaceLeafCrds(const scalar_view_type sx, const scalar_view_type sy,
-                     const typename SeedType::geo::crd_view_type fcrds,
-                     const index_view_type fleaves, const mask_view_type fmask,
-                     const Index offset)
-      : x(sx),
-        y(sy),
-        face_crds(fcrds),
-        face_leaf_idx(fleaves),
-        face_mask(fmask),
-        vert_offset(offset) {}
-
-  GatherFaceLeafCrds(const scalar_view_type sx, const scalar_view_type sy,
-                     const scalar_view_type sz,
-                     const typename SeedType::geo::crd_view_type fcrds,
-                     const index_view_type fleaves, const mask_view_type fmask,
-                     const Index offset)
-      : x(sx),
-        y(sy),
-        z(sz),
-        face_crds(fcrds),
-        face_leaf_idx(fleaves),
-        face_mask(fmask),
-        vert_offset(offset) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const Index i) const {
-    if (!face_mask(i)) {
-      x(vert_offset + face_leaf_idx(i)) = face_crds(i, 0);
-      y(vert_offset + face_leaf_idx(i)) = face_crds(i, 1);
-      if constexpr (SeedType::geo::ndim == 3) {
-        z(vert_offset + face_leaf_idx(i)) = face_crds(i, 2);
-      }
-    }
-  }
-};
 
 /**  Gathers scalar field data from vertices and faces so that only
   vertices and leaf face values are included in the output array.
@@ -127,6 +78,7 @@ void GatherMeshData<SeedType>::init_scalar_field(const std::string& name,
 
 template <typename SeedType>
 void GatherMeshData<SeedType>::unpack_coordinates() {
+  LPM_ASSERT(!unpacked);
   this->template unpack_helper<SeedType::geo::ndim>();
 }
 
@@ -134,6 +86,7 @@ template <typename SeedType>
 template <int ndim>
 typename std::enable_if<ndim == 3, void>::type
 GatherMeshData<SeedType>::unpack_helper() {
+
   x = scalar_view_type("gathered_x",
                        mesh.n_vertices_host() + mesh.faces.n_leaves_host());
   y = scalar_view_type("gathered_y",
@@ -214,7 +167,7 @@ void GatherMeshData<SeedType>::update_host() const {
     Kokkos::deep_copy(h_lag_y, lag_y);
     if constexpr (SeedType::geo::ndim == 3) {
       Kokkos::deep_copy(h_z, z);
-      Kokkos::deep_copy(h_lag_z, z);
+      Kokkos::deep_copy(h_lag_z, lag_z);
     }
   } else {
     Kokkos::deep_copy(h_phys_crds, phys_crds);
@@ -253,8 +206,6 @@ void GatherMeshData<SeedType>::update_device() const {
 
 template <typename SeedType>
 void GatherMeshData<SeedType>::gather_coordinates() {
-  auto gathered_xyz = phys_crds;
-  auto gathered_lag_xyz = lag_crds;
   const auto mesh_vert_xyz = mesh.vertices.phys_crds.view;
   const auto mesh_vert_lag_xyz = mesh.vertices.lag_crds.view;
   const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy(

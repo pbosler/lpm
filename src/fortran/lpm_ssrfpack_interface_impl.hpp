@@ -226,9 +226,9 @@ SSRFPackInterface<SeedType>::SSRFPackInterface(
       comp1("ssrfpack_comp1", input.n()),
       comp2("ssrfpack_comp2", input.n()),
       comp3("ssrfpack_comp3", input.n()),
-      grad1("ssrfpack_grad1", input.n()),
-      grad2("ssrfpack_grad2", input.n()),
-      grad3("ssrfpack_grad3", input.n()),
+      grad1("ssrfpack_grad1", 3, input.n()),
+      grad2("ssrfpack_grad2", 3, input.n()),
+      grad3("ssrfpack_grad3", 3, input.n()),
       sigma1("ssrfpack_sigma1", 6 * input.n() - 12),
       sigma2("ssrfpack_sigma2", 6 * input.n() - 12),
       sigma3("ssrfpack_sigma3", 6 * input.n() - 12),
@@ -386,6 +386,36 @@ void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out) {
         input.h_z.data(), input.h_lag_x.data(), del_tri.list.data(),
         del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
         sigma1.data(), grad_flag, grad1.data(), tri_idx);
+
+    h_vert_lag_crds(i, 1) =
+      c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_y.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma2.data(), grad_flag, grad2.data(), tri_idx);
+
+    h_vert_lag_crds(i, 2) =
+      c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_z.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma3.data(), grad_flag, grad3.data(), tri_idx);
+  }
+  for (int i=0; i<mesh_out.n_faces_host(); ++i) {
+    const auto xyz = Kokkos::subview(h_face_crds, i, Kokkos::ALL);
+    const Real lon = SphereGeometry::longitude(xyz);
+    const Real lat = SphereGeometry::latitude(xyz);
+
+    h_face_lag_crds(i,0) = c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_x.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma1.data(), grad_flag, grad1.data(), tri_idx);
+    h_face_lag_crds(i,1) = c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_y.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma2.data(), grad_flag, grad2.data(), tri_idx);
+    h_face_lag_crds(i,2) = c_intrc1(input.n(), lat, lon, input.h_x.data(), input.h_y.data(),
+        input.h_z.data(), input.h_lag_z.data(), del_tri.list.data(),
+        del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
+        sigma3.data(), grad_flag, grad3.data(), tri_idx);
   }
 }
 
@@ -465,12 +495,16 @@ void SSRFPackInterface<SeedType>::set_scalar_source_data(
   const auto field_vals = input.h_scalar_fields.at(field_name);
 
   for (int i = 0; i < input.n(); ++i) {
-    const auto grad_vals = Kokkos::subview(grad1, i, Kokkos::ALL);
+    const auto grad_vals = Kokkos::subview(grad1, Kokkos::ALL, i);
     LPM_ASSERT(grad_vals.extent(0) == 3);
+    Real grad[3];
     int ier =
         c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(),
                 input.h_z.data(), field_vals.data(), del_tri.list.data(),
-                del_tri.lptr.data(), del_tri.lend.data(), grad_vals.data());
+                del_tri.lptr.data(), del_tri.lend.data(), grad);
+    for (int j=0; j<3; ++j) {
+      grad_vals[j] = grad[j];
+    }
 #ifndef NDEBUG
     if (ier < 6) {
       std::ostringstream ss;
@@ -551,26 +585,31 @@ template <typename SeedType>
 void SSRFPackInterface<SeedType>::set_lag_crd_source_data() {
 
   for (int i=0; i<input.n(); ++i) {
-      const auto lag_x_grad_vals = Kokkos::subview(grad1, i, Kokkos::ALL);
-      const auto lag_y_grad_vals = Kokkos::subview(grad2, i, Kokkos::ALL);
-      const auto lag_z_grad_vals = Kokkos::subview(grad3, i, Kokkos::ALL);
 
-      LPM_ASSERT(lag_x_grad_vals.extent(0) == 3);
+      Real lag_x_grad[3];
+      Real lag_y_grad[3];
+      Real lag_z_grad[3];
 
       int ier;
 
       ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
         input.h_lag_x.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
-        lag_x_grad_vals.data());
+        lag_x_grad);
       LPM_ASSERT(ier >= 6);
       ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
         input.h_lag_y.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
-        lag_y_grad_vals.data());
+        lag_y_grad);
       LPM_ASSERT(ier >= 6);
       ier = c_gradl(input.n(), i, input.h_x.data(), input.h_y.data(), input.h_z.data(),
         input.h_lag_z.data(), del_tri.list.data(), del_tri.lptr.data(), del_tri.lend.data(),
-        lag_z_grad_vals.data());
+        lag_z_grad);
       LPM_ASSERT(ier >= 6);
+
+      for (int j=0; j<3; ++j) {
+        grad1(j,i) = lag_x_grad[j];
+        grad2(j,i) = lag_y_grad[j];
+        grad3(j,i) = lag_z_grad[j];
+      }
   }
 
   if (sigma_flag > 0) {
