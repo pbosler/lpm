@@ -130,7 +130,7 @@ C
         IF (P(1) .EQ. X(L)  .AND.  P(2) .EQ. Y(L)  .AND.
      .      P(3) .EQ. Z(L)) THEN ! GO TO 5
 		PRINT '(A,I6,A,I6,A)', 'NODES ',KK,' AND ',L,'ARE DUPLICATES.'
-		GO TO 5     
+		GO TO 5
      	ENDIF
         L = I2
         IF (P(1) .EQ. X(L)  .AND.  P(2) .EQ. Y(L)  .AND.
@@ -205,7 +205,8 @@ C
 C
 C All nodes are collinear.
 C
-    4 IER = -2
+    4 PRINT*, "ADDNOD: COLINEAR NODES DETECTED AT K = ", K
+      IER = -2
       RETURN
 C
 C Nodes L and K coincide.
@@ -3297,7 +3298,7 @@ C
       RETURN
       END
       LOGICAL FUNCTION LEFT (X1,Y1,Z1,X2,Y2,Z2,X0,Y0,Z0)
-      REAL(kind=8) X1, Y1, Z1, X2, Y2, Z2, X0, Y0, Z0
+      REAL(kind=8) X1, Y1, Z1, X2, Y2, Z2, X0, Y0, Z0, VAL
 C
 C***********************************************************
 C
@@ -3335,8 +3336,10 @@ C***********************************************************
 C
 C LEFT = TRUE iff <N0,N1 X N2> = det(N0,N1,N2) .GE. 0.
 C
-      LEFT = X0*(Y1*Z2-Y2*Z1) - Y0*(X1*Z2-X2*Z1) +
-     .       Z0*(X1*Y2-X2*Y1) .GE. 0.
+      VAL = X0*(Y1*Z2-Y2*Z1) - Y0*(X1*Z2-X2*Z1) +
+     .       Z0*(X1*Y2-X2*Y1)
+      LEFT =  VAL .GE. 0.
+C     PRINT*, VAL, " ", LEFT
       RETURN
       END
       INTEGER FUNCTION LSTPTR (LPL,NB,LIST,LPTR)
@@ -6236,7 +6239,7 @@ C
   110 FORMAT (1X,10X,'*** N is outside its valid',
      .        ' range ***')
       END
-      
+
       SUBROUTINE VRPLOT (LUN,PLTSIZ,ELAT,ELON,A,N,X,Y,Z,
      .                   NT,LISTC,LPTR,LEND,XC,YC,ZC,TITLE,
      .                   NUMBR, IER)
@@ -6724,4 +6727,4 @@ C
    13 IER = 3
       RETURN
       END
-      
+

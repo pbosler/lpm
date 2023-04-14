@@ -48,8 +48,8 @@ inline Real courant_number(const Real dt, const Real dlam) {
   typedef. Changing the mesh seed will therefore require recompiling this
   program.
 */
-typedef CubedSphereSeed seed_type;
-// typedef IcosTriSphereSeed seed_type;
+// typedef CubedSphereSeed seed_type;
+typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
 typedef SphericalGaussianHills tracer_type;
 
@@ -117,6 +117,8 @@ int main(int argc, char* argv[]) {
     sphere->template initialize_velocity<velocity_type>();
     sphere->initialize_tracer(tracer);
 
+    Real tracer_mass_tol = 0;
+    Real tracer_var_tol = 0;
     if (amr) {
       /**
         To start adaptive refinement, we convert relative tolerances from the
@@ -130,6 +132,7 @@ int main(int argc, char* argv[]) {
       auto face_mask = sphere->faces.mask;
       ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, sphere->n_faces_host(), input.tracer_mass_tol);
       mass_flag.set_tol_from_relative_value();
+      tracer_mass_tol = mass_flag.tol;
       const Real max_tracer_mass = mass_flag.tol / input.tracer_mass_tol;
 
       logger.info("max_tracer_mass per face = {}", max_tracer_mass);
@@ -144,6 +147,7 @@ int main(int argc, char* argv[]) {
 
       ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, sphere->n_faces_host(), input.tracer_var_tol);
       var_flag.set_tol_from_relative_value();
+      tracer_var_tol = var_flag.tol;
       const Real max_tracer_var = var_flag.tol / input.tracer_var_tol;
       logger.info("max_tracer_var per face = {}", max_tracer_var);
 
@@ -278,19 +282,71 @@ int main(int argc, char* argv[]) {
             new_sphere->set_tracer_from_lag_crds(tracer);
 
             if (amr) {
-              for (int i=0; i<input.amr_max; ++i) {
+              Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
 
+              Index verts_start_idx = 0;
+              Index faces_start_idx = 0;
+              auto face_area = new_sphere->faces.area;
+              auto face_tracer = new_sphere->tracer_faces.at(tracer.name()).view;
+              auto face_mask = new_sphere->faces.mask;
+              auto vert_tracer = new_sphere->tracer_verts.at(tracer.name()).view;
+              auto face_verts = new_sphere->faces.verts;
+
+              ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, new_sphere->n_faces_host(), tracer_mass_tol);
+
+              ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, new_sphere->n_faces_host(), tracer_var_tol);
+
+              for (int i=0; i<input.amr_max; ++i) {
+                Index verts_end_idx = new_sphere->n_vertices_host();
+                Index faces_end_idx = new_sphere->n_faces_host();
+
+                Kokkos::parallel_for(
+                  Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
+                  mass_flag);
+
+                Index mass_refinement_count;
+                Kokkos::parallel_reduce(
+                  Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
+                  KOKKOS_LAMBDA (const Index i, Index& ct) {
+                    ct += Index(flags(i));
+                  }, mass_refinement_count);
+
+                Kokkos::parallel_for(
+                  Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
+                  var_flag);
+
+                Index total_refinement_count;
+                Kokkos::parallel_reduce(
+                  Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
+                  KOKKOS_LAMBDA (const Index i, Index& ct) {
+                    ct += Index(flags(i));
+                  }, total_refinement_count);
+
+                logger.info("remesh {}, amr iter. {} : mass refine count = {}, variation refine count = {}",
+                  remesh_ctr, i, mass_refinement_count, total_refinement_count - mass_refinement_count);
+
+                new_sphere->divide_flagged_faces(flags, logger);
+
+                ssrfpack.interpolate_lag_crds(*new_sphere, verts_start_idx, faces_start_idx);
+                new_sphere->update_device();
+                new_sphere->set_tracer_from_lag_crds(tracer, verts_start_idx, faces_start_idx);
+
+                verts_start_idx = verts_end_idx;
+                faces_start_idx = faces_end_idx;
               }
             }
           }
           else if (do_reset and remesh_ctr == input.reset_lagrangian_interval) {
             /// remesh to t=0 reference, and create new reference to current time
+            logger.error("reset_lagrangian_interval is not implemented yet.");
           }
           else if (do_reset and remesh_ctr>input.reset_lagrangian_interval and remesh_ctr%input.reset_lagrangian_interval == 0) {
             /// remesh to existing reference, then create a new reference to the current time
+            logger.error("reset_lagrangian_interval is not implemented yet.");
           }
           else {
             /// remesh to existing reference
+            logger.error("reset_lagrangian_interval is not implemented yet.");
           }
 
           /// set velocity on new mesh
@@ -378,8 +434,8 @@ Input::Input(int argc, char* argv[]) {
   init_depth = 4;
   amr_limit = 0;
   amr_max = 1;
-  tracer_mass_tol = 0.1;
-  tracer_var_tol = 0.1;
+  tracer_mass_tol = 0.15;
+  tracer_var_tol = 0.15;
   remesh_interval = 20;
   reset_lagrangian_interval = LPM_NULL_IDX;
   output_interval = 8;

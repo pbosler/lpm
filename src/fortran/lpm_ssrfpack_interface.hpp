@@ -71,7 +71,7 @@ struct SSRFPackInterface final {
       const vfield_map& vector_fields = vfield_map());
 
   template <typename PolyMeshType>
-  void interpolate_lag_crds(PolyMeshType& mesh_out);
+  void interpolate_lag_crds(PolyMeshType& mesh_out, const Index vert_start_idx = 0, const Index face_start_idx = 0);
 
   int sigma_flag;
 

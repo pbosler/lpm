@@ -48,6 +48,12 @@ extern void intrc1(int*, double*, double*, double*, double*, double*, double*,
 
 namespace Lpm {
 
+Real left_val(double x1, double y1, double z1,
+          double x2, double y2, double z2,
+          double x0, double y0, double z0) {
+          return x0*(y1*z2-y2*z1) - y0*(x1*z2-x2*z1) + z0*(x1*y2-x2*y1);
+          }
+
 /**  @brief c-interface to stripack subroutine trmesh
 
   generates a Delaunay triangulation on the surface of the sphere.
@@ -77,6 +83,12 @@ int c_trmesh(int n, double* x, double* y, double* z, int* list, int* lptr,
       ss << " at least 3 nodes are required; received n < 3.\n";
     } else if (ier == -2) {
       ss << " the first 3 nodes are colinear.\n";
+      for (int i=0; i<3; ++i) {
+        ss << "\t(x y z) = (" << x[i] << " " << y[i] << " " << z[i] << ")\n";
+      }
+      const Real l1 = left_val(x[0], y[0], z[0], x[1], y[1], z[1], x[2], y[2], z[2]);
+      const Real l2 = left_val(x[1], y[1], z[1], x[0], y[0], z[0], x[2], y[2], z[2]);
+      ss << "l1 = " << l1 << " l2 = " << l2 << "\n";
     } else if (ier > 0) {
       ss << " duplicate of node " << ier << " detected.\n";
     }
@@ -364,7 +376,7 @@ void SSRFPackInterface<SeedType>::interpolate(
 }
 
 template <typename SeedType> template <typename PolyMeshType>
-void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out) {
+void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out, const Index vert_start_idx, const Index face_start_idx) {
 
   static_assert(std::is_same<typename PolyMeshType::Geo, SphereGeometry>::value,
     "sphere geometry required");
@@ -376,7 +388,7 @@ void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out) {
   auto h_vert_lag_crds = mesh_out.vertices.lag_crds.get_host_crd_view();
   auto h_face_lag_crds = mesh_out.faces.lag_crds.get_host_crd_view();
   int tri_idx = 1;
-  for (int i=0; i<mesh_out.n_vertices_host(); ++i) {
+  for (int i=vert_start_idx; i<mesh_out.n_vertices_host(); ++i) {
     const auto xyz = Kokkos::subview(h_vert_crds, i, Kokkos::ALL);
     const Real lon = SphereGeometry::longitude(xyz);
     const Real lat = SphereGeometry::latitude(xyz);
@@ -399,7 +411,7 @@ void SSRFPackInterface<SeedType>::interpolate_lag_crds(PolyMeshType& mesh_out) {
         del_tri.lptr.data(), del_tri.lend.data(), sigma_flag,
         sigma3.data(), grad_flag, grad3.data(), tri_idx);
   }
-  for (int i=0; i<mesh_out.n_faces_host(); ++i) {
+  for (int i=face_start_idx; i<mesh_out.n_faces_host(); ++i) {
     const auto xyz = Kokkos::subview(h_face_crds, i, Kokkos::ALL);
     const Real lon = SphereGeometry::longitude(xyz);
     const Real lat = SphereGeometry::latitude(xyz);
