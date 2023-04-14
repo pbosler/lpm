@@ -157,11 +157,21 @@ struct IcosTriSphereSeed {
 
   MeshSeed is responsible for determining the memory required to construct a
   mesh, for use with Coords, Edges, and Faces constructors.
+
+  After initialization:
+
+  seed_crds contains the coordinates of all points (both vertices and faces)
+  in the mesh.  All vertices are ordered first; the first face coordinates are
+  at `seed_crds(SeedType::nverts, :)`.
+
 */
 template <typename SeedType>
 struct MeshSeed {
   /// Number of coordinates (both vertices and faces) in the seed file.
   static constexpr Int ncrds = SeedType::nverts + SeedType::nfaces;
+  static constexpr Int nverts = SeedType::nverts;
+  static constexpr Int nfaces = SeedType::nfaces;
+  static constexpr Int nfaceverts = SeedType::nfaceverts;
 
   /// Host views to load data read from file
   ko::View<Real[ncrds][SeedType::geo::ndim], Host> seed_crds;

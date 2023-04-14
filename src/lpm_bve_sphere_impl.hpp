@@ -104,24 +104,23 @@ void BVESphere<SeedType>::update_host() const {
 #ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(
-    const std::shared_ptr<BVESphere<SeedType>> bve) {
-  std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(bve);
-  VtkPolymeshInterface<SeedType> vtk(base_ptr);
-  vtk.add_scalar_point_data(bve->rel_vort_verts.view, "rel_vort");
-  vtk.add_scalar_point_data(bve->abs_vort_verts.view, "abs_vort");
-  vtk.add_scalar_point_data(bve->stream_fn_verts.view, "stream_fn");
-  vtk.add_vector_point_data(bve->velocity_verts.view, "velocity");
+    const BVESphere<SeedType>& bve) {
+  VtkPolymeshInterface<SeedType> vtk(bve);
+  vtk.add_scalar_point_data(bve.rel_vort_verts.view, "rel_vort");
+  vtk.add_scalar_point_data(bve.abs_vort_verts.view, "abs_vort");
+  vtk.add_scalar_point_data(bve.stream_fn_verts.view, "stream_fn");
+  vtk.add_vector_point_data(bve.velocity_verts.view, "velocity");
 
-  vtk.add_scalar_cell_data(bve->rel_vort_faces.view, "rel_vort");
-  vtk.add_scalar_cell_data(bve->abs_vort_faces.view, "abs_vort");
-  vtk.add_scalar_cell_data(bve->stream_fn_faces.view, "stream_fn");
-  vtk.add_vector_cell_data(bve->velocity_faces.view, "velocity");
+  vtk.add_scalar_cell_data(bve.rel_vort_faces.view, "rel_vort");
+  vtk.add_scalar_cell_data(bve.abs_vort_faces.view, "abs_vort");
+  vtk.add_scalar_cell_data(bve.stream_fn_faces.view, "stream_fn");
+  vtk.add_vector_cell_data(bve.velocity_faces.view, "velocity");
 
-  for (Short i = 0; i < bve->tracer_verts.size(); ++i) {
-    vtk.add_scalar_point_data(bve->tracer_verts[i].view,
-                              bve->tracer_verts[i].view.label());
-    vtk.add_scalar_cell_data(bve->tracer_faces[i].view,
-                             bve->tracer_faces[i].view.label());
+  for (Short i = 0; i < bve.tracer_verts.size(); ++i) {
+    vtk.add_scalar_point_data(bve.tracer_verts[i].view,
+                              bve.tracer_verts[i].view.label());
+    vtk.add_scalar_cell_data(bve.tracer_faces[i].view,
+                             bve.tracer_faces[i].view.label());
   }
   return vtk;
 }
@@ -153,7 +152,7 @@ void BVESphere<SeedType>::init_vorticity(
     const VorticityInitialCondition& vorticity_fn) {
   auto zeta_verts = this->rel_vort_verts.view;
   auto omega_verts = this->abs_vort_verts.view;
-  auto vert_crds = this->vertices.phys_crds->crds;
+  auto vert_crds = this->vertices.phys_crds.view;
   Real Omg = this->Omega;
   Kokkos::parallel_for(
       this->n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
@@ -165,7 +164,7 @@ void BVESphere<SeedType>::init_vorticity(
 
   auto zeta_faces = this->rel_vort_faces.view;
   auto omega_faces = this->abs_vort_faces.view;
-  auto face_crds = this->faces.phys_crds->crds;
+  auto face_crds = this->faces.phys_crds.view;
   Kokkos::parallel_for(
       this->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
         const auto mxyz = Kokkos::subview(face_crds, i, Kokkos::ALL);
@@ -189,14 +188,14 @@ void BVESphere<SeedType>::init_velocity() {
 
   Kokkos::parallel_for(
       "BVESphere::init_velocity_vertices", vertex_policy,
-      BVEVertexVelocity(velocity_verts.view, this->vertices.phys_crds->crds,
-                        this->faces.phys_crds->crds, rel_vort_faces.view,
+      BVEVertexVelocity(velocity_verts.view, this->vertices.phys_crds.view,
+                        this->faces.phys_crds.view, rel_vort_faces.view,
                         this->faces.area, this->faces.mask,
                         this->n_faces_host()));
 
   Kokkos::parallel_for(
       "BVESphere::init_velocity_faces", face_policy,
-      BVEFaceVelocity(velocity_faces.view, this->faces.phys_crds->crds,
+      BVEFaceVelocity(velocity_faces.view, this->faces.phys_crds.view,
                       rel_vort_faces.view, this->faces.area, this->faces.mask,
                       this->n_faces_host()));
 
@@ -215,14 +214,14 @@ void BVESphere<SeedType>::init_stream_fn() {
 
   Kokkos::parallel_for(
       "BVESphere::init_stream_fn_vertices", vertex_policy,
-      BVEVertexStreamFn(stream_fn_verts.view, this->vertices.phys_crds->crds,
-                        this->faces.phys_crds->crds, rel_vort_faces.view,
+      BVEVertexStreamFn(stream_fn_verts.view, this->vertices.phys_crds.view,
+                        this->faces.phys_crds.view, rel_vort_faces.view,
                         this->faces.area, this->faces.mask,
                         this->n_faces_host()));
 
   Kokkos::parallel_for(
       "BVESphere::init_stream_fn_faces", face_policy,
-      BVEFaceStreamFn(stream_fn_faces.view, this->faces.phys_crds->crds,
+      BVEFaceStreamFn(stream_fn_faces.view, this->faces.phys_crds.view,
                       rel_vort_faces.view, this->faces.area, this->faces.mask,
                       this->n_faces_host()));
 

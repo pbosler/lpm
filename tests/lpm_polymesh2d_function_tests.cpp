@@ -12,6 +12,7 @@
 #include "lpm_lat_lon_pts.hpp"
 #include "lpm_planar_grid.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "mesh/lpm_polymesh2d_impl.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_matlab_io.hpp"
@@ -45,31 +46,34 @@ struct PlanePolyMeshFnUnitTest {
     logger.debug("test run called.");
 
     {
-      PolyMeshParameters<QuadRectSeed> qr0_params(0, 1, 1);
-      const auto qr0 = std::shared_ptr<PolyMesh2d<QuadRectSeed>>(new
-        PolyMesh2d<QuadRectSeed>(qr0_params));
-      REQUIRE(qr0->n_faces_host() == 4);
+      const int zero_depth = 0;
+      const Real mesh_radius = 1;
+      const int amr_depth = 1;
+      PolyMeshParameters<QuadRectSeed> qr0_params(zero_depth, mesh_radius, amr_depth);
+      auto qr0 = PolyMesh2d<QuadRectSeed>(qr0_params);
+      REQUIRE(qr0.n_faces_host() == 4);
+      logger.debug("pre-divide: {}", qr0.info_string());
 
       typedef FaceDivider<PlaneGeometry, QuadFace> qr_divider;
-      qr_divider::divide(0, qr0->vertices, qr0->edges, qr0->faces);
+      qr_divider::divide(0, qr0.vertices, qr0.edges, qr0.faces);
 
-      logger.debug(qr0->info_string("divide 0", 0, true));
-      REQUIRE(qr0->faces.kid_host(0,0) == 4);
+      logger.debug(qr0.info_string("divide 0", 0, true));
+      REQUIRE(qr0.faces.kid_host(0,0) == 4);
 
-      qr_divider::divide(qr0->faces.kid_host(0,0), qr0->vertices, qr0->edges, qr0->faces);
-      logger.debug(qr0->info_string("divide kid(0,0)", 0, true));
+      qr_divider::divide(qr0.faces.kid_host(0,0), qr0.vertices, qr0.edges, qr0.faces);
+      logger.debug(qr0.info_string("divide kid(0,0)", 0, true));
 
       logger.debug("setting up local view copies to use with lambda");
-      auto face_xy = Kokkos::subview(qr0->faces.phys_crds->crds,
-         std::make_pair(0, qr0->faces.nh()), Kokkos::ALL);
-      auto face_xy_host = qr0->faces_phys_crds();
-      const auto faces_edges = qr0->faces.edges;
-      const auto edges_lefts = qr0->edges.lefts;
-      const auto edges_rights = qr0->edges.rights;
-      auto faces_kids = qr0->faces.kids;
-      auto vcrds = qr0->vertices.phys_crds->crds;
-//       auto vert_xy = Kokkos::subview(qr0->vertices.phys_crds->crds,
-//         std::make_pair(0, qr0->vertices.nh()), Kokkos::ALL);
+      auto face_xy = Kokkos::subview(qr0.faces.phys_crds.view,
+         std::make_pair(0, qr0.faces.nh()), Kokkos::ALL);
+      auto face_xy_host = qr0.faces_phys_crds();
+      const auto faces_edges = qr0.faces.edges;
+      const auto edges_lefts = qr0.edges.lefts;
+      const auto edges_rights = qr0.edges.rights;
+      auto faces_kids = qr0.faces.kids;
+      auto vcrds = qr0.vertices.phys_crds.view;
+//       auto vert_xy = Kokkos::subview(qr0.vertices.phys_crds.view,
+//         std::make_pair(0, qr0.vertices.nh()), Kokkos::ALL);
 
 #ifdef LPM_USE_VTK
       logger.debug("starting vtk output.");
@@ -78,23 +82,23 @@ struct PlanePolyMeshFnUnitTest {
       logger.debug("vtk output complete.");
 #endif
 
-      REQUIRE(qr0->n_faces_host() == 12);
-      REQUIRE(qr0->edges.kid_host(0,0) == 12);
-      REQUIRE(qr0->edges.kid_host(0,1) == 13);
-      REQUIRE(qr0->edges.kid_host(12,0) == 24);
-      REQUIRE(qr0->edges.kid_host(12,1) == 25);
-      REQUIRE(qr0->edges.left_host(24) == 8);
-      REQUIRE(qr0->edges.right_host(24) == LPM_NULL_IDX);
-      REQUIRE(qr0->edges.left_host(25) == 9);
+      REQUIRE(qr0.n_faces_host() == 12);
+      REQUIRE(qr0.edges.kid_host(0,0) == 12);
+      REQUIRE(qr0.edges.kid_host(0,1) == 13);
+      REQUIRE(qr0.edges.kid_host(12,0) == 24);
+      REQUIRE(qr0.edges.kid_host(12,1) == 25);
+      REQUIRE(qr0.edges.left_host(24) == 8);
+      REQUIRE(qr0.edges.right_host(24) == LPM_NULL_IDX);
+      REQUIRE(qr0.edges.left_host(25) == 9);
       REQUIRE(face_xy_host(8,0) == Approx(-7.0/8));
       REQUIRE(face_xy_host(8,1) == Approx( 7.0/8));
-      qr0->update_device();
+      qr0.update_device();
 
       Kokkos::View<Index[2*LPM_MAX_AMR_LIMIT]> leaf_edges0("leaf_edges0");
       auto leaf_edges0_host = Kokkos::create_mirror_view(leaf_edges0);
       n_view_type n_leaf_edges0("n_leaf_edges0");
       auto n_leaf_edges0_host = Kokkos::create_mirror_view(n_leaf_edges0);
-      const auto edges_kids = qr0->edges.kids;
+      const auto edges_kids = qr0.edges.kids;
 
       Kokkos::View<Index[8*LPM_MAX_AMR_LIMIT]> leaf_edges7("leaf_edges7");
       auto leaf_edges7_host = Kokkos::create_mirror_view(leaf_edges7);
@@ -129,66 +133,66 @@ struct PlanePolyMeshFnUnitTest {
       Kokkos::parallel_for(8, KOKKOS_LAMBDA (const Index i) {
 
         if (i==0) {
-          qr0->get_leaf_edges_from_parent(leaf_edges0, n_leaf_edges0(), 0);
+          qr0.get_leaf_edges_from_parent(leaf_edges0, n_leaf_edges0(), 0);
         }
         else if (i==1) {
-          qr0->ccw_edges_around_face(leaf_edges7, n_leaf_edges7(), 7);
+          qr0.ccw_edges_around_face(leaf_edges7, n_leaf_edges7(), 7);
         }
         else if (i==2) {
-          qr0->ccw_adjacent_faces(adj_faces5, n_adj5(), 5);
+          qr0.ccw_adjacent_faces(adj_faces5, n_adj5(), 5);
         }
         else if (i==3) {
           fidx0() =
-            qr0->locate_pt_walk_search(qp, 2);
+            qr0.locate_pt_walk_search(qp, 2);
         }
         else if (i==4) {
           ridx() =
-            qr0->nearest_root_face(qp);
+            qr0.nearest_root_face(qp);
         }
         else if (i==5) {
           fidx1() =
-            qr0->locate_pt_tree_search(qp, 0);
+            qr0.locate_pt_tree_search(qp, 0);
         }
         else if (i==6) {
           fidx2() =
-            qr0->locate_face_containing_pt(qp);
+            qr0.locate_face_containing_pt(qp);
         }
         else if (i==7) {
-          qr0->ref_elem_coords(qp_ref, qp);
+          qr0.ref_elem_coords(qp_ref, qp);
         }
       });
       logger.debug("returned from kernel 1");
 
-      Kokkos::View<Index*> face_idxs("face_idxs", qr0->n_faces_host());
-      Kokkos::parallel_for(qr0->n_faces_host(),
+      Kokkos::View<Index*> face_idxs("face_idxs", qr0.n_faces_host());
+      Kokkos::parallel_for(qr0.n_faces_host(),
         KOKKOS_LAMBDA (const Index i) {
           const auto fcrd = Kokkos::subview(face_xy, i, Kokkos::ALL);
-          face_idxs(i) = qr0->locate_face_containing_pt(fcrd);
+          face_idxs(i) = qr0.locate_face_containing_pt(fcrd);
         });
       logger.debug("returned from locate face kernel");
       auto face_idxs_host = Kokkos::create_mirror_view(face_idxs);
       Kokkos::deep_copy(face_idxs_host, face_idxs);
       logger.debug("face_idxs = {}", sprarr("face_idxs", face_idxs_host.data(),
-        qr0->n_faces_host()));
+        qr0.n_faces_host()));
       const std::vector<Index> face_idx_correct(
         {10, 1, 2, 3, 8, 5, 6, 7, 8, 9, 10, 11});
-      for (int i=0; i<qr0->n_faces_host(); ++i) {
+      for (int i=0; i<qr0.n_faces_host(); ++i) {
         REQUIRE(face_idxs_host(i) == face_idx_correct[i]);
       }
 
-      Kokkos::View<Index*> vert_idxs("vert_idxs", qr0->n_vertices_host());
-      Kokkos::parallel_for(qr0->n_vertices_host(),
+      Kokkos::View<Index*> vert_idxs("vert_idxs", qr0.n_vertices_host());
+      Kokkos::parallel_for(qr0.n_vertices_host(),
         KOKKOS_LAMBDA (const Index i) {
           const auto vcrd = Kokkos::subview(vcrds, i, Kokkos::ALL);
-          vert_idxs(i) = qr0->locate_face_containing_pt(vcrd);
+          vert_idxs(i) = qr0.locate_face_containing_pt(vcrd);
         });
       auto vert_idxs_host = Kokkos::create_mirror_view(vert_idxs);
       Kokkos::deep_copy(vert_idxs_host, vert_idxs);
       logger.debug("vert_idxs = {}", sprarr("vert_idxs", vert_idxs_host.data(),
-        qr0->n_vertices_host()));
+        qr0.n_vertices_host()));
       const std::vector<Index> vert_idx_correct(
         {8, 5, 1, 1, 2, 2, 3, 7, 6, 9, 5, 6, 11, 10, 8, 9, 10, 8, 8});
-      for (int i=0; i<qr0->n_vertices_host(); ++i) {
+      for (int i=0; i<qr0.n_vertices_host(); ++i) {
         REQUIRE(vert_idxs_host(i) == vert_idx_correct[i]);
       }
 
@@ -205,7 +209,7 @@ struct PlanePolyMeshFnUnitTest {
       Kokkos::deep_copy(fidx2_host, fidx2);
       Kokkos::deep_copy(qp_ref_host, qp_ref);
 
-      logger.debug(qr0->edges.info_string("all_edges", 0, true));
+      logger.debug(qr0.edges.info_string("all_edges", 0, true));
       logger.info("parent edge 0 has {} leaves: [{}, {}, {}]", n_leaf_edges0_host(),
         leaf_edges0_host[0], leaf_edges0_host[1], leaf_edges0_host[2]);
 
@@ -298,31 +302,31 @@ struct InterpolationTest {
       timer.start();
 
       PolyMeshParameters<SeedType> params(depth, radius, amr_limit);
-      const auto pm = std::make_shared<PolyMesh2d<SeedType>>(params);
-      dxs.push_back(pm->appx_mesh_size());
+      const auto pm = PolyMesh2d<SeedType>(params);
+      dxs.push_back(pm.appx_mesh_size());
 
-      ScalarField<VertexField> tracer_verts("tracer", pm->vertices.nh());
-      ScalarField<FaceField> tracer_faces("tracer", pm->faces.nh());
-      ScalarField<VertexField> tracer_verts_interp("tracer_interp", pm->vertices.nh());
-      ScalarField<FaceField> tracer_faces_interp("tracer_interp", pm->faces.nh());
-      const auto vcrds = pm->vertices.phys_crds->crds;
-      const auto face_xy = pm->faces.phys_crds->crds;
+      ScalarField<VertexField> tracer_verts("tracer", pm.vertices.nh());
+      ScalarField<FaceField> tracer_faces("tracer", pm.faces.nh());
+      ScalarField<VertexField> tracer_verts_interp("tracer_interp", pm.vertices.nh());
+      ScalarField<FaceField> tracer_faces_interp("tracer_interp", pm.faces.nh());
+      const auto vcrds = pm.vertices.phys_crds.view;
+      const auto face_xy = pm.faces.phys_crds.view;
       const auto vg = tracer_verts.view;
       const auto fg = tracer_faces.view;
       scalar_view_type grid_tracer("grid_tracer", grid.size());
       scalar_view_type grid_tracer_interp("grid_tracer_interp", grid.size());
       scalar_view_type grid_error("grid_error", grid.size());
-      scalar_view_type vert_error("error", pm->n_vertices_host());
-      scalar_view_type face_error("error", pm->n_faces_host());
+      scalar_view_type vert_error("error", pm.n_vertices_host());
+      scalar_view_type face_error("error", pm.n_faces_host());
       Kokkos::View<Index*> grid_face_idx("grid_face_idx", grid.size());
       auto h_face_idx = Kokkos::create_mirror_view(grid_face_idx);
 
-      Kokkos::parallel_for(pm->vertices.nh(),
+      Kokkos::parallel_for(pm.vertices.nh(),
         KOKKOS_LAMBDA (const Index i) {
           const auto xy = Kokkos::subview(vcrds, i, Kokkos::ALL);
           vg(i) = tracer(xy);
         });
-      Kokkos::parallel_for(pm->faces.nh(),
+      Kokkos::parallel_for(pm.faces.nh(),
         KOKKOS_LAMBDA (const Index i) {
           const auto xy = Kokkos::subview(face_xy, i, Kokkos::ALL);
           fg(i) = tracer(xy);
@@ -331,14 +335,14 @@ struct InterpolationTest {
         KOKKOS_LAMBDA (const Index i) {
           const auto xy = Kokkos::subview(grid.pts, i, Kokkos::ALL);
           grid_tracer(i) = tracer(xy);
-          grid_face_idx(i) = pm->locate_face_containing_pt(xy);
+          grid_face_idx(i) = pm.locate_face_containing_pt(xy);
         });
       logger.debug("finished setting initial data");
 
-      pm->scalar_interpolate(grid_tracer_interp, grid.pts,
+      pm.scalar_interpolate(grid_tracer_interp, grid.pts,
         tracer_verts);
-      pm->scalar_interpolate(tracer_verts_interp.view, vcrds, tracer_verts);
-      pm->scalar_interpolate(tracer_faces_interp.view, face_xy, tracer_verts);
+      pm.scalar_interpolate(tracer_verts_interp.view, vcrds, tracer_verts);
+      pm.scalar_interpolate(tracer_faces_interp.view, face_xy, tracer_verts);
 
       ErrNorms grid_err_norms(grid_error, grid_tracer_interp, grid_tracer,
         grid.wts);
@@ -346,11 +350,11 @@ struct InterpolationTest {
       grid_interp_l2.push_back(grid_err_norms.l2);
       grid_interp_linf.push_back(grid_err_norms.linf);
       ErrNorms face_err_norms(face_error, tracer_faces_interp.view, tracer_faces.view,
-        pm->faces.area_host());
+        pm.faces.area_host());
       face_interp_l1.push_back(face_err_norms.l1);
       face_interp_l2.push_back(face_err_norms.l2);
       face_interp_linf.push_back(face_err_norms.linf);
-      Kokkos::parallel_for(pm->n_vertices_host(),
+      Kokkos::parallel_for(pm.n_vertices_host(),
         ComputeErrorFtor<scalar_view_type, scalar_view_type, scalar_view_type, 1>(vert_error, tracer_verts_interp.view, tracer_verts.view));;
 
       auto h_grid_tracer = Kokkos::create_mirror_view(grid_tracer);
@@ -400,6 +404,7 @@ struct InterpolationTest {
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_l2", face_interp_l2, face_interp_l2_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_interp_linf", face_interp_linf, face_interp_linf_rate));
 
+    REQUIRE( (face_interp_l2_rate.back() > 2.0 or face_interp_l2_rate.back() == Approx(2.0).epsilon(0.01) ) );
   }
 };
 
@@ -457,69 +462,69 @@ TEST_CASE("mesh to mesh", "") {
     const int depth = 5;
     PolyMeshParameters<IcosTriSphereSeed> ic_params(depth);
     PolyMeshParameters<CubedSphereSeed> cs_params(depth);
-    const auto ic = std::make_shared<PolyMesh2d<IcosTriSphereSeed>>(ic_params);
-    const auto cs = std::make_shared<PolyMesh2d<CubedSphereSeed>>(cs_params);
+    auto ic = PolyMesh2d<IcosTriSphereSeed>(ic_params);
+    auto cs = PolyMesh2d<CubedSphereSeed>(cs_params);
 
-    ScalarField<VertexField> ic_tracer_verts("tracer", ic->vertices.nh());
-    ScalarField<FaceField> ic_tracer_faces("tracer", ic->faces.nh());
-    ScalarField<VertexField> ic_tracer_verts_interp("tracer_interp", ic->vertices.nh());
-    ScalarField<FaceField> ic_tracer_faces_interp("tracer_interp", ic->faces.nh());
-    scalar_view_type ic_vert_error("error", ic->n_vertices_host());
-    scalar_view_type ic_face_error("error", ic->n_faces_host());
-    const auto ic_vcrds = ic->vertices.phys_crds->crds;
-    const auto ic_fcrds = ic->faces.phys_crds->crds;
+    ScalarField<VertexField> ic_tracer_verts("tracer", ic.vertices.nh());
+    ScalarField<FaceField> ic_tracer_faces("tracer", ic.faces.nh());
+    ScalarField<VertexField> ic_tracer_verts_interp("tracer_interp", ic.vertices.nh());
+    ScalarField<FaceField> ic_tracer_faces_interp("tracer_interp", ic.faces.nh());
+    scalar_view_type ic_vert_error("error", ic.n_vertices_host());
+    scalar_view_type ic_face_error("error", ic.n_faces_host());
+    const auto ic_vcrds = ic.vertices.phys_crds.view;
+    const auto ic_fcrds = ic.faces.phys_crds.view;
     const auto ic_vt = ic_tracer_verts.view;
     const auto ic_ft = ic_tracer_faces.view;
 
-    ScalarField<VertexField> cs_tracer_verts("tracer", cs->vertices.nh());
-    ScalarField<FaceField> cs_tracer_faces("tracer", cs->faces.nh());
-    ScalarField<VertexField> cs_tracer_verts_interp("tracer_interp", cs->vertices.nh());
-    ScalarField<FaceField> cs_tracer_faces_interp("tracer_interp", cs->faces.nh());
-    scalar_view_type cs_vert_error("error", cs->n_vertices_host());
-    scalar_view_type cs_face_error("error", cs->n_faces_host());
-    const auto cs_vcrds = cs->vertices.phys_crds->crds;
-    const auto cs_fcrds = cs->faces.phys_crds->crds;
+    ScalarField<VertexField> cs_tracer_verts("tracer", cs.vertices.nh());
+    ScalarField<FaceField> cs_tracer_faces("tracer", cs.faces.nh());
+    ScalarField<VertexField> cs_tracer_verts_interp("tracer_interp", cs.vertices.nh());
+    ScalarField<FaceField> cs_tracer_faces_interp("tracer_interp", cs.faces.nh());
+    scalar_view_type cs_vert_error("error", cs.n_vertices_host());
+    scalar_view_type cs_face_error("error", cs.n_faces_host());
+    const auto cs_vcrds = cs.vertices.phys_crds.view;
+    const auto cs_fcrds = cs.faces.phys_crds.view;
     const auto cs_vt = cs_tracer_verts.view;
     const auto cs_ft = cs_tracer_faces.view;
 
     SphereXYZTrigTracer tracer;
 
-    Kokkos::parallel_for(ic->vertices.nh(),
+    Kokkos::parallel_for(ic.vertices.nh(),
       KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(ic_vcrds, i, Kokkos::ALL);
         ic_vt(i) = tracer(xy);
       });
-    Kokkos::parallel_for(ic->faces.nh(),
+    Kokkos::parallel_for(ic.faces.nh(),
       KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(ic_fcrds, i, Kokkos::ALL);
         ic_ft(i) = tracer(xy);
       });
 
-    Kokkos::parallel_for(cs->vertices.nh(),
+    Kokkos::parallel_for(cs.vertices.nh(),
       KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(cs_vcrds, i, Kokkos::ALL);
         cs_vt(i) = tracer(xy);
       });
-    Kokkos::parallel_for(cs->faces.nh(),
+    Kokkos::parallel_for(cs.faces.nh(),
       KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(cs_fcrds, i, Kokkos::ALL);
         cs_ft(i) = tracer(xy);
       });
 
-    ic->scalar_interpolate(cs_tracer_verts_interp.view, cs_vcrds, ic_tracer_verts);
-    ic->scalar_interpolate(cs_tracer_faces_interp.view, cs_fcrds, ic_tracer_verts);
-    cs->scalar_interpolate(ic_tracer_verts_interp.view, ic_vcrds, cs_tracer_verts);
-    cs->scalar_interpolate(ic_tracer_faces_interp.view, ic_fcrds, cs_tracer_verts);
+    ic.scalar_interpolate(cs_tracer_verts_interp.view, cs_vcrds, ic_tracer_verts);
+    ic.scalar_interpolate(cs_tracer_faces_interp.view, cs_fcrds, ic_tracer_verts);
+    cs.scalar_interpolate(ic_tracer_verts_interp.view, ic_vcrds, cs_tracer_verts);
+    cs.scalar_interpolate(ic_tracer_faces_interp.view, ic_fcrds, cs_tracer_verts);
 
-    Kokkos::parallel_for(ic->n_vertices_host(),
+    Kokkos::parallel_for(ic.n_vertices_host(),
         ComputeErrorFtor<scalar_view_type, scalar_view_type, scalar_view_type, 1>(ic_vert_error, ic_tracer_verts_interp.view, ic_tracer_verts.view));
-    Kokkos::parallel_for(cs->n_vertices_host(),
+    Kokkos::parallel_for(cs.n_vertices_host(),
       ComputeErrorFtor<scalar_view_type, scalar_view_type, scalar_view_type, 1>(cs_vert_error, cs_tracer_verts_interp.view, cs_tracer_verts.view));
 
     ErrNorms ic_err_norms(ic_face_error, ic_tracer_faces_interp.view, ic_ft,
-        ic->faces.area_host());
+        ic.faces.area_host());
     ErrNorms cs_err_norms(cs_face_error, cs_tracer_faces_interp.view, cs_ft,
-        cs->faces.area_host());
+        cs.faces.area_host());
 
     logger.info("icos tri err norms: {}", ic_err_norms.info_string());
     logger.info("cubed sphere err norms: {}", cs_err_norms.info_string());

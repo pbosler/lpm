@@ -3,6 +3,7 @@
 
 #include "lpm_error.hpp"
 #include "lpm_geometry.hpp"
+#include "util/lpm_floating_point.hpp"
 
 namespace Lpm {
 
@@ -12,14 +13,25 @@ struct ComputeErrorFtor {
   V2 appx;
   V3 exact;
   Int ndim;
+  mask_view_type mask;
 
   ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex)
-      : err(er), appx(ap), exact(ex), ndim(er.extent(1)) {}
+      : err(er),
+        appx(ap),
+        exact(ex),
+        ndim(er.extent(1)),
+        mask("err_mask", er.extent(0)) {}
+
+  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex,
+                   const mask_view_type m)
+      : err(er), appx(ap), exact(ex), ndim(er.extent(1)), mask(m) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
-    for (int j = 0; j < ndim; ++j) {
-      err(i, j) = appx(i, j) - exact(i, j);
+    if (!mask(i)) {
+      for (int j = 0; j < ndim; ++j) {
+        err(i, j) = appx(i, j) - exact(i, j);
+      }
     }
   }
 };
@@ -30,12 +42,19 @@ struct ComputeErrorFtor<V1, V2, V3, 1> {
   V2 appx;
   V3 exact;
   Int ndim;
+  mask_view_type mask;
 
   ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex)
-      : err(er), appx(ap), exact(ex), ndim(1) {}
+      : err(er), appx(ap), exact(ex), ndim(1), mask("err_mask", er.extent(0)) {}
+
+  ComputeErrorFtor(const V1 er, const V2 ap, const V3 ex,
+                   const mask_view_type m)
+      : err(er), appx(ap), exact(ex), ndim(1), mask(m) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator()(const Index i) const { err(i) = appx(i) - exact(i); }
+  void operator()(const Index i) const {
+    err(i) = (mask(i) ? 0 : appx(i) - exact(i));
+  }
 };
 
 template <typename V1, typename V2, int Rank>
@@ -101,6 +120,20 @@ void compute_error(const V1 err, const V2 appx, const V3 exact) {
       err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(err, appx, exact));
 }
 
+template <typename V1, typename V2, typename V3>
+void compute_error(const V1 err, const V2 appx, const V3 exact,
+                   const mask_view_type m) {
+  static_assert(V1::Rank == V2::Rank and V2::Rank == V3::Rank,
+                "view ranks must match");
+  LPM_REQUIRE(err.extent(0) == appx.extent(0) and
+              appx.extent(0) == exact.extent(0));
+  LPM_REQUIRE(err.extent(1) == appx.extent(1) and
+              appx.extent(1) == exact.extent(1));
+
+  Kokkos::parallel_for(err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(
+                                          err, appx, exact, m));
+}
+
 template <typename V1, typename V2>
 ENormScalar reduce_error(const V1 err, const V2 exact,
                          const scalar_view_type wt) {
@@ -120,17 +153,27 @@ ErrNorms::ErrNorms(const V1 err, const V2 appx, const V3 exact,
                    const scalar_view_type wt) {
   compute_error(err, appx, exact);
   const auto rval = reduce_error(err, exact, wt);
-  l1 = rval.l1num / rval.l1denom;
-  l2 = sqrt(rval.l2num / rval.l2denom);
-  linf = rval.linfnum / rval.linfdenom;
+  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
+}
+
+template <typename V1, typename V2, typename V3>
+ErrNorms::ErrNorms(const V1 err, const V2 appx, const V3 exact,
+                   const scalar_view_type wt, const mask_view_type m) {
+  compute_error(err, appx, exact, m);
+  const auto rval = reduce_error(err, exact, wt);
+  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
 }
 
 template <typename V1, typename V2>
 ErrNorms::ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt) {
   const auto rval = reduce_error(err, exact, wt);
-  l1 = rval.l1num / rval.l1denom;
-  l2 = sqrt(rval.l2num / rval.l2denom);
-  linf = rval.linfnum / rval.linfdenom;
+  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
 }
 
 }  // namespace Lpm

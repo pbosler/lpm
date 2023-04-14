@@ -44,7 +44,7 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
   std::vector<Real> l1rate;
   std::vector<Real> l2rate;
   std::vector<Real> linfrate;
-  std::shared_ptr<TransportMesh2d<SeedType>> tm;
+  std::unique_ptr<TransportMesh2d<SeedType>> tm;
 
   typedef typename std::conditional<std::is_same<typename SeedType::geo, PlaneGeometry>::value,
     PlanarHump, SphericalGaussianHills>::type TracerType1;
@@ -65,8 +65,6 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
       }
     }
 
-
-
     void run() {
       std::string test_name = "transport2d_dtconv_" + SeedType::id_string();
 
@@ -83,7 +81,7 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         const auto dt = dts[n_idx];
 
         PolyMeshParameters<SeedType> params(tree_lev, radius, amr_limit);
-        tm = std::shared_ptr<TransportMesh2d<SeedType>>(new TransportMesh2d<SeedType>(params));
+        tm = std::make_unique<TransportMesh2d<SeedType>>(params);
 
         tm->initialize_tracer(t1);
         tm->initialize_tracer(t2);
@@ -100,26 +98,27 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         const auto base_filename = ss.str();
         ss.str("");
         {
-          VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
+          VtkPolymeshInterface<SeedType> vtk = vtk_interface(*tm);
           vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
           ss.str("");
         }
         #endif
 
-        Transport2dRK4<SeedType> solver(dt, tm);
+        Transport2dRK4<SeedType> solver(dt, *tm);
         for (int time_idx = 0; time_idx<ns; ++time_idx) {
           solver.template advance_timestep<VelocityType>();
           #ifdef LPM_USE_VTK
             if (time_idx == ns/2) {
-              VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
+              VtkPolymeshInterface<SeedType> vtk = vtk_interface(*tm);
               vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
-              ss.str("");            }
+              ss.str("");
+            }
           #endif
         }
 
         #ifdef LPM_USE_VTK
         {
-          VtkPolymeshInterface<SeedType> vtk = vtk_interface(tm);
+          VtkPolymeshInterface<SeedType> vtk = vtk_interface(*tm);
           vtk.write(base_filename + zero_fill_str(frame_counter++) + vtp_suffix());
           ss.str("");
         }
@@ -127,8 +126,8 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
 
         Kokkos::View<Real**> face_position_error("face_position_error",
           tm->n_faces_host(), SeedType::geo::ndim);
-        auto final_pos = tm->faces.phys_crds->crds;
-        auto init_pos = tm->faces.lag_crds->crds;
+        auto final_pos = tm->faces.phys_crds.view;
+        auto init_pos = tm->faces.lag_crds.view;
 
         auto face_err_norms = ErrNorms(face_position_error, final_pos, init_pos, tm->faces.area);
         logger.info("ns = {}, l1 = {}, l2 = {}, linf = {}", ns, face_err_norms.l1, face_err_norms.l2, face_err_norms.linf);
@@ -161,6 +160,7 @@ TEST_CASE("planar meshes", "") {
   const std::vector<Int> nsteps = {10, 20, 40, 80, 100};
 
   typedef PlanarRigidRotation velocity_field;
+//   typedef PlanarDeformationalFlow velocity_field;
 
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;

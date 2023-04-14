@@ -18,6 +18,11 @@ class NcWriter;
 class PolymeshReader;
 #endif
 
+#ifdef LPM_USE_VTK
+template <typename SeedType>
+class VtkPolymeshInterface;
+#endif
+
 /** \brief Coords class handles arrays of vectors in \f$\mathbb{R}^d\f$, where
 \f$d=2,3\f$. Templated on Geometry Type (e.g., SphereGeometry, PlaneGeometry).
 
@@ -35,8 +40,13 @@ class Coords {
   typedef typename Geo::crd_view_type
       crd_view_type;  ///< basic array type defined from Geometry type
   crd_view_type
-      crds;  ///< primary container --- a view of vectors in spatial coordinates
+      view;  ///< primary container --- a view of vectors in spatial coordinates
   n_view_type n;  ///< number of vectors currently intialized
+
+#ifdef LPM_USE_VTK
+  template <typename SeedType>
+  friend class VtkPolymeshInterface;
+#endif
 
 #ifdef LPM_USE_NETCDF
   friend class NcWriter<Geo>;
@@ -50,32 +60,34 @@ class Coords {
 
     @see MeshSeed::setMaxAllocations()
   */
-  Coords(const Index nmax) : crds("crds", nmax), _nmax(nmax), n("n") {
-    _hostcrds = ko::create_mirror_view(crds);
+  explicit Coords(const Index nmax)
+      : view("coords_view", nmax), _nmax(nmax), n("n") {
+    _hostview = ko::create_mirror_view(view);
     _nh = ko::create_mirror_view(n);
     _nh() = 0;
   };
 
-  Coords(const ko::View<Real**> cv) : crds(cv), _nmax(cv.extent(0)), n("n") {
-    _hostcrds = ko::create_mirror_view(crds);
+  explicit Coords(const ko::View<Real**> cv)
+      : view(cv), _nmax(cv.extent(0)), n("n") {
+    _hostview = ko::create_mirror_view(view);
     _nh = ko::create_mirror_view(n);
     _nh() = cv.extent(0);
     ko::deep_copy(n, _nh);
-    ko::deep_copy(_hostcrds, crds);
+    ko::deep_copy(_hostview, view);
   }
 
   /**
     Copy data from host to device.
   */
   void update_device() const {
-    ko::deep_copy(crds, _hostcrds);
+    ko::deep_copy(view, _hostview);
     ko::deep_copy(n, _nh);
   }
 
   /** Copy data from device to host.
    */
   void update_host() const {
-    ko::deep_copy(_hostcrds, crds);
+    ko::deep_copy(_hostview, view);
     ko::deep_copy(_nh, n);
   }
 
@@ -91,7 +103,7 @@ class Coords {
 
   /// \brief maximum number of coordinate vectors allowed in memory
   KOKKOS_INLINE_FUNCTION
-  Index n_max() const { return crds.extent(0); }
+  Index n_max() const { return view.extent(0); }
 
   /** \brief Get specfied component (e.g., 0, 1, 2) from a particular coordinate
   vector
@@ -104,7 +116,7 @@ class Coords {
   */
   inline Real get_crd_component_host(const Index ind, const Int dim) const {
     LPM_ASSERT(ind < _nh());
-    return _hostcrds(ind, dim);
+    return _hostview(ind, dim);
   }
 
   /** \brief Inserts a new coordinate to the main data container
@@ -118,9 +130,9 @@ class Coords {
     LPM_REQUIRE_MSG(_nmax >= _nh() + 1,
                     "Coords::insert error: not enough memory.");
     for (int i = 0; i < Geo::ndim; ++i) {
-      _hostcrds(_nh(), i) = v[i];
+      _hostview(_nh(), i) = v[i];
     }
-    _nh() += 1;
+    ++_nh();
   }
 
   /** \brief overwrites a coordinate vector with new data
@@ -136,7 +148,7 @@ class Coords {
   void set_crds_host(const Index ind, const CV v) {
     LPM_ASSERT(ind < _nh());
     for (Short i = 0; i < Geo::ndim; ++i) {
-      _hostcrds(ind, i) = v[i];
+      _hostview(ind, i) = v[i];
     }
   }
 
@@ -187,12 +199,12 @@ class Coords {
 
   \hostfn
   */
-  typename crd_view_type::HostMirror get_host_crd_view() { return _hostcrds; }
+  typename crd_view_type::HostMirror get_host_crd_view() { return _hostview; }
 
   Kokkos::MinMaxScalar<Real> min_max_extent(const int dim) const;
 
  protected:
-  typename crd_view_type::HostMirror _hostcrds;  ///< host view of primary data
+  typename crd_view_type::HostMirror _hostview;  ///< host view of primary data
   Index _nmax;  ///< maximum number of coordinates allowed in memory
   typename n_view_type::HostMirror
       _nh;  ///< number of currently initialized coordinates

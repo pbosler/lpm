@@ -18,10 +18,29 @@ void TransportMesh2d<SeedType>::initialize_velocity() {
   Kokkos::parallel_for(
       this->vertices.nh(),
       VelocityKernel<VelocityType>(this->velocity_verts.view,
-                                   this->vertices.phys_crds->crds, 0));
+                                   this->vertices.phys_crds.view, 0));
   Kokkos::parallel_for(this->faces.nh(), VelocityKernel<VelocityType>(
                                              this->velocity_faces.view,
-                                             this->faces.phys_crds->crds, 0));
+                                             this->faces.phys_crds.view, 0));
+}
+
+template <typename SeedType>
+template <typename VelocityType>
+void TransportMesh2d<SeedType>::set_velocity(const Real t,
+                                             const Index vert_start_idx,
+                                             const Index face_start_idx) {
+  static_assert(
+      std::is_same<typename SeedType::geo, typename VelocityType::geo>::value,
+      "Geometry types must match.");
+
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+      VelocityKernel<VelocityType>(this->velocity_verts.view,
+                                   this->vertices.phys_crds.view, t));
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+      VelocityKernel<VelocityType>(this->velocity_faces.view,
+                                   this->faces.phys_crds.view, t));
 }
 
 template <typename SeedType>
@@ -42,8 +61,8 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 
   auto vertview = tracer_verts.at(tracer_ic.name()).view;
   auto faceview = tracer_faces.at(tracer_ic.name()).view;
-  const auto vlags = this->vertices.lag_crds->crds;
-  const auto flags = this->faces.lag_crds->crds;
+  const auto vlags = this->vertices.lag_crds.view;
+  const auto flags = this->faces.lag_crds.view;
   Kokkos::parallel_for(
       this->vertices.nh(), KOKKOS_LAMBDA(const Index i) {
         const auto crd = Kokkos::subview(vlags, i, Kokkos::ALL);
@@ -57,7 +76,34 @@ void TransportMesh2d<SeedType>::initialize_tracer(const ICType& tracer_ic) {
 }
 
 template <typename SeedType>
-void TransportMesh2d<SeedType>::initialize_scalar_tracer(
+template <typename ICType>
+void TransportMesh2d<SeedType>::set_tracer_from_lag_crds(const ICType& tracer_ic,
+                                                  const Index vert_start_idx,
+                                                  const Index face_start_idx) {
+  static_assert(
+      std::is_same<typename SeedType::geo, typename ICType::geo>::value,
+      "Geometry types must match.");
+
+  auto vertview = tracer_verts.at(tracer_ic.name()).view;
+  auto faceview = tracer_faces.at(tracer_ic.name()).view;
+  const auto vlag_crds = this->vertices.lag_crds.view;
+  const auto flag_crds = this->faces.lag_crds.view;
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(vert_start_idx, this->vertices.nh()),
+      KOKKOS_LAMBDA(const Index i) {
+        const auto crd = Kokkos::subview(vlag_crds, i, Kokkos::ALL);
+        vertview(i) = tracer_ic(crd);
+      });
+  Kokkos::parallel_for(
+      Kokkos::RangePolicy<>(face_start_idx, this->faces.nh()),
+      KOKKOS_LAMBDA(const Index i) {
+        const auto crd = Kokkos::subview(flag_crds, i, Kokkos::ALL);
+        faceview(i) = tracer_ic(crd);
+      });
+}
+
+template <typename SeedType>
+void TransportMesh2d<SeedType>::allocate_scalar_tracer(
     const std::string name) {
   tracer_verts.emplace(name, ScalarField<VertexField>(
                                  name, this->velocity_verts.view.extent(0)));
@@ -108,14 +154,13 @@ void TransportMesh2d<SeedType>::update_host() const {
 #ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(
-    const std::shared_ptr<TransportMesh2d<SeedType>> tm) {
-  std::shared_ptr<PolyMesh2d<SeedType>> base_ptr(tm);
-  VtkPolymeshInterface<SeedType> vtk(base_ptr);
-  vtk.add_vector_point_data(tm->velocity_verts.view, "velocity");
-  vtk.add_vector_cell_data(tm->velocity_faces.view, "velocity");
-  for (const auto& tic : tm->tracer_verts) {
+    const TransportMesh2d<SeedType>& tm) {
+  VtkPolymeshInterface<SeedType> vtk(tm);
+  vtk.add_vector_point_data(tm.velocity_verts.view, "velocity");
+  vtk.add_vector_cell_data(tm.velocity_faces.view, "velocity");
+  for (const auto& tic : tm.tracer_verts) {
     vtk.add_scalar_point_data(tic.second.view, tic.first);
-    vtk.add_scalar_cell_data(tm->tracer_faces.at(tic.first).view, tic.first);
+    vtk.add_scalar_cell_data(tm.tracer_faces.at(tic.first).view, tic.first);
   }
   return vtk;
 }

@@ -70,8 +70,7 @@ int main(int argc, char* argv[]) {
 
       /** Build the particle/panel mesh
       */
-      auto sphere = std::shared_ptr<PolyMesh2d<seed_type>>(new
-        PolyMesh2d<seed_type>(nmaxverts, nmaxedges, nmaxfaces));
+      auto sphere = std::make_unique<PolyMesh2d<seed_type>>(nmaxverts, nmaxedges, nmaxfaces);
       sphere->tree_init(input.init_depth, seed);
       sphere->update_device();
 
@@ -79,7 +78,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef LPM_USE_VTK
       /** Output mesh to a vtk file */
-      VtkPolymeshInterface<seed_type> vtk(sphere);
+      VtkPolymeshInterface<seed_type> vtk(*sphere);
       vtk.write(input.vtk_fname);
 #endif
 #ifdef LPM_USE_NETCDF

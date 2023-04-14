@@ -17,6 +17,7 @@
 #include "mesh/lpm_polymesh2d.hpp"
 #include "util/lpm_timer.hpp"
 #include "util/lpm_test_utils.hpp"
+#include "util/lpm_matlab_io.hpp"
 
 #include "Compadre_Evaluator.hpp"
 
@@ -27,6 +28,7 @@
 
 #include "catch.hpp"
 #include <memory>
+#include <fstream>
 #include <sstream>
 
 using namespace Lpm;
@@ -65,7 +67,7 @@ struct PlanarGrid {
     h_wts = Kokkos::create_mirror_view(wts);
 
     const Real dx = (xmax - xmin)/(n-1);
-    const Real dy = (ymin - ymax)/(n-1);
+    const Real dy = (ymax - ymin)/(n-1);
     for (int i=0; i<n*n; ++i) {
       const Int ii = i/n;
       const Int jj = i%n;
@@ -93,48 +95,42 @@ TEST_CASE("compadre_unit_tests", "") {
     const Real radius = 6;
 
     PolyMeshParameters<QuadRectSeed> qr_params(input.tree_depth, radius);
-    auto quad_plane = std::shared_ptr<PolyMesh2d<QuadRectSeed>>(new
-      PolyMesh2d<QuadRectSeed>(qr_params));
+    auto quad_plane = PolyMesh2d<QuadRectSeed>(qr_params);
 
-    logger.info(quad_plane->info_string());
+    logger.info(quad_plane.info_string());
 
     PlanarGaussian gaussian;
 
     ScalarField<VertexField> gaussian_verts("gaussian",
-      quad_plane->n_vertices_host());
+      quad_plane.n_vertices_host());
     ScalarField<FaceField> gaussian_faces("gaussian",
-      quad_plane->n_faces_host());
+      quad_plane.n_faces_host());
 
-    auto vcrds = quad_plane->vertices.phys_crds->crds;
-    auto fcrds = quad_plane->faces.phys_crds->crds;
-    Kokkos::parallel_for(quad_plane->n_vertices_host(),
+    auto vcrds = quad_plane.vertices.phys_crds.view;
+    auto fcrds = quad_plane.faces.phys_crds.view;
+    Kokkos::parallel_for(quad_plane.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {
         gaussian_verts.view(i) = gaussian(Kokkos::subview(vcrds, i, Kokkos::ALL));
       });
-    Kokkos::parallel_for(quad_plane->n_faces_host(),
+    Kokkos::parallel_for(quad_plane.n_faces_host(),
       KOKKOS_LAMBDA (const Index i) {
         gaussian_faces.view(i) = gaussian(Kokkos::subview(fcrds, i, Kokkos::ALL));
       });
 
-    auto src_crds = quad_plane->get_leaf_face_crds();
+    auto src_crds = quad_plane.get_leaf_face_crds();
     auto h_src_crds = Kokkos::create_mirror_view(src_crds);
-    auto src_data = quad_plane->faces.leaf_field_vals(gaussian_faces);
+    auto src_data = quad_plane.faces.leaf_field_vals(gaussian_faces);
     Kokkos::deep_copy(h_src_crds, src_crds);
-
-#ifdef LPM_USE_VTK
-  VtkPolymeshInterface<QuadRectSeed> vtk(quad_plane);
-  vtk.add_scalar_point_data(gaussian_verts.view);
-  vtk.add_scalar_cell_data(gaussian_faces.view);
-  vtk.write("compadre_plane_test.vtp");
-#endif
 
     PlanarGrid grid(input.nunif, -radius, radius);
     gmls::Params gmls_params(input.gmls_order, PlaneGeometry::ndim);
     gmls_params.topo_dim = 2;
     gmls_params.ambient_dim = 2;
     gmls::Neighborhoods face_neighbors(h_src_crds, grid.h_pts, gmls_params);
+    gmls::Neighborhoods mesh_neighbors(h_src_crds, quad_plane.vertices.phys_crds.get_host_crd_view(), gmls_params);
 
     logger.info(face_neighbors.info_string());
+    logger.info(mesh_neighbors.info_string());
 
     const std::vector<Compadre::TargetOperation> gmls_ops =
       {Compadre::ScalarPointEvaluation,
@@ -143,7 +139,10 @@ TEST_CASE("compadre_unit_tests", "") {
     auto scalar_gmls = gmls::plane_scalar_gmls(src_crds,
       grid.pts, face_neighbors, gmls_params, gmls_ops);
 
+    auto mesh_gmls = gmls::plane_scalar_gmls(src_crds, vcrds, mesh_neighbors, gmls_params, gmls_ops);
+
     Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
+    Compadre::Evaluator gmls_mesh_eval(&mesh_gmls);
 
     auto gaussian_gmls =
       gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
@@ -155,6 +154,8 @@ TEST_CASE("compadre_unit_tests", "") {
         src_data,
         Compadre::LaplacianOfScalarPointEvaluation,
         Compadre::PointSample);
+
+    auto gaussian_gmls_verts = gmls_mesh_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(src_data, Compadre::ScalarPointEvaluation, Compadre::PointSample);
 
     Kokkos::View<Real*> grid_gaussian("gaussian_exact", grid.pts.extent(0));
     Kokkos::View<Real*> grid_lap_gaussian("laplacian_gauss_exact", grid.pts.extent(0));
@@ -173,32 +174,56 @@ TEST_CASE("compadre_unit_tests", "") {
 
     logger.info("interpolation error: {}", gauss_err_norms.info_string());
     logger.info("laplacian error: {}", lap_gauss_err_norms.info_string());
+
+#ifdef LPM_USE_VTK
+  VtkPolymeshInterface<QuadRectSeed> vtk(quad_plane);
+  vtk.add_scalar_point_data(gaussian_verts.view);
+  vtk.add_scalar_point_data(gaussian_gmls_verts);
+  vtk.add_scalar_cell_data(gaussian_faces.view);
+  vtk.write("compadre_plane_test.vtp");
+#endif
+
+    auto h_gauss_gmls = Kokkos::create_mirror_view(gaussian_gmls);
+    Kokkos::deep_copy(h_gauss_gmls, gaussian_gmls);
+    auto h_gauss_lap_gmls = Kokkos::create_mirror_view(lap_gaussian_gmls);
+    Kokkos::deep_copy(h_gauss_lap_gmls, lap_gaussian_gmls);
+
+    auto h_grid_gaussian = Kokkos::create_mirror_view(grid_gaussian);
+    auto h_grid_lap_gaussian = Kokkos::create_mirror_view(grid_lap_gaussian);
+    Kokkos::deep_copy(h_grid_gaussian, grid_gaussian);
+    Kokkos::deep_copy(h_grid_lap_gaussian, grid_lap_gaussian);
+
+    std::ofstream mfile(input.m_filename);
+    write_array_matlab(mfile, "gridxy", grid.h_pts);
+    write_vector_matlab(mfile, "gaussian_exact", h_grid_gaussian);
+    write_vector_matlab(mfile, "gaussian_gmls", h_gauss_gmls);
+    write_vector_matlab(mfile, "lap_gaussian_exact", h_grid_lap_gaussian);
+    mfile.close();
   }
 
   SECTION("sphere geometry") {
     PolyMeshParameters<IcosTriSphereSeed> ic_params(input.tree_depth);
 
-    auto trisphere = std::shared_ptr<PolyMesh2d<IcosTriSphereSeed>>(new
-      PolyMesh2d<IcosTriSphereSeed>(ic_params));
+    auto trisphere = PolyMesh2d<IcosTriSphereSeed>(ic_params);
 
-    logger.info(trisphere->info_string());
+    logger.info(trisphere.info_string());
 
     RossbyHaurwitz54 rh54;
 
-    ScalarField<VertexField> rh54_verts("rh54", trisphere->n_vertices_host());
-    const auto vcrds = trisphere->vertices.phys_crds->crds;
-    Kokkos::parallel_for("init rh54 verts", trisphere->n_vertices_host(),
+    ScalarField<VertexField> rh54_verts("rh54", trisphere.n_vertices_host());
+    const auto vcrds = trisphere.vertices.phys_crds.view;
+    Kokkos::parallel_for("init rh54 verts", trisphere.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {
         rh54_verts.view(i) = rh54(vcrds(i,0), vcrds(i,1), vcrds(i,2));
       });
-    ScalarField<FaceField> rh54_faces("rh54", trisphere->n_faces_host());
-    const auto fcrds = trisphere->faces.phys_crds->crds;
-    Kokkos::parallel_for("init rh54 faces", trisphere->n_faces_host(),
+    ScalarField<FaceField> rh54_faces("rh54", trisphere.n_faces_host());
+    const auto fcrds = trisphere.faces.phys_crds.view;
+    Kokkos::parallel_for("init rh54 faces", trisphere.n_faces_host(),
       KOKKOS_LAMBDA (const Index i) {
         rh54_faces.view(i) = rh54(fcrds(i,0), fcrds(i,1), fcrds(i,2));
       });
 
-    auto src_crds = trisphere->get_leaf_face_crds();
+    auto src_crds = trisphere.get_leaf_face_crds();
     auto h_src_crds = Kokkos::create_mirror_view(src_crds);
     Kokkos::deep_copy(h_src_crds, src_crds);
 
@@ -236,7 +261,7 @@ TEST_CASE("compadre_unit_tests", "") {
 
     Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
 
-    auto src_data = trisphere->faces.leaf_field_vals(rh54_faces);
+    auto src_data = trisphere.faces.leaf_field_vals(rh54_faces);
     auto rh54_gmls =
       gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         src_data,

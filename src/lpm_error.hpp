@@ -113,6 +113,10 @@ struct ErrNorms {
   ErrNorms(const V1 err, const V2 appx, const V3 exact,
            const scalar_view_type wt);
 
+  template <typename V1, typename V2, typename V3>
+  ErrNorms(const V1 err, const V2 appx, const V3 exact,
+           const scalar_view_type wt, const mask_view_type mask);
+
   template <typename V1, typename V2>
   ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt);
 };
@@ -132,6 +136,10 @@ ENormScalar reduce_error(const V1 err, const V2 exact,
 
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact);
+
+template <typename V1, typename V2, typename V3>
+void compute_error(const V1 err, const V2 appx, const V3 exact,
+                   const mask_view_type mask);
 
 }  // namespace Lpm
 #endif

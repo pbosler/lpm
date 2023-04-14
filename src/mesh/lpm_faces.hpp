@@ -87,7 +87,9 @@ class Faces {
         n_leaves("n_leaves"),
         mask("mask", nmax),
         level("level", nmax),
-        leaf_idx("leaf_idx", nmax) {
+        leaf_idx("leaf_idx", nmax),
+        phys_crds(nmax),
+        lag_crds(nmax) {
     _hostverts = ko::create_mirror_view(verts);
     _hostedges = ko::create_mirror_view(edges);
     _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -102,8 +104,7 @@ class Faces {
     _hlevel = ko::create_mirror_view(level);
   }
 
-  Faces(const Index nmax, std::shared_ptr<Coords<Geo>> pcrds,
-        std::shared_ptr<Coords<Geo>> lcrds)
+  Faces(const Index nmax, Coords<Geo>& pcrds, Coords<Geo>& lcrds)
       : verts("faceverts", nmax),
         edges("faceedges", nmax),
         crd_inds("crd_inds", nmax),
@@ -158,8 +159,8 @@ class Faces {
     ko::deep_copy(n_leaves, _hn_leaves);
     ko::deep_copy(mask, _hmask);
     ko::deep_copy(level, _hlevel);
-    phys_crds->update_device();
-    lag_crds->update_device();
+    phys_crds.update_device();
+    lag_crds.update_device();
     scan_leaves();
   }
 
@@ -167,8 +168,8 @@ class Faces {
    */
   void update_host() const {
     ko::deep_copy(_hostarea, area);
-    phys_crds->update_host();
-    lag_crds->update_host();
+    phys_crds.update_host();
+    lag_crds.update_host();
   }
 
   /** @brief Returns true if a face has been divided.
@@ -223,6 +224,14 @@ class Faces {
   void insert_host(const Index ctr_ind, ko::View<Index*, Host> vertinds,
                    ko::View<Index*, Host> edgeinds,
                    const Index prt = constants::NULL_IND, const Real ar = 0.0);
+
+  template <typename PtViewType>
+  void insert_host(const PtViewType& pcrd, const PtViewType& lcrd,
+                   const Index ctr_idx,
+                   const Kokkos::View<Index*, Host> vertinds,
+                   const Kokkos::View<Index*, Host> edgeinds,
+                   const Index parent_idx = constants::NULL_IND,
+                   const Real ar = 0);
 
   /** Populate a view of coordinates that only includes leaf faces.
 
@@ -407,9 +416,9 @@ class Faces {
     return std::sqrt(surface_area_host() / _hn_leaves());
   }
 
-  std::shared_ptr<Coords<Geo>> phys_crds;
+  Coords<Geo> phys_crds;
 
-  std::shared_ptr<Coords<Geo>> lag_crds;
+  Coords<Geo> lag_crds;
 
  protected:
   host_vertex_view _hostverts;

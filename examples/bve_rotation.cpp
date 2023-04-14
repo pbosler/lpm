@@ -92,8 +92,7 @@ int main (int argc, char* argv[]) {
     const std::vector<std::string> tracer_names = {"u_dot_x",
       "vorticity_error"};
 
-    auto sphere = std::shared_ptr<BVESphere<seed_type>>(new
-      BVESphere<seed_type>(nmaxverts, nmaxedges, nmaxfaces, tracer_names));
+    auto sphere = std::make_unique<BVESphere<seed_type>>(nmaxverts, nmaxedges, nmaxfaces, tracer_names);
     sphere->tree_init(input.init_depth, seed);
     sphere->update_device();
 
@@ -125,8 +124,8 @@ int main (int argc, char* argv[]) {
     ko::View<Real*> vert_stream_fn_error("vertex_streamfn_error", sphere->n_vertices_host());
     ko::View<Real*> face_stream_fn_error("face_streamfn_error", sphere->n_faces_host());
 
-    const auto vertx = sphere->vertices.phys_crds->crds;
-    const auto facex = sphere->faces.phys_crds->crds;
+    const auto vertx = sphere->vertices.phys_crds.view;
+    const auto facex = sphere->faces.phys_crds.view;
     const auto vert_vel = sphere->velocity_verts.view;
     const auto face_vel = sphere->velocity_faces.view;
     const auto OMG = SolidBodyRotation::OMEGA;
@@ -136,8 +135,8 @@ int main (int argc, char* argv[]) {
     const auto face_relvort = sphere->rel_vort_faces.view;
     const auto vert_stream_fn = sphere->stream_fn_verts.view;
     const auto face_stream_fn = sphere->stream_fn_faces.view;
-    const auto verta = sphere->vertices.lag_crds->crds;
-    const auto facea = sphere->faces.lag_crds->crds;
+    const auto verta = sphere->vertices.lag_crds.view;
+    const auto facea = sphere->faces.lag_crds.view;
 
     Kokkos::parallel_for(sphere->n_vertices_host(), KOKKOS_LAMBDA (const Index i) {
       const auto mxyz = Kokkos::subview(vertx, i, Kokkos::ALL);
@@ -159,12 +158,12 @@ int main (int argc, char* argv[]) {
 
     Kokkos::parallel_for(sphere->n_vertices_host(),
        SphereTangentFunctor(sphere->tracer_verts[0].view,
-        sphere->vertices.phys_crds->crds,
+        sphere->vertices.phys_crds.view,
         sphere->velocity_verts.view));
 
     Kokkos::parallel_for(sphere->n_faces_host(),
       SphereTangentFunctor(sphere->tracer_faces[0].view,
-        sphere->faces.phys_crds->crds,
+        sphere->faces.phys_crds.view,
         sphere->velocity_faces.view));
 
     std::ostringstream ss;
@@ -180,7 +179,7 @@ int main (int argc, char* argv[]) {
       */
       const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
       logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
-      VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+      VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
       vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
       vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
       vtk.add_vector_point_data(vert_velocity_error, "velocity_error");
@@ -206,26 +205,26 @@ int main (int argc, char* argv[]) {
     const Real tfinal = input.tfinal;
     const Int ntimesteps = std::floor(tfinal/input.dt);
     const Real dt = tfinal/ntimesteps;
-    BVERK4 solver(dt, sphere);
+    BVERK4 solver(dt, *sphere);
 
     ko::Profiling::pushRegion("main loop");
     ProgressBar progress("SolidBodyRotation test", ntimesteps);
     for (Int time_ind = 0; time_ind<ntimesteps; ++time_ind) {
-      solver.advance_timestep(sphere);
+      solver.advance_timestep(*sphere);
        sphere->t = (time_ind+1)*dt;
        const Real t = sphere->t;
       ko::Profiling::pushRegion("post-timestep solve");
 
       ko::parallel_for("BVETest: vertex stream function", vertex_policy,
-        BVEVertexStreamFn(sphere->stream_fn_verts.view, sphere->vertices.phys_crds->crds,
-        sphere->faces.phys_crds->crds, face_relvort, sphere->faces.area, sphere->faces.mask, sphere->n_faces_host()));
+        BVEVertexStreamFn(sphere->stream_fn_verts.view, sphere->vertices.phys_crds.view,
+        sphere->faces.phys_crds.view, face_relvort, sphere->faces.area, sphere->faces.mask, sphere->n_faces_host()));
       ko::parallel_for("BVETest: face stream function", face_policy,
-        BVEFaceStreamFn(sphere->stream_fn_faces.view, sphere->faces.phys_crds->crds,
+        BVEFaceStreamFn(sphere->stream_fn_faces.view, sphere->faces.phys_crds.view,
         face_relvort, sphere->faces.area, sphere->faces.mask,sphere->n_faces_host()));
       ko::parallel_for("BVETest: vertex velocity tangent", sphere->n_vertices_host(),
-        SphereTangentFunctor(sphere->tracer_verts[0].view, sphere->vertices.phys_crds->crds, vert_vel));
+        SphereTangentFunctor(sphere->tracer_verts[0].view, sphere->vertices.phys_crds.view, vert_vel));
       ko::parallel_for("BVETest: face velocity tangent", sphere->n_faces_host(),
-        SphereTangentFunctor(sphere->tracer_faces[0].view, sphere->faces.phys_crds->crds, face_vel));
+        SphereTangentFunctor(sphere->tracer_faces[0].view, sphere->faces.phys_crds.view, face_vel));
 
       ko::Profiling::popRegion();
 
@@ -274,7 +273,7 @@ int main (int argc, char* argv[]) {
         if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
           ko::Profiling::pushRegion("vtk output");
           const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
-          VtkPolymeshInterface<seed_type> vtk = vtk_interface(sphere);
+          VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
           vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
           vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
           vtk.add_vector_point_data(vert_velocity_error, "velocity_error");

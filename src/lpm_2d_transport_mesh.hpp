@@ -44,7 +44,6 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
   typedef Coords<Geo> coords_type;
-  typedef std::shared_ptr<Coords<Geo>> coords_ptr;
 
   std::map<std::string, ScalarField<VertexField>>
       tracer_verts;  /// passive tracers at passive particles
@@ -67,10 +66,18 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   template <typename ICType>
   void initialize_tracer(const ICType& tracer_ic);
 
-  void initialize_scalar_tracer(const std::string name);
+  template <typename ICType>
+  void set_tracer_from_lag_crds(const ICType& tracer_ic, const Index vert_start_idx=0,
+                         const Index face_start_idx=0);
+
+  void allocate_scalar_tracer(const std::string name);
 
   template <typename VelocityType>
   void initialize_velocity();
+
+  template <typename VelocityType>
+  void set_velocity(const Real t, const Index vert_start_idx = 0,
+                    const Index face_start_idx = 0);
 
   inline Int ntracers() const { return tracer_verts.size(); }
 
@@ -86,7 +93,7 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
 #ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_interface(
-    const std::shared_ptr<TransportMesh2d<SeedType>> tm);
+    const TransportMesh2d<SeedType>& tm);
 #endif
 
 }  // namespace Lpm

@@ -15,7 +15,8 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-set(LPM_SOURCES lpm_bve_sphere.cpp
+set(LPM_SOURCES
+                lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
@@ -32,8 +33,6 @@ set(LPM_SOURCES lpm_bve_sphere.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
-                util/ekat_string_utils.cpp
-                util/ekat_assert.cpp
                 util/lpm_timer.cpp)
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
@@ -85,6 +84,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere_kernels.hpp
               lpm_comm.hpp
               lpm_coords.hpp
+              lpm_coords_impl.hpp
               lpm_compadre.hpp
               lpm_geometry.hpp
               lpm_logger.hpp
@@ -95,9 +95,13 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_vertices.hpp
+              mesh/lpm_vertices_impl.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
+              mesh/lpm_faces_impl.hpp
               mesh/lpm_polymesh2d.hpp
+              mesh/lpm_polymesh2d_impl.hpp
+              mesh/lpm_refinement_flags.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_box3d.hpp
@@ -108,9 +112,6 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
               util/lpm_tuple.hpp
-              util/ekat_rational_constant.hpp
-              util/ekat_scaling_factor.hpp
-              util/ekat_units.hpp
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
 

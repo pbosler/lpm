@@ -1,11 +1,13 @@
 #ifndef LPM_COMPADRE_HPP
 #define LPM_COMPADRE_HPP
 
+#include "Compadre_Evaluator.hpp"
 #include "Compadre_GMLS.hpp"
 #include "Compadre_Operators.hpp"
 #include "LpmConfig.h"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
 
 namespace Lpm {
 namespace gmls {
@@ -19,6 +21,7 @@ struct Params {
   Int ambient_dim;
   Int topo_dim;
   Int min_neighbors;
+  Int amr_max;
 
   std::string info_string(const int tab_lev = 0) const;
 
@@ -30,6 +33,7 @@ struct Params {
         manifold_weight_pwr(2.0),
         ambient_dim(3),
         topo_dim(2),
+        amr_max(0),
         min_neighbors(Compadre::GMLS::getNP(samples_order, topo_dim)) {}
 
   Params(const Params& other) = default;
@@ -164,6 +168,37 @@ Compadre::GMLS sphere_scalar_gmls(
 
   result.generateAlphas();
 
+  return result;
+}
+
+template <typename SrcCrdViewType, typename TgtCrdViewType>
+Compadre::GMLS sphere_vector_gmls(
+    const SrcCrdViewType src_crds, const TgtCrdViewType tgt_crds,
+    const Neighborhoods& nn, const Params& params,
+    const std::vector<Compadre::TargetOperation>& ops) {
+  constexpr auto reconstruction_space =
+      Compadre::ReconstructionSpace::VectorOfScalarClonesTaylorPolynomial;
+  constexpr auto problem_type = Compadre::ProblemType::MANIFOLD;
+  constexpr auto solver_type = Compadre::DenseSolverType::QR;
+  constexpr auto constraint_type = Compadre::ConstraintType::NO_CONSTRAINT;
+  constexpr auto sampling_functional = Compadre::ManifoldVectorPointSample;
+  constexpr auto data_functional = sampling_functional;
+  constexpr auto weighting_type = Compadre::WeightingFunctionType::Power;
+
+  Compadre::GMLS result(reconstruction_space, sampling_functional,
+                        data_functional, params.samples_order,
+                        SphereGeometry::ndim, solver_type, problem_type,
+                        constraint_type, params.manifold_order);
+
+  result.setProblemData(nn.neighbor_lists, src_crds, tgt_crds,
+                        nn.neighborhood_radii);
+
+  result.addTargets(ops);
+  constexpr bool use_to_orient = true;
+  result.setReferenceOutwardNormalDirection(tgt_crds, use_to_orient);
+  result.setCurvatureWeightingType(weighting_type);
+  result.setCurvatureWeightingParameter(params.manifold_weight_pwr);
+  result.generateAlphas();
   return result;
 }
 

@@ -56,6 +56,29 @@ struct PlanarRigidRotation {
   }
 };
 
+struct PlanarDeformationalFlow {
+  typedef PlaneGeometry geo;
+  static constexpr Int ndim = 2;
+  static constexpr Real TT = 5;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarDeformationalFlow() = default;
+
+  inline std::string name() const { return "PlanarDeformationalFlow"; }
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Tuple<Real, 2> operator()(const CV xy,
+                                                   const Real t = 0) const {
+    Tuple<Real, 2> result;
+    const Real gt = cos(constants::PI * t / TT);
+    result[0] = square(sin(constants::PI * xy[0])) *
+                sin(2 * constants::PI * xy[1]) * gt;
+    result[1] = -square(sin(constants::PI * xy[1])) *
+                sin(2 * constants::PI * xy[0]) * gt;
+    return result;
+  }
+};
+
 struct SphericalRigidRotation {
   typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
