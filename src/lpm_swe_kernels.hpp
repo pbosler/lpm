@@ -39,14 +39,14 @@ void ksigma_sphere(UType& u, const XType& x, const YType& y, const Real div_y, c
 
 template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
-void gradkzeta(Compressed3by3& gkz, const XType& x, const YType& y, const Real eps = 0) {
+void grad_kzeta(Compressed3by3& gkz, const XType& x, const YType& y, const Real eps = 0) {
   const Real epssq = square(eps);
   const Real denom = 1.0/(4*constants::PI * square(1-SphereGeometry::dot(x,y) + epssq));
 
   gkz[0] = ((1+epssq)*x[0] - y[0]) * (x[1]*y[2] - x[2]*y[1]); // grad kzeta matrix 1,1
   gkz[1] = (1 + epssq)*(-(1-square(x[1]))*y[2] - x[1]*x[2]*y[1]) + x[0]*y[0]*y[2] + x[2]*(square(y[1]) + square(y[2])); // grad kzeta matrix 1,2
   gkz[2] = (1 + epssq)*( (1-square(x[2]))*y[1] + x[1]*x[2]*y[2]) - x[0]*y[0]*y[1] - x[1]*(square(y[1]) + square(y[2])); // grad kzeta matrix 1,3
-  gkz[3] = (1 + epssq)*( (1-square(x[0]))*y[2] - x[0]*x[2]*y[0]) - x[1]*y[1]*y[2] - x[2]*(square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
+  gkz[3] = (1 + epssq)*( (1-square(x[0]))*y[2] + x[0]*x[2]*y[0]) - x[1]*y[1]*y[2] - x[2]*(square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
   gkz[4] = ((1+epssq)*x[1] - y[1]) * (x[2]*y[0] - x[0]*y[2]); // grad kzeta matrix 2,2
   gkz[5] = (1 + epssq)*(-(1-square(x[2]))*y[0] - x[0]*x[2]*y[2]) + x[1]*y[1]*y[0] + x[0]*(square(y[0]) + square(y[2])); // grad kzeta matrix 2,3
   gkz[6] = (1 + epssq)*(-(1-square(x[0]))*y[1] - x[0]*x[1]*y[0]) + x[2]*y[2]*y[1] + x[1]*(square(y[0]) + square(y[1])); // grad kzeta matrix 3,1
@@ -60,7 +60,7 @@ void gradkzeta(Compressed3by3& gkz, const XType& x, const YType& y, const Real e
 
 template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
-void gradksigma(Compressed3by3& gks, const XType& x,  const YType& y, const Real eps = 0) {
+void grad_ksigma(Compressed3by3& gks, const XType& x,  const YType& y, const Real eps = 0) {
   const Real epssq = square(eps);
   const Real denom = 1.0/(4*constants::PI * square(1-SphereGeometry::dot(x,y) + epssq));
 
@@ -80,7 +80,7 @@ void gradksigma(Compressed3by3& gks, const XType& x,  const YType& y, const Real
 
   gks[7] = 2*x[0]*x[1]*x[2]*y[0] + 2*epssq*x[0]*x[1]*x[2]*y[0] - square(x[0])*x[1]*x[2]*square(y[0]) - x[2]*y[1] - epssq*x[2]*y[1] + 2*square(x[1])*x[2]*y[1] + 2*epssq*square(x[1])*x[2]*y[1] - 2*x[0]*square(x[1])*x[2]*y[0]*y[1] - cube(x[1])*x[2]*square(y[1]) + 2*x[1]*square(x[2])*y[2] + 2*epssq*x[1]*square(x[2])*y[2] - x[0]*x[1]*y[0]*y[2] - 2*x[0]*x[1]*square(x[2])*y[0]*y[2] + y[1]*y[2] - square(x[1])*y[1]*y[2] - 2*square(x[1])*square(x[2])*y[1]*y[2] - x[1]*x[2]*square(y[2]) - x[1]*cube(x[2])*square(y[2]);
 
-  gks[8] = -x[0]*y[0] - epssq*x[0]*y[0] + 2*x[0]*square(x[2])*y[0] + 2*epssq*x[0]*square(x[2])*y[0] + square(x[0])*square(y[0])*-square(x[0])*square(x[2])*square(y[0]) - x[1]*y[1] - epssq*x[1]*y[1] + 2*x[1]*square(x[2])*y[1] + 2*epssq*x[1]*square(x[2])*y[1] + 2*x[0]*x[1]*y[0]*y[1] - 2*x[0]*x[1]*square(x[2])*y[0]*y[1] + square(x[1])*square(y[1]) - square(x[1])*square(x[2])*square(y[1]) - 2*x[2]*y[2] - 2*epssq*x[2]*y[2] + 2*cube(x[2])*y[2] + 2*epssq*cube(x[2])*y[2] + x[0]*x[2]*y[0]*y[2] - 2*x[0]*cube(x[2])*y[0]*y[2] + x[1]*x[2]*y[1]*y[2] - 2*x[1]*cube(x[2])*y[1]*y[2] + square(y[2]) - square(square(x[2]))*square(y[2]);
+  gks[8] = -x[0]*y[0] - epssq*x[0]*y[0] + 2*x[0]*square(x[2])*y[0] + 2*epssq*x[0]*square(x[2])*y[0] + square(x[0])*square(y[0]) - square(x[0])*square(x[2])*square(y[0]) - x[1]*y[1] - epssq*x[1]*y[1] + 2*x[1]*square(x[2])*y[1] + 2*epssq*x[1]*square(x[2])*y[1] + 2*x[0]*x[1]*y[0]*y[1] - 2*x[0]*x[1]*square(x[2])*y[0]*y[1] + square(x[1])*square(y[1]) - square(x[1])*square(x[2])*square(y[1]) - 2*x[2]*y[2] - 2*epssq*x[2]*y[2] + 2*cube(x[2])*y[2] + 2*epssq*cube(x[2])*y[2] + x[0]*x[2]*y[0]*y[2] - 2*x[0]*cube(x[2])*y[0]*y[2] + x[1]*x[2]*y[1]*y[2] - 2*x[1]*cube(x[2])*y[1]*y[2] + square(y[2]) - square(square(x[2]))*square(y[2]);
 
   for (Short j=0; j<9; ++j) {
     gks[j] *= denom;

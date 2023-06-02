@@ -79,6 +79,31 @@ TEST_CASE("kernel values", "") {
   logger.info("ksigma0 . x = {}", ks0_dot_x);
   logger.info("ksigma1 . x = {}", ks1_dot_x);
 
+  const Real grad_kzeta_exact[9] = {0.40473666151212280247, -0.53131662597042255196,  0.21608551568911567310, -0.83791439363248985370, 0.82834755502308796106, 0.016331615064627251330, 0.43214450841002140895, 0.29017950208810278985, -1.2330842165352107635};
+
+  Real gkz0[9];
+  Real gkz1[9];
+  grad_kzeta(gkz0, x, y, eps0);
+  grad_kzeta(gkz1, x, y, eps1);
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      logger.info("gradkzeta0[{}] = {}", 3*i + j, gkz0[3*i+j]);
+    }
+  }
+
+  const Real grad_ksigma_exact[9] = {0.39010639734131174212, -0.020240461517800895467, -0.63140064717422376023, -0.34028755417387752068, -0.28570943666391770862, 1.0686437080615732960, -0.93649234069680925204, 0.95103126081883890383, -0.024819489131446365611};
+
+  Real gks0[9];
+  Real gks1[9];
+  grad_ksigma(gks0, x, y, eps0);
+  grad_ksigma(gks1, x, y, eps1);
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      const int idx = 3*i + j;
+      logger.info("gradksigma[{}] = {}", idx, gks0[idx]);
+    }
+  }
+
   for (int i=0; i<3; ++i) {
     CHECK( kzeta0[i] == Approx(kzeta_exact[i]) );
     CHECK( kzeta1[i] == Approx(kzeta_exact[i]).epsilon(20*square(eps1)) );
@@ -88,5 +113,10 @@ TEST_CASE("kernel values", "") {
     CHECK( FloatingPoint<Real>::zero(kz1_dot_x) );
     CHECK( FloatingPoint<Real>::zero(ks0_dot_x) );
     CHECK( FloatingPoint<Real>::zero(ks1_dot_x) );
+    for (int j=0; j<3; ++j) {
+      const int idx = i*3 + j;
+      CHECK( gkz0[idx] == Approx(grad_kzeta_exact[idx] ) );
+      CHECK( gks0[idx] == Approx(grad_ksigma_exact[idx]) );
+    }
   }
 }
