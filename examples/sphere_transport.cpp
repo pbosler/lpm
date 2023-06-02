@@ -23,6 +23,7 @@
 #include "util/lpm_string_util.hpp"
 #include "fortran/lpm_ssrfpack_interface.hpp"
 #include "fortran/lpm_ssrfpack_interface_impl.hpp"
+#include "util/lpm_progress_bar.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -31,6 +32,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 using namespace Lpm;
 
@@ -62,20 +64,30 @@ typedef SphericalGaussianHills tracer_type;
 struct Input {
   Input(int argc, char* argv[]);
   Real dt;
+  static constexpr Real dt_default = 0.05;
   Real tfinal;
+  static constexpr Real tf_default = 5;
   Int nsteps;
+  static constexpr Int nsteps_default = 100;
   std::string base_output_name;
   Int init_depth;
+  static constexpr Int init_depth_default = 4;
   Int amr_limit;
+  static constexpr Int amr_limit_default = 0;
   Int amr_max;
+  static constexpr Int amr_max_default = 0;
   Int remesh_interval;
+  static constexpr Int remesh_interval_default = 20;
   Int reset_lagrangian_interval;
+  static constexpr Int reset_lagrangian_interval_default = LPM_NULL_IDX;
   Int output_interval;
+  static constexpr Int output_interval_default = 1;
   std::string output_dir;
   Real tracer_mass_tol;
   Real tracer_var_tol;
   Real radius;
   Int gmls_order;
+  static constexpr Int gmls_order_default = 5;
 
   bool help_and_exit;
   std::string info_string() const;
@@ -246,6 +258,7 @@ int main(int argc, char* argv[]) {
     const std::vector<Compadre::TargetOperation> gmls_ops({Compadre::VectorPointEvaluation});
 
     logger.debug("initiating time step loop.");
+    ProgressBar progress("sphere_transport", input.nsteps);
     for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
 
       /**
@@ -364,6 +377,7 @@ int main(int argc, char* argv[]) {
 
       /// time step
       solver->template advance_timestep<velocity_type>();
+      progress.update();
       logger.debug("time step {} of {}; t = {}", sphere->t_idx, input.nsteps, sphere->t);
 
 #ifdef LPM_USE_VTK
@@ -427,10 +441,10 @@ int main(int argc, char* argv[]) {
 }
 
 Input::Input(int argc, char* argv[]) {
-  dt = 0.0125;
+  dt = 0.05;
   tfinal = 5;
   nsteps = 400;
-  base_output_name = "sphere_transport_amr_";
+  base_output_name = "transport_";
   init_depth = 4;
   amr_limit = 0;
   amr_max = 1;
@@ -438,7 +452,7 @@ Input::Input(int argc, char* argv[]) {
   tracer_var_tol = 0.15;
   remesh_interval = 20;
   reset_lagrangian_interval = LPM_NULL_IDX;
-  output_interval = 8;
+  output_interval = 1;
   output_dir = "";
   help_and_exit = false;
   radius = 1;
@@ -493,6 +507,9 @@ Input::Input(int argc, char* argv[]) {
       gmls_order = std::stoi(argv[++i]);
       LPM_REQUIRE(gmls_order >= 2);
     }
+    else {
+      throw std::invalid_argument(token);
+    }
   }
   if (use_nsteps) {
     dt = tfinal / nsteps;
@@ -526,37 +543,40 @@ std::string Input::usage() const {
   auto tabstr = indent_string(1);
   ss << tabstr << "optional arguments:\n";
   ss << tabstr
-     << "-dt [nonnegative real number] time step size (default: 0.03); this will be overridden by -nsteps if both are present.\n";
+     << "-dt [nonnegative real number] time step size (default: "
+     << dt_default << "); "
+     << "this will be overridden by -nsteps if both are present.\n";
   ss << tabstr
      << "-tf [nonnegative real number] final time for integration (default: "
-        "5)\n";
+     << tf_default << ")\n";
   ss << tabstr << "-nsteps [nonnegative integer] number of timesteps.\n";
   ss << tabstr
      << "-o [string] output filename root (default: "
         "\"sphere_transport_amr_example\"\n";
   ss << tabstr
      << "-d [nonnegative integer] initial depth of mesh quadtree (default: "
-        "4)\n";
+     << init_depth_default << ")\n";
   ss << tabstr
      << "-amr [nonnegative integer] number of uniform refinements beyond "
         "initial depth to allocate memory for; values > 0 will enable adaptive "
         "refinement (default: 0)\n";
   ss << tabstr
      << "-amr_max [nonnegative integer] maximum number of times a panel may be "
-        "divided (default: 1)\n.";
+     << "divided (default: 1)\n.";
   ss << tabstr
      << "-mass_tol [positive real number] threshold for local tracer integral "
-        "refinement criterion; not used if amr = 0 (default: 0.1)\n";
+     << "refinement criterion; not used if amr = 0 (default: 0.1)\n";
   ss << tabstr
      << "-var_tol [positive real number] threshold for local tracer variation "
-        "refinement criterion; not used if amr = 0 (default: 0.15).\n";
+     <<  "refinement criterion; not used if amr = 0 (default: 0.15).\n";
   ss << tabstr
      << "-rf [positive integer or -1] frequency of remesh/remap "
         "interpolations; setting value to -1 will disable remeshing (default: "
-        "20)\n";
+     << remesh_interval_default << ")\n";
   ss << tabstr
      << "-of [positive integer or -1] frequency of vtk output; setting value "
-        "to -1 will disable vtk output (default: 1)\n";
+        "to -1 will disable vtk output (default: "
+     << output_interval_default << ")\n";
   ss << tabstr
      << "-reset [positive integer] number of remeshing steps to allow before creating a new reference (default: disabled)\n";
   ss << tabstr

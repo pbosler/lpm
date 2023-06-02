@@ -7,7 +7,7 @@
 
 namespace Lpm {
 
-/** @brief Evaluates the Poisson equation's Green's function for SpherePoisson
+/** @brief Green's function for SpherePoisson
 
   Returns \f$ g(x,y)f(y)A(y),\f$ where \f$ g(x,y) = -log(1-x\cdot y)/(4\pi) \f$.
 
