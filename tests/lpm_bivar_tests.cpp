@@ -108,12 +108,12 @@ struct BivarConvergenceTest {
       pm.allocate_scalar_tracer("tracer_interp");
       pm.allocate_scalar_tracer("tracer_error");
 
-      dxs.push_back(pm.appx_mesh_size());
+      dxs.push_back(pm.mesh.appx_mesh_size());
 
       /*
         Collect only active faces and vertices (no divided faces)
       */
-      GatherMeshData<SeedType> gathered_data(pm);
+      GatherMeshData<SeedType> gathered_data(pm.mesh);
       gathered_data.unpack_coordinates();
       gathered_data.init_scalar_fields(pm.tracer_verts, pm.tracer_faces);
       gathered_data.gather_scalar_fields(pm.tracer_verts, pm.tracer_faces);
@@ -153,7 +153,7 @@ struct BivarConvergenceTest {
       logger.debug("finished mesh interp");
       logger.info(bivar_mesh.info_string());
 
-      ScatterMeshData<SeedType> scatter(gathered_data, pm);
+      ScatterMeshData<SeedType> scatter(gathered_data, pm.mesh);
       scatter.scatter_fields(pm.tracer_verts, pm.tracer_faces);
 
       compute_error(pm.tracer_verts.at("tracer_error").view,
@@ -163,7 +163,7 @@ struct BivarConvergenceTest {
       ErrNorms face_interp_err(pm.tracer_faces.at("tracer_error").view,
         pm.tracer_faces.at("tracer_interp").view,
         pm.tracer_faces.at(tracer.name()).view,
-        pm.faces.area);
+        pm.mesh.faces.area);
 
       logger.info("face interp error : {}", face_interp_err.info_string());
       face_interp_l1.push_back(face_interp_err.l1);
@@ -172,7 +172,7 @@ struct BivarConvergenceTest {
 
 
 #ifdef LPM_USE_VTK
-      VtkPolymeshInterface<SeedType> vtk(pm);
+      VtkPolymeshInterface<SeedType> vtk(pm.mesh);
       vtk.add_scalar_point_data(pm.tracer_verts.at(tracer.name()).view);
       vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_interp").view);
       vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_error").view);

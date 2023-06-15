@@ -42,7 +42,7 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
   std::vector<Real> lap_l2;
   std::vector<Real> lap_linf;
 
-  typedef typename pse::BivariateOrder8 pse_type;
+  using pse_type = pse::BivariateOrder8<typename SeedType::geo>;
 
   PSEConvergenceTest(const int sd, const int ed, const Real r) :
     start_depth(sd),
@@ -52,9 +52,11 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
   void run() {
     Comm comm;
 
-    PlanarGaussian tracer;
+    typename std::conditional<
+      std::is_same<typename SeedType::geo, PlaneGeometry>::value,
+      PlanarGaussian, SphereXYZTrigTracer>::type tracer;
 
-    Logger<> logger("pse_planar_conv", Log::level::debug, comm);
+    Logger<> logger("pse_conv", Log::level::debug, comm);
     logger.debug("test run called.");
 
     for (int i=0; i< (end_depth-start_depth) + 1; ++i) {
@@ -62,7 +64,7 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       const int depth = start_depth + i;
 
       std::ostringstream ss;
-      ss << "pse_planar_conv_" << SeedType::id_string() << depth;
+      ss << "pse_conv_" << SeedType::id_string() << depth;
       const auto test_name = ss.str();
       ss.str("");
 
@@ -83,27 +85,27 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       pm->allocate_scalar_tracer("tracer_laplacian_error");
 
       const auto rlap_verts = pm->tracer_verts.at("tracer_laplacian").view;
-      const auto vlxy = pm->vertices.lag_crds.view;
-      Kokkos::parallel_for(pm->vertices.nh(), KOKKOS_LAMBDA (const Index i) {
+      const auto vlxy = pm->mesh.vertices.lag_crds.view;
+      Kokkos::parallel_for(pm->mesh.vertices.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(vlxy, i, Kokkos::ALL);
         rlap_verts(i) = tracer.laplacian(xy);
       });
       const auto rlap_faces = pm->tracer_faces.at("tracer_laplacian").view;
-      const auto flxy = pm->faces.lag_crds.view;
-      Kokkos::parallel_for(pm->faces.nh(), KOKKOS_LAMBDA (const Index i) {
+      const auto flxy = pm->mesh.faces.lag_crds.view;
+      Kokkos::parallel_for(pm->mesh.faces.nh(), KOKKOS_LAMBDA (const Index i) {
         const auto xy = Kokkos::subview(flxy, i, Kokkos::ALL);
         rlap_faces(i) = tracer.laplacian(xy);
       });
 
-      Kokkos::TeamPolicy<> vertex_policy(pm->vertices.nh(), Kokkos::AUTO());
-      Kokkos::TeamPolicy<> face_policy(pm->faces.nh(), Kokkos::AUTO());
+      Kokkos::TeamPolicy<> vertex_policy(pm->mesh.vertices.nh(), Kokkos::AUTO());
+      Kokkos::TeamPolicy<> face_policy(pm->mesh.faces.nh(), Kokkos::AUTO());
 
-      dxs.push_back(pm->appx_mesh_size());
+      dxs.push_back(pm->mesh.appx_mesh_size());
       const auto pse_epsilon = pse_type::epsilon(dxs[i]);
 
-      const auto verts_tracer = pm->tracer_verts.at("PlanarGaussian").view;
-      const auto faces_tracer = pm->tracer_faces.at("PlanarGaussian").view;
-      const auto face_area = pm->faces.area;
+      const auto verts_tracer = pm->tracer_verts.at(tracer.name()).view;
+      const auto faces_tracer = pm->tracer_faces.at(tracer.name()).view;
+      const auto face_area = pm->mesh.faces.area;
 
       auto verts_pse_interp = pm->tracer_verts.at("tracer_pse").view;
       auto verts_pse_lap = pm->tracer_verts.at("tracer_pse_laplacian").view;
@@ -112,16 +114,16 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
 
       Kokkos::parallel_for(vertex_policy,
         pse::ScalarInterpolation<pse_type>(verts_pse_interp, vlxy, flxy,
-          faces_tracer, face_area, pse_epsilon, pm->faces.nh()));
+          faces_tracer, face_area, pse_epsilon, pm->mesh.faces.nh()));
       Kokkos::parallel_for(vertex_policy,
         pse::ScalarLaplacian<pse_type>(verts_pse_lap, vlxy, flxy,
-          verts_tracer, faces_tracer, face_area, pse_epsilon, pm->faces.nh()));
+          verts_tracer, faces_tracer, face_area, pse_epsilon, pm->mesh.faces.nh()));
       Kokkos::parallel_for(face_policy,
         pse::ScalarInterpolation<pse_type>(faces_pse_interp, flxy, flxy, faces_tracer,
-          face_area, pse_epsilon, pm->faces.nh()));
+          face_area, pse_epsilon, pm->mesh.faces.nh()));
       Kokkos::parallel_for(face_policy,
         pse::ScalarLaplacian<pse_type>(faces_pse_lap, flxy, flxy, faces_tracer, faces_tracer,
-          face_area, pse_epsilon, pm->faces.nh()));
+          face_area, pse_epsilon, pm->mesh.faces.nh()));
 
       auto vert_interp_error = pm->tracer_verts.at("tracer_error").view;
       auto vert_lap_error = pm->tracer_verts.at("tracer_laplacian_error").view;
@@ -155,6 +157,10 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
       lap_l2.push_back(lap_err.l2);
       lap_linf.push_back(lap_err.linf);
 
+      logger.info("dx = {}, pse_epsilon = {}", dxs[i], pse_epsilon);
+      logger.info(interp_err.info_string());
+      logger.info(lap_err.info_string());
+
       timer.stop();
       logger.info(timer.info_string());
     }
@@ -180,16 +186,19 @@ template <typename VelocityType, typename SeedType> struct PSEConvergenceTest {
 TEST_CASE("planar mesh", "") {
   const int start_depth = 2;
   int end_depth = 3;
-  const Real radius = 6;
 
   auto& ts = TestSession::get();
-  if (ts.params.find("end_depth") != ts.params.end()) {
-    end_depth = std::stoi(ts.params["end_depth"]);
+  if (ts.params.find("end-depth") != ts.params.end()) {
+    end_depth = std::stoi(ts.params["end-depth"]);
+  }
+  for (const auto& p : ts.params) {
+    std::cout << p.first << " = " << p.second << "\n";
   }
 
   SECTION("triangular panels") {
     typedef TriHexSeed seed_type;
     typedef PlanarConstantEastward velocity_type;
+    const Real radius = 6;
 
     PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
     pse_test.run();
@@ -198,8 +207,29 @@ TEST_CASE("planar mesh", "") {
   SECTION("quadrilateral panels") {
     typedef QuadRectSeed seed_type;
     typedef PlanarConstantEastward velocity_type;
+    const Real radius = 6;
 
     PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
     pse_test.run();
   }
+
+  SECTION("triangular panels") {
+    typedef IcosTriSphereSeed seed_type;
+    typedef SphericalRigidRotation velocity_type;
+    const Real radius = 1;
+
+    PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
+    pse_test.run();
+  }
+
+  SECTION("quadrilateral panels") {
+    typedef CubedSphereSeed seed_type;
+    typedef SphericalRigidRotation velocity_type;
+    const Real radius = 1;
+
+    PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
+    pse_test.run();
+  }
+
+
 }

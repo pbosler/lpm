@@ -139,10 +139,10 @@ int main(int argc, char* argv[]) {
       */
       Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
 
-      auto face_area = sphere->faces.area;
+      auto face_area = sphere->mesh.faces.area;
       auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
-      auto face_mask = sphere->faces.mask;
-      ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, sphere->n_faces_host(), input.tracer_mass_tol);
+      auto face_mask = sphere->mesh.faces.mask;
+      ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, sphere->mesh.n_faces_host(), input.tracer_mass_tol);
       mass_flag.set_tol_from_relative_value();
       tracer_mass_tol = mass_flag.tol;
       const Real max_tracer_mass = mass_flag.tol / input.tracer_mass_tol;
@@ -155,9 +155,9 @@ int main(int argc, char* argv[]) {
 
 
       auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
-      auto face_verts = sphere->faces.verts;
+      auto face_verts = sphere->mesh.faces.verts;
 
-      ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, sphere->n_faces_host(), input.tracer_var_tol);
+      ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, sphere->mesh.n_faces_host(), input.tracer_var_tol);
       var_flag.set_tol_from_relative_value();
       tracer_var_tol = var_flag.tol;
       const Real max_tracer_var = var_flag.tol / input.tracer_var_tol;
@@ -175,8 +175,8 @@ int main(int argc, char* argv[]) {
       Index verts_start_idx = 0;
       Index faces_start_idx = 0;
       for (int i = 0; i < input.amr_max; ++i) {
-        Index verts_end_idx = sphere->n_vertices_host();
-        Index faces_end_idx = sphere->n_faces_host();
+        Index verts_end_idx = sphere->mesh.n_vertices_host();
+        Index faces_end_idx = sphere->mesh.n_faces_host();
 
         /// refinement criterion 1: mass per face, designed to refine local
         /// maxima
@@ -185,7 +185,7 @@ int main(int argc, char* argv[]) {
             mass_flag);
         Index mass_refinement_count;
         Kokkos::parallel_reduce(
-            sphere->n_faces_host(),
+            sphere->mesh.n_faces_host(),
             KOKKOS_LAMBDA(const Index i, Index& ct) { ct += Index(flags(i)); },
             mass_refinement_count);
         logger.info("amr iteration {}: initial mass_refinement_count = {}", i,
@@ -198,7 +198,7 @@ int main(int argc, char* argv[]) {
             var_flag);
         Index total_refinement_count;
         Kokkos::parallel_reduce(
-            sphere->n_faces_host(),
+            sphere->mesh.n_faces_host(),
             KOKKOS_LAMBDA(const Index i, Index& ct) { ct += Index(flags(i)); },
             total_refinement_count);
 
@@ -206,7 +206,7 @@ int main(int argc, char* argv[]) {
                     total_refinement_count - mass_refinement_count);
 
         /// divide all flagged faces
-        sphere->divide_flagged_faces(flags, logger);
+        sphere->mesh.divide_flagged_faces(flags, logger);
         /// reset flags for next iteration
         Kokkos::deep_copy(flags, false);
         /// set scalar values on new faces
@@ -220,7 +220,7 @@ int main(int argc, char* argv[]) {
       */
       Real min_area;
       Kokkos::parallel_reduce(
-          sphere->n_faces_host(),
+          sphere->mesh.n_faces_host(),
           KOKKOS_LAMBDA(const Index i, Real& ar) {
             if (!face_mask(i)) {
               ar = (face_area(i) < ar ? face_area(i) : ar);
@@ -274,7 +274,7 @@ int main(int argc, char* argv[]) {
           new_sphere->allocate_scalar_tracer(tracer.name());
 
           /// gather data from current (source) mesh
-          GatherMeshData<seed_type> gather_src(*sphere);
+          GatherMeshData<seed_type> gather_src(sphere->mesh);
           gather_src.unpack_coordinates();
           logger.debug("created gather object");
           gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
@@ -290,7 +290,7 @@ int main(int argc, char* argv[]) {
             logger.debug("initiating remesh {} to t=0", remesh_ctr);
 
             SSRFPackInterface ssrfpack(gather_src);
-            ssrfpack.interpolate_lag_crds(*new_sphere);
+            ssrfpack.interpolate_lag_crds(new_sphere->mesh);
             new_sphere->update_device();
             new_sphere->set_tracer_from_lag_crds(tracer);
 
@@ -299,19 +299,19 @@ int main(int argc, char* argv[]) {
 
               Index verts_start_idx = 0;
               Index faces_start_idx = 0;
-              auto face_area = new_sphere->faces.area;
+              auto face_area = new_sphere->mesh.faces.area;
               auto face_tracer = new_sphere->tracer_faces.at(tracer.name()).view;
-              auto face_mask = new_sphere->faces.mask;
+              auto face_mask = new_sphere->mesh.faces.mask;
               auto vert_tracer = new_sphere->tracer_verts.at(tracer.name()).view;
-              auto face_verts = new_sphere->faces.verts;
+              auto face_verts = new_sphere->mesh.faces.verts;
 
-              ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, new_sphere->n_faces_host(), tracer_mass_tol);
+              ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, new_sphere->mesh.n_faces_host(), tracer_mass_tol);
 
-              ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, new_sphere->n_faces_host(), tracer_var_tol);
+              ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, new_sphere->mesh.n_faces_host(), tracer_var_tol);
 
               for (int i=0; i<input.amr_max; ++i) {
-                Index verts_end_idx = new_sphere->n_vertices_host();
-                Index faces_end_idx = new_sphere->n_faces_host();
+                Index verts_end_idx = new_sphere->mesh.n_vertices_host();
+                Index faces_end_idx = new_sphere->mesh.n_faces_host();
 
                 Kokkos::parallel_for(
                   Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
@@ -338,9 +338,9 @@ int main(int argc, char* argv[]) {
                 logger.info("remesh {}, amr iter. {} : mass refine count = {}, variation refine count = {}",
                   remesh_ctr, i, mass_refinement_count, total_refinement_count - mass_refinement_count);
 
-                new_sphere->divide_flagged_faces(flags, logger);
+                new_sphere->mesh.divide_flagged_faces(flags, logger);
 
-                ssrfpack.interpolate_lag_crds(*new_sphere, verts_start_idx, faces_start_idx);
+                ssrfpack.interpolate_lag_crds(new_sphere->mesh, verts_start_idx, faces_start_idx);
                 new_sphere->update_device();
                 new_sphere->set_tracer_from_lag_crds(tracer, verts_start_idx, faces_start_idx);
 
@@ -390,20 +390,20 @@ int main(int argc, char* argv[]) {
     } // time step loop
 
     /// compute tracer error
-    Kokkos::View<Real*> tracer_error_faces("tracer_error", sphere->n_faces_host());
-    Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->n_vertices_host());
+    Kokkos::View<Real*> tracer_error_faces("tracer_error", sphere->mesh.n_faces_host());
+    Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->mesh.n_vertices_host());
     const auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
     const auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
-    const auto crd_verts = sphere->vertices.phys_crds.view;
-    const auto crd_faces = sphere->faces.phys_crds.view;
-    const auto face_mask = sphere->faces.mask;
-    Kokkos::parallel_for("compute_tracer_error_verts", sphere->n_vertices_host(),
+    const auto crd_verts = sphere->mesh.vertices.phys_crds.view;
+    const auto crd_faces = sphere->mesh.faces.phys_crds.view;
+    const auto face_mask = sphere->mesh.faces.mask;
+    Kokkos::parallel_for("compute_tracer_error_verts", sphere->mesh.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {
         const auto mcrd = Kokkos::subview(crd_verts, i, Kokkos::ALL);
         tracer_error_verts(i) = vert_tracer(i) - tracer(mcrd);
       });
-    Kokkos::View<Real*> tracer_exact_faces("tracer_exact", sphere->n_faces_host());
-    Kokkos::parallel_for("compute_tracer_exact_faces", sphere->n_faces_host(),
+    Kokkos::View<Real*> tracer_exact_faces("tracer_exact", sphere->mesh.n_faces_host());
+    Kokkos::parallel_for("compute_tracer_exact_faces", sphere->mesh.n_faces_host(),
       KOKKOS_LAMBDA (const Index i) {
         if (!face_mask(i)) {
           const auto mcrd = Kokkos::subview(crd_faces, i, Kokkos::ALL);
@@ -411,13 +411,13 @@ int main(int argc, char* argv[]) {
         }
       });
     const auto face_tracer_err_norms = ErrNorms(tracer_error_faces,
-      Kokkos::subview(face_tracer, std::make_pair(0, sphere->n_faces_host())),
+      Kokkos::subview(face_tracer, std::make_pair(0, sphere->mesh.n_faces_host())),
       tracer_exact_faces,
-      Kokkos::subview(sphere->faces.area, std::make_pair(0, sphere->n_faces_host())),
-      Kokkos::subview(sphere->faces.mask, std::make_pair(0, sphere->n_faces_host())));
+      Kokkos::subview(sphere->mesh.faces.area, std::make_pair(0, sphere->mesh.n_faces_host())),
+      Kokkos::subview(sphere->mesh.faces.mask, std::make_pair(0, sphere->mesh.n_faces_host())));
 
     logger.info("Face tracer error : nsteps = {}, n_faces_final = {}, l1 = {}, l2 = {}, linf = {}",
-      input.nsteps, sphere->faces.n_leaves_host(), face_tracer_err_norms.l1, face_tracer_err_norms.l2,
+      input.nsteps, sphere->mesh.faces.n_leaves_host(), face_tracer_err_norms.l1, face_tracer_err_norms.l2,
       face_tracer_err_norms.linf);
 
 

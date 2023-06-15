@@ -115,12 +115,12 @@ struct SSRFPackConvergenceTest {
       pm.allocate_scalar_tracer("tracer_interp");
       pm.allocate_scalar_tracer("tracer_error");
 
-      dxs.push_back(pm.appx_mesh_size());
+      dxs.push_back(pm.mesh.appx_mesh_size());
 
       /*
       collect only active faces and vertices (no divided faces)
       */
-      GatherMeshData<SeedType> gathered(pm);
+      GatherMeshData<SeedType> gathered(pm.mesh);
       gathered.unpack_coordinates();
       gathered.init_scalar_fields(pm.tracer_verts, pm.tracer_faces);
       gathered.gather_scalar_fields(pm.tracer_verts, pm.tracer_faces);
@@ -136,9 +136,9 @@ struct SSRFPackConvergenceTest {
       logger.info(ssrfpack.info_string());
       ssrfpack.interpolate(ll.h_pts, ll_map);
 
-      ssrfpack.interpolate(pm, pm.tracer_verts, pm.tracer_faces);
+      ssrfpack.interpolate(pm.mesh, pm.tracer_verts, pm.tracer_faces);
 
-      ssrfpack.interpolate(opm, opm.tracer_verts, opm.tracer_faces);
+      ssrfpack.interpolate(opm.mesh, opm.tracer_verts, opm.tracer_faces);
 
       compute_error(pm.tracer_verts.at("tracer_error").view,
                     pm.tracer_verts.at("tracer_interp").view,
@@ -153,12 +153,12 @@ struct SSRFPackConvergenceTest {
       ErrNorms self_face_interp_err(pm.tracer_faces.at("tracer_error").view,
         pm.tracer_faces.at("tracer_interp").view,
         pm.tracer_faces.at(tracer.name()).view,
-        pm.faces.area);
+        pm.mesh.faces.area);
 
       ErrNorms other_face_interp_err(opm.tracer_faces.at("tracer_error").view,
         opm.tracer_faces.at("tracer_interp").view,
         opm.tracer_faces.at(tracer.name()).view,
-        opm.faces.area);
+        opm.mesh.faces.area);
 
       logger.info("ll interp error: {}", ll_err_norms.info_string());
       logger.info("self face interp error: {}", self_face_interp_err.info_string());
@@ -177,7 +177,7 @@ struct SSRFPackConvergenceTest {
       face_linf.push_back(other_face_interp_err.linf);
 
 #ifdef LPM_USE_VTK
-      VtkPolymeshInterface<SeedType> vtk(pm);
+      VtkPolymeshInterface<SeedType> vtk(pm.mesh);
       vtk.add_scalar_point_data(pm.tracer_verts.at(tracer.name()).view);
       vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_interp").view);
       vtk.add_scalar_point_data(pm.tracer_verts.at("tracer_error").view);
@@ -186,7 +186,7 @@ struct SSRFPackConvergenceTest {
       vtk.add_scalar_cell_data(pm.tracer_faces.at("tracer_error").view);
       vtk.write(test_name + vtp_suffix());
 
-      VtkPolymeshInterface<OtherSeedType> ovtk(opm);
+      VtkPolymeshInterface<OtherSeedType> ovtk(opm.mesh);
       ovtk.add_scalar_point_data(opm.tracer_verts.at(tracer.name()).view);
       ovtk.add_scalar_point_data(opm.tracer_verts.at("tracer_interp").view);
       ovtk.add_scalar_point_data(opm.tracer_verts.at("tracer_error").view);

@@ -26,8 +26,8 @@ class Transport2dRK4 {
   Transport2dRK4(const Real timestep, TransportMesh2d<SeedType>& m)
       : tmesh(m),
         dt(timestep),
-        nverts(m.n_vertices_host()),
-        nfaces(m.n_faces_host()) {
+        nverts(m.mesh.n_vertices_host()),
+        nfaces(m.mesh.n_faces_host()) {
     init();
   }
 

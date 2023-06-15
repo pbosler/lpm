@@ -28,11 +28,11 @@ struct RK4Update {
 
 template <typename SeedType>
 void Transport2dRK4<SeedType>::init() {
-  vertx = Kokkos::subview(tmesh.vertices.phys_crds.view,
+  vertx = Kokkos::subview(tmesh.mesh.vertices.phys_crds.view,
                           std::make_pair(0, nverts), Kokkos::ALL);
   vertvel = Kokkos::subview(tmesh.velocity_verts.view,
                             std::make_pair(0, nverts), Kokkos::ALL);
-  facex = Kokkos::subview(tmesh.faces.phys_crds.view, std::make_pair(0, nfaces),
+  facex = Kokkos::subview(tmesh.mesh.faces.phys_crds.view, std::make_pair(0, nfaces),
                           Kokkos::ALL);
   facevel = Kokkos::subview(tmesh.velocity_faces.view,
                             std::make_pair(0, nfaces), Kokkos::ALL);
