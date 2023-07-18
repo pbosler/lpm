@@ -24,6 +24,7 @@ set(LPM_SOURCES
                 lpm_error.cpp
                 lpm_field.cpp
                 lpm_lat_lon_pts.cpp
+                lpm_dfs_grid.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp

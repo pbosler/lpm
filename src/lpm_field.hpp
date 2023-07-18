@@ -12,6 +12,10 @@ namespace Lpm {
 
 // define the locations where field data "live" in the sense of numerical
 // methods
+// ParticleField and VertexField imply that field data (e.g., velocity and vorticity) are
+// colocated with grid points.
+// EdgeFields are collocated with edge midpoints.
+// FaceField can be used for cell-based quantities or for staggering.
 enum FieldLocation { ParticleField, VertexField, EdgeField, FaceField };
 
 // repeat the enums here to facilitate range-based iteration over the enum

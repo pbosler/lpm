@@ -67,6 +67,8 @@ CreateUnitTest(bivar lpm_bivar_tests.cpp)
 
 CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)
 
+CreateUnitTest(dfs_grid lpm_dfs_grid_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)
