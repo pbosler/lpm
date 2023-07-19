@@ -10,7 +10,6 @@ KOKKOS=$HOME/kokkos-debug/install
 #   git clone git@github.com:pbosler/COMPOSE.git compose
 #   cd compose
 #   git checkout lpm-tpl
-COMPADRE_SRC=$HOME/compadre
 COMPOSE_SRC=$HOME/compose
 
 cmake \
