@@ -6,7 +6,7 @@
 #include "lpm_constants.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <typeinfo>
 #include <fstream>
 #include <string>

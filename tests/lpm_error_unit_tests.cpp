@@ -4,7 +4,7 @@
 #include "lpm_error.hpp"
 #include "lpm_error_impl.hpp"
 #include "Kokkos_Core.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace Lpm;
 

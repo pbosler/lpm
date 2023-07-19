@@ -1,10 +1,8 @@
-#define CATCH_CONFIG_RUNNER
-
 #include <mpi.h>
 
 #include "Kokkos_Core.hpp"
 #include "LpmConfig.h"
-#include "catch.hpp"
+#include "catch2/catch_session.hpp"
 #include "lpm_assert.hpp"
 #include "lpm_test_utils.hpp"
 

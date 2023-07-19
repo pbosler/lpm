@@ -1,5 +1,5 @@
 #include "lpm_logger.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 #include <fstream>
 

@@ -8,7 +8,7 @@
 #include "lpm_logger.hpp"
 #include "lpm_constants.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace Lpm;
 

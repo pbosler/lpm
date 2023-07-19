@@ -6,7 +6,7 @@
 #include "lpm_coords_impl.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "mesh/lpm_vertices_impl.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <vector>
 
 using namespace Lpm;
