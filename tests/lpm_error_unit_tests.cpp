@@ -5,8 +5,11 @@
 #include "lpm_error_impl.hpp"
 #include "Kokkos_Core.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 using namespace Lpm;
+
+using Catch::Approx;
 
 TEST_CASE("error norms", "") {
   Comm comm;

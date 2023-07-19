@@ -23,10 +23,13 @@
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <memory>
 #include <sstream>
 
 using namespace Lpm;
+
+using Catch::Approx;
 
 struct PlanePolyMeshFnUnitTest {
   int depth;
