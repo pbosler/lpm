@@ -16,7 +16,7 @@
 #include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <memory>
 
 

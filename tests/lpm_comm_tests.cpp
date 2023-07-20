@@ -1,7 +1,7 @@
 #include "LpmConfig.h"
 #include "lpm_comm.hpp"
 #include <mpi.h>
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace Lpm;
 

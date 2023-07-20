@@ -9,7 +9,7 @@
 #include "mesh/lpm_vertices_impl.hpp"
 #include "mesh/lpm_edges.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 using namespace Lpm;
 
