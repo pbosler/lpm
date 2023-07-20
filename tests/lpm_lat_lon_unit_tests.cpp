@@ -1,6 +1,7 @@
 #include "lpm_lat_lon_pts.hpp"
 #include "lpm_constants.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 
@@ -8,6 +9,8 @@
 #include <fstream>
 
 using namespace Lpm;
+
+using Catch::Approx;
 
 TEST_CASE("lat_lon_unit_tests", "") {
   Comm comm;

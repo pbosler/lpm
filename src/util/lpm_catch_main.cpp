@@ -1,10 +1,8 @@
-#define CATCH_CONFIG_RUNNER
-
 #include <mpi.h>
 
 #include "Kokkos_Core.hpp"
 #include "LpmConfig.h"
-#include "catch.hpp"
+#include "catch2/catch_session.hpp"
 #include "lpm_assert.hpp"
 #include "lpm_test_utils.hpp"
 
@@ -44,7 +42,7 @@ int main(int argc, char* argv[]) {
 
   // build a command line parser from catch2
   auto cli = catch_session.cli();
-  cli |= Catch::clara::Opt(readCommaSeparatedParams,
+  cli |= Catch::Clara::Opt(readCommaSeparatedParams,
                            "key1=val1[,key2=val2[,...]]")["--lpm-test-params"](
       "list of parameters to forward to the test");
   catch_session.cli(cli);
