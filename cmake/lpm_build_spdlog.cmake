@@ -1,18 +1,3 @@
-#
-# spdlog: Required
-#
-#list(APPEND CMAKE_MODULE_PATH $ENV{SPDLOG_ROOT})
-#find_package(spdlog CONFIG HINTS $ENV{SPDLOG_ROOT})
-#
-#if (spdlog_FOUND)
-#  message(STATUS "spdlog found: ${spdlog_INCLUDE_DIR}")
-#  message(STATUS "spdlog libraries:  ${spdlog_LIBRARIES}")
-#  message(STATUS "spdlog_DIR:  ${spdlog_DIR}")
-#  message(STATUS "spdlog_INTERFACE_INCLUDE_DIRECTORIES: ${spdlog_INTERFACE_INCLUDE_DIRECTORIES}")
-#  list(APPEND LPM_EXT_INCLUDE_DIRS ${spdlog_DIR}/../../../include)
-#else()
-#  message(FATAL_ERROR "cannot find spdlog")
-#endif()
 include(ExternalProject)
 include(GNUInstallDirs)
 
