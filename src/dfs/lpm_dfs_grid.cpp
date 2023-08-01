@@ -9,10 +9,10 @@ namespace DFS {
 typename SphereGeometry::crd_view_type DFSGrid::packed_view() const {
     typename SphereGeometry::crd_view_type view("coords_view", nlon*nlat);
     auto h_view = Kokkos::create_mirror_view(view);
-    Int idx = 0;
     for (Int i=0; i<nlat; ++i) {
       for (Int j=0; j<nlon; ++j) {
-        auto mxyz = Kokkos::subview(h_view, ++idx, Kokkos::ALL);
+        const Int idx = i * nlon + j;
+        auto mxyz = Kokkos::subview(h_view, idx, Kokkos::ALL);
         sph2xyz(mxyz, i, j);
       }
     }
@@ -26,7 +26,7 @@ vtkSmartPointer<vtkStructuredGrid> DFSGrid::vtk_grid() const {
   for (int i=0; i<nlat; ++i) {
     const Real colat = colatitude(i);
     const Real z = cos(colat);
-    // vtk needs the 2 \pi point, even though we don't use it internally
+    // vtk needs the 2 \pi point, even though we don't use it
     for (int j=0; j<=nlon; ++j) {
       const Real lon = longitude(j);
       const Real x = sin(colat)*cos(lon);

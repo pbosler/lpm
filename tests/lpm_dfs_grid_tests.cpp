@@ -1,4 +1,4 @@
-#include "lpm_dfs_grid.hpp"
+#include "dfs/lpm_dfs_grid.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_logger.hpp"

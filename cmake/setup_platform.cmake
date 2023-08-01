@@ -1,17 +1,15 @@
 
 macro(setup_platform)
 
-
-
-#  if (UNIX AND NOT APPLE)
-#    set(LINUX ON)
-#  endif()
-#
  # do we have openmp?
  # TODO: Use Kokkos to determine this
 if (APPLE)
    set(LPM_USE_OPENMP FALSE)
    find_package(Threads)
+   if (Threads_FOUND)
+     set(LPM_USE_THREADS TRUE)
+     message(STATUS "threads enabled; setting LPM_USE_THREADS")
+   endif()
 else()
 find_package(OpenMP)
 if (OpenMP_FOUND)
@@ -47,6 +45,10 @@ include(lpm_build_catch2)
 #include(lpm_find_netcdf)
 include(lpm_find_vtk)
 include(lpm_find_compose)
+if (LPM_ENABLE_DFS)
+  include(lpm_find_finufft)
+  include(lpm_find_fftw3)
+endif()
 
 
 #
