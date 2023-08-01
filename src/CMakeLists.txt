@@ -58,21 +58,28 @@ target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 
 add_dependencies(lpm spdlog)
 
-target_link_libraries(lpm lpm_fortran
+target_link_libraries(lpm PUBLIC lpm_fortran
                           Kokkos::kokkos
                           Kokkos::kokkoskernels
                           Compadre::compadre
                           spdlog
                           )
 if (LPM_USE_NETCDF)
-  target_link_libraries(lpm ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
+  target_link_libraries(lpm PUBLIC ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
 endif()
 if (LPM_USE_COMPOSE)
-  target_link_libraries(lpm compose)
+  target_link_libraries(lpm PUBLIC compose)
 endif()
 if (LPM_USE_VTK)
-  target_link_libraries(lpm ${VTK_LIBRARIES})
+  target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
 endif()
+if (LPM_USE_FFTW3)
+  target_link_libraries(lpm PUBLIC ${FFTW_LIBRARIES})
+endif()
+if (LPM_USE_FINUFFT)
+  target_link_libraries(lpm PUBLIC finufft_static)
+endif()
+
 
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
