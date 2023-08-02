@@ -58,6 +58,8 @@ struct Neighborhoods {
   Int n_min;
   Int n_max;
 
+  Neighborhoods() = default;
+
   Neighborhoods(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params);
 

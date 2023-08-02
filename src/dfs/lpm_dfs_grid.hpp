@@ -28,6 +28,9 @@ struct DFSGrid {
   Int nlon; /// Number of longitude points
   Int nlat; /// Number of colatitude points
 
+  KOKKOS_INLINE_FUNCTION
+  Index size() const {return nlon*nlat;}
+
   /** Constructor.   Given a desired number of longitude points,
     computes nlat = nlon/2 + 1.
 
@@ -75,7 +78,7 @@ struct DFSGrid {
 
     @return coordinate view with point (i,j)'s coordinates at view(i*nlat + j, :)
   */
-  view_type packed_view() const;
+  void fill_packed_view(view_type& view) const;
 
 #ifdef LPM_USE_VTK
   vtkSmartPointer<vtkStructuredGrid> vtk_grid() const;

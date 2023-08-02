@@ -99,6 +99,9 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_sphere_functions.hpp
               lpm_lat_lon_pts.hpp
               lpm_matlab_io.hpp
+              dfs/lpm_dfs_grid.hpp
+              dfs/lpm_dfs_bve.hpp
+              dfs/lpm_dfs_impl.hpp
               fortran/lpm_f_interp.hpp
               fortran/lpm_f_interp_impl.hpp
               mesh/lpm_mesh_seed.hpp
