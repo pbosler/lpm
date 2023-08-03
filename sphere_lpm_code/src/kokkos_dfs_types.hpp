@@ -8,7 +8,8 @@ namespace SpherePoisson {
 
 typedef double Real;
 typedef int Int;
-typedef Kokkos::complex<double> Complex;
+//typedef Kokkos::complex<double> Complex;
+typedef std::complex<double> Complex;
 
 template <typename T>
 using view_1d = Kokkos::View<T*>;

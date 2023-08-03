@@ -14,7 +14,7 @@ namespace SpherePoisson {
 
         // derivative with respect to theta
         Kokkos::parallel_for(nrows-1, [=](Int i){
-            d_theta(i) = Complex(0, wx + i + 1);
+            d_theta(i+1) = Complex(0, wx + i + 1);
         });
 
         // derivative with respect to lambda

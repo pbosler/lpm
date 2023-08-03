@@ -146,8 +146,32 @@ target_link_libraries(dfs_vort2U_test PUBLIC finufft  dfs fftw3 fftw3_threads "-
 
 add_test(dfs_vorticity_2_velocity_test dfs_vort2U_test)
 
+# Test division by sine
+# Test computing the velocity at particles given
+# vorticity at colatatitude, longitude grid on the sphere
+add_executable(dfs_divcos_test dfs_divcos_test.cpp)
+target_include_directories(dfs_divcos_test PUBLIC ${PROJECT_SOURCE_DIR}/src ${FFTW3_INCLUDE_DIR} ${FFTW3THREADS_INCLUDE_DIR}
+)
+target_link_libraries(dfs_divcos_test PUBLIC finufft  dfs fftw3 fftw3_threads "-Wl,-no_compact_unwind")
 
+add_test(dfs_divcos_test dfs_divcos_test)
 
+# Test for  function computing 
+# the surface gradient on the sphere
+add_executable(dfs_surfgrad_test dfs_surfgrad_test.cpp)
+target_include_directories(dfs_surfgrad_test PUBLIC ${PROJECT_SOURCE_DIR}/src ${FFTW3_INCLUDE_DIR} ${FFTW3THREADS_INCLUDE_DIR}
+)
+target_link_libraries(dfs_surfgrad_test PUBLIC finufft  dfs fftw3 fftw3_threads "-Wl,-no_compact_unwind")
+
+add_test(dfs_surfgrad_test dfs_surfgrad_test)
+
+# Test double dot product
+#add_executable(dfs_dotgrad_test dfs_dotgrad_test.cpp)
+#target_include_directories(dfs_dotgrad_test PUBLIC ${PROJECT_SOURCE_DIR}/src ${FFTW3_INCLUDE_DIR} ${FFTW3THREADS_INCLUDE_DIR}
+#)
+#target_link_libraries(dfs_dotgrad_test PUBLIC finufft  dfs fftw3 fftw3_threads "-Wl,-no_compact_unwind")
+
+#add_test(dfs_dotgrad_test dfs_dotgrad_test)
 
 
 

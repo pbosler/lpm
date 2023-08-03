@@ -12,40 +12,21 @@ namespace SpherePoisson
         Int N2 = U.extent(1);
         Int nrows = th.extent(0);
        
-        
         // rearrange the intput in the form accepted by the finufft library
-        std::vector<std::complex<Real>> cu(nrows);
-        std::vector<std::complex<Real>> uj(N1*N2);
-        std::vector<std::complex<Real>> cv(nrows);
-        std::vector<std::complex<Real>> vj(N1*N2);
-        std::vector<std::complex<Real>> cw(nrows);
-        std::vector<std::complex<Real>> wj(N1*N2);
-        std::vector<Real> x(nrows);
-        std::vector<Real> y(nrows);
+        view_1d<Complex> cu("cu", nrows);
+        view_1d<Complex> uj("uj", N1*N2);
+        view_1d<Complex> cv("cv", nrows);
+        view_1d<Complex> vj("vj", N1*N2);
+        view_1d<Complex> cw("cw", nrows);
+        view_1d<Complex> wj("wj", N1*N2);
 
-        // pointers to the locations, this necessary to copy fast
-        std::vector<std::complex<Real>>* cu_ptr = &(cu);
-        std::vector<std::complex<Real>>* uj_ptr = &(uj);
-        std::vector<std::complex<Real>>* cv_ptr = &(cv);
-        std::vector<std::complex<Real>>* vj_ptr = &(vj);
-        std::vector<std::complex<Real>>* cw_ptr = &(cw);
-        std::vector<std::complex<Real>>* wj_ptr = &(wj);
-        std::vector<Real>* x_ptr = &(x);
-        std::vector<Real>* y_ptr = &(y);
-
-        // copy evaluation point into 1d vectors
-        // interface only accepts 1d vectors
-        Kokkos::parallel_for(nrows, [=](Int i){
-            (*x_ptr)[i] = th(i);
-            (*y_ptr)[i] = lb(i);
-        });
 
         // copy sample coefficients in 1d vectors
          Kokkos::parallel_for("initialize",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {N1, N2}), KOKKOS_LAMBDA (const int i, const int j) {
     
-            (*uj_ptr)[i + j* N2] = U(i,j);
-            (*vj_ptr)[i + j* N2] = V(i,j);
-            (*wj_ptr)[i + j* N2] = W(i,j);
+            uj(i + j * N1) = U(i,j);
+            vj(i + j * N1) = V(i,j);
+            wj(i + j * N1) = W(i,j);
             
         });
 
@@ -63,33 +44,26 @@ namespace SpherePoisson
         // just x, y, in this case) ....
         // we make sure x and y are not change after this step before 
         // completing the process
-        finufft_setpts(plan, M, &x[0], &y[0], NULL, 0, NULL, NULL, NULL);
+        finufft_setpts(plan, M, th.data(), lb.data(), NULL, 0, NULL, NULL, NULL);
 
         // step 3: do the planned transform to the cstrength
         // data, output to F...
-        finufft_execute(plan, &cu[0], &uj[0]);
-        finufft_execute(plan, &cv[0], &vj[0]);
-        finufft_execute(plan, &cw[0], &wj[0]);
+        finufft_execute(plan, cu.data(), uj.data());
+        finufft_execute(plan, cv.data(), vj.data());
+        finufft_execute(plan, cw.data(), wj.data());
 
         //  step 4: copy the results into a Kokkos::View
 
         Kokkos::parallel_for(M, KOKKOS_LAMBDA (const int i) {
-            U_X(i,0) = (*cu_ptr)[i].real();
-            U_X(i,1) = (*cv_ptr)[i].real();
-            U_X(i,2) = (*cw_ptr)[i].real();
+            U_X(i,0) = cu(i).real();
+            U_X(i,1) = cv(i).real();
+            U_X(i,2) = cw(i).real();
         });
     
         // step 5: when done, free the memory using the 
         // and set pointers to NULL
         finufft_destroy(plan);
-        uj_ptr = NULL;
-        vj_ptr = NULL;
-        wj_ptr = NULL;
-        x_ptr = NULL;
-        y_ptr = NULL;
-        cu_ptr = NULL;  
-        cv_ptr = NULL; 
-        cw_ptr = NULL; 
+        
      }
 
 
