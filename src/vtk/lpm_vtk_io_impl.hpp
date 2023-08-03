@@ -239,6 +239,44 @@ void VtkPolymeshInterface<SeedType>::add_vector_cell_data(
   polydata_->GetCellData()->AddArray(cell_vectors);
 }
 
+template <typename VT>
+void VtkGridInterface::add_scalar_point_data(const VT& s, const std::string& name) {
+  auto h_scalars = Kokkos::create_mirror_view(s);
+  Kokkos::deep_copy(h_scalars, s);
+  auto vtk_scalar = vtkSmartPointer<vtkDoubleArray>::New();
+  vtk_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
+  vtk_scalar->SetNumberOfComponents(1);
+  vtk_scalar->SetNumberOfTuples(grid_.size() + grid_.nlat);
+  Index vtk_idx = 0;
+  for (Index i=0; i<grid_.nlat; ++i) {
+    for (Index j=0; j<grid_.nlon; ++j) {
+      vtk_scalar->InsertTuple1(vtk_idx++, h_scalars(i*grid_.nlon + j));
+    }
+    vtk_scalar->InsertTuple1(vtk_idx++, h_scalars(i*grid_.nlon));
+  }
+  vtk_grid_->GetPointData()->AddArray(vtk_scalar);
+}
+
+template <typename VT>
+void VtkGridInterface::add_vector_point_data(const VT& v, const std::string& name) {
+  auto h_vecs = Kokkos::create_mirror_view(v);
+  Kokkos::deep_copy(h_vecs, v);
+  auto vtk_vector = vtkSmartPointer<vtkDoubleArray>::New();
+  vtk_vector->SetName((name.empty() ? v.label().c_str() : name.c_str()));
+  vtk_vector->SetNumberOfComponents(3);
+  vtk_vector->SetNumberOfTuples(grid_.size() + grid_.nlat);
+  Index vtk_idx = 0;
+  for (Index i=0; i<grid_.nlat; ++i) {
+    for (Index j=0; j<grid_.nlon; ++j) {
+      const auto mvec = Kokkos::subview(h_vecs, i*grid_.nlon + j, Kokkos::ALL);
+      vtk_vector->InsertTuple3(vtk_idx++, mvec[0], mvec[1], mvec[2]);
+    }
+    const auto mvec = Kokkos::subview(h_vecs, i*grid_.nlon, Kokkos::ALL);
+    vtk_vector->InsertTuple3(vtk_idx++, mvec[0], mvec[1], mvec[2]);
+  }
+  vtk_grid_->GetPointData()->AddArray(vtk_vector);
+}
+
 }  // namespace Lpm
 
 #endif  // LPM_USE_VTK

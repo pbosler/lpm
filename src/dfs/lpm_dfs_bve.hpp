@@ -11,10 +11,9 @@
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
-#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
-#include "vtk/lpm_vtk_io_impl.hpp"
 #endif
 
 namespace Lpm {
@@ -31,6 +30,7 @@ class DFSBVE {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
                 "Spherical mesh seed required.");
 
+  public:
   /// Relative vorticity at passive particles
   ScalarField<VertexField> rel_vort_passive;
   /// Relative vorticity at active particles
@@ -69,13 +69,24 @@ class DFSBVE {
   std::vector<ScalarField<VertexField>> tracer_passive;
   /// passive tracers at active particles
   std::vector<ScalarField<FaceField>> tracer_active;
+  /// area weights for grid points
+  scalar_view_type grid_area;
+  private:
   /// DFS grid coordinates
-  typename SphereGeometry::crd_view_type grid_crds;
-  typename SphereGeometry::crd_view_type::HostMirror h_grid_crds;
+  Coords<SphereGeometry> grid_crds;
+  /// gathered mesh data from particles is source data for interpolation problem
+  std::unique_ptr<GatherMeshData<SeedType>> gathered_mesh;
+  /// scattered mesh sends received data from grid back to particles (TODO: this may not be necessary)
+//   std::unique_ptr<ScatterMeshData<SeedType>> scatter_mesh;
+  /// Lists of field names to interpolate from mesh to grid or grid to mesh
+  std::map<std::string, ScalarField<VertexField>> passive_scalar_fields;
+  std::map<std::string, ScalarField<FaceField>> active_scalar_fields;
+  std::map<std::string, VectorField<SphereGeometry,VertexField>> passive_vector_fields;
+  std::map<std::string, VectorField<SphereGeometry,FaceField>> active_vector_fields;
   /// GMLS interpolation parameters
   gmls::Params gmls_params;
   /// GMLS neighborhoods
-  gmls::Neighborhoods neighborhoods;
+  gmls::Neighborhoods mesh_to_grid_neighborhoods;
 
 
   public:
@@ -93,11 +104,32 @@ class DFSBVE {
     template <typename VorticityInitialCondition>
     void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
+    Index grid_size() const {return grid.size();}
+    void update_mesh_to_grid_neighborhoods();
+    void interpolate_vorticity_from_mesh_to_grid();
+    void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
+
+    std::string info_string(const int tab_level=0) const;
+
+
 #ifdef LPM_USE_VTK
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
-#endif
 
+  inline Index vtk_grid_size() {return grid.vtk_size(); }
+#endif
 };
+
+#ifdef LPM_USE_VTK
+  /** Return a vtk interface for the DFSBVE's Lagrangian particle/panel mesh
+  */
+  template <typename SeedType>
+  VtkPolymeshInterface<SeedType> vtk_mesh_interface(const DFSBVE<SeedType>& dfs_bve);
+
+  /** Return a VTK interface for the DFSBVE uniform grid.
+  */
+  template <typename SeedType>
+  VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve);
+#endif
 
 } // namespace DFS
 } // namespace Lpm

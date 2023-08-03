@@ -6,6 +6,8 @@
 #include "lpm_field.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 
+#include <map>
+
 namespace Lpm {
 
 struct PlanarGrid;  // fwd decl

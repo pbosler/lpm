@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "Kokkos_Core.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
 #include "mesh/lpm_edges.hpp"
@@ -16,6 +15,7 @@
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_vertices.hpp"
+#include "dfs/lpm_dfs_grid.hpp"
 #include "vtkCellData.h"
 #include "vtkDoubleArray.h"
 #include "vtkPointData.h"
@@ -23,9 +23,14 @@
 #include "vtkPolyDataWriter.h"
 #include "vtkSmartPointer.h"
 #include "vtkXMLPolyDataWriter.h"
+#include <vtkXMLStructuredGridWriter.h>
+#include <vtkStructuredGrid.h>
 
 namespace Lpm {
 
+/** VTK interface for PolyMesh2d objects.
+
+*/
 template <typename SeedType>
 class VtkPolymeshInterface {
  public:
@@ -70,6 +75,31 @@ class VtkPolymeshInterface {
   vtkSmartPointer<vtkDoubleArray> make_cell_area() const;
 };
 
+/** VTK Interface fro DFSGrid
+*/
+class VtkGridInterface {
+  public:
+    VtkGridInterface(const DFS::DFSGrid& dfs_grid);
+
+    void write(const std::string& ofilename);
+
+    template <typename VT>
+    void add_scalar_point_data(const VT& s, const std::string& name="");
+
+    template <typename VT>
+    void add_vector_point_data(const VT& v, const std::string& name="");
+  protected:
+    const DFS::DFSGrid& grid_;
+    vtkSmartPointer<vtkStructuredGrid> vtk_grid_;
+    vtkSmartPointer<vtkPointData> pointdata_;
+    vtkSmartPointer<vtkXMLStructuredGridWriter> writer_;
+};
+
+
+/** Generic VTK interface.
+
+  Deprecated.
+*/
 template <typename Geo, typename FaceKind>
 class VtkInterface {
  public:

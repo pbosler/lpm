@@ -10,6 +10,8 @@
 #cmakedefine LPM_USE_BOOST
 #cmakedefine LPM_USE_NETCDF
 #cmakedefine LPM_USE_COMPOSE
+#cmakedefine LPM_USE_FINUFFT
+#cmakedefine LPM_USE_FFTW3
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 

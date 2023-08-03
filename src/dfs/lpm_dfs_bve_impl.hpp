@@ -1,14 +1,13 @@
 #ifndef LPM_DFS_BVE_IMPL_HPP
 #define LPM_DFS_BVE_IMPL_HPP
+
 #include "lpm_dfs_bve.hpp"
 #include "lpm_constants.hpp"
+#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data_impl.hpp"
+#include "util/lpm_string_util.hpp"
+
 #ifdef LPM_USE_VTK
-#include <vtkStructuredGrid.h>
-#include <vtkSmartPointer.h>
-#include <vtkDoubleArray.h>
-#include <vtkNew.h>
-#include <vtkXMLStructuredGridWriter.h>
-#include <vtkPointData.h>
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif
@@ -33,7 +32,6 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
   velocity_grid("velocity", nlon*(nlon/2 + 1)),
-  grid_crds("dfs_grid_crds", nlon*(nlon/2 + 1)),
   mesh(mesh_params),
   grid(nlon),
   ntracers(n_tracers),
@@ -45,9 +43,22 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
     tracer_passive.push_back(ScalarField<VertexField>("tracer" + std::to_string(k), mesh_params.nmaxverts));
     tracer_active.push_back(ScalarField<FaceField>("tracer" + std::to_string(k), mesh_params.nmaxfaces));
   }
-  grid.fill_packed_view(grid_crds);
-  h_grid_crds = Kokkos::create_mirror_view(grid_crds);
-  Kokkos::deep_copy(h_grid_crds, grid_crds);
+
+  grid_crds = grid.init_coords();
+  grid_area = grid.weights_view();
+
+  gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
+//   scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
+
+  passive_scalar_fields.emplace("relative_vorticity", rel_vort_passive);
+  active_scalar_fields.emplace("relative_vorticity", rel_vort_active);
+  passive_vector_fields.emplace("velocity", velocity_passive);
+  active_vector_fields.emplace("velocity", velocity_active);
+
+  gathered_mesh->init_scalar_fields(passive_scalar_fields, active_scalar_fields);
+  gathered_mesh->init_vector_fields(passive_vector_fields, active_vector_fields);
+
+  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds, grid_crds.get_host_crd_view(), gmls_params);
 }
 
 template <typename SeedType> template <typename VorticityInitialCondition>
@@ -78,7 +89,7 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
     });
   auto zeta_grid = rel_vort_grid.view;
   auto omega_grid = abs_vort_grid.view;
-  auto gridcrds = grid_crds;
+  auto gridcrds = grid_crds.view;
   Kokkos::parallel_for("initialize vorticity (grid)",
     grid.size(), KOKKOS_LAMBDA (const Index i) {
     const auto mxyz = Kokkos::subview(gridcrds, i, Kokkos::ALL);
@@ -86,6 +97,8 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
     zeta_grid(i) = zeta;
     omega_grid(i) = zeta + 2*Omg*mxyz[2];
   });
+
+  gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 };
 
 template <typename SeedType>
@@ -165,6 +178,73 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_writer->SetFileName(grid_fname.c_str());
   grid_writer->Write();
 }
+
+template <typename SeedType>
+std::string DFSBVE<SeedType>::info_string(const int tab_level) const {
+  std::ostringstream ss;
+  auto tabstr = indent_string(tab_level);
+  ss << tabstr << "DSFBVE info:\n";
+  tabstr += "\t";
+  ss << mesh.info_string("DFSBVE",tab_level+1);
+  ss << grid.info_string(tab_level+1);
+  ss << gmls_params.info_string(tab_level+1);
+  ss << mesh_to_grid_neighborhoods.info_string(tab_level+1);
+  ss << grid_crds.info_string("DFSBVE grid_crds", tab_level+1);
+  return ss.str();
+}
+
+template <typename SeedType>
+void DFSBVE<SeedType>::interpolate_vorticity_from_mesh_to_grid() {
+  return interpolate_vorticity_from_mesh_to_grid(rel_vort_grid);
+}
+
+template <typename SeedType>
+void DFSBVE<SeedType>::interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target) {
+  const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+
+  auto rel_vort_gmls = gmls::sphere_scalar_gmls(gathered_mesh->phys_crds,
+    grid_crds.view, mesh_to_grid_neighborhoods, gmls_params, gmls_ops);
+
+  Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
+  target.view = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
+    gathered_mesh->scalar_fields.at("relative_vorticity"),
+    Compadre::ScalarPointEvaluation,
+    Compadre::PointSample);
+}
+
+#ifdef LPM_USE_VTK
+template <typename SeedType>
+  VtkPolymeshInterface<SeedType> vtk_mesh_interface(const DFSBVE<SeedType>& dfs_bve) {
+    VtkPolymeshInterface<SeedType> vtk(dfs_bve.mesh);
+    vtk.add_scalar_point_data(dfs_bve.rel_vort_passive.view, "relative_vorticity");
+    vtk.add_scalar_point_data(dfs_bve.abs_vort_passive.view, "absolute_vorticity");
+    vtk.add_scalar_point_data(dfs_bve.stream_fn_passive.view, "stream_function");
+    vtk.add_vector_point_data(dfs_bve.velocity_passive.view, "velocity");
+    vtk.add_scalar_cell_data(dfs_bve.rel_vort_active.view, "relative_vorticity");
+    vtk.add_scalar_cell_data(dfs_bve.abs_vort_active.view, "absolute_vorticity");
+    vtk.add_scalar_cell_data(dfs_bve.stream_fn_active.view, "stream_function");
+    vtk.add_vector_cell_data(dfs_bve.velocity_active.view, "velocity");
+    for (short i=0; i<dfs_bve.tracer_passive.size(); ++i) {
+      vtk.add_scalar_point_data(dfs_bve.tracer_passive[i].view,
+        dfs_bve.tracer_passive[i].view.label());
+      vtk.add_scalar_cell_data(dfs_bve.tracer_active[i].view,
+        dfs_bve.tracer_active[i].view.label());
+    }
+    return vtk;
+  }
+
+
+
+  template <typename SeedType>
+  VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve) {
+    VtkGridInterface vtk(dfs_bve.grid);
+    vtk.add_scalar_point_data(dfs_bve.rel_vort_grid.view, "relative_vorticity");
+    vtk.add_scalar_point_data(dfs_bve.abs_vort_grid.view, "absolute_vorticity");
+    vtk.add_scalar_point_data(dfs_bve.stream_fn_grid.view, "stream_function");
+    vtk.add_vector_point_data(dfs_bve.velocity_grid.view, "velocity");
+    return vtk;
+  }
+#endif
 
 } // namespace DFS
 } // namespace Lpm

@@ -1,12 +1,11 @@
 #include "lpm_vtk_io.hpp"
-
 #include "lpm_vtk_io_impl.hpp"
 
 #ifdef LPM_USE_VTK
 
-#include "vtkDoubleArray.h"
-#include "vtkIntArray.h"
-#include "vtkPoints.h"
+#include <vtkDoubleArray.h>
+#include <vtkIntArray.h>
+#include <vtkPoints.h>
 
 namespace Lpm {
 
@@ -156,6 +155,17 @@ void VtkInterface<Geo, FaceKind>::addVectorToCellData(
     }
   }
   cd->AddArray(data);
+}
+
+VtkGridInterface::VtkGridInterface(const DFS::DFSGrid& dfs_grid) :
+  grid_(dfs_grid),
+  vtk_grid_(dfs_grid.vtk_grid()) {}
+
+void VtkGridInterface::write(const std::string& ofilename) {
+  writer_ = vtkSmartPointer<vtkXMLStructuredGridWriter>::New();
+  writer_->SetInputData(vtk_grid_);
+  writer_->SetFileName(ofilename.c_str());
+  writer_->Write();
 }
 
 /// ETI

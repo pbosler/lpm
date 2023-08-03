@@ -1,10 +1,18 @@
 #include "lpm_dfs_grid.hpp"
+#include "lpm_coords_impl.hpp"
+#include "util/lpm_string_util.hpp"
 #ifdef LPM_USE_VTK
 #include "vtkPoints.h"
 #endif
 
 namespace Lpm {
 namespace DFS {
+
+Coords<SphereGeometry> DFSGrid::init_coords() const {
+  typename SphereGeometry::crd_view_type crd_view("dfs_grid_coords", nlon*nlat);
+  fill_packed_view(crd_view);
+  return Coords<SphereGeometry>(crd_view);
+}
 
 void DFSGrid::fill_packed_view(view_type& view) const {
 
@@ -24,6 +32,30 @@ void DFSGrid::fill_packed_view(view_type& view) const {
       const auto mxyz = Kokkos::subview(view, idx, Kokkos::ALL);
       sph2xyz(mxyz, i, j);
     });
+}
+
+scalar_view_type DFSGrid::weights_view() const {
+  scalar_view_type result("grid_area", size());
+  auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{nlat,nlon});
+  Kokkos::parallel_for("set_grid_area_weights", policy,
+    KOKKOS_LAMBDA (const Index i, const Index j) {
+      const auto idx = i*nlon + j;
+      result(idx) = area_weight(i,j);
+    });
+  return result;
+}
+
+std::string DFSGrid::info_string(const int tab_level) const {
+  std::ostringstream ss;
+  auto tabstr = indent_string(tab_level);
+  ss << tabstr << "DFSGrid info:\n";
+  tabstr += "\t";
+  ss << tabstr << "nlon = " << nlon << "\n";
+  ss << tabstr << "nlat = " << nlat << "\n";
+  ss << tabstr << "size() = " << size() << "\n";
+  ss << tabstr << "dtheta = " << dtheta << "\n";
+  ss << tabstr << "dlambda = " << dlambda << "\n";
+  return ss.str();
 }
 
 #ifdef LPM_USE_VTK

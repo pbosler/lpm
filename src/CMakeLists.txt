@@ -30,6 +30,8 @@ set(LPM_SOURCES
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
+                mesh/lpm_gather_mesh_data.cpp
+                mesh/lpm_scatter_mesh_data.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
@@ -104,15 +106,19 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               dfs/lpm_dfs_impl.hpp
               fortran/lpm_f_interp.hpp
               fortran/lpm_f_interp_impl.hpp
-              mesh/lpm_mesh_seed.hpp
-              mesh/lpm_vertices.hpp
-              mesh/lpm_vertices_impl.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
               mesh/lpm_faces_impl.hpp
+              mesh/lpm_gather_mesh_data.hpp
+              mesh/lpm_gather_mesh_data_impl.hpp
+              mesh/lpm_mesh_seed.hpp
               mesh/lpm_polymesh2d.hpp
               mesh/lpm_polymesh2d_impl.hpp
               mesh/lpm_refinement_flags.hpp
+              mesh/lpm_scatter_mesh_data.hpp
+              mesh/lpm_scatter_mesh_data_impl.hpp
+              mesh/lpm_vertices.hpp
+              mesh/lpm_vertices_impl.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               tree/lpm_box3d.hpp
