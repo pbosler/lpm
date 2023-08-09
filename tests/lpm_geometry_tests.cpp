@@ -7,11 +7,14 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <typeinfo>
 #include <fstream>
 #include <string>
 
 using namespace Lpm;
+
+using Catch::Approx;
 
 TEST_CASE("lpm_geometry", "") {
 
@@ -78,7 +81,7 @@ TEST_CASE("lpm_geometry", "") {
           vecs(3,j) = r2device_d(j);
       }
 
-      LPM_KERNEL_REQUIRE(PlaneGeometry::mag(r2device_a) == 1);
+      LPM_KERNEL_REQUIRE(FloatingPoint<Real>::equiv(PlaneGeometry::mag(r2device_a), 1));
 
       // test midpoint on device
       PlaneGeometry::midpoint(result, ko::subview(vecs, 0, ko::ALL), ko::subview(vecs, 1, ko::ALL));
@@ -119,7 +122,7 @@ TEST_CASE("lpm_geometry", "") {
   ko::deep_copy(host_scalar, scalar_result);
   REQUIRE( host_scalar() == 2 );
   PlaneGeometry::normalize(host_result);
-  REQUIRE( PlaneGeometry::mag(host_result) == 1);
+  REQUIRE( PlaneGeometry::mag(host_result) == Approx(1.0));
   } // END PLANAR TESTS
 
   SECTION("spherical tests") { // SPHERICAL TESTS
