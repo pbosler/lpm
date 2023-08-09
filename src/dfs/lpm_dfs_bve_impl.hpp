@@ -48,7 +48,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   grid_area = grid.weights_view();
 
   gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
-//   scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
+  scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
 
   passive_scalar_fields.emplace("relative_vorticity", rel_vort_passive);
   active_scalar_fields.emplace("relative_vorticity", rel_vort_active);
@@ -211,6 +211,22 @@ void DFSBVE<SeedType>::interpolate_vorticity_from_mesh_to_grid(ScalarField<Verte
     Compadre::ScalarPointEvaluation,
     Compadre::PointSample);
 }
+
+template <typename SeedType>
+void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
+  // pb->mc:
+  // 1. add your code to the src/dfs/ folder
+  //            and update lpm/src/CMakeLists.txt to build your code.
+  // 2. Then make sure this function works by adding it to lpm/tests/lpm_dfs_bve_test.cpp
+  // 3. Compute the error on the particles: Add a scalar field to the test
+  //      for each set of particles (active and passive).   Look at src/lpm_error.hpp;
+  //      Just give it the exact velocity and the interpolated velocity, and it will do the rest.
+  // 4. Output the velocity to vtk with lpm/tests/dfs_bve_test.cpp
+  const auto rel_vort_dfs = rel_vort_grid.view;
+  auto velocity_out = gathered_mesh.vector_fields.at("velocity").view;
+  dfs_vort_to_velocity(gathered_mesh.phys_crds.view, rel_vort_dfs, velocity_out);
+}
+
 
 #ifdef LPM_USE_VTK
 template <typename SeedType>
