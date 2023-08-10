@@ -74,10 +74,15 @@ class DFSBVE {
   private:
   /// DFS grid coordinates
   Coords<SphereGeometry> grid_crds;
-  /// gathered mesh data from particles is source data for interpolation problem
+  /** gathered mesh data collects only the particles that are at
+  /// the lowest level of the quadtree --- it excludes all panels that have
+  /// been divided and only keeps their lowest-level children.
+  */
   std::unique_ptr<GatherMeshData<SeedType>> gathered_mesh;
-  /// scattered mesh sends received data from grid back to particles (TODO: this may not be necessary)
-//   std::unique_ptr<ScatterMeshData<SeedType>> scatter_mesh;
+  /** scattered mesh sends received data from the gathered mesh back to the full
+    set of panels, divided and undivided.
+  */
+  std::unique_ptr<ScatterMeshData<SeedType>> scatter_mesh;
   /// Lists of field names to interpolate from mesh to grid or grid to mesh
   std::map<std::string, ScalarField<VertexField>> passive_scalar_fields;
   std::map<std::string, ScalarField<FaceField>> active_scalar_fields;
@@ -87,6 +92,7 @@ class DFSBVE {
   gmls::Params gmls_params;
   /// GMLS neighborhoods
   gmls::Neighborhoods mesh_to_grid_neighborhoods;
+
 
 
   public:
@@ -108,6 +114,7 @@ class DFSBVE {
     void update_mesh_to_grid_neighborhoods();
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
+    void interpolate_velocity_from_grid_to_mesh();
 
     std::string info_string(const int tab_level=0) const;
 
