@@ -44,7 +44,7 @@ endif()
 
 include(lpm_build_spdlog)
 include(lpm_build_catch2)
-#include(lpm_find_netcdf)
+include(lpm_find_netcdf)
 include(lpm_find_vtk)
 include(lpm_find_compose)
 
