@@ -223,8 +223,11 @@ void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
   //      Just give it the exact velocity and the interpolated velocity, and it will do the rest.
   // 4. Output the velocity to vtk with lpm/tests/dfs_bve_test.cpp
   const auto rel_vort_dfs = rel_vort_grid.view;
-  auto velocity_out = gathered_mesh.vector_fields.at("velocity").view;
-  dfs_vort_to_velocity(gathered_mesh.phys_crds.view, rel_vort_dfs, velocity_out);
+  auto velocity_out = gathered_mesh->vector_fields.at("velocity");
+  dfs_vort_2_velocity(gathered_mesh->phys_crds, rel_vort_dfs, velocity_out);
+   gathered_mesh->gather_vector_fields(passive_vector_fields, active_vector_fields);
+
+  
 }
 
 

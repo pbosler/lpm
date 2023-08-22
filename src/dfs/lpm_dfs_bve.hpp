@@ -14,8 +14,10 @@
 #include "mesh/lpm_scatter_mesh_data.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
+#include "dfs_vort2velocity.hpp"
 #endif
 
+using namespace SpherePoisson;
 namespace Lpm {
 namespace DFS {
 

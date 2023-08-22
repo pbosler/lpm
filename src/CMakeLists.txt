@@ -1,7 +1,8 @@
 include_directories(${LPM_INCLUDE_DIRS}
                     ${Trilinos_INCLUDE_DIRS}
                     ${Trilinos_TPL_INCLUDE_DIRS}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran)
+                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+)
 
 add_subdirectory(fortran)
 
@@ -13,6 +14,9 @@ if (LPM_USE_NETCDF)
 endif()
 if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
+endif()
+if(LPM_USE_FFTW3)
+	include_directories(${FFTW3_INCLUDE_DIR})
 endif()
 
 set(LPM_SOURCES
@@ -36,7 +40,17 @@ set(LPM_SOURCES
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
-                util/lpm_timer.cpp)
+                util/lpm_timer.cpp
+		dfs/dfs_doubling.cpp
+		dfs/dfs_laplacian_new.cpp
+		dfs/dfs_rhs_new.cpp
+ 		dfs/dfs_solve_new.cpp
+		dfs/dfs_test_support.cpp
+    		dfs/dfs_velocity.cpp 
+		dfs/dfs_interpolation.cpp 
+		dfs/dfs_vort2velocity.cpp
+ 		dfs/dfs_surface_grad.cpp
+)
 #    LpmCompadre.cpp
 #    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
 #    LpmOctreeLUT.cpp
@@ -82,6 +96,8 @@ if (LPM_USE_FINUFFT)
   target_link_libraries(lpm PUBLIC finufft_static)
 endif()
 
+add_link_options(-fsanitize=address)
+
 
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
@@ -104,6 +120,15 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               dfs/lpm_dfs_grid.hpp
               dfs/lpm_dfs_bve.hpp
               dfs/lpm_dfs_impl.hpp
+	      dfs/dfs_doubling.hpp
+	      dfs/dfs_laplacian_new.hpp
+	      dfs/dfs_rhs_new.hpp
+	      dfs/dfs_solve_new.hpp
+	      dfs/dfs_test_support.hpp
+	      dfs/spectral/dfs_velocity.hpp
+	      dfs/dfs_interpolation.hpp
+	      dfs/dfs_vort2velocity.hpp
+	      dfs/dfs_surface_grad.hpp
               fortran/lpm_f_interp.hpp
               fortran/lpm_f_interp_impl.hpp
               mesh/lpm_edges.hpp

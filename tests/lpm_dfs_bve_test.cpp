@@ -52,4 +52,10 @@ TEST_CASE("dfs_bve_tests", "[dfs]") {
   vtk_grid.write(grid_vtk_file);
 
 
+	
+// grid to mesh
+	dfs_bve.interpolate_velocity_from_grid_to_mesh();
+
+  
+  
 }
