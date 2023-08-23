@@ -2,6 +2,7 @@
 
 #include "lpm_2d_transport_mesh.hpp"
 #include "util/lpm_string_util.hpp"
+#include "lpm_velocity_gallery.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif

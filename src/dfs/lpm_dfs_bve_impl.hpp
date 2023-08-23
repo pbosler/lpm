@@ -6,6 +6,7 @@
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #include "util/lpm_string_util.hpp"
+#include "lpm_velocity_gallery.hpp"
 
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
@@ -100,6 +101,25 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
 
   gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 };
+
+template <typename SeedType> template <typename VelocityType>
+void DFSBVE<SeedType>::init_velocity() {
+  auto u_verts = velocity_passive.view;
+  auto vert_crds = mesh.vertices.phys_crds.view;
+  Kokkos::parallel_for("initialize velocity (passive)",
+    mesh.n_vertices_host(),
+    VelocityKernel<VelocityType>(u_verts, vert_crds, 0));
+  auto u_faces = velocity_active.view;
+  auto face_crds = mesh.faces.phys_crds.view;
+  Kokkos::parallel_for("initialize velocity (active)",
+    mesh.n_faces_host(),
+    VelocityKernel<VelocityType>(u_faces, face_crds, 0));
+  auto u_grid = velocity_grid.view;
+  auto gridcrds = grid_crds.view;
+  Kokkos::parallel_for("initialize velocity (grid)",
+    grid.size(),
+    VelocityKernel<VelocityType>(u_grid, gridcrds, 0));
+}
 
 template <typename SeedType>
 void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string grid_fname) const {
@@ -225,9 +245,8 @@ void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
   const auto rel_vort_dfs = rel_vort_grid.view;
   auto velocity_out = gathered_mesh->vector_fields.at("velocity");
   dfs_vort_2_velocity(gathered_mesh->phys_crds, rel_vort_dfs, velocity_out);
-   gathered_mesh->gather_vector_fields(passive_vector_fields, active_vector_fields);
-
-  
+  scatter_mesh->scatter_fields(passive_scalar_fields, active_scalar_fields,
+    passive_vector_fields, active_vector_fields);
 }
 
 

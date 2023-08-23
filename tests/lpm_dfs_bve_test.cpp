@@ -16,10 +16,11 @@ TEST_CASE("dfs_bve_tests", "[dfs]") {
   Comm comm;
   Logger<> logger("dfs_bve_tests", Log::level::debug, comm);
 
-  const Int nlon = 120;
+  const Int nlon = 10;
   const Int ntracers = 0;
 
   typedef CubedSphereSeed seed_type;
+  typedef RossbyWave54Velocity velocity_type;
   RossbyHaurwitz54 vorticity_fn;
 
   const Int mesh_depth = 3;
@@ -29,7 +30,9 @@ TEST_CASE("dfs_bve_tests", "[dfs]") {
 
   DFS::DFSBVE dfs_bve(mesh_params, nlon, ntracers, gmls_params);
   dfs_bve.init_vorticity(vorticity_fn);
+  dfs_bve.template init_velocity<velocity_type>();
 
+  // mesh to grid
   ScalarField<VertexField> rel_vort_grid_gmls("relative_vorticity_gmls",
     dfs_bve.vtk_grid_size());
   dfs_bve.interpolate_vorticity_from_mesh_to_grid(rel_vort_grid_gmls);
@@ -40,6 +43,10 @@ TEST_CASE("dfs_bve_tests", "[dfs]") {
   ErrNorms gmls_err(rel_vort_error, rel_vort_grid_gmls.view, dfs_bve.rel_vort_grid.view, dfs_bve.grid_area);
   logger.info(gmls_err.info_string());
 
+  // grid to mesh
+	dfs_bve.interpolate_velocity_from_grid_to_mesh();
+
+  // finish-up: write output
   const std::string mesh_vtk_file = "dfs_bve_particles.vtp";
   const std::string grid_vtk_file = "dfs_bve_grid.vts";
 
@@ -51,11 +58,4 @@ TEST_CASE("dfs_bve_tests", "[dfs]") {
   vtk_mesh.write(mesh_vtk_file);
   vtk_grid.write(grid_vtk_file);
 
-
-	
-// grid to mesh
-	dfs_bve.interpolate_velocity_from_grid_to_mesh();
-
-  
-  
 }

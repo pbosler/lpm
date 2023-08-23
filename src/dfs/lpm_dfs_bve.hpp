@@ -112,11 +112,15 @@ class DFSBVE {
     template <typename VorticityInitialCondition>
     void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
+    template <typename VelocityType>
+    void init_velocity();
+
     Index grid_size() const {return grid.size();}
     void update_mesh_to_grid_neighborhoods();
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
+    void interpolate_velocity_from_grid_to_mesh(VectorField<VertexField>& target);
 
     std::string info_string(const int tab_level=0) const;
 

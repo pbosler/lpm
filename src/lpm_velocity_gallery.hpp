@@ -14,6 +14,28 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
+template <typename VelocityFtor>
+struct VelocityKernel {
+  Kokkos::View<Real**> velocity;
+  Kokkos::View<Real**> xcrds;
+  Real t;
+  VelocityFtor velfn;
+
+  VelocityKernel(Kokkos::View<Real**> u, const Kokkos::View<Real**> x,
+                 const Real tt)
+      : velocity(u), xcrds(x), t(tt) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const Index i) const {
+    const auto myx = Kokkos::subview(xcrds, i, Kokkos::ALL);
+    auto myu = Kokkos::subview(velocity, i, Kokkos::ALL);
+    Kokkos::Tuple<Real, VelocityFtor::ndim> u = velfn(myx, t);
+    for (int j = 0; j < VelocityFtor::ndim; ++j) {
+      myu(j) = u[j];
+    }
+  }
+};
+
 struct PlanarConstantEastward {
   typedef PlaneGeometry geo;
   static constexpr Int ndim = 2;
@@ -206,10 +228,13 @@ struct LauritzenEtAlDivergentFlow {
 struct RossbyWave54Velocity {
   typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
-  static constexpr Real background_rotation = 5 * constants::PI / 6;
+//   static constexpr Real background_rotation = 5 * constants::PI / 6;
+  Real background_rotation;
+  Real rh54_amplitude;
 
   KOKKOS_INLINE_FUNCTION
-  RossbyWave54Velocity() = default;
+  RossbyWave54Velocity(const Real u0 = 0, const Real amp=1) :
+    background_rotation(u0), rh54_amplitude(amp) {}
 
   std::string name() const { return "RossbyWave54Velocity"; }
 
@@ -219,8 +244,8 @@ struct RossbyWave54Velocity {
     const Real lat = SphereGeometry::latitude(x);
     const Real lon = SphereGeometry::longitude(x);
 
-    const Real u = 0.5 * cos(4 * lon) * cube(cos(lat)) * (5 * cos(2 * lat) - 3);
-    const Real v = 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
+    const Real u = rh54_amplitude * 0.5 * cos(4 * lon) * cube(cos(lat)) * (5 * cos(2 * lat) - 3);
+    const Real v = rh54_amplitude * 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
     Tuple<Real, 3> result;
     result[0] =
         -background_rotation * x(1) - u * sin(lon) - v * sin(lat) * cos(lon);
