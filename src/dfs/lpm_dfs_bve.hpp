@@ -120,7 +120,7 @@ class DFSBVE {
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
-    void interpolate_velocity_from_grid_to_mesh(VectorField<VertexField>& target);
+//    void interpolate_velocity_from_grid_to_mesh(VectorField<VertexField>& target);
 
     std::string info_string(const int tab_level=0) const;
 

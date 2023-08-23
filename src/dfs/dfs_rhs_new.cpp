@@ -160,8 +160,8 @@ namespace SpherePoisson {
      void poisson_rhs(GridType grid_type, view_1d<Int>ie, view_1d<Int>io, view_1d<Complex>cn, view_1d<Real> f, view_2d<Complex> rhso, view_2d<Complex> rhse)
 
     {
-        const int ncols = cn.extent(0);
-	const int nrows = (ncols/2 + (grid_type == GridType::Shifted ? 0 : 1));
+        const int nrows = 2* ie.extent(0);
+        const int ncols = nrows;
 
         // Compute Fourier coefficients using DFS
         view_2d<Complex> rhs("coeffs",nrows, ncols);

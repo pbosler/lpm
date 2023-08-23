@@ -262,8 +262,6 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
                     tridiag_solver(Lle_k, fe);  
                     tridiag_solver(Llo_k, fo);
 
-                    std::cout<<"start solve 2"<<std::endl;
-
                 
                 // copy to the output array
         

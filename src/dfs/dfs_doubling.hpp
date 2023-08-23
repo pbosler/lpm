@@ -27,12 +27,12 @@ struct GlideReflector {
     if (grid_type == GridType::Shifted) {
      // u_tilde(i,  j) = u(i,j+w);
      // u_tilde(i,j+w) = u(i,j);
-      u_tilde(nrows-1-i, j  ) = u(i*ncols+(j+w));  // previous u(i, j+w);
-      u_tilde(nrows-1-i, j+w) = u(i*ncols+j);      // previous  u(i, j  );
+      u_tilde(nrows-1-i, j  ) = u(i*ncols + j+w);
+      u_tilde(nrows-1-i, j+w) = u(i*ncols + j  );
     }
     else {
-      u_tilde(nrows-2-i, j  ) = u((i+1)*ncols+j+w);   // previous  u(i+1, j+w);
-      u_tilde(nrows-2-i, j+w) = u((i+1)*ncols+j);        //  previous u(i+1, j  );
+      u_tilde(nrows-2-i, j  ) = u((i+1)*ncols + j+w);
+      u_tilde(nrows-2-i, j+w) = u((i+1)*ncols + j  );
     }
   }
 
@@ -40,15 +40,15 @@ struct GlideReflector {
   void operator() (NLoopTag, const Int i, const Int j) const {
     if (grid_type == GridType::Shifted) {
     //  u_tilde(nrows+i, j) = u(nrows-1-i, j);
-      u_tilde(nrows+i, j) = u(i*ncols+j);          // previous u(i,j)
+      u_tilde(nrows+i, j) = u(i*ncols + j);
     }
     else {
-      u_tilde(nrows-1+i, j) = u(i*ncols+j);            // previous u(i,j)
+      u_tilde(nrows-1+i, j) = u(i*ncols + j);
     }
   }
 };
 
-// TODO: Comment this code, with references
+// TODO: Comment this code, with references.
 //    What does it do (with references)?
 //    What are its arguments?  Are they "in," "in/out," or "out" parameters?
 // TODO: It might be worth defining a "Grid" class
