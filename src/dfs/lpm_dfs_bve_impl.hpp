@@ -2,7 +2,6 @@
 #define LPM_DFS_BVE_IMPL_HPP
 
 #include "lpm_dfs_bve.hpp"
-#include "lpm_constants.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #include "util/lpm_string_util.hpp"
@@ -20,7 +19,8 @@ template <typename SeedType>
 DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
                          const Int nlon,
                          const Int n_tracers,
-                         const gmls::Params& interp_params) :
+                         const gmls::Params& interp_params,
+                         const Real Omg) :
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
   rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
   rel_vort_grid("relative_vorticity", nlon*(nlon/2 + 1)),
@@ -36,7 +36,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   mesh(mesh_params),
   grid(nlon),
   ntracers(n_tracers),
-  Omega(2*constants::PI),
+  Omega(Omg),
   t(0.0),
   gmls_params(interp_params)
 {
@@ -46,6 +46,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   }
 
   grid_crds = grid.init_coords();
+  grid_crds.update_host();
   grid_area = grid.weights_view();
 
   gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
@@ -121,6 +122,7 @@ void DFSBVE<SeedType>::init_velocity() {
     VelocityKernel<VelocityType>(u_grid, gridcrds, 0));
 }
 
+#ifdef LPM_USE_VTK
 template <typename SeedType>
 void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string grid_fname) const {
   auto vtk_mesh = VtkPolymeshInterface<SeedType>(mesh);
@@ -198,6 +200,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_writer->SetFileName(grid_fname.c_str());
   grid_writer->Write();
 }
+#endif
 
 template <typename SeedType>
 std::string DFSBVE<SeedType>::info_string(const int tab_level) const {
@@ -249,6 +252,30 @@ void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
     passive_vector_fields, active_vector_fields);
 }
 
+template <typename SeedType>
+void DFSBVE<SeedType>::init_velocity_from_vorticity() {
+  const auto rel_vort_dfs = rel_vort_grid.view;
+  auto velocity_out = gathered_mesh->vector_fields.at("velocity");
+  dfs_vort_2_velocity(gathered_mesh->phys_crds, rel_vort_dfs, velocity_out);
+  scatter_mesh->scatter_fields(passive_scalar_fields, active_scalar_fields,
+    passive_vector_fields, active_vector_fields);
+}
+
+template <typename SeedType> template <typename SolverType>
+void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
+  solver.advance_timestep();
+  scatter_mesh->scatter_fields(passive_scalar_fields, active_scalar_fields,
+    passive_vector_fields, active_vector_fields);
+  scatter_mesh->scatter_phys_crds();
+  gathered_mesh->update_host();
+#ifndef NDEBUG
+  constexpr bool verbose_output = true;
+#else
+  constexpr bool verbose_output = false;
+#endif
+  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
+    grid_crds.get_host_crd_view(), gmls_params);
+}
 
 #ifdef LPM_USE_VTK
 template <typename SeedType>

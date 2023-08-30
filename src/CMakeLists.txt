@@ -46,8 +46,8 @@ set(LPM_SOURCES
 		dfs/dfs_rhs_new.cpp
  		dfs/dfs_solve_new.cpp
 		dfs/dfs_test_support.cpp
-    		dfs/dfs_velocity.cpp 
-		dfs/dfs_interpolation.cpp 
+    		dfs/dfs_velocity.cpp
+		dfs/dfs_interpolation.cpp
 		dfs/dfs_vort2velocity.cpp
  		dfs/dfs_surface_grad.cpp
 )
@@ -119,6 +119,9 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_matlab_io.hpp
               dfs/lpm_dfs_grid.hpp
               dfs/lpm_dfs_bve.hpp
+              dfs/lpm_dfs_bve_impl.hpp
+              dfs/lpm_dfs_bve_solver.hpp
+              dfs/lpm_dfs_bve_solver_impl.hpp
               dfs/lpm_dfs_impl.hpp
 	      dfs/dfs_doubling.hpp
 	      dfs/dfs_laplacian_new.hpp

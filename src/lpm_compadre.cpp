@@ -42,11 +42,11 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
           params.min_neighbors, params.topo_dim, params.eps_multiplier);
   neighbor_lists = Kokkos::View<Index**>(
       "neighbor_lists", host_tgt_crds.extent(0), 4 * est_max_neighbors);
-  auto h_neighbors = Kokkos::create_mirror_view(neighbor_lists);
+  h_neighbors = Kokkos::create_mirror_view(neighbor_lists);
 
   neighborhood_radii =
       Kokkos::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
-  auto h_radii = Kokkos::create_mirror_view(neighborhood_radii);
+  h_radii = Kokkos::create_mirror_view(neighborhood_radii);
   Index max_neighbors = 0;
 
   bool dry_run = true;
@@ -70,18 +70,33 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
 
   Kokkos::deep_copy(neighbor_lists, h_neighbors);
   Kokkos::deep_copy(neighborhood_radii, h_radii);
-
-#ifndef NDEBUG
-  std::cout << "quasi-uniform estimate max neighbors = " << est_max_neighbors
-            << "\n";
-  std::cout << "min neighbors = " << params.min_neighbors << "\n";
-  std::cout << "max_neighbors = " << max_n << "\n";
-  std::cout << "n_tgts = " << host_tgt_crds.extent(0) << "\n";
-  std::cout << "extents(neighbor_lists) = (" << neighbor_lists.extent(0) << ", "
-            << neighbor_lists.extent(1) << ")\n";
-#endif
-
   compute_bds();
+#ifndef NDEBUG
+  std::cout << info_string();
+//   std::cout << "quasi-uniform estimate max neighbors = " << est_max_neighbors
+//             << "\n";
+//   std::cout << "min neighbors = " << params.min_neighbors << "\n";
+//   std::cout << "max_neighbors = " << max_n << "\n";
+//   std::cout << "n_tgts = " << host_tgt_crds.extent(0) << "\n";
+//   std::cout << "extents(neighbor_lists) = (" << neighbor_lists.extent(0) << ", "
+//             << neighbor_lists.extent(1) << ")\n";
+#endif
+}
+
+void Neighborhoods::update_neighbors(const host_crd_view host_src_crds,
+                const host_crd_view host_tgt_crds,
+                const Params& params,
+                const bool verbose) {
+  auto point_cloud_search = Compadre::PointCloudSearch(host_src_crds);
+  const bool dry_run = false;
+  point_cloud_search.generate2DNeighborListsFromKNNSearch(
+    dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
+    params.eps_multiplier);
+  if (verbose) {
+    std::cout << info_string();
+  }
+  Kokkos::deep_copy(neighbor_lists, h_neighbors);
+  Kokkos::deep_copy(neighborhood_radii, h_radii);
 }
 
 void Neighborhoods::compute_bds() {

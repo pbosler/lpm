@@ -41,6 +41,36 @@ void ScatterMeshData<SeedType>::scatter_lag_crds() {
 }
 
 template <typename SeedType>
+void ScatterMeshData<SeedType>::scatter_phys_crds() {
+  const auto face_mask = mesh.faces.mask;
+  const auto face_leaf_idx = mesh.faces.leaf_idx;
+  const Index n_verts = mesh.n_vertices_host();
+  const Index n_faces = mesh.n_faces_host();
+
+  const auto src_view = output.phys_crds;
+  auto v_phys_crds = mesh.vertices.phys_crds.view;
+  const auto vert_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+      {0, 0}, {n_verts, SeedType::geo::ndim});
+
+  Kokkos::parallel_for(
+      "scatter_vert_phys_crds", vert_policy,
+      KOKKOS_LAMBDA(const Index i, const int j) {
+        v_phys_crds(i, j) = src_view(i, j);
+      });
+
+  const auto face_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+      {0, 0}, {n_faces, SeedType::geo::ndim});
+  auto f_phys_crds = mesh.faces.lag_crds.view;
+  Kokkos::parallel_for(
+      "scatter_face_phys_crds", face_policy,
+      KOKKOS_LAMBDA(const Index i, const Int j) {
+        if (!face_mask(i)) {
+          f_phys_crds(i, j) = src_view(n_verts + face_leaf_idx(i), j);
+        }
+      });
+}
+
+template <typename SeedType>
 void ScatterMeshData<SeedType>::scatter_fields(
     const vert_scalar_map& vertex_scalar_fields,
     const face_scalar_map& face_scalar_fields,
