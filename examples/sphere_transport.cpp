@@ -12,6 +12,7 @@
 #include "lpm_logger.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
+#include "lpm_vorticity_gallery.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
@@ -50,10 +51,11 @@ inline Real courant_number(const Real dt, const Real dlam) {
   typedef. Changing the mesh seed will therefore require recompiling this
   program.
 */
-// typedef CubedSphereSeed seed_type;
-typedef IcosTriSphereSeed seed_type;
+typedef CubedSphereSeed seed_type;
+// typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
-typedef SphericalGaussianHills tracer_type;
+// typedef SphericalGaussianHills tracer_type;
+typedef RossbyHaurwitz54 tracer_type;
 
 /** @brief Collect all input values into a single struct; like a fortran
   namelist.
@@ -522,13 +524,26 @@ Input::Input(int argc, char* argv[]) {
                   std::to_string(init_depth) + "_";
   if (amr_limit > 0) {
     vtk_base_name += "amr" + std::to_string(amr_max)+"_";
+
+    const char* fmt = "tol%.3f";
+    int sz = std::snprintf(nullptr, 0, fmt, tracer_mass_tol);
+    std::vector<char> buf(sz + 1);
+    std::snprintf(&buf[0], buf.size(), fmt, tracer_mass_tol);
+    vtk_base_name += "mass" + std::string(&buf[0], sz) + "_";
+
+    sz = std::snprintf(nullptr, 0, fmt, tracer_var_tol);
+    buf = std::vector<char>(sz+1);
+    std::snprintf(&buf[0], buf.size(), fmt, tracer_var_tol);
+    vtk_base_name += "var" + std::string(&buf[0], sz) + "_";
   }
-  const char* fmt = "dt%.3f";
-  int sz = std::snprintf(nullptr, 0, fmt, dt);
-  std::vector<char> buf(sz + 1);
-  std::snprintf(&buf[0], buf.size(), fmt, dt);
-  vtk_base_name += std::string(&buf[0], sz);
-  vtk_base_name += "_rm" + std::to_string(remesh_interval) + "_";
+  if (nsteps > 0) {
+    const char* fmt = "dt%.3f";
+    int sz = std::snprintf(nullptr, 0, fmt, dt);
+    std::vector<char> buf(sz + 1);
+    std::snprintf(&buf[0], buf.size(), fmt, dt);
+    vtk_base_name += std::string(&buf[0], sz);
+    vtk_base_name += "_rm" + std::to_string(remesh_interval) + "_";
+  }
 }
 
 std::string Input::usage() const {

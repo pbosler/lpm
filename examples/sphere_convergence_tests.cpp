@@ -48,6 +48,8 @@ struct SphereConvergenceTest {
 
   using VelocityType = LauritzenEtAlDeformationalFlow;
 
+  using pse_type = pse::BivariateOrder8<typename SeedType::geo>;
+
   SphereConvergenceTest(const Input& ipt) : input(ipt),
     start_depth(ipt.start_depth), end_depth(ipt.end_depth) {}
 
@@ -144,6 +146,17 @@ struct SphereConvergenceTest {
     tgt.allocate_scalar_tracer("sxyz_lap_gmls");
     tgt.allocate_scalar_tracer("rh54_interp_herm");
     tgt.allocate_scalar_tracer("sxyz_interp_herm");
+    tgt.allocate_scalar_tracer("rh54_interp_pse_error");
+    tgt.allocate_scalar_tracer("rh54_lap_pse_error");
+    tgt.allocate_scalar_tracer("rh54_interp_gmls_error");
+    tgt.allocate_scalar_tracer("rh54_lap_gmls_error");
+    tgt.allocate_scalar_tracer("rh54_interp_herm_error");
+    tgt.allocate_scalar_tracer("sxyz_interp_pse_error");
+    tgt.allocate_scalar_tracer("sxyz_lap_pse_error");
+    tgt.allocate_scalar_tracer("sxyz_interp_gmls_error");
+    tgt.allocate_scalar_tracer("sxyz_lap_gmls_error");
+    tgt.allocate_scalar_tracer("sxyz_interp_herm_error");
+
 
     tgt.initialize_tracer(rh54, "rh54_exact");
     tgt.initialize_tracer(sxyz, "sxyz_exact");
@@ -176,22 +189,65 @@ struct SphereConvergenceTest {
     VectorField<SphereGeometry, VertexField> vherm_verts("velocity_herm", tgt.mesh.n_vertices_host());
     VectorField<SphereGeometry, FaceField>   vherm_faces("velocity_herm", tgt.mesh.n_faces_host());
 
+    VectorField<SphereGeometry, VertexField> vpse_verts_err("velocity_pse_err", tgt.mesh.n_vertices_host());
+    VectorField<SphereGeometry, FaceField>   vpse_faces_err("velocity_pse_err", tgt.mesh.n_faces_host());
+    VectorField<SphereGeometry, VertexField> vgmls_verts_err("velocity_gmls_err", tgt.mesh.n_vertices_host());
+    VectorField<SphereGeometry, FaceField>   vgmls_faces_err("velocity_gmls_err", tgt.mesh.n_faces_host());
+    VectorField<SphereGeometry, VertexField> vherm_verts_err("velocity_herm_err", tgt.mesh.n_vertices_host());
+    VectorField<SphereGeometry, FaceField>   vherm_faces_err("velocity_herm_err", tgt.mesh.n_faces_host());
+
+    const auto tgt_vert_xyz = tgt.mesh.vertices.phys_crds.view;
+    const auto tgt_face_xyz = tgt.mesh.faces.phys_crds.view;
+    const auto tgt_face_mask = tgt.mesh.faces.mask;
+    auto verts_pse_interp_rh54 = tgt.tracer_verts.at("rh54_interp_pse").view;
+    auto faces_pse_interp_rh54 = tgt.tracer_faces.at("rh54_interp_pse").view;
+    auto verts_pse_interp_sxyz = tgt.tracer_verts.at("sxyz_interp_pse").view;
+    auto faces_pse_interp_sxyz = tgt.tracer_faces.at("sxyz_interp_pse").view;
+    auto verts_pse_lap_rh54 = tgt.tracer_verts.at("rh54_lap_pse").view;
+    auto faces_pse_lap_rh54 = tgt.tracer_faces.at("rh54_lap_pse").view;
+    auto verts_pse_lap_sxyz = tgt.tracer_verts.at("sxyz_lap_pse").view;
+    auto faces_pse_lap_sxyz = tgt.tracer_faces.at("sxyz_lap_pse").view;
+    Kokkos::TeamPolicy<> pse_vertex_policy(tgt.mesh.n_vertices_host(), Kokkos::AUTO());
+    Kokkos::TeamPolicy<> pse_face_policy(tgt.mesh.n_faces_host(), Kokkos::AUTO());
+
     logger.debug("tgt mesh initialized.");
 
     for (int d=start_depth; d<=end_depth; ++d) {
       tgt_vtk_fname = input.ofname_base + "_tgt_" + OtherSeedType::id_string() + std::to_string(output_depth) + "_src_" + SeedType::id_string() +
         std::to_string(d) + vtp_suffix();
 
+      PolyMeshParameters<SeedType> src_params(d);
+      auto src = TransportMesh2d<SeedType>(src_params);
+      src.template initialize_velocity<VelocityType>();
+
+      dxs.push_back(src.mesh.appx_mesh_size());
+
+      const auto src_vert_xyz = src.mesh.vertices.phys_crds.view;
+      const auto src_face_xyz = src.mesh.faces.phys_crds.view;
+      const auto src_mask = src.mesh.faces.mask;
+      const auto src_area = src.mesh.faces.area;
+      const auto src_rh54 = src.tracer_faces.at("rh54_exact").view;
+
+//       Kokkos::parallel_for(pse_vertex_policy,
+//         pse::ScalarInterpolation<pse_type>(verts_pse_interp_rh54, tgt_vert_xyz,
+//           src_face_xyz, src_rh54, src_area, src_mask,
+
 
 #ifdef LPM_USE_VTK
-    VtkPolymeshInterface<OtherSeedType> tgt_vtk(tgt.mesh);
-    tgt_vtk.add_vector_point_data(vpse_verts.view);
-    tgt_vtk.add_vector_cell_data(vpse_faces.view);
-    tgt_vtk.add_vector_point_data(vgmls_verts.view);
-    tgt_vtk.add_vector_cell_data(vgmls_faces.view);
-    tgt_vtk.add_vector_point_data(vherm_verts.view);
-    tgt_vtk.add_vector_cell_data(vherm_faces.view);
-    tgt_vtk.write(tgt_vtk_fname);
+      VtkPolymeshInterface<OtherSeedType> tgt_vtk(tgt.mesh);
+      tgt_vtk.add_vector_point_data(vpse_verts.view);
+      tgt_vtk.add_vector_cell_data(vpse_faces.view);
+      tgt_vtk.add_vector_point_data(vgmls_verts.view);
+      tgt_vtk.add_vector_cell_data(vgmls_faces.view);
+      tgt_vtk.add_vector_point_data(vherm_verts.view);
+      tgt_vtk.add_vector_cell_data(vherm_faces.view);
+      tgt_vtk.add_vector_point_data(vpse_verts_err.view);
+      tgt_vtk.add_vector_cell_data(vpse_faces_err.view);
+      tgt_vtk.add_vector_point_data(vgmls_verts_err.view);
+      tgt_vtk.add_vector_cell_data(vgmls_faces_err.view);
+      tgt_vtk.add_vector_point_data(vherm_verts_err.view);
+      tgt_vtk.add_vector_cell_data(vherm_faces_err.view);
+      tgt_vtk.write(tgt_vtk_fname);
 #endif
   }
 

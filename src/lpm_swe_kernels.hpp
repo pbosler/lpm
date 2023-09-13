@@ -77,6 +77,20 @@ KOKKOS_INLINE_FUNCTION void grad_kzeta(Compressed3by3 &gkz, const XType &x,
   }
 }
 
+template <typename Compressed3by3>
+KOKKOS_INLINE_FUNCTION
+Real double_dot(const Compressed3by3& mat) {
+  Real result = 0;
+  for (Int i=0; i<3; ++i) {
+    for (Int j=i; j<3; ++i) {
+      const Int ij_idx = 3*i + j;
+      const Int ji_idx = 3*j + i;
+      result += (i==j ? 1 : 2) * mat[ij_idx] * mat[ji_idx];
+    }
+  }
+  return result;
+}
+
 template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
                                         const YType &y, const Real eps = 0) {

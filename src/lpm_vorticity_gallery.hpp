@@ -141,7 +141,7 @@ struct RossbyHaurwitz54 {
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real laplacian(const PtType& xyz) const {
-    return -2*u0*xyz[2] - 900 * rh54_amplitude * cos(4*SphereGeometry::longitude(xyz)) * legendreP54(xyz[2]);
+    return -4*u0*xyz[2] - 900 * rh54_amplitude * cos(4*SphereGeometry::longitude(xyz)) * legendreP54(xyz[2]);
   }
 };
 
