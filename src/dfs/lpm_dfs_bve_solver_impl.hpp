@@ -47,6 +47,8 @@ void DFSRK2<SeedType>::advance_timestep()  {
   KokkosBlas::update(0.5, xyz_particles1, 0.5, xyz_particles2, 1, xyz_particles);
   // rk update: set new vorticity
   KokkosBlas::update(0.5, rel_vort_particles1, 0.5, rel_vort_particles2, 1, rel_vort_particles);
+
+  ++t_idx;
 }
 
 } // namespace DFS

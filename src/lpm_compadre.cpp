@@ -72,7 +72,7 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
   Kokkos::deep_copy(neighborhood_radii, h_radii);
   compute_bds();
 #ifndef NDEBUG
-  std::cout << info_string();
+//   std::cout << info_string();
 //   std::cout << "quasi-uniform estimate max neighbors = " << est_max_neighbors
 //             << "\n";
 //   std::cout << "min neighbors = " << params.min_neighbors << "\n";

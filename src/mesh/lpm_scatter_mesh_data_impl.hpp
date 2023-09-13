@@ -60,7 +60,7 @@ void ScatterMeshData<SeedType>::scatter_phys_crds() {
 
   const auto face_policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
       {0, 0}, {n_faces, SeedType::geo::ndim});
-  auto f_phys_crds = mesh.faces.lag_crds.view;
+  auto f_phys_crds = mesh.faces.phys_crds.view;
   Kokkos::parallel_for(
       "scatter_face_phys_crds", face_policy,
       KOKKOS_LAMBDA(const Index i, const Int j) {

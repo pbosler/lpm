@@ -275,6 +275,7 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
 #endif
   mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
     grid_crds.get_host_crd_view(), gmls_params);
+  t = solver.t_idx * solver.dt;
 }
 
 #ifdef LPM_USE_VTK

@@ -94,10 +94,8 @@ if (LPM_USE_FFTW3)
 endif()
 if (LPM_USE_FINUFFT)
   target_link_libraries(lpm PUBLIC finufft_static)
+  add_link_options(-fsanitize=address)
 endif()
-
-add_link_options(-fsanitize=address)
-
 
 #if (USE_SPHEREPACK)
 #    message(STATUS "linking to spherepack")
