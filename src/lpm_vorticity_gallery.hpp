@@ -15,23 +15,18 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
-// struct VorticityInitialCondition {
-//   ~VorticityInitialCondition() {}
-//
-//   Real operator() (const Real& x, const Real& y, const Real& z) const {return
-//   0;}
-//
-//   Real operator() (const Real& x, const Real& y) const {return 0;}
-//
-//   std::string name() const {return std::string();}
-// };
-
 struct SolidBodyRotation {
+  typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     return 2 * OMEGA * z;
+  }
+
+  template <typename PtView> KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtView& pt) const {
+    return 2*OMEGA*pt[2];
   }
 
   inline Real operator()(const Real& x, const Real& y) const { return 0; }
@@ -48,6 +43,7 @@ struct SolidBodyRotation {
 };
 
 struct NitscheStricklandVortex {
+  typedef PlaneGeometry geo;
   static constexpr Real b = 0.5;
 
   inline Real operator()(const Real& x, const Real& y, const Real& z) const {
@@ -74,6 +70,7 @@ struct NitscheStricklandVortex {
 };
 
 struct GaussianVortexSphere {
+  typedef SphereGeometry geo;
   Real gauss_const;
   Real vortex_strength;
   Real shape_parameter;
@@ -106,6 +103,7 @@ struct GaussianVortexSphere {
 };
 
 struct RossbyHaurwitz54 {
+  typedef SphereGeometry geo;
   Real u0;
   Real rh54_amplitude;
 
@@ -127,6 +125,7 @@ struct RossbyHaurwitz54 {
     const Real lon = atan4(y, x);
     return 2 * u0 * z + 30 * rh54_amplitude * cos(4 * lon) * legendreP54(z);
   }
+
 };
 
 #ifdef LPM_USE_BOOST
@@ -147,6 +146,7 @@ inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
 }
 
 struct CollidingDipolePairPlane {
+  typedef PlaneGeometry geo;
   Real dipole_strengthA;
   Real dipole_radiusA;
   Kokkos::Tuple<Real, 2> xyz_ctrA;

@@ -15,28 +15,6 @@
 
 namespace Lpm {
 
-template <typename VelocityFtor>
-struct VelocityKernel {
-  Kokkos::View<Real**> velocity;
-  Kokkos::View<Real**> xcrds;
-  Real t;
-  VelocityFtor velfn;
-
-  VelocityKernel(Kokkos::View<Real**> u, const Kokkos::View<Real**> x,
-                 const Real tt)
-      : velocity(u), xcrds(x), t(tt) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const Index i) const {
-    const auto myx = Kokkos::subview(xcrds, i, Kokkos::ALL);
-    auto myu = Kokkos::subview(velocity, i, Kokkos::ALL);
-    Kokkos::Tuple<Real, VelocityFtor::ndim> u = velfn(myx, t);
-    for (int j = 0; j < VelocityFtor::ndim; ++j) {
-      myu(j) = u[j];
-    }
-  }
-};
-
 template <typename SeedType>
 class TransportMesh2d : public PolyMesh2d<SeedType> {
  public:
