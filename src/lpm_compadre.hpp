@@ -58,6 +58,8 @@ struct Neighborhoods {
   Int n_min;
   Int n_max;
 
+  Neighborhoods() = default;
+
   Neighborhoods(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params);
 
@@ -72,6 +74,10 @@ struct Neighborhoods {
 
   KOKKOS_INLINE_FUNCTION
   Int max_neighbors() const { return n_max; }
+
+  void update_neighbors(const host_crd_view host_src_crds,
+                const host_crd_view host_tgt_crds, const Params& params,
+                const bool verbose=false);
 
   struct RadiusReducer {
     Kokkos::View<Real*> radii;
@@ -99,6 +105,10 @@ struct Neighborhoods {
 
   std::string info_string(const int tab_lev = 0) const;
   void compute_bds();
+
+  protected:
+    typename Kokkos::View<Index**>::HostMirror h_neighbors;
+    typename Kokkos::View<Real*>::HostMirror h_radii;
 };
 
 template <typename SrcCrdViewType, typename TgtCrdViewType>

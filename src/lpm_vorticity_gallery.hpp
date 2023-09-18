@@ -15,17 +15,6 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
-// struct VorticityInitialCondition {
-//   ~VorticityInitialCondition() {}
-//
-//   Real operator() (const Real& x, const Real& y, const Real& z) const {return
-//   0;}
-//
-//   Real operator() (const Real& x, const Real& y) const {return 0;}
-//
-//   std::string name() const {return std::string();}
-// };
-
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
@@ -33,6 +22,11 @@ struct SolidBodyRotation {
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     return 2 * OMEGA * z;
+  }
+
+  template <typename PtView> KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtView& pt) const {
+    return 2*OMEGA*pt[2];
   }
 
   inline Real operator()(const Real& x, const Real& y) const { return 0; }

@@ -4,3 +4,7 @@
 [submodule "ext/spdlog"]
 	path = ext/spdlog
 	url = git@github.com:gabime/spdlog.git
+[submodule "ext/catch2"]
+	path = ext/catch2
+	url = git@github.com:catchorg/Catch2.git
+	branch = v3.4.0

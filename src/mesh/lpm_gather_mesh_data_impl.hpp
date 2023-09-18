@@ -296,7 +296,7 @@ void GatherMeshData<SeedType>::gather_vector_fields(
     Kokkos::deep_copy(
         vert_vals, Kokkos::subview(
                        vf.second.view,
-                       std::make_pair(0, mesh.n_vertices_host(), Kokkos::ALL)));
+                       std::make_pair(0, mesh.n_vertices_host()), Kokkos::ALL));
     Kokkos::parallel_for(
         mesh.n_faces_host(),
         GatherVectorFaceData(vector_fields.at(vf.first),

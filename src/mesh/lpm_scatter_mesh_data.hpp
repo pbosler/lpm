@@ -34,6 +34,9 @@ struct ScatterMeshData {
   /// target
   void scatter_lag_crds();
 
+  /// scatters physical coordinate data from the gathered source to the mesh target
+  void scatter_phys_crds();
+
   /// scatters fields from gathered source to mesh target
   void scatter_fields(
       const vert_scalar_map& vertex_scalar_fields,
