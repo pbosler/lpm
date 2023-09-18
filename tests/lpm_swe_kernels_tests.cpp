@@ -3,12 +3,14 @@
 #include "lpm_constants.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_swe_kernels.hpp"
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 
 using namespace Lpm;
+using Catch::Approx;
 
 TEST_CASE("kernel values", "") {
 

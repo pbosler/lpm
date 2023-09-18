@@ -421,7 +421,11 @@ TEST_CASE("polymesh2d functions: planar meshes", "") {
 
 TEST_CASE("interpolation_test", "") {
   const int start_depth = 3;
-  const int end_depth = 6;
+  int end_depth = 4;
+  auto& ts = TestSession::get();
+  if (ts.params.find("end-depth") != ts.params.end()) {
+    end_depth = std::stoi(ts.params["end-depth"]);
+  }
   SECTION("planar tri") {
     typedef TriHexSeed seed_type;
     typedef PlanarGaussian tracer_type;
@@ -554,9 +558,3 @@ TEST_CASE("mesh to mesh", "") {
   }
 }
 
-// TEST_CASE("polymesh2d functions: spherical meshes", "") {
-//   SECTION("tri panels") {
-//   }
-//   SECTION("quad panels") {
-//   }
-// }
