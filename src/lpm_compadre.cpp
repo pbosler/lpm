@@ -73,13 +73,6 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
   compute_bds();
 #ifndef NDEBUG
   std::cout << info_string();
-//   std::cout << "quasi-uniform estimate max neighbors = " << est_max_neighbors
-//             << "\n";
-//   std::cout << "min neighbors = " << params.min_neighbors << "\n";
-//   std::cout << "max_neighbors = " << max_n << "\n";
-//   std::cout << "n_tgts = " << host_tgt_crds.extent(0) << "\n";
-//   std::cout << "extents(neighbor_lists) = (" << neighbor_lists.extent(0) << ", "
-//             << neighbor_lists.extent(1) << ")\n";
 #endif
 }
 

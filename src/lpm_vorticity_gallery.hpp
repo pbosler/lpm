@@ -15,17 +15,6 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
-// struct VorticityInitialCondition {
-//   ~VorticityInitialCondition() {}
-//
-//   Real operator() (const Real& x, const Real& y, const Real& z) const {return
-//   0;}
-//
-//   Real operator() (const Real& x, const Real& y) const {return 0;}
-//
-//   std::string name() const {return std::string();}
-// };
-
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
@@ -137,16 +126,6 @@ struct RossbyHaurwitz54 {
     return 2 * u0 * z + 30 * rh54_amplitude * cos(4 * lon) * legendreP54(z);
   }
 
-//   template <typename VecType> KOKKOS_INLINE_FUNCTION
-//   void velocity(VecType& u, const Real& x, const Real& y, const Real& z) {
-//     const Real lat = SphereGeometry::latitude(x,y,z);
-//     const Real lon = SphereGeometry::longitude(x,y,z);
-//     const Real u = 0.5 * cos(4 * lon) * cube(cos(lat)) * (5 * cos(2 * lat) - 3);
-//     const Real v = 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
-//     u[0] = -u0*y - u*sin(lon) - v*sin(lat)*cos(lon);
-//     u[1] =  u0*x + u*cos(lon) - v*sin(lat)*sin(lon);
-//     u[2] = v*cos(lat);
-//   }
 };
 
 #ifdef LPM_USE_BOOST
