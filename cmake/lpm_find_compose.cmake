@@ -2,7 +2,7 @@
 # Compose : spherical geometry and shape preservation libraries
 #
 
-set(LPM_USE_COMPOSE FALSE)
+#set(LPM_USE_COMPOSE FALSE CACHE BOOL "Compose libraries found")
 if (LPM_ENABLE_Compose)
   if (Compose_DIR)
     message(STATUS "looking for Compose at ${Compose_DIR}")

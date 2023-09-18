@@ -54,6 +54,8 @@ class Coords {
   friend class PolymeshReader;
 #endif
 
+  Coords() = default;
+
   /** @brief Constructor.
 
     @param nmax Maximum number of faces to allocate space.

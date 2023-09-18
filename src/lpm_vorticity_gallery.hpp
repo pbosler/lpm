@@ -27,11 +27,17 @@ using Kokkos::Tuple;
 // };
 
 struct SolidBodyRotation {
+  typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     return 2 * OMEGA * z;
+  }
+
+  template <typename PtView> KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtView& pt) const {
+    return 2*OMEGA*pt[2];
   }
 
   inline Real operator()(const Real& x, const Real& y) const { return 0; }
@@ -48,6 +54,7 @@ struct SolidBodyRotation {
 };
 
 struct NitscheStricklandVortex {
+  typedef PlaneGeometry geo;
   static constexpr Real b = 0.5;
 
   inline Real operator()(const Real& x, const Real& y, const Real& z) const {
@@ -74,6 +81,7 @@ struct NitscheStricklandVortex {
 };
 
 struct GaussianVortexSphere {
+  typedef SphereGeometry geo;
   Real gauss_const;
   Real vortex_strength;
   Real shape_parameter;
@@ -106,6 +114,7 @@ struct GaussianVortexSphere {
 };
 
 struct RossbyHaurwitz54 {
+  typedef SphereGeometry geo;
   Real u0;
   Real rh54_amplitude;
 
@@ -127,6 +136,17 @@ struct RossbyHaurwitz54 {
     const Real lon = atan4(y, x);
     return 2 * u0 * z + 30 * rh54_amplitude * cos(4 * lon) * legendreP54(z);
   }
+
+//   template <typename VecType> KOKKOS_INLINE_FUNCTION
+//   void velocity(VecType& u, const Real& x, const Real& y, const Real& z) {
+//     const Real lat = SphereGeometry::latitude(x,y,z);
+//     const Real lon = SphereGeometry::longitude(x,y,z);
+//     const Real u = 0.5 * cos(4 * lon) * cube(cos(lat)) * (5 * cos(2 * lat) - 3);
+//     const Real v = 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
+//     u[0] = -u0*y - u*sin(lon) - v*sin(lat)*cos(lon);
+//     u[1] =  u0*x + u*cos(lon) - v*sin(lat)*sin(lon);
+//     u[2] = v*cos(lat);
+//   }
 };
 
 #ifdef LPM_USE_BOOST
@@ -147,6 +167,7 @@ inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
 }
 
 struct CollidingDipolePairPlane {
+  typedef PlaneGeometry geo;
   Real dipole_strengthA;
   Real dipole_radiusA;
   Kokkos::Tuple<Real, 2> xyz_ctrA;
