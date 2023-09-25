@@ -105,6 +105,8 @@ class VtkInterface {
   vtkSmartPointer<vtkPolyDataWriter> pdwriter;
 };
 
+inline std::string vtp_suffix() { return ".vtp"; }
+
 }  // namespace Lpm
 
 #endif  // LPM_USE_VTK

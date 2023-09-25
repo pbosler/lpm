@@ -80,6 +80,10 @@ TEST_CASE("kernel values", "") {
   logger.info("kzeta1 . x = {}", kz1_dot_x);
   logger.info("ksigma0 . x = {}", ks0_dot_x);
   logger.info("ksigma1 . x = {}", ks1_dot_x);
+  REQUIRE( FloatingPoint<Real>::zero(kz0_dot_x));
+  REQUIRE( FloatingPoint<Real>::zero(kz1_dot_x));
+  REQUIRE( FloatingPoint<Real>::zero(ks0_dot_x));
+  REQUIRE( FloatingPoint<Real>::zero(ks1_dot_x));
 
   const Real grad_kzeta_exact[9] = {0.40473666151212280247, -0.53131662597042255196,  0.21608551568911567310, -0.83791439363248985370, 0.82834755502308796106, 0.016331615064627251330, 0.43214450841002140895, 0.29017950208810278985, -1.2330842165352107635};
 
@@ -89,7 +93,9 @@ TEST_CASE("kernel values", "") {
   grad_kzeta(gkz1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
-      logger.info("gradkzeta0[{}] = {}", 3*i + j, gkz0[3*i+j]);
+      const int idx = 3*i+j;
+      logger.info("gradkzeta0[{}] = {}, rel. err. = {}", idx, gkz0[idx], (gkz0[idx] - grad_kzeta_exact[idx])/grad_kzeta_exact[idx]);
+      logger.info("gradkzeta1[{}] = {}, rel. err. = {}", idx, gkz1[idx], (gkz1[idx] - grad_kzeta_exact[idx])/grad_kzeta_exact[idx]);
     }
   }
 
@@ -101,9 +107,9 @@ TEST_CASE("kernel values", "") {
   grad_ksigma(gks1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
-      const int idx = 3*i + j;
-      logger.info("gradksigma[{}] = {}", idx, gks0[idx]);
-    }
+      const int idx = 3*i+j;
+      logger.info("gradksigma0[{}] = {}, rel. err. = {}", idx, gks0[idx], (gks0[idx] - grad_ksigma_exact[idx])/grad_ksigma_exact[idx]);
+      logger.info("gradksigma1[{}] = {}, rel. err. = {}", idx, gks1[idx], (gks1[idx] - grad_ksigma_exact[idx])/grad_ksigma_exact[idx]);    }
   }
 
   for (int i=0; i<3; ++i) {
@@ -118,7 +124,9 @@ TEST_CASE("kernel values", "") {
     for (int j=0; j<3; ++j) {
       const int idx = i*3 + j;
       CHECK( gkz0[idx] == Approx(grad_kzeta_exact[idx] ) );
+      CHECK( gkz1[idx] == Approx(grad_kzeta_exact[idx] ).epsilon(0.12));
       CHECK( gks0[idx] == Approx(grad_ksigma_exact[idx]) );
+      CHECK( gks1[idx] == Approx(grad_ksigma_exact[idx]).epsilon(0.12) );
     }
   }
 }

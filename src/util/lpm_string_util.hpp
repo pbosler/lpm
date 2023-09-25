@@ -28,8 +28,6 @@ static std::string sprarr(const std::string& name, const T* const v,
 
 inline std::string nc_suffix() { return ".nc"; }
 
-inline std::string vtp_suffix() { return ".vtp"; }
-
 template <typename T>
 inline std::string zero_fill_str(const T ct, const Int nfill = 4) {
   static_assert(std::is_integral<T>::value, "integral type required");
