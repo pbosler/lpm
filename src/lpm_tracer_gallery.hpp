@@ -405,6 +405,12 @@ struct SphereXYZTrigTracer {
   KOKKOS_INLINE_FUNCTION Real operator()(const CVT xyz) const {
     return 0.5 * (1 + sin(3 * xyz[0]) * sin(3 * xyz[1]) * sin(4 * xyz[2]));
   }
+
+  template <typename CVT>
+  KOKKOS_INLINE_FUNCTION Real laplacian(const CVT xyz) const {
+    return -3*xyz[1]*cos(3*xyz[1])*(4*xyz[2]*cos(4*xyz[2])*sin(3*xyz[0]) + (3*xyz[0]*cos(3*xyz[0]) + sin(3*xyz[0]))*sin(4*xyz[2])) - 0.5*sin(3*xyz[1])*(6*xyz[0]*cos(3*xyz[0])*(4*xyz[2]*cos(4*xyz[2]) + sin(4*xyz[2])) +
+sin(3*xyz[0])*(8*xyz[2]*cos(4*xyz[2]) + (25 - 7*square(xyz[2]))*sin(4*xyz[2])));
+  }
 };
 
 }  // namespace Lpm

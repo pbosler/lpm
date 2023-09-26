@@ -73,7 +73,7 @@ Real cyl_bessel_j(const int n, const Real x) { return jnf(n, x); }
 #endif
 
 /// Inverse tangent with quadrant information, but with output range in [0,
-/// 2*pi) instead of (-pi, pi]
+/// 2*pi) instead of [-pi, pi)
 KOKKOS_INLINE_FUNCTION
 Real atan4(const Real y, const Real x) {
   Real result = 0.0;
@@ -151,6 +151,8 @@ KOKKOS_INLINE_FUNCTION T square(const T& x) {
 */
 template <typename T = Real>
 KOKKOS_INLINE_FUNCTION T safe_divide(const T& x, const T& eps = 1E-13) {
+  static_assert(std::is_arithmetic<T>::value,
+                "safe_divide: arithmetic type required.");
   return x / (square(x) + square(eps));
 }
 

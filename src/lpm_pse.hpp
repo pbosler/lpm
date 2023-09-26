@@ -17,7 +17,7 @@ struct PSEKernel {
   static constexpr Int ndim = Geo::ndim;
 
   KOKKOS_INLINE_FUNCTION
-  static Real epsilon(const Real dx, const Real p = 17.0 / 20) {
+  static Real epsilon(const Real dx, const Real p = 11.0 / 20) {
     LPM_KERNEL_ASSERT(p < 1);
     return pow(dx, p);
   }
@@ -29,8 +29,9 @@ struct PSEKernel {
   }
 };
 
-struct BivariateOrder8 : public PSEKernel<PlaneGeometry> {
-  typedef PlaneGeometry geo;
+template <typename Geo>
+struct BivariateOrder8 : public PSEKernel<Geo> {
+  typedef Geo geo;
   static constexpr Int ndim = 2;
 
   KOKKOS_INLINE_FUNCTION

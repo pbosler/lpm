@@ -33,6 +33,17 @@ target_include_directories(sphere_transport PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
+add_executable(sphere_convergence_tests sphere_convergence_tests.cpp)
+target_link_libraries(sphere_convergence_tests PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_convergence_tests PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
 add_test(NAME sphere_mesh_init
   COMMAND sphere_mesh_init -o sph_mesh_example.vtk -n 2)
 
@@ -41,6 +52,8 @@ add_test(NAME bve_solid_body_rotation
 
 add_test(NAME sphere_transport
  COMMAND sphere_transport -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
+
+
 
 else()
   message("VTK not found. Skipping examples:

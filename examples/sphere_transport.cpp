@@ -12,6 +12,7 @@
 #include "lpm_logger.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
+#include "lpm_vorticity_gallery.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
@@ -23,6 +24,7 @@
 #include "util/lpm_string_util.hpp"
 #include "fortran/lpm_ssrfpack_interface.hpp"
 #include "fortran/lpm_ssrfpack_interface_impl.hpp"
+#include "util/lpm_progress_bar.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -31,6 +33,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 using namespace Lpm;
 
@@ -48,10 +51,11 @@ inline Real courant_number(const Real dt, const Real dlam) {
   typedef. Changing the mesh seed will therefore require recompiling this
   program.
 */
-// typedef CubedSphereSeed seed_type;
-typedef IcosTriSphereSeed seed_type;
+typedef CubedSphereSeed seed_type;
+// typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
-typedef SphericalGaussianHills tracer_type;
+// typedef SphericalGaussianHills tracer_type;
+typedef RossbyHaurwitz54 tracer_type;
 
 /** @brief Collect all input values into a single struct; like a fortran
   namelist.
@@ -62,20 +66,30 @@ typedef SphericalGaussianHills tracer_type;
 struct Input {
   Input(int argc, char* argv[]);
   Real dt;
+  static constexpr Real dt_default = 0.05;
   Real tfinal;
+  static constexpr Real tf_default = 5;
   Int nsteps;
+  static constexpr Int nsteps_default = 100;
   std::string base_output_name;
   Int init_depth;
+  static constexpr Int init_depth_default = 4;
   Int amr_limit;
+  static constexpr Int amr_limit_default = 0;
   Int amr_max;
+  static constexpr Int amr_max_default = 0;
   Int remesh_interval;
+  static constexpr Int remesh_interval_default = 20;
   Int reset_lagrangian_interval;
+  static constexpr Int reset_lagrangian_interval_default = LPM_NULL_IDX;
   Int output_interval;
+  static constexpr Int output_interval_default = 1;
   std::string output_dir;
   Real tracer_mass_tol;
   Real tracer_var_tol;
   Real radius;
   Int gmls_order;
+  static constexpr Int gmls_order_default = 5;
 
   bool help_and_exit;
   std::string info_string() const;
@@ -127,10 +141,10 @@ int main(int argc, char* argv[]) {
       */
       Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
 
-      auto face_area = sphere->faces.area;
+      auto face_area = sphere->mesh.faces.area;
       auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
-      auto face_mask = sphere->faces.mask;
-      ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, sphere->n_faces_host(), input.tracer_mass_tol);
+      auto face_mask = sphere->mesh.faces.mask;
+      ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, sphere->mesh.n_faces_host(), input.tracer_mass_tol);
       mass_flag.set_tol_from_relative_value();
       tracer_mass_tol = mass_flag.tol;
       const Real max_tracer_mass = mass_flag.tol / input.tracer_mass_tol;
@@ -143,9 +157,9 @@ int main(int argc, char* argv[]) {
 
 
       auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
-      auto face_verts = sphere->faces.verts;
+      auto face_verts = sphere->mesh.faces.verts;
 
-      ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, sphere->n_faces_host(), input.tracer_var_tol);
+      ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, sphere->mesh.n_faces_host(), input.tracer_var_tol);
       var_flag.set_tol_from_relative_value();
       tracer_var_tol = var_flag.tol;
       const Real max_tracer_var = var_flag.tol / input.tracer_var_tol;
@@ -163,8 +177,8 @@ int main(int argc, char* argv[]) {
       Index verts_start_idx = 0;
       Index faces_start_idx = 0;
       for (int i = 0; i < input.amr_max; ++i) {
-        Index verts_end_idx = sphere->n_vertices_host();
-        Index faces_end_idx = sphere->n_faces_host();
+        Index verts_end_idx = sphere->mesh.n_vertices_host();
+        Index faces_end_idx = sphere->mesh.n_faces_host();
 
         /// refinement criterion 1: mass per face, designed to refine local
         /// maxima
@@ -173,7 +187,7 @@ int main(int argc, char* argv[]) {
             mass_flag);
         Index mass_refinement_count;
         Kokkos::parallel_reduce(
-            sphere->n_faces_host(),
+            sphere->mesh.n_faces_host(),
             KOKKOS_LAMBDA(const Index i, Index& ct) { ct += Index(flags(i)); },
             mass_refinement_count);
         logger.info("amr iteration {}: initial mass_refinement_count = {}", i,
@@ -186,7 +200,7 @@ int main(int argc, char* argv[]) {
             var_flag);
         Index total_refinement_count;
         Kokkos::parallel_reduce(
-            sphere->n_faces_host(),
+            sphere->mesh.n_faces_host(),
             KOKKOS_LAMBDA(const Index i, Index& ct) { ct += Index(flags(i)); },
             total_refinement_count);
 
@@ -194,7 +208,7 @@ int main(int argc, char* argv[]) {
                     total_refinement_count - mass_refinement_count);
 
         /// divide all flagged faces
-        sphere->divide_flagged_faces(flags, logger);
+        sphere->mesh.divide_flagged_faces(flags, logger);
         /// reset flags for next iteration
         Kokkos::deep_copy(flags, false);
         /// set scalar values on new faces
@@ -208,7 +222,7 @@ int main(int argc, char* argv[]) {
       */
       Real min_area;
       Kokkos::parallel_reduce(
-          sphere->n_faces_host(),
+          sphere->mesh.n_faces_host(),
           KOKKOS_LAMBDA(const Index i, Real& ar) {
             if (!face_mask(i)) {
               ar = (face_area(i) < ar ? face_area(i) : ar);
@@ -246,6 +260,7 @@ int main(int argc, char* argv[]) {
     const std::vector<Compadre::TargetOperation> gmls_ops({Compadre::VectorPointEvaluation});
 
     logger.debug("initiating time step loop.");
+    ProgressBar progress("sphere_transport", input.nsteps);
     for (Int time_idx = 0; time_idx<input.nsteps; ++time_idx) {
 
       /**
@@ -261,7 +276,7 @@ int main(int argc, char* argv[]) {
           new_sphere->allocate_scalar_tracer(tracer.name());
 
           /// gather data from current (source) mesh
-          GatherMeshData<seed_type> gather_src(*sphere);
+          GatherMeshData<seed_type> gather_src(sphere->mesh);
           gather_src.unpack_coordinates();
           logger.debug("created gather object");
           gather_src.init_scalar_fields(sphere->tracer_verts, sphere->tracer_faces);
@@ -277,7 +292,7 @@ int main(int argc, char* argv[]) {
             logger.debug("initiating remesh {} to t=0", remesh_ctr);
 
             SSRFPackInterface ssrfpack(gather_src);
-            ssrfpack.interpolate_lag_crds(*new_sphere);
+            ssrfpack.interpolate_lag_crds(new_sphere->mesh);
             new_sphere->update_device();
             new_sphere->set_tracer_from_lag_crds(tracer);
 
@@ -286,19 +301,19 @@ int main(int argc, char* argv[]) {
 
               Index verts_start_idx = 0;
               Index faces_start_idx = 0;
-              auto face_area = new_sphere->faces.area;
+              auto face_area = new_sphere->mesh.faces.area;
               auto face_tracer = new_sphere->tracer_faces.at(tracer.name()).view;
-              auto face_mask = new_sphere->faces.mask;
+              auto face_mask = new_sphere->mesh.faces.mask;
               auto vert_tracer = new_sphere->tracer_verts.at(tracer.name()).view;
-              auto face_verts = new_sphere->faces.verts;
+              auto face_verts = new_sphere->mesh.faces.verts;
 
-              ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, new_sphere->n_faces_host(), tracer_mass_tol);
+              ScalarIntegralFlag mass_flag(flags, face_tracer, face_area, face_mask, new_sphere->mesh.n_faces_host(), tracer_mass_tol);
 
-              ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, new_sphere->n_faces_host(), tracer_var_tol);
+              ScalarVariationFlag var_flag(flags, face_tracer, vert_tracer, face_verts, face_mask, new_sphere->mesh.n_faces_host(), tracer_var_tol);
 
               for (int i=0; i<input.amr_max; ++i) {
-                Index verts_end_idx = new_sphere->n_vertices_host();
-                Index faces_end_idx = new_sphere->n_faces_host();
+                Index verts_end_idx = new_sphere->mesh.n_vertices_host();
+                Index faces_end_idx = new_sphere->mesh.n_faces_host();
 
                 Kokkos::parallel_for(
                   Kokkos::RangePolicy<>(faces_start_idx, faces_end_idx),
@@ -325,9 +340,9 @@ int main(int argc, char* argv[]) {
                 logger.info("remesh {}, amr iter. {} : mass refine count = {}, variation refine count = {}",
                   remesh_ctr, i, mass_refinement_count, total_refinement_count - mass_refinement_count);
 
-                new_sphere->divide_flagged_faces(flags, logger);
+                new_sphere->mesh.divide_flagged_faces(flags, logger);
 
-                ssrfpack.interpolate_lag_crds(*new_sphere, verts_start_idx, faces_start_idx);
+                ssrfpack.interpolate_lag_crds(new_sphere->mesh, verts_start_idx, faces_start_idx);
                 new_sphere->update_device();
                 new_sphere->set_tracer_from_lag_crds(tracer, verts_start_idx, faces_start_idx);
 
@@ -364,6 +379,7 @@ int main(int argc, char* argv[]) {
 
       /// time step
       solver->template advance_timestep<velocity_type>();
+      progress.update();
       logger.debug("time step {} of {}; t = {}", sphere->t_idx, input.nsteps, sphere->t);
 
 #ifdef LPM_USE_VTK
@@ -376,20 +392,20 @@ int main(int argc, char* argv[]) {
     } // time step loop
 
     /// compute tracer error
-    Kokkos::View<Real*> tracer_error_faces("tracer_error", sphere->n_faces_host());
-    Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->n_vertices_host());
+    Kokkos::View<Real*> tracer_error_faces("tracer_error", sphere->mesh.n_faces_host());
+    Kokkos::View<Real*> tracer_error_verts("tracer_error", sphere->mesh.n_vertices_host());
     const auto vert_tracer = sphere->tracer_verts.at(tracer.name()).view;
     const auto face_tracer = sphere->tracer_faces.at(tracer.name()).view;
-    const auto crd_verts = sphere->vertices.phys_crds.view;
-    const auto crd_faces = sphere->faces.phys_crds.view;
-    const auto face_mask = sphere->faces.mask;
-    Kokkos::parallel_for("compute_tracer_error_verts", sphere->n_vertices_host(),
+    const auto crd_verts = sphere->mesh.vertices.phys_crds.view;
+    const auto crd_faces = sphere->mesh.faces.phys_crds.view;
+    const auto face_mask = sphere->mesh.faces.mask;
+    Kokkos::parallel_for("compute_tracer_error_verts", sphere->mesh.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {
         const auto mcrd = Kokkos::subview(crd_verts, i, Kokkos::ALL);
         tracer_error_verts(i) = vert_tracer(i) - tracer(mcrd);
       });
-    Kokkos::View<Real*> tracer_exact_faces("tracer_exact", sphere->n_faces_host());
-    Kokkos::parallel_for("compute_tracer_exact_faces", sphere->n_faces_host(),
+    Kokkos::View<Real*> tracer_exact_faces("tracer_exact", sphere->mesh.n_faces_host());
+    Kokkos::parallel_for("compute_tracer_exact_faces", sphere->mesh.n_faces_host(),
       KOKKOS_LAMBDA (const Index i) {
         if (!face_mask(i)) {
           const auto mcrd = Kokkos::subview(crd_faces, i, Kokkos::ALL);
@@ -397,13 +413,13 @@ int main(int argc, char* argv[]) {
         }
       });
     const auto face_tracer_err_norms = ErrNorms(tracer_error_faces,
-      Kokkos::subview(face_tracer, std::make_pair(0, sphere->n_faces_host())),
+      Kokkos::subview(face_tracer, std::make_pair(0, sphere->mesh.n_faces_host())),
       tracer_exact_faces,
-      Kokkos::subview(sphere->faces.area, std::make_pair(0, sphere->n_faces_host())),
-      Kokkos::subview(sphere->faces.mask, std::make_pair(0, sphere->n_faces_host())));
+      Kokkos::subview(sphere->mesh.faces.area, std::make_pair(0, sphere->mesh.n_faces_host())),
+      Kokkos::subview(sphere->mesh.faces.mask, std::make_pair(0, sphere->mesh.n_faces_host())));
 
     logger.info("Face tracer error : nsteps = {}, n_faces_final = {}, l1 = {}, l2 = {}, linf = {}",
-      input.nsteps, sphere->faces.n_leaves_host(), face_tracer_err_norms.l1, face_tracer_err_norms.l2,
+      input.nsteps, sphere->mesh.faces.n_leaves_host(), face_tracer_err_norms.l1, face_tracer_err_norms.l2,
       face_tracer_err_norms.linf);
 
 
@@ -427,10 +443,10 @@ int main(int argc, char* argv[]) {
 }
 
 Input::Input(int argc, char* argv[]) {
-  dt = 0.0125;
+  dt = 0.05;
   tfinal = 5;
   nsteps = 400;
-  base_output_name = "sphere_transport_amr_";
+  base_output_name = "transport_";
   init_depth = 4;
   amr_limit = 0;
   amr_max = 1;
@@ -438,7 +454,7 @@ Input::Input(int argc, char* argv[]) {
   tracer_var_tol = 0.15;
   remesh_interval = 20;
   reset_lagrangian_interval = LPM_NULL_IDX;
-  output_interval = 8;
+  output_interval = 1;
   output_dir = "";
   help_and_exit = false;
   radius = 1;
@@ -493,6 +509,9 @@ Input::Input(int argc, char* argv[]) {
       gmls_order = std::stoi(argv[++i]);
       LPM_REQUIRE(gmls_order >= 2);
     }
+    else {
+      throw std::invalid_argument(token);
+    }
   }
   if (use_nsteps) {
     dt = tfinal / nsteps;
@@ -505,13 +524,26 @@ Input::Input(int argc, char* argv[]) {
                   std::to_string(init_depth) + "_";
   if (amr_limit > 0) {
     vtk_base_name += "amr" + std::to_string(amr_max)+"_";
+
+    const char* fmt = "tol%.3f";
+    int sz = std::snprintf(nullptr, 0, fmt, tracer_mass_tol);
+    std::vector<char> buf(sz + 1);
+    std::snprintf(&buf[0], buf.size(), fmt, tracer_mass_tol);
+    vtk_base_name += "mass" + std::string(&buf[0], sz) + "_";
+
+    sz = std::snprintf(nullptr, 0, fmt, tracer_var_tol);
+    buf = std::vector<char>(sz+1);
+    std::snprintf(&buf[0], buf.size(), fmt, tracer_var_tol);
+    vtk_base_name += "var" + std::string(&buf[0], sz) + "_";
   }
-  const char* fmt = "dt%.3f";
-  int sz = std::snprintf(nullptr, 0, fmt, dt);
-  std::vector<char> buf(sz + 1);
-  std::snprintf(&buf[0], buf.size(), fmt, dt);
-  vtk_base_name += std::string(&buf[0], sz);
-  vtk_base_name += "_rm" + std::to_string(remesh_interval) + "_";
+  if (nsteps > 0) {
+    const char* fmt = "dt%.3f";
+    int sz = std::snprintf(nullptr, 0, fmt, dt);
+    std::vector<char> buf(sz + 1);
+    std::snprintf(&buf[0], buf.size(), fmt, dt);
+    vtk_base_name += std::string(&buf[0], sz);
+    vtk_base_name += "_rm" + std::to_string(remesh_interval) + "_";
+  }
 }
 
 std::string Input::usage() const {
@@ -526,37 +558,40 @@ std::string Input::usage() const {
   auto tabstr = indent_string(1);
   ss << tabstr << "optional arguments:\n";
   ss << tabstr
-     << "-dt [nonnegative real number] time step size (default: 0.03); this will be overridden by -nsteps if both are present.\n";
+     << "-dt [nonnegative real number] time step size (default: "
+     << dt_default << "); "
+     << "this will be overridden by -nsteps if both are present.\n";
   ss << tabstr
      << "-tf [nonnegative real number] final time for integration (default: "
-        "5)\n";
+     << tf_default << ")\n";
   ss << tabstr << "-nsteps [nonnegative integer] number of timesteps.\n";
   ss << tabstr
      << "-o [string] output filename root (default: "
         "\"sphere_transport_amr_example\"\n";
   ss << tabstr
      << "-d [nonnegative integer] initial depth of mesh quadtree (default: "
-        "4)\n";
+     << init_depth_default << ")\n";
   ss << tabstr
      << "-amr [nonnegative integer] number of uniform refinements beyond "
         "initial depth to allocate memory for; values > 0 will enable adaptive "
         "refinement (default: 0)\n";
   ss << tabstr
      << "-amr_max [nonnegative integer] maximum number of times a panel may be "
-        "divided (default: 1)\n.";
+     << "divided (default: 1)\n.";
   ss << tabstr
      << "-mass_tol [positive real number] threshold for local tracer integral "
-        "refinement criterion; not used if amr = 0 (default: 0.1)\n";
+     << "refinement criterion; not used if amr = 0 (default: 0.1)\n";
   ss << tabstr
      << "-var_tol [positive real number] threshold for local tracer variation "
-        "refinement criterion; not used if amr = 0 (default: 0.15).\n";
+     <<  "refinement criterion; not used if amr = 0 (default: 0.15).\n";
   ss << tabstr
      << "-rf [positive integer or -1] frequency of remesh/remap "
         "interpolations; setting value to -1 will disable remeshing (default: "
-        "20)\n";
+     << remesh_interval_default << ")\n";
   ss << tabstr
      << "-of [positive integer or -1] frequency of vtk output; setting value "
-        "to -1 will disable vtk output (default: 1)\n";
+        "to -1 will disable vtk output (default: "
+     << output_interval_default << ")\n";
   ss << tabstr
      << "-reset [positive integer] number of remeshing steps to allow before creating a new reference (default: disabled)\n";
   ss << tabstr
