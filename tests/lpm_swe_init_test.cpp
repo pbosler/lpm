@@ -15,7 +15,8 @@ using namespace Lpm;
 
 TEST_CASE("planar_swe", "[swe]") {
 
-typedef PlanarGravityWaveFreeBoundaries ic_type;
+// typedef PlanarGravityWaveFreeBoundaries ic_type;
+typedef NitscheStricklandVortex ic_type;
 typedef QuadRectSeed seed_type;
 
   int tree_init_depth = 4;
@@ -40,4 +41,24 @@ typedef QuadRectSeed seed_type;
 #endif
 }
 
+TEST_CASE("sphere swe", "[swe]") {
+  typedef SWETestCase2 ic_type;
+  typedef CubedSphereSeed seed_type;
+
+  int tree_init_depth = 5;
+  Comm comm;
+  std::string test_name = "sphere_swe_" + seed_type::id_string();
+  Logger<> logger(test_name, Log::level::debug, comm);
+
+  ic_type ic;
+
+  PolyMeshParameters<seed_type> mesh_params(tree_init_depth);
+  auto sphere = std::make_unique<SWE<seed_type>>(mesh_params, ic.Omega);
+  sphere->init_swe_problem(ic);
+
+#ifdef LPM_USE_VTK
+  auto vtk = vtk_mesh_interface(*sphere);
+  vtk.write(test_name + vtp_suffix());
+#endif
+}
 
