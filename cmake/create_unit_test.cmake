@@ -66,7 +66,7 @@ function(CreateUnitTest target_name target_sources)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
-  target_link_libraries(${target_name} PUBLIC ${LPM_LIBRARIES} ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
+  target_link_libraries(${target_name} PUBLIC lpm ${LPM_LIBRARIES} ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
   add_dependencies(${target_name} catch2)
 #  if (LPM_USE_VTK)
 #    target_include_directories(${target_name} PUBLIC ${VTK_INCLUDE_DIRS})
