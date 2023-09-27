@@ -125,11 +125,11 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         #endif
 
         Kokkos::View<Real**> face_position_error("face_position_error",
-          tm->n_faces_host(), SeedType::geo::ndim);
-        auto final_pos = tm->faces.phys_crds.view;
-        auto init_pos = tm->faces.lag_crds.view;
+          tm->mesh.n_faces_host(), SeedType::geo::ndim);
+        auto final_pos = tm->mesh.faces.phys_crds.view;
+        auto init_pos = tm->mesh.faces.lag_crds.view;
 
-        auto face_err_norms = ErrNorms(face_position_error, final_pos, init_pos, tm->faces.area);
+        auto face_err_norms = ErrNorms(face_position_error, final_pos, init_pos, tm->mesh.faces.area);
         logger.info("ns = {}, l1 = {}, l2 = {}, linf = {}", ns, face_err_norms.l1, face_err_norms.l2, face_err_norms.linf);
 
         l1.push_back(face_err_norms.l1);

@@ -445,6 +445,18 @@ struct SphereGeometry {
     return result;
   }
 
+  /** \brief Constructs a single row of P(x), the projector to the tangent
+    plane of the sphere at x.
+  */
+  template <typename RowType, typename XType>
+  KOKKOS_INLINE_FUNCTION static void proj_row(RowType& r, const XType& x, const int row) {
+    for (Short j=0; j<3; ++j) {
+      r[j] = -x[row]*x[j];
+    }
+    r[row] += 1;
+  }
+
+
   /** \brief copies the content of one vector view to another
 
     \param d destination vector

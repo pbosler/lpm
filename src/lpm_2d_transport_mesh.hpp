@@ -16,12 +16,14 @@
 namespace Lpm {
 
 template <typename SeedType>
-class TransportMesh2d : public PolyMesh2d<SeedType> {
+class TransportMesh2d {
  public:
   typedef SeedType seed_type;
   typedef typename SeedType::geo Geo;
   typedef typename SeedType::faceKind FaceType;
   typedef Coords<Geo> coords_type;
+
+  PolyMesh2d<SeedType> mesh;
 
   std::map<std::string, ScalarField<VertexField>>
       tracer_verts;  /// passive tracers at passive particles
@@ -35,18 +37,18 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
   Int t_idx;
 
   TransportMesh2d(const PolyMeshParameters<SeedType>& params)
-      : PolyMesh2d<SeedType>(params),
+      : mesh(params),
         velocity_verts("velocity", params.nmaxverts),
         velocity_faces("velocity", params.nmaxfaces),
         t(0),
         t_idx(0) {}
 
   template <typename ICType>
-  void initialize_tracer(const ICType& tracer_ic);
+  void initialize_tracer(const ICType& tracer_ic, const std::string& = std::string());
 
   template <typename ICType>
   void set_tracer_from_lag_crds(const ICType& tracer_ic, const Index vert_start_idx=0,
-                         const Index face_start_idx=0);
+                         const Index face_start_idx=0, const std::string& name="");
 
   void allocate_scalar_tracer(const std::string name);
 
@@ -59,11 +61,11 @@ class TransportMesh2d : public PolyMesh2d<SeedType> {
 
   inline Int ntracers() const { return tracer_verts.size(); }
 
-  std::string info_string(const int tab_lev = 0) const /*override*/;
+  std::string info_string(const int tab_lev = 0) const;
 
-  void update_device() const override;
+  void update_device() const;
 
-  void update_host() const override;
+  void update_host() const;
 
  protected:
 };

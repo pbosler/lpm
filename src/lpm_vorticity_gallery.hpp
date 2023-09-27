@@ -42,33 +42,6 @@ struct SolidBodyRotation {
   }
 };
 
-struct NitscheStricklandVortex {
-  typedef PlaneGeometry geo;
-  static constexpr Real b = 0.5;
-
-  inline Real operator()(const Real& x, const Real& y, const Real& z) const {
-    return 0;
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  Real operator()(const Real& x, const Real& y) const {
-    const Real rsq = square(x) + square(y);
-    const Real r = sqrt(rsq);
-    return (3 * safe_divide(r) - 2 * b * r) * rsq * std::exp(-b * rsq);
-  }
-
-  inline std::string name() const { return "Nitsche&Strickland"; }
-
-  KOKKOS_INLINE_FUNCTION
-  void init_velocity(Real& u, Real& v, const Real& x, const Real& y) const {
-    const Real rsq = square(x) + square(y);
-    const Real utheta = rsq * std::exp(-b * rsq);
-    const Real theta = std::atan2(y, x);
-    u = -utheta * std::sin(theta);
-    v = utheta * std::cos(theta);
-  }
-};
-
 struct GaussianVortexSphere {
   typedef SphereGeometry geo;
   Real gauss_const;
@@ -126,6 +99,17 @@ struct RossbyHaurwitz54 {
     return 2 * u0 * z + 30 * rh54_amplitude * cos(4 * lon) * legendreP54(z);
   }
 
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& xyz) const {
+    return 2*u0*xyz[2] + 30 * rh54_amplitude * cos(4*SphereGeometry::longitude(xyz)) * legendreP54(xyz[2]);
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real laplacian(const PtType& xyz) const {
+    return -4*u0*xyz[2] - 900 * rh54_amplitude * cos(4*SphereGeometry::longitude(xyz)) * legendreP54(xyz[2]);
+  }
 };
 
 #ifdef LPM_USE_BOOST
