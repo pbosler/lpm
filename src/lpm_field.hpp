@@ -12,6 +12,10 @@ namespace Lpm {
 
 // define the locations where field data "live" in the sense of numerical
 // methods
+// ParticleField and VertexField imply that field data (e.g., velocity and vorticity) are
+// colocated with grid points.
+// EdgeFields are collocated with edge midpoints.
+// FaceField can be used for cell-based quantities or for staggering.
 enum FieldLocation { ParticleField, VertexField, EdgeField, FaceField };
 
 // repeat the enums here to facilitate range-based iteration over the enum
@@ -53,6 +57,8 @@ struct ScalarField {
   void update_host() const { ko::deep_copy(hview, view); }
 
   std::string info_string(const int tab_level = 0) const;
+
+  std::pair<Real,Real> range(const Index n) const;
 };
 
 template <typename Geo, FieldLocation FL>
