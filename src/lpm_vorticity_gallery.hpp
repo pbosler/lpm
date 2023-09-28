@@ -15,6 +15,20 @@
 namespace Lpm {
 using Kokkos::Tuple;
 
+struct TotalVorticity {
+  scalar_view_type rel_vort;
+  scalar_view_type area;
+
+  TotalVorticity(const scalar_view_type& zeta, const scalar_view_type a) :
+    rel_vort(zeta),
+    area(a) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i, Real& sum) const {
+    sum += rel_vort(i) * area(i);
+  }
+};
+
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
@@ -54,20 +68,22 @@ struct GaussianVortexSphere {
                        const Real init_lon = 0,
                        const Real init_lat = constants::PI / 20)
       : gauss_const(0),
+        shape_parameter(b),
         vortex_strength(str),
         xyz_ctr({cos(init_lon) * cos(init_lat), sin(init_lon) * cos(init_lat),
-                 sin(init_lat)}) {}
+                 sin(init_lat)}) {  }
 
   KOKKOS_INLINE_FUNCTION
-  void set_gauss_const(const Real vorticity_sum, const Index n_leaf_faces) {
-    gauss_const = vorticity_sum / (4 * constants::PI);
+  void set_gauss_const(const Real vorticity_sum, const Index n) {
+    gauss_const = vorticity_sum / (4 * constants::PI * n);
   }
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];
-    return vortex_strength * exp(-square(shape_parameter) * distsq) -
+    const Real distsq = 2*(1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2]);
+    const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
            gauss_const;
+    return zeta;
   }
 
   Real operator()(const Real& x, const Real& y) const { return 0; }
