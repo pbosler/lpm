@@ -2,6 +2,7 @@
 #define LPM_DFS_BVE_IMPL_HPP
 
 #include "lpm_dfs_bve.hpp"
+#include "lpm_field_impl.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
 #include "util/lpm_string_util.hpp"

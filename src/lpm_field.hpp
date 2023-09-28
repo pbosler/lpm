@@ -57,6 +57,8 @@ struct ScalarField {
   void update_host() const { ko::deep_copy(hview, view); }
 
   std::string info_string(const int tab_level = 0) const;
+
+  std::pair<Real,Real> range(const Index n) const;
 };
 
 template <typename Geo, FieldLocation FL>

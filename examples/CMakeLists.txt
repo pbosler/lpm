@@ -49,6 +49,10 @@ add_executable(dfs_bve_rh54 dfs_bve_rh54.cpp)
 target_link_libraries(dfs_bve_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
 target_include_directories(dfs_bve_rh54 PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_executable(dfs_bve_gauss_vort dfs_bve_gauss_vort.cpp)
+target_link_libraries(dfs_bve_gauss_vort PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(dfs_bve_gauss_vort PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_test(NAME dfs_bve_rh54 COMMAND dfs_bve -d 2 -nl 10 -dt 0.05 -tf 0.05)
 endif()
 
