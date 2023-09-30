@@ -13,6 +13,9 @@ struct CoriolisBetaPlane {
   static constexpr Real Omega = 2*constants::PI;
 
   KOKKOS_INLINE_FUNCTION
+  CoriolisBetaPlane() = default;
+
+  KOKKOS_INLINE_FUNCTION
   explicit CoriolisBetaPlane(const Real phi0) :
     f0(2*Omega*sin(phi0)),
     beta(2*Omega*cos(phi0)) {}
@@ -36,7 +39,10 @@ struct CoriolisSphere {
   Real Omega;
 
   KOKKOS_INLINE_FUNCTION
-  explicit CoriolisSphere(const Real Omg=2*constants::PI) :
+  CoriolisSphere() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  explicit CoriolisSphere(const Real Omg) :
     Omega(Omg) {}
 
   KOKKOS_INLINE_FUNCTION

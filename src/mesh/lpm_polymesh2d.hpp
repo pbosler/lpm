@@ -942,5 +942,57 @@ ko::View<Real* [SeedType::geo::ndim]> source_coords(
   return result;
 }
 
+struct ScalarIntegralFunctor {
+  scalar_view_type vals;
+  scalar_view_type area;
+  mask_view_type mask;
+
+  ScalarIntegralFunctor(scalar_view_type v, scalar_view_type a, mask_view_type m) :
+    vals(v), area(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i, Real& sum) const {
+    if (!mask(i)) {
+      sum += vals(i)*area(i);
+    }
+  }
+};
+
+struct ScalarSquareIntegralFunctor {
+  scalar_view_type vals;
+  scalar_view_type area;
+  mask_view_type mask;
+
+  ScalarSquareIntegralFunctor(scalar_view_type v, scalar_view_type a, mask_view_type m) :
+    vals(v), area(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i, Real& sum) const {
+    if (not mask(i)) {
+      sum += square(vals(i))*area(i);
+    }
+  }
+};
+
+template <typename Geo>
+struct VectorSquareIntegralFunctor {
+  typename Geo::vec_view_type vals;
+  scalar_view_type area;
+  mask_view_type mask;
+
+  VectorSquareIntegralFunctor(typename Geo::vec_view_type v,
+    scalar_view_type a, mask_view_type m) :
+    vals(v), area(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i, Real& sum) const {
+    if (not mask(i)) {
+      const auto mvec = Kokkos::subview(vals, i, Kokkos::ALL);
+      sum += Geo::norm2(mvec)*area(i);
+    }
+  }
+
+};
+
 }  // namespace Lpm
 #endif

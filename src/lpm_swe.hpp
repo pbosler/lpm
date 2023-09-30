@@ -5,6 +5,7 @@
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_coriolis.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
@@ -14,6 +15,8 @@ namespace Lpm {
 
 template <typename InitialCondition> struct SWEInitializeProblem;
 
+template <typename Geo>  struct KineticEnergyFunctor;
+
 template <typename SeedType>
 class SWE {
   public:
@@ -21,6 +24,9 @@ class SWE {
     using coords_type = Coords<geo>;
     using crd_view = typename coords_type::view_type;
     using vec_view = typename geo::vec_view_type;
+    using coriolis_type = typename std::conditional<
+      std::is_same<typename SeedType::geo, SphereGeometry>::value,
+      CoriolisSphere, CoriolisBetaPlane>::type;
 
     /// relative vorticity
     ScalarField<VertexField> rel_vort_passive;
@@ -40,6 +46,9 @@ class SWE {
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
+    /// mass
+    ScalarField<FaceField> mass_active;
+
     /// Lagrangian particle/panel mesh
     PolyMesh2d<SeedType> mesh;
 
@@ -48,8 +57,15 @@ class SWE {
     Real beta;
     /// for spherical problems, Coriolis parameter f = 2*Omega*z
     Real Omega;
+
+    coriolis_type coriolis;
+
     /// time
     Real t;
+    /// gravity acceleration
+    Real g;
+
+
 
     void update_host();
     void update_device();

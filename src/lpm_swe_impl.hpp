@@ -5,7 +5,28 @@
 #include "lpm_kokkos_defs.hpp"
 #include "lpm_swe.hpp"
 
+#include <KokkosBlas.hpp>
+
 namespace Lpm {
+
+template <typename Geo>
+struct KineticEnergyFunctor {
+  scalar_view_type depth;
+  typename Geo::vec_view_type velocity;
+  scalar_view_type area;
+  mask_view_type mask;
+
+  KineticEnergyFunctor(scalar_view_type h, typename Geo::vec_view_type v, scalar_view_type a, mask_view_type m) :
+    depth(h), velocity(v), area(a), mask(m) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i, Real& ke) const {
+    if (not mask(i)) {
+      const auto mvec = Kokkos::subview(velocity, i, Kokkos::ALL);
+      ke += depth(i)*Geo::norm2(mvec)*area(i);
+    }
+  }
+};
 
 template <typename InitialCondition>
     struct SWEInitializeProblem {
@@ -64,11 +85,14 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real O
   depth_active("depth", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   Omega(Omg),
-  t(0) {
+  t(0),
+  g(constants::GRAVITY) {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
     "spherical geometry required");
+    coriolis.Omega = Omega;
     }
 
 template <typename SeedType>
@@ -85,12 +109,16 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f
   depth_active("depth", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   f0(f),
   beta(b),
-  t(0) {
+  t(0),
+  g(constants::GRAVITY) {
   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
     "planar geometry required");
+    coriolis.f0 = f;
+    coriolis.beta = b;
   }
 
 
@@ -149,7 +177,66 @@ void SWE<SeedType>::init_swe_problem(const InitialCondition& ic) {
       depth_active.view,
       velocity_active.view,
       ic));
+
+  auto mass = mass_active.view;
+  const auto area = mesh.faces.area;
+  const auto h = depth_active.view;
+  const auto mask = mesh.faces.mask;
+  Kokkos::parallel_for("init mass", mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      if (not mask(i)) {
+        mass(i) = h(i) * area(i);
+      }
+      else {
+        mass(i) = 0;
+      }
+    });
 }
+
+template <typename SeedType>
+Real SWE<SeedType>::total_mass() const {
+  Real mass;
+  const auto mass_view = mass_active.view;
+  const auto mask = mesh.faces.mask;
+  Kokkos::parallel_reduce("SWE total mass", mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& m) {
+      if (not mask(i)) {
+        m += mass_view(i);
+      }
+    }, mass);
+  return mass;
+}
+
+template <typename SeedType>
+Real SWE<SeedType>::total_energy() const {
+  return kinetic_energy() + potential_energy();
+}
+
+template <typename SeedType>
+Real SWE<SeedType>::total_enstrophy() const {
+  Real ens;
+  Kokkos::parallel_reduce("SWE enstrophy", mesh.n_faces_host(),
+    ScalarSquareIntegralFunctor(rel_vort_active, mesh.faces.area, mesh.faces.mask), ens);
+  return ens;
+}
+
+template <typename SeedType>
+Real SWE<SeedType>::kinetic_energy() const {
+  Real ke;
+  Kokkos::parallel_reduce("SWE kinetic energy", mesh.n_faces_host(),
+    KineticEnergyFunctor(velocity_active, mesh.faces.area, mesh.faces.mask), ke);
+  return 0.5*ke;
+}
+
+template <typename SeedType>
+Real SWE<SeedType>::potential_energy() const {
+  Real pe;
+  Kokkos::parallel_reduce("SWE potential energy", mesh.n_faces_host(),
+    ScalarSquareIntegralFunctor(depth_active, mesh.faces.area, mesh.faces.mask),
+    pe);
+  return 0.5 * g * pe;
+}
+
 
 #ifdef LPM_USE_VTK
   template <typename SeedType>

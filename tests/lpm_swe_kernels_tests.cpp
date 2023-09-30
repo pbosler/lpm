@@ -12,7 +12,7 @@
 using namespace Lpm;
 using Catch::Approx;
 
-TEST_CASE("kernel values", "") {
+TEST_CASE("sphere kernel values", "") {
 
   Real x[3];
   Real y[3];
@@ -89,8 +89,8 @@ TEST_CASE("kernel values", "") {
 
   Real gkz0[9];
   Real gkz1[9];
-  grad_kzeta(gkz0, x, y, eps0);
-  grad_kzeta(gkz1, x, y, eps1);
+  grad_kzeta_sphere(gkz0, x, y, eps0);
+  grad_kzeta_sphere(gkz1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
@@ -103,8 +103,8 @@ TEST_CASE("kernel values", "") {
 
   Real gks0[9];
   Real gks1[9];
-  grad_ksigma(gks0, x, y, eps0);
-  grad_ksigma(gks1, x, y, eps1);
+  grad_ksigma_sphere(gks0, x, y, eps0);
+  grad_ksigma_sphere(gks1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
