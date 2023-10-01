@@ -41,6 +41,45 @@ struct VelocityKernel {
   }
 };
 
+struct PlaneZeroVelocity {
+  typedef PlaneGeometry geo;
+  static constexpr Int ndim = 2;
+
+  KOKKOS_INLINE_FUNCTION
+  PlaneZeroVelocity() = default;
+
+  inline std::string name() const {return "ZeroVelocity";}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Tuple<Real,2> operator() (const PtType pt, const Real t=0) const {
+    Tuple<Real,2> result;
+    result[0] = 0;
+    result[1] = 0;
+    return result;
+  }
+};
+
+struct SphereZeroVelocity {
+  typedef SphereGeometry geo;
+  static constexpr Int ndim = 3;
+
+  KOKKOS_INLINE_FUNCTION
+  SphereZeroVelocity() = default;
+
+  inline std::string name() const {return "ZeroVelocity";}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Tuple<Real,3> operator() (const PtType pt, const Real t=0) const {
+    Tuple<Real,3> result;
+    result[0] = 0;
+    result[1] = 0;
+    result[2] = 0;
+    return result;
+  }
+};
+
 struct PlanarConstantEastward {
   typedef PlaneGeometry geo;
   static constexpr Int ndim = 2;

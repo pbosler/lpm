@@ -29,6 +29,45 @@ struct TotalVorticity {
   }
 };
 
+struct PlaneZeroVorticity {
+  typedef PlaneGeometry geo;
+
+  KOKKOS_INLINE_FUNCTION
+  PlaneZeroVorticity() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y) const {return 0;}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& pt) const {
+    return 0;}
+
+  Real operator()(const Real& x, const Real& y, const Real& z) const { return 0; }
+
+  inline std::string name() const { return "ZeroVorticity"; }
+};
+
+struct SphereZeroVorticity {
+  typedef SphereGeometry geo;
+
+  KOKKOS_INLINE_FUNCTION
+  SphereZeroVorticity() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y, const Real& z) const {return 0;}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& pt) const {
+    return 0;}
+
+  Real operator()(const Real& x, const Real& y) const { return 0; }
+
+  inline std::string name() const { return "ZeroVorticity"; }
+
+};
+
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;

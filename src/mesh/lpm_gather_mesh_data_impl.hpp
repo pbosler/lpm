@@ -232,6 +232,27 @@ void GatherMeshData<SeedType>::gather_coordinates() {
 }
 
 template <typename SeedType>
+void GatherMeshData<SeedType>::gather_phys_coordinates(const crd_view x_verts, const crd_view x_faces) {
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy(
+    {0,0}, {x_verts.extent(0), SeedType::Geo::ndim});
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy(
+    {0,0}, {x_faces.extent(0), SeedType::Geo::ndim});
+  auto gxyz = phys_crds;
+  Kokkos::parallel_for("gather phys_crds (verts)", vert_policy,
+    KOKKOS_LAMBDA (const Index i, const Int j) {
+      gxyz(i,j) = x_verts(i,j);
+    });
+  const auto vert_offset = x_verts.extent(0);
+  const auto face_mask = mesh.faces.mask;
+  const auto face_leaf_idx = mesh.faces.leaf_idx;
+  Kokkos::parallel_for("gather phys crds (faces)", face_policy,
+    KOKKOS_LAMBDA (const Index i, const Int j) {
+      gxyz(vert_offset + face_leaf_idx(i), j) = x_faces(i,j);
+    });
+  Kokkos::deep_copy(h_phys_crds, phys_crds);
+}
+
+template <typename SeedType>
 void GatherMeshData<SeedType>::init_scalar_fields(
     const std::map<std::string, ScalarField<VertexField>>& vert_fields,
     const std::map<std::string, ScalarField<FaceField>>& face_fields) {
@@ -281,6 +302,16 @@ void GatherMeshData<SeedType>::gather_scalar_fields(
                              face_fields.at(sf.first).view, mesh.faces.leaf_idx,
                              mesh.faces.mask, mesh.n_vertices_host()));
   }
+}
+
+template <typename SeedType>
+void GatherMeshData<SeedType>::gather_scalar_field(const std::string& name,
+  const scalar_view_type vert_s, const scalar_view_type face_s) {
+  auto vert_vals = Kokkos::subview(scalar_fields.at(name), std::make_pair(0, vert_s.extent(0)));
+  Kokkos::deep_copy(vert_vals, vert_s);
+  Kokkos::parallel_for(face_s.extent(0),
+    GatherScalarFaceData(scalar_fields.at(name),
+      face_s, mesh.faces.leaf_idx, mesh.faces.mask, vert_s.extent(0)));
 }
 
 template <typename SeedType>

@@ -4,6 +4,8 @@
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
 #include "lpm_swe.hpp"
+#include "lpm_swe_kernels.hpp"
+#include "lpm_swe_tendencies.hpp"
 
 #include <KokkosBlas.hpp>
 
@@ -81,15 +83,20 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real O
   div_active("divergence", mesh_params.nmaxfaces),
   surf_passive("surface_height", mesh_params.nmaxverts),
   surf_active("surface_height", mesh_params.nmaxfaces),
+  surf_laplacian_passive("surface_laplacian", mesh_params.nmaxverts),
+  surf_laplacian_active("surface_laplacian", mesh_params.nmaxfaces),
   depth_passive("depth", mesh_params.nmaxverts),
   depth_active("depth", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  double_dot_passive("double_dot", mesh_params.nmaxverts),
+  double_dot_active("double_dot", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   Omega(Omg),
   t(0),
-  g(constants::GRAVITY) {
+  g(constants::GRAVITY),
+  eps(0) {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
     "spherical geometry required");
     coriolis.Omega = Omega;
@@ -105,16 +112,21 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f
   div_active("divergence", mesh_params.nmaxfaces),
   surf_passive("surface_height", mesh_params.nmaxverts),
   surf_active("surface_height", mesh_params.nmaxfaces),
+  surf_laplacian_passive("surface_laplacian", mesh_params.nmaxverts),
+  surf_laplacian_active("surface_laplacian", mesh_params.nmaxfaces),
   depth_passive("depth", mesh_params.nmaxverts),
   depth_active("depth", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  double_dot_passive("double_dot", mesh_params.nmaxverts),
+  double_dot_active("double_dot", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   f0(f),
   beta(b),
   t(0),
-  g(constants::GRAVITY) {
+  g(constants::GRAVITY),
+  eps(0) {
   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
     "planar geometry required");
     coriolis.f0 = f;
@@ -132,10 +144,13 @@ void SWE<SeedType>::update_host() {
   div_active.update_host();
   surf_passive.update_host();
   surf_active.update_host();
+  surf_laplacian_passive.update_host();
+  surf_laplacian_active.update_host();
   depth_passive.update_host();
   depth_active.update_host();
   velocity_passive.update_host();
   velocity_active.update_host();
+  mass_active.update_host();
   mesh.update_host();
 }
 
@@ -149,15 +164,18 @@ void SWE<SeedType>::update_device() {
   div_active.update_device();
   surf_passive.update_device();
   surf_active.update_device();
+  surf_laplacian_passive.update_device();
+  surf_laplacian_active.update_device();
   depth_passive.update_device();
   depth_active.update_device();
   velocity_passive.update_device();
   velocity_active.update_device();
+  mass_active.update_device();
   mesh.update_device();
 }
 
-template <typename SeedType> template <typename InitialCondition>
-void SWE<SeedType>::init_swe_problem(const InitialCondition& ic) {
+template <typename SeedType> template <typename InitialCondition, typename SurfaceLaplacianType>
+void SWE<SeedType>::init_swe_problem(const InitialCondition& ic, SurfaceLaplacianType& lap) {
   Kokkos::parallel_for("init_swe_problem (passive)", mesh.n_vertices_host(),
     SWEInitializeProblem(mesh.vertices.lag_crds.view,
     rel_vort_passive.view,
@@ -191,6 +209,90 @@ void SWE<SeedType>::init_swe_problem(const InitialCondition& ic) {
         mass(i) = 0;
       }
     });
+
+  init_velocity(); // to compute double dot
+  lap.update_src_data(mesh.vertices.phys_crds.view, mesh.faces.phys_crds.view,
+    surf_passive.view, surf_active.view, mesh.faces.area);
+  lap.compute();
+}
+
+template <typename SeedType>
+void SWE<SeedType>::init_velocity() {
+  Kokkos::TeamPolicy<> vert_policy(mesh.n_vertices_host(), Kokkos::AUTO());
+  Kokkos::parallel_for("initialize velocity (passive)", vert_policy,
+    SWEVelocityPassive(velocity_passive.view, double_dot_passive.view,
+      mesh.vertices.phys_crds.view, mesh.faces.phys_crds.view,
+      rel_vort_active.view, div_active.view, mesh.faces.area,
+      mesh.faces.mask, eps, mesh.n_faces_host()));
+  Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
+  Kokkos::parallel_for("initialize velocity (active)", face_policy,
+    SWEVelocityActive(velocity_active.view, double_dot_active.view,
+      mesh.faces.phys_crds.view, rel_vort_active.view, div_active.view,
+      mesh.faces.area, mesh.faces.mask, eps, mesh.n_faces_host()));
+}
+
+template <typename SeedType>
+template <typename VelocityType>
+void SWE<SeedType>::init_velocity_from_function() {
+  static_assert(std::is_same<typename SeedType::geo,
+    typename VelocityType::geo>::value,
+    "Geometry types must match");
+
+  Kokkos::parallel_for(mesh.n_vertices_host(),
+    VelocityKernel<VelocityType>(velocity_passive.view,
+      mesh.vertices.phys_crds.view, 0));
+  Kokkos::parallel_for(mesh.n_faces_host(),
+    VelocityKernel<VelocityType>(velocity_active.view,
+      mesh.faces.phys_crds.view, 0));
+}
+
+template <typename SeedType>
+template <typename VorticityType>
+void SWE<SeedType>::init_vorticity(const VorticityType& vort_fn) {
+  const auto vcrds = mesh.vertices.phys_crds.view;
+  const auto fcrds = mesh.faces.phys_crds.view;
+  const auto vzeta = rel_vort_passive.view;
+  const auto fzeta = rel_vort_active.view;
+  const auto vh = depth_passive.view;
+  const auto fh = depth_active.view;
+  const auto vq = pot_vort_passive.view;
+  const auto fq = pot_vort_active.view;
+  const auto cor = coriolis;
+  Kokkos::parallel_for(mesh.n_vertices_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(vcrds, i, Kokkos::ALL);
+      const Real zeta = vort_fn(mcrd);
+      const Real f = cor.f(mcrd[SeedType::geo::ndim-1]);
+      vzeta(i) = zeta;
+      vq(i) = (zeta + f) / vh(i);
+    });
+  Kokkos::parallel_for(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(fcrds, i, Kokkos::ALL);
+      const Real zeta = vort_fn(mcrd);
+      const Real f = cor.f(mcrd[SeedType::geo::ndim-1]);
+      fzeta(i) = zeta;
+      fq(i) = (zeta + f) / fh(i);
+    });
+}
+
+template <typename SeedType>
+template <typename DivergenceType>
+void SWE<SeedType>::init_divergence(const DivergenceType& div_fn) {
+  const auto vcrds = mesh.vertices.phys_crds.view;
+  const auto fcrds = mesh.faces.phys_crds.view;
+  const auto vsigma = div_passive.view;
+  const auto fsigma = div_active.view;
+  Kokkos::parallel_for(mesh.n_vertices_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(vcrds, i, Kokkos::ALL);
+      vsigma(i) = div_fn(mcrd);
+    });
+  Kokkos::parallel_for(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(fcrds, i, Kokkos::ALL);
+      fsigma(i) = div_fn(mcrd);
+    });
 }
 
 template <typename SeedType>
@@ -205,6 +307,20 @@ Real SWE<SeedType>::total_mass() const {
       }
     }, mass);
   return mass;
+}
+
+template <typename SeedType>
+template <typename SurfaceLaplacianType, typename BottomType>
+void SWE<SeedType>::init_surface(SurfaceLaplacianType& lap, const BottomType& topo) {
+  Kokkos::parallel_for("init surface (passive)", mesh.n_vertices_host(),
+    SurfaceUpdatePassive(surf_passive.view, depth_passive.view,
+      mesh.vertices.phys_crds.view, topo));
+  Kokkos::parallel_for("init surface (active)", mesh.n_faces_host(),
+    SurfaceUpdateActive(surf_active.view, depth_active.view, mass_active.view,
+      mesh.faces.area, mesh.faces.mask, mesh.faces.phys_crds.view, topo));
+  lap.update_src_data(mesh.vertices.phys_crds.view, mesh.faces.phys_crds.view,
+    surf_passive.view, surf_active.view, mesh.faces.area);
+  lap.compute();
 }
 
 template <typename SeedType>

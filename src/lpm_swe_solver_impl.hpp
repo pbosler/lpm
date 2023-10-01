@@ -4,259 +4,12 @@
 #include "LpmConfig.h"
 #include "lpm_swe_solver.hpp"
 #include "lpm_swe_kernels.hpp"
+#include "lpm_swe_tendencies.hpp"
 #include "util/lpm_tuple.hpp"
 
 #include <KokkosBlas.hpp>
 
 namespace Lpm {
-
-/** Reduction functor for separate source and target points;
-
-  This functor is called in the inner loop of a parallel_for( parallel_reduce ) pattern.
-*/
-template <typename Geo>
-struct SWEVelocityReducerSeparatePts {
-  static constexpr int ndim = Geo::ndim;
-  using crd_view = typename Geo::crd_view_type;
-  /** this value type collects the rhs terms for a swe velocity reduction
-
-    values are packed as:
-
-    value_type[0:ndim] = velocity components
-    value_type[ndim:ndim*(1+ndim)] = ndim x ndim matrix for
-      velocity gradient (row major storage)
-  */
-  using value_type = Kokkos::Tuple<Real, ndim*(1+ndim)>;
-  Index i; /// index of tgt point in tgtx view
-  crd_view tgtx; /// coordinates of tgt points that are all separated from
-                 /// any source points
-  crd_view srcx; /// coordinates of src points
-  scalar_view_type rel_vort; /// relative vorticity of src points
-  scalar_view_type divergence; /// divergence of src points
-  scalar_view_type area; /// area of src points
-  mask_view_type mask; /// mask to exclude divided src points
-  Real eps; /// kernel regularization parameter
-
-  KOKKOS_INLINE_FUNCTION
-  SWEVelocityReducerSeparatePts(const Index i,
-    const crd_view tx, const crd_view sx, const scalar_view_type zeta,
-    const scalar_view_type sigma, const scalar_view_type a,
-    const mask_view_type m, const Real eps) :
-    i(i), tgtx(tx), srcx(sx), rel_vort(zeta), divergence(sigma),
-    area(a), mask(m), eps(eps)
-  {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const Index j, value_type& rhs) const {
-    if (not mask(j)) {
-      const auto tgt_crd = Kokkos_subview(tgtx, i, Kokkos::ALL);
-      const auto src_crd = Kokkos_subview(srcx, j, Kokkos::ALL);
-      const Real src_zeta = rel_vort(j);
-      const Real src_sigma = divergence(j);
-      const Real src_area = area(j);
-
-      Real vel_zeta[ndim];
-      kzeta<Geo>(vel_zeta, tgt_crd, src_crd, src_zeta, src_area, eps);
-
-      Real vel_sigma[ndim];
-      ksigma<Geo>(vel_sigma, tgt_crd, src_crd, src_sigma, src_area, eps);
-
-      Real gkz[ndim*ndim];
-      const Real vort_str = src_zeta*src_area;
-      grad_kzeta<Geo>(kgz, tgt_crd, src_crd, eps);
-
-      Real gks[ndim*ndim];
-      const real div_str = src_sigma*src_area;
-      grad_ksigma<Geo>(gks, tgt_crd, src_crd, eps);
-
-      for (Int i=0; i<ndim; ++i) {
-        rhs[i] += vel_zeta[i] + vel_sigma[i];
-      }
-      for (Int i=0; i<ndim*ndim; ++i) {
-        rhs[ndim + i] += gkz[i]*vort_str + gks[i]*div_str;
-      }
-    }
-  }
-};
-
-/** Computes the velocity reduction at passive particles.
-
-  This functor is called in the outer loop of a parallel_for(parallel_reduce) pattern.
-
-  It computes velocity and the velocity gradient double dot product.
-*/
-template <typename Geo>
-struct SWEVelocityPassive {
-  static constexpr ndim = Geo::ndim;
-  using crd_view = typename Geo::crd_view_type;
-  using vec_view = typename Geo::vec_view_type;
-  vec_view velocity;  /// output: velocity at tgt pts
-  scalar_view_type double_dot; /// output: double dot product of velocity tensor at output pts
-  crd_view tgtx; /// input: coordinates of target pts
-  crd_view srcx; /// input: coordinates of source pts
-  scalar_view_type rel_vort; /// input: vorticity of source pts
-  scalar_view_type divergence; /// input: divergence of sources pts
-  scalar_view_type area; /// input: area of src points
-  mask_view_type mask; /// input: mask of src points
-  Real eps; /// input: kernel regularization parameter
-  Index nsrc; /// number of source points
-
-  SWEVelocityPassive(vec_view u, scalar_view_type dd, crd_view tx, crd_view sx,
-    scalar_view_type zeta, scalar_view_type sigma, scalar_view_type area,
-    mask_view_type m, const Real eps, const Index n) :
-      velocity(u),
-      double_dot(dd),
-      tgtx(tx),
-      srcx(sx),
-      rel_vort(zeta),
-      divergence(sigma),
-      area(a),
-      mask(m),
-      eps(eps),
-      nsrc(n) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const member_type& mbr) const {
-    const Index i = mbr.league_rank();  // index of tgt
-    Kokkos::Tuple<Real, ndim*(1+ndim)> rhs; // collected results of reductions
-    Kokkos::parallel_reduce(
-      Kokkos::TeamThreadRange(mbr, nsrc),
-      SWEVelocityReducerSeparatePts<Geo>(i, tgtx, srcx, rel_vort, divergence, area, mask, eps),
-      rhs);
-    auto mvel = Kokkos::subview(velocity, i, Kokkos::ALL);
-    for (Int j=0; j<ndim; ++j) {
-      mvel[j] = rhs[j];
-    }
-    double_dot[i] = 0;
-    for (Int j=0; j<ndim; ++j) {
-      for (Int k=0; k<ndim; ++k) {
-        jk_idx = j*ndim + k;
-        kj_idx = k*ndim + j;
-
-        double_dot[i] += (j == k ? 1 : 2) * rhs[ndim + jk_idx] * rhs[ndim + kj_idx];
-      }
-    }
-  }
-};
-
-template <typename Geo>
-struct SWEVelocityActive {
-  static constexpr ndim = Geo::ndim;
-    using crd_view = typename Geo::crd_view_type;
-  using vec_view = typename Geo::vec_view_type;
-  vec_view velocity;  /// output: velocity at tgt pts
-  scalar_view_type double_dot; /// output: double dot product of velocity tensor at output pts
-  crd_view srcx; /// input: coordinates of source pts
-  scalar_view_type rel_vort; /// input: vorticity of source pts
-  scalar_view_type divergence; /// input: divergence of sources pts
-  scalar_view_type area; /// input: area of src points
-  mask_view_type mask; /// input: mask of src points
-  Real eps; /// input: kernel regularization parameter
-  Index nsrc; /// number of source points
-
-  SWEVelocityActive(vec_view u, scalar_view_type dd, crd_view sx,
-    scalar_view_type zeta, scalar_view_type sigma, scalar_view_type area,
-    mask_view_type m, const Real eps, const Index n) :
-      velocity(u),
-      double_dot(dd),
-      srcx(sx),
-      rel_vort(zeta),
-      divergence(sigma),
-      area(a),
-      mask(m),
-      eps(eps),
-      nsrc(n) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const member_type& mbr) const {
-    const Index i = mbr.league_rank();  // index of tgt
-    Kokkos::Tuple<Real, ndim*(1+ndim)> rhs; // collected results of reductions
-
-    // compute rhs velocity reductions
-    Kokkos::parallel_reduce(
-      Kokkos::TeamThreadRange(mbr, nsrc),
-      SWEVelocityReducerCollocatedPts<Geo>(i, srcx, rel_vort, divergence, area, mask, eps),
-      rhs);
-
-    // unpack results
-    auto mvel = Kokkos::subview(velocity, i, Kokkos::ALL);
-    for (Int j=0; j<ndim; ++j) {
-      mvel[j] = rhs[j];
-    }
-    double_dot[i] = 0;
-    for (Int j=0; j<ndim; ++j) {
-      for (Int k=0; k<ndim; ++k) {
-        jk_idx = j*ndim + k;
-        kj_idx = k*ndim + j;
-
-        double_dot[i] += (j == k ? 1 : 2) * rhs[ndim + jk_idx] * rhs[ndim + kj_idx];
-      }
-    }
-  }
-};
-
-template <typename Geo>
-struct SWEVelocityReducerCollocatedPts {
-  static constexpr int ndim = Geo::ndim;
-  using crd_view = typename Geo::crd_view_type;
-  /** this value type collects the rhs terms for a swe velocity reduction
-
-    values are packed as:
-
-    value_type[0:ndim] = velocity components
-    value_type[ndim:ndim*(1+ndim)] = ndim x ndim matrix for
-      velocity gradient (row major storage)
-  */
-  using value_type = Kokkos::Tuple<Real, ndim*(1+ndim)>;
-  Index i; /// index of tgt point in tgtx view
-  crd_view srcx; /// coordinates of src/tgt points
-  scalar_view_type rel_vort; /// relative vorticity of src points
-  scalar_view_type divergence; /// divergence of src points
-  scalar_view_type area; /// area of src points
-  mask_view_type mask; /// mask to exclude divided src points
-  Real eps; /// kernel regularization parameter
-
-  KOKKOS_INLINE_FUNCTION
-  SWEVelocityReducerSeparatePts(const Index i,
-    const crd_view sx, const scalar_view_type zeta,
-    const scalar_view_type sigma, const scalar_view_type a,
-    const mask_view_type m, const Real eps) :
-    i(i), srcx(sx), rel_vort(zeta), divergence(sigma),
-    area(a), mask(m), eps(eps)
-  {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const Index j, value_type& rhs) const {
-    if ( (not mask(j) and (i != j)) ) {
-      const auto tgt_crd = Kokkos_subview(srcx, i, Kokkos::ALL);
-      const auto src_crd = Kokkos_subview(srcx, j, Kokkos::ALL);
-      const Real src_zeta = rel_vort(j);
-      const Real src_sigma = divergence(j);
-      const Real src_area = area(j);
-
-      Real vel_zeta[ndim];
-      kzeta<Geo>(vel_zeta, tgt_crd, src_crd, src_zeta, src_area, eps);
-
-      Real vel_sigma[ndim];
-      ksigma<Geo>(vel_sigma, tgt_crd, src_crd, src_sigma, src_area, eps);
-
-      Real gkz[ndim*ndim];
-      const Real vort_str = src_zeta*src_area;
-      grad_kzeta<Geo>(kgz, tgt_crd, src_crd, eps);
-
-      Real gks[ndim*ndim];
-      const real div_str = src_sigma*src_area;
-      grad_ksigma<Geo>(gks, tgt_crd, src_crd, eps);
-
-      for (Int i=0; i<ndim; ++i) {
-        rhs[i] += vel_zeta[i] + vel_sigma[i];
-      }
-      for (Int i=0; i<ndim*ndim; ++i) {
-        rhs[ndim + i] += gkz[i]*vort_str + gks[i]*div_str;
-      }
-    }
-  }
-};
 
 template <typename SeedType>
 SWERK4<SeedType>::SWERK4(SWE<SeedType>& swe, const Real dt) :
@@ -334,7 +87,8 @@ SWERK4<SeedType>::SWERK4(SWE<SeedType>& swe, const Real dt) :
   surf_laplacian_active("rk4_surf_lap_a", swe.mesh.n_vertices_host()) {}
 
 template <typename SeedType> template <typename SurfaceLaplacianType, typename BottomType>
-void SWERK4<SeedType>::advance_timestep(SurfaceLaplacianType& lap, const BottomType& topo) {
+void SWERK4<SeedType>::advance_timestep(SurfaceLaplacianType& lap_passive,
+  SurfaceLaplacianType& lap_active, const BottomType& topo) {
   Kokkos::TeamPolicy<> passive_policy(swe.mesh.n_vertices_host(), Kokkos::AUTO());
   Kokkos::TeamPolicy<> active_policy(swe.mesh.n_faces_host(), Kokkos::AUTO());
 
@@ -367,11 +121,18 @@ void SWERK4<SeedType>::advance_timestep(SurfaceLaplacianType& lap, const BottomT
   KokkosBlas::update(1, divergence_active, 0.5, div_active_1, 0, div_active_work);
   KokkosBlas::update(1, area_active, 0.5, area_active_1, 0, area_active_work);
 
+  // update fluid surface & depth
   Kokkos::parallel_for("rk stage 2 surface update (passive)", swe.mesh.n_vertices_host(),
     SurfaceUpdatePassive(surf_passive, depth_passive_work, x_passive_work, topo));
   Kokkos::parallel_for("rk stage 2 surface update (active)", swe.mesh.n_faces_host(),
     SurfaceUpdateActive(surf_active, depth_active, mass_active, area_active_work,
       swe.mesh.faces.mask, x_active_work, topo));
+  // compute surface laplacian
+  lap_passive.compute();
+  lap_active.compute();
+
+  // compute velocity
+
 }
 
 } // namespace Lpm

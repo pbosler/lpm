@@ -43,6 +43,11 @@ struct ScatterMeshData {
       const face_scalar_map& face_scalar_fields,
       const vert_vector_map& vertex_vector_fields = vert_vector_map(),
       const face_vector_map& face_vector_fields = face_vector_map());
+
+  void scatter_scalar_field(
+      const std::string& name,
+      scalar_view_type vert_vals,
+      scalar_view_type face_vals);
 };
 
 }  // namespace Lpm

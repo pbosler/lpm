@@ -21,14 +21,29 @@ struct PlanarGrid;  // fwd decl
 template <typename SeedType>
 class GatherMeshData final {
  public:
-  typename SeedType::geo::crd_view_type phys_crds;
-  typename SeedType::geo::crd_view_type lag_crds;
+  using crd_view = typename SeedType::geo::crd_view_type;
+
+  /// gathered physical coordinates (no duplicates from divided mesh panels)
+  crd_view phys_crds;
+  /// gathered Lagrangian coordinates (no duplicates from divided mesh panels)
+  crd_view lag_crds;
+
   /// input mesh with data to be gathered
   const PolyMesh2d<SeedType>& mesh;
-  /// gathered scalar data
+  /** gathered scalar data
+
+    This map contains name-field pairs of gathered data; typically the map
+    is a subset of fields defined on the mesh.
+  */
   std::map<std::string, scalar_view_type> scalar_fields;
-  /// gathered vector data
+
+  /** gathered vector data
+
+    This map contains name-field pairs of gathered data; typically the map
+    is a subset of fields defined on the mesh.
+  */
   std::map<std::string, typename SeedType::geo::vec_view_type> vector_fields;
+
   /// boolean indicates whether coordinates are one rank 2 array (packed) or two
   /// rank 1 arrays (unpacked)
   bool unpacked;
@@ -46,14 +61,17 @@ class GatherMeshData final {
   scalar_view_type
       lag_z;  /// if unpacked, view of gathered z-coordinates; else: null
 
+  /// Host mirrors
   typename scalar_view_type::HostMirror h_x;
   typename scalar_view_type::HostMirror h_y;
   typename scalar_view_type::HostMirror h_z;
   typename scalar_view_type::HostMirror h_lag_x;
   typename scalar_view_type::HostMirror h_lag_y;
   typename scalar_view_type::HostMirror h_lag_z;
-  typename SeedType::geo::crd_view_type::HostMirror h_phys_crds;
-  typename SeedType::geo::crd_view_type::HostMirror h_lag_crds;
+
+  typename crd_view::HostMirror h_phys_crds;
+  typename crd_view::HostMirror h_lag_crds;
+
   std::map<std::string, typename scalar_view_type::HostMirror> h_scalar_fields;
   std::map<std::string, typename SeedType::geo::vec_view_type::HostMirror>
       h_vector_fields;
@@ -65,21 +83,28 @@ class GatherMeshData final {
   /// @param [in]
   explicit GatherMeshData(const PolyMesh2d<SeedType>& pm);
 
+  /// returns the number of gathered coordinates (passive and active)
   inline Index n() const { return phys_crds.extent(0); }
 
+  /// return a string with info about the gathered data
   std::string info_string(const Int tab_lev = 0,
                           const bool verbose = false) const;
 
+  /// deep copy data from device to host
   void update_host() const;
 
+  /// deep copy data from host to device
   void update_device() const;
 
+  /// initialize a new scalar view defined on the gathered data
   void init_scalar_field(const std::string& name, const scalar_view_type& view);
 
+  /// initialize scalar fields on the gathered data from existing fields
   void init_scalar_fields(
       const std::map<std::string, ScalarField<VertexField>>& vert_fields,
       const std::map<std::string, ScalarField<FaceField>>& face_fields);
 
+  /// initialize vector fields on the gathered data from existing fields
   void init_vector_fields(
       const std::map<std::string, VectorField<typename SeedType::geo,
                                               VertexField>>& vert_fields,
@@ -87,10 +112,15 @@ class GatherMeshData final {
                      VectorField<typename SeedType::geo, FaceField>>&
           face_fields);
 
+  /// gather scalar field data from vertices and faces into  a single view
+  void gather_scalar_field(const std::string& name, const scalar_view_type vert_s, const scalar_view_type face_s);
+
+  /// gather scalar fields from vertices and faces into single views
   void gather_scalar_fields(
       const std::map<std::string, ScalarField<VertexField>>& vert_fields,
       const std::map<std::string, ScalarField<FaceField>>& face_fields);
 
+  /// gather vector fields from vertices and faces into single views
   void gather_vector_fields(
       const std::map<std::string, VectorField<typename SeedType::geo,
                                               VertexField>>& vert_fields,
@@ -98,6 +128,8 @@ class GatherMeshData final {
                      VectorField<typename SeedType::geo, FaceField>>&
           face_fields);
 
+  /// gather physical coordinates from vertices and faces into a single view
+  void gather_phys_coordinates(const crd_view x_verts, const crd_view x_faces);
  private:
   void gather_coordinates();
   bool _host_initialized;

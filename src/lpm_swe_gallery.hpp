@@ -6,12 +6,49 @@
 
 namespace Lpm {
 
-struct PlanarGravityWaveFreeBoundaries {
-  typedef PlaneGeometry geo;
+struct FlatBottomTopography {
+  KOKKOS_INLINE_FUNCTION
+  FlatBottomTopography() = default;
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& pt) const {return 0;}
+};
+
+struct PlanarGaussianMountain {
   Real mtn_height;
   Real mtn_width_param;
   Real mtn_ctr_x;
   Real mtn_ctr_y;
+
+  KOKKOS_INLINE_FUNCTION
+  PlanarGaussianMountain(const Real h0 = 0.8,
+    const Real b0 = 5, const Real x0 = 0, const Real y0 = 0) :
+    mtn_height(h0),
+    mtn_width_param(b0),
+    mtn_ctr_x(x0),
+    mtn_ctr_y(y0) {}
+
+  template <typename PtType>
+  Real operator() (const PtType& pt) const {
+    return mtn_height * exp(-mtn_width_param * (square(pt[0] - mtn_ctr_x) + square(pt[1]-mtn_ctr_y)));
+  }
+};
+
+struct ZeroDivergence {
+  KOKKOS_INLINE_FUNCTION
+  ZeroDivergence() = default;
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& pt) const {
+    return 0;
+  }
+};
+
+struct PlanarGravityWaveFreeBoundaries {
+  typedef PlaneGeometry geo;
+  typedef PlanarGaussianMountain bottom_type;
   Real sfc_height;
   Real sfc_ptb_max;
   Real sfc_ptb_width_bx;
@@ -20,13 +57,10 @@ struct PlanarGravityWaveFreeBoundaries {
   Real sfc_ptb_ctr_y;
   Real f0;
   Real beta;
+  PlanarGaussianMountain mtn;
 
   KOKKOS_INLINE_FUNCTION
   PlanarGravityWaveFreeBoundaries() :
-    mtn_height(0.8),
-    mtn_width_param(5),
-    mtn_ctr_x(0),
-    mtn_ctr_y(0),
     sfc_height(1),
     sfc_ptb_max(0.1),
     sfc_ptb_width_bx(20),
@@ -41,7 +75,7 @@ struct PlanarGravityWaveFreeBoundaries {
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real bottom_height(const PtType& xy) const {
-    return mtn_height*exp(-mtn_width_param*(square(xy[0]-mtn_ctr_x) + square(xy[1] - mtn_ctr_y)));
+    return mtn(xy);
   }
 
   template <typename PtType>
@@ -69,6 +103,7 @@ struct PlanarGravityWaveFreeBoundaries {
 
 struct NitscheStricklandVortex {
   typedef PlaneGeometry geo;
+  typedef FlatBottomTopography bottom_type;
   Real vortex_width_b;
   Real sfc_height;
   Real f0;
@@ -122,6 +157,7 @@ struct NitscheStricklandVortex {
 
 struct SWETestCase2 {
   typedef SphereGeometry geo;
+  typedef FlatBottomTopography bottom_type;
   Real h0max;
   Real Omega;
   Real u0max;

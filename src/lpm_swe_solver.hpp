@@ -23,7 +23,7 @@ class SWERK4 {
   void initialize_tendencies(SurfaceLaplacianType& lap);
 
   template <typename SurfaceLaplacianType, typename BottomType>
-  void advance_timestep(SurfaceLaplacianType& lap, const BottomType& topo);
+  void advance_timestep(SurfaceLaplacianType& lap_passive, SurfaceLaplacianType& lap_active, const BottomType& topo);
 
   private:
 

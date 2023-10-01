@@ -71,6 +71,26 @@ void ScatterMeshData<SeedType>::scatter_phys_crds() {
 }
 
 template <typename SeedType>
+void ScatterMeshData<SeedType>::scatter_scalar_field(const std::string& name, scalar_view_type vert_vals, scalar_view_type face_vals) {
+  const auto face_mask = mesh.faces.mask;
+  const auto face_leaf_idx = mesh.faces.leaf_idx;
+  const Index n_verts = mesh.n_vertices_host();
+  const Index n_faces = mesh.n_faces_host();
+
+  const auto src_view = output.scalar_fields.at(name);
+  Kokkos::parallel_for(n_verts,
+    KOKKOS_LAMBDA (const Index i) {
+      vert_vals(i) = src_view(i);
+    });
+  Kokkos::parallel_for(n_faces,
+    KOKKOS_LAMBDA (const Index i) {
+      if (not face_mask(i)) {
+        face_vals(i) = src_view(n_verts + face_leaf_idx(i));
+      }
+    });
+}
+
+template <typename SeedType>
 void ScatterMeshData<SeedType>::scatter_fields(
     const vert_scalar_map& vertex_scalar_fields,
     const face_scalar_map& face_scalar_fields,

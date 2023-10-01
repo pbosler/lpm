@@ -40,12 +40,17 @@ class SWE {
     /// surface height
     ScalarField<VertexField> surf_passive;
     ScalarField<FaceField> surf_active;
+    /// surface height laplacian
+    ScalarField<VertexField> surf_laplacian_passive;
+    ScalarField<FaceField> surf_laplacian_active;
     /// fluid depth
     ScalarField<VertexField> depth_passive;
     ScalarField<FaceField> depth_active;
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
+    ScalarField<VertexField> double_dot_passive;
+    ScalarField<FaceField> double_dot_active;
     /// mass
     ScalarField<FaceField> mass_active;
 
@@ -64,28 +69,32 @@ class SWE {
     Real t;
     /// gravity acceleration
     Real g;
+    /// kernel regularization parameter
+    Real eps;
 
 
 
     void update_host();
     void update_device();
 
-    template <typename TopoType>
-    void set_bottom_topography(const TopoType& topo);
-
     template <typename VelocityType>
     void init_velocity_from_function();
-
-    template <typename VorticityType>
-    void init_vorticity(const VorticityType& vort_fn);
 
     template <typename DivergenceType>
     void init_divergence(const DivergenceType& div_fn);
 
-    template <typename InitialConditions>
-    void init_swe_problem(const InitialConditions& ic);
+    template <typename InitialConditions,
+              typename SurfaceLaplacianType>
+    void init_swe_problem(const InitialConditions& ic,
+      SurfaceLaplacianType& lap);
 
     void init_velocity();
+
+    template <typename SurfaceLaplacianType, typename BottomType>
+    void init_surface(SurfaceLaplacianType& lap, const BottomType& topo);
+
+    template <typename VorticityType>
+    void init_vorticity(const VorticityType& vort_fn);
 
     Real total_mass() const;
     Real total_energy() const;

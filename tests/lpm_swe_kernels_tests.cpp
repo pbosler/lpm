@@ -55,10 +55,10 @@ TEST_CASE("sphere kernel values", "") {
   const Real vorticity_unit = 1;
   const Real divergence_unit = 1;
   const Real area_unit = 1;
-  kzeta_sphere(kzeta0, x, y, vorticity_unit, area_unit, eps0);
-  kzeta_sphere(kzeta1, x, y, vorticity_unit, area_unit, eps1);
-  ksigma_sphere(ksigma0, x, y, divergence_unit, area_unit, eps0);
-  ksigma_sphere(ksigma1, x, y, divergence_unit, area_unit, eps1);
+  impl::kzeta_sphere(kzeta0, x, y, vorticity_unit, area_unit, eps0);
+  impl::kzeta_sphere(kzeta1, x, y, vorticity_unit, area_unit, eps1);
+  impl::ksigma_sphere(ksigma0, x, y, divergence_unit, area_unit, eps0);
+  impl::ksigma_sphere(ksigma1, x, y, divergence_unit, area_unit, eps1);
 
   logger.info("biot-savart kernel with eps = 0    : [{}, {}, {}]",
     kzeta0[0], kzeta0[1], kzeta0[2]);
@@ -89,8 +89,8 @@ TEST_CASE("sphere kernel values", "") {
 
   Real gkz0[9];
   Real gkz1[9];
-  grad_kzeta_sphere(gkz0, x, y, eps0);
-  grad_kzeta_sphere(gkz1, x, y, eps1);
+  impl::grad_kzeta_sphere(gkz0, x, y, eps0);
+  impl::grad_kzeta_sphere(gkz1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
@@ -103,8 +103,8 @@ TEST_CASE("sphere kernel values", "") {
 
   Real gks0[9];
   Real gks1[9];
-  grad_ksigma_sphere(gks0, x, y, eps0);
-  grad_ksigma_sphere(gks1, x, y, eps1);
+  impl::grad_ksigma_sphere(gks0, x, y, eps0);
+  impl::grad_ksigma_sphere(gks1, x, y, eps1);
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
