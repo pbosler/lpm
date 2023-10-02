@@ -234,9 +234,9 @@ void GatherMeshData<SeedType>::gather_coordinates() {
 template <typename SeedType>
 void GatherMeshData<SeedType>::gather_phys_coordinates(const crd_view x_verts, const crd_view x_faces) {
   const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy(
-    {0,0}, {x_verts.extent(0), SeedType::Geo::ndim});
+    {0,0}, {static_cast<long long>(x_verts.extent(0)), SeedType::geo::ndim});
   const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy(
-    {0,0}, {x_faces.extent(0), SeedType::Geo::ndim});
+    {0,0}, {static_cast<long long>(x_faces.extent(0)), SeedType::geo::ndim});
   auto gxyz = phys_crds;
   Kokkos::parallel_for("gather phys_crds (verts)", vert_policy,
     KOKKOS_LAMBDA (const Index i, const Int j) {
@@ -307,7 +307,7 @@ void GatherMeshData<SeedType>::gather_scalar_fields(
 template <typename SeedType>
 void GatherMeshData<SeedType>::gather_scalar_field(const std::string& name,
   const scalar_view_type vert_s, const scalar_view_type face_s) {
-  auto vert_vals = Kokkos::subview(scalar_fields.at(name), std::make_pair(0, vert_s.extent(0)));
+  auto vert_vals = Kokkos::subview(scalar_fields.at(name), std::pair<Index,Index>(0, vert_s.extent(0)));
   Kokkos::deep_copy(vert_vals, vert_s);
   Kokkos::parallel_for(face_s.extent(0),
     GatherScalarFaceData(scalar_fields.at(name),

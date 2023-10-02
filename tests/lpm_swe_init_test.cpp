@@ -4,6 +4,8 @@
 #include "lpm_swe.hpp"
 #include "lpm_swe_gallery.hpp"
 #include "lpm_swe_impl.hpp"
+#include "lpm_swe_surface_laplacian.hpp"
+#include "lpm_swe_surface_laplacian_impl.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -34,11 +36,23 @@ typedef QuadRectSeed seed_type;
   auto plane = std::make_unique<SWE<seed_type>>(mesh_params, init_plane_f0, init_plane_beta);
 
   ic_type ic;
-//   plane->init_swe_problem(ic);
+
+  SECTION("PSE Laplacian") {
+    //   plane->init_swe_problem(ic);
 #ifdef LPM_USE_VTK
   auto vtk = vtk_mesh_interface(*plane);
   vtk.write(test_name + vtp_suffix());
 #endif
+  }
+
+  SECTION("GMLS Laplacian") {
+
+    const int gmls_order = 3;
+    gmls::Params gmls_params(gmls_order, PlaneGeometry::ndim);
+    SWEGMLSLaplacian<seed_type> surf_lap(*plane, gmls_params);
+
+
+  }
 }
 
 TEST_CASE("sphere swe", "[swe]") {

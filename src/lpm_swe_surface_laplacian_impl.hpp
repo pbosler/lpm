@@ -2,20 +2,10 @@
 #define LPM_SWE_SURFACE_LAPLACIAN_IMPL_HPP
 
 #include "lpm_swe_surface_laplacian.hpp"
+#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data_impl.hpp"
 
 namespace Lpm {
-
-template <typename SeedType>
-SWEPSELaplacian<SeedType>::SWEPSELaplacian() : {}
-
-template <typename SeedType>
-void update(const crd_view tx, const crd_view sx, const scalar_view_type s,
-  const scalar_view_type a) {
-    tgtx = tx;
-    srcx = sx;
-    surface = s;
-    src_area = a;
-  }
 
 template <typename SeedType>
 void SWEPSELaplacian<SeedType>::compute() {
@@ -23,17 +13,17 @@ void SWEPSELaplacian<SeedType>::compute() {
   Kokkos::TeamPolicy<> active_policy(n_active, Kokkos::AUTO());
 
   Kokkos::parallel_for("PSE Laplacian (passive)", passive_policy,
-    pse::ScalarLaplacian<pse_type>(surf_lap, tgtx, srcx,
-      src_surface, tgt_surface, src_area, eps, nsrc);
+    pse::ScalarLaplacian<pse_type>(surf_lap_passive, x_passive, x_active,
+      surface_passive, surface_active, area_active, eps, n_active));
 
   Kokkos::parallel_for("PSE Laplacian (active)", active_policy,
     pse::ScalarLaplacian<pse_type>(surf_lap_active, x_active, x_active,
-      surface_active, surface_active, eps, nsrc));
+      surface_active, surface_active, eps, n_active));
 }
 
 template <typename SeedType>
 SWEGMLSLaplacian<SeedType>::SWEGMLSLaplacian(
-    SWE<SeedType> swe,
+    SWE<SeedType>& swe,
     const gmls::Params& params) :
     surf_lap_passive(Kokkos::subview(swe.surf_laplacian_passive.view,
       std::make_pair(0, swe.mesh.n_vertices_host()))),
@@ -51,8 +41,7 @@ SWEGMLSLaplacian<SeedType>::SWEGMLSLaplacian(
       std::make_pair(0, swe.mesh.n_faces_host()))),
     n_passive(swe.mesh.n_vertices_host()),
     n_active(swe.mesh.n_faces_host()),
-    params(params),
-
+    params(params)
 {
 
   gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(swe.mesh);
@@ -77,35 +66,35 @@ void SWEGMLSLaplacian<SeedType>::update_src_data(const crd_view xp, const crd_vi
   gathered_mesh->gather_phys_coordinates(x_passive, x_active);
   gathered_mesh->gather_scalar_field("surface_height", surface_passive, surface_active);
   neighbors.update_neighbors(gathered_mesh->h_phys_crds, gathered_mesh->h_phys_crds, params);
-  constexpr std::vector<Compadre::TargetOperation> ops({
+  const std::vector<Compadre::TargetOperation> ops({
     Compadre::LaplacianOfScalarPointEvaluation});
   if constexpr (std::is_same<geo, SphereGeometry>::value) {
-    scalar_gmls = gmls::sphere_scalar_gmls(
+    scalar_gmls = std::make_unique<Compadre::GMLS>(gmls::sphere_scalar_gmls(
       gathered_mesh->phys_crds,
       gathered_mesh->phys_crds,
       neighbors,
       params,
-      ops);
+      ops));
   }
   else {
-    scalar_gmls = gmls::plane_scalar_gmls(
+    scalar_gmls = std::make_unique<Compadre::GMLS>(gmls::plane_scalar_gmls(
       gathered_mesh->phys_crds,
       gathered_mesh->phys_crds,
       neighbors,
       params,
-      ops);
+      ops));
   }
 }
 
 
 template <typename SeedType>
 void SWEGMLSLaplacian<SeedType>::compute() {
-  Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
+  Compadre::Evaluator gmls_eval_scalar(scalar_gmls.get());
   const auto gmls_laplacian =
     gmls_eval_scalar.applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(
     gathered_surface, Compadre::LaplacianOfScalarPointEvaluation, Compadre::PointSample);
   Kokkos::deep_copy(gathered_laplacian, gmls_laplacian);
-  scattered_mesh->scatter_scalar_field("surface_laplacian", surf_lap_passive, surf_lap_active);
+  scatter_mesh->scatter_scalar_field("surface_laplacian", surf_lap_passive, surf_lap_active);
 }
 
 } // namespace Lpm
