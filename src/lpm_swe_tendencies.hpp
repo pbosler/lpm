@@ -214,8 +214,8 @@ struct SWEVelocityReducerSeparatePts {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index j, value_type& rhs) const {
     if (not mask(j)) {
-      const auto tgt_crd = Kokkos_subview(tgtx, i, Kokkos::ALL);
-      const auto src_crd = Kokkos_subview(srcx, j, Kokkos::ALL);
+      const auto tgt_crd = Kokkos::subview(tgtx, i, Kokkos::ALL);
+      const auto src_crd = Kokkos::subview(srcx, j, Kokkos::ALL);
       const Real src_zeta = rel_vort(j);
       const Real src_sigma = divergence(j);
       const Real src_area = area(j);
@@ -337,8 +337,8 @@ struct SWEVelocityReducerCollocatedPts {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index j, value_type& rhs) const {
     if ( (not mask(j) and (i != j)) ) {
-      const auto tgt_crd = Kokkos_subview(srcx, i, Kokkos::ALL);
-      const auto src_crd = Kokkos_subview(srcx, j, Kokkos::ALL);
+      const auto tgt_crd = Kokkos::subview(srcx, i, Kokkos::ALL);
+      const auto src_crd = Kokkos::subview(srcx, j, Kokkos::ALL);
       const Real src_zeta = rel_vort(j);
       const Real src_sigma = divergence(j);
       const Real src_area = area(j);

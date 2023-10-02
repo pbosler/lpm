@@ -220,13 +220,13 @@ template <typename SeedType>
 void SWE<SeedType>::init_velocity() {
   Kokkos::TeamPolicy<> vert_policy(mesh.n_vertices_host(), Kokkos::AUTO());
   Kokkos::parallel_for("initialize velocity (passive)", vert_policy,
-    SWEVelocityPassive(velocity_passive.view, double_dot_passive.view,
+    SWEVelocityPassive<typename SeedType::geo>(velocity_passive.view, double_dot_passive.view,
       mesh.vertices.phys_crds.view, mesh.faces.phys_crds.view,
       rel_vort_active.view, div_active.view, mesh.faces.area,
       mesh.faces.mask, eps, mesh.n_faces_host()));
   Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
   Kokkos::parallel_for("initialize velocity (active)", face_policy,
-    SWEVelocityActive(velocity_active.view, double_dot_active.view,
+    SWEVelocityActive<typename SeedType::geo>(velocity_active.view, double_dot_active.view,
       mesh.faces.phys_crds.view, rel_vort_active.view, div_active.view,
       mesh.faces.area, mesh.faces.mask, eps, mesh.n_faces_host()));
 }
@@ -362,14 +362,19 @@ Real SWE<SeedType>::potential_energy() const {
   vtk.add_scalar_point_data(swe.pot_vort_passive.view);
   vtk.add_scalar_point_data(swe.div_passive.view);
   vtk.add_scalar_point_data(swe.surf_passive.view);
+  vtk.add_scalar_point_data(swe.surf_laplacian_passive.view);
   vtk.add_scalar_point_data(swe.depth_passive.view);
   vtk.add_vector_point_data(swe.velocity_passive.view);
+  vtk.add_scalar_point_data(swe.double_dot_passive.view);
   vtk.add_scalar_cell_data(swe.rel_vort_active.view);
   vtk.add_scalar_cell_data(swe.pot_vort_active.view);
   vtk.add_scalar_cell_data(swe.div_active.view);
   vtk.add_scalar_cell_data(swe.surf_active.view);
+  vtk.add_scalar_cell_data(swe.surf_laplacian_active.view);
   vtk.add_scalar_cell_data(swe.depth_active.view);
   vtk.add_vector_cell_data(swe.velocity_active.view);
+  vtk.add_scalar_cell_data(swe.double_dot_active.view);
+  vtk.add_scalar_cell_data(swe.mass_active.view);
   return vtk;
   }
 #endif
