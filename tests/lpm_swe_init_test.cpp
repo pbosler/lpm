@@ -28,38 +28,44 @@ typedef QuadRectSeed seed_type;
   Real init_plane_f0 = 0;
   Real init_plane_beta = 0;
 
+  std::string test_name = "planar_swe_" + seed_type::id_string();
+
   Comm comm;
+  Logger<> logger(test_name, Log::level::debug, comm);
 
   PolyMeshParameters<seed_type> mesh_params(tree_init_depth, radius, amr_limit);
-  auto plane = std::make_unique<SWE<seed_type>>(mesh_params, init_plane_f0, init_plane_beta);
+  auto plane = std::make_unique<SWE<seed_type>>(mesh_params);
 
   ic_type ic;
 
-  SECTION("PSE Laplacian") {
-    //   plane->init_swe_problem(ic);
+  logger.info(plane->info_string());
 
-    std::string test_name = "planar_swe_pse_" + seed_type::id_string();
-  Logger<> logger(test_name, Log::level::debug, comm);
+  SECTION("PSE Laplacian") {
+    using pse_type = pse::BivariateOrder8<typename seed_type::geo>;
+
+    const Real pse_epsilon = pse_type::epsilon(plane->mesh.appx_mesh_size());
+
+    logger.info("{}: pse_eps = {}", test_name, pse_epsilon);
+
+    SWEPSELaplacian<seed_type> surf_lap(*plane, pse_epsilon);
+    plane->init_swe_problem(ic, surf_lap);
+
 #ifdef LPM_USE_VTK
-  auto vtk = vtk_mesh_interface(*plane);
-  vtk.write(test_name + vtp_suffix());
+    auto vtk = vtk_mesh_interface(*plane);
+    vtk.write(test_name + vtp_suffix());
 #endif
   }
 
 
   SECTION("GMLS Laplacian") {
-  std::string test_name = "planar_swe_gmls_" + seed_type::id_string();
-  Logger<> logger(test_name, Log::level::debug, comm);
 
     const int gmls_order = 3;
     gmls::Params gmls_params(gmls_order, PlaneGeometry::ndim);
+    logger.info("{}: gmls: {}", test_name, gmls_params.info_string());
+
     SWEGMLSLaplacian<seed_type> surf_lap(*plane, gmls_params);
 
     plane->init_swe_problem(ic, surf_lap);
-//     surf_lap.update_src_data(plane->mesh.vertices.phys_crds.view,
-//       plane->mesh.faces.phys_crds.view,
-//       plane->surf_passive.view, plane->surf_active.view, plane->mesh.faces.area);
-//     surf_lap.compute();
 
 #ifdef LPM_USE_VTK
   auto vtk = vtk_mesh_interface(*plane);
@@ -82,11 +88,35 @@ TEST_CASE("sphere swe", "[swe]") {
 
   PolyMeshParameters<seed_type> mesh_params(tree_init_depth);
   auto sphere = std::make_unique<SWE<seed_type>>(mesh_params, ic.Omega);
-//   sphere->init_swe_problem(ic);
+  logger.info(sphere->info_string());
 
+//   SECTION("PSE Laplacian") {
+//
+//     using pse_type = pse::BivariateOrder8<typename seed_type::geo>;
+//     const Real pse_epsilon = pse_type::epsilon(sphere->mesh.appx_mesh_size());
+//
+//     logger.info("{}: pse_eps = {}", test_name, pse_epsilon);
+//
+//     SWEPSELaplacian<seed_type> surf_lap(*sphere, pse_epsilon);
+//     sphere->init_swe_problem(ic, surf_lap);
+//
+// #ifdef LPM_USE_VTK
+//   auto vtk = vtk_mesh_interface(*sphere);
+//   vtk.write(test_name + vtp_suffix());
+// #endif
+//   }
+
+  SECTION("GMLS Laplacian") {
+    const int gmls_order = 3;
+    gmls::Params gmls_params(gmls_order, SphereGeometry::ndim);
+
+    logger.info("{}: gmls: {}", test_name, gmls_params.info_string());
+
+    SWEGMLSLaplacian<seed_type> surf_lap(*sphere, gmls_params);
 #ifdef LPM_USE_VTK
   auto vtk = vtk_mesh_interface(*sphere);
   vtk.write(test_name + vtp_suffix());
 #endif
+  }
 }
 

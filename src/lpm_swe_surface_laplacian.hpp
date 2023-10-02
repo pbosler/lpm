@@ -28,15 +28,17 @@ class SWEPSELaplacian {
     Index n_passive;
     Index n_active;
     Real eps;
-//
-//     /** update views with new data (e.g., for a new stage of runge-kutta)
-//     */
-//     void update(const crd_view tx, const crd_view sx, const scalar_view_type s, const scalar_view_type a);
-//
-//     /** on output, both surf_lap_active and surf_lap_passive are updated
-//     */
+
+    SWEPSELaplacian(SWE<SeedType>& swe, const Real pse_eps);
+
+    /** update views with new data (e.g., for a new stage of runge-kutta)
+    */
+    void update_src_data(const crd_view xp, const crd_view xa, const scalar_view_type sp, const scalar_view_type sa, const scalar_view_type ar);
+
+    /** on output, both surf_lap_active and surf_lap_passive are updated
+    */
     void compute();
-//   private:
+  private:
 
 };
 

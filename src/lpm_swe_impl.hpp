@@ -72,6 +72,10 @@ template <typename InitialCondition>
       }
 };
 
+template <typename SeedType>
+std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) const {
+  return mesh.info_string();
+}
 
 template <typename SeedType>
 SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real Omg) :
@@ -97,13 +101,11 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real O
   t(0),
   g(constants::GRAVITY),
   eps(0) {
-  static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
-    "spherical geometry required");
     coriolis.Omega = Omega;
-    }
+  }
 
 template <typename SeedType>
-SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f, const Real b) :
+SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params) :
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
   rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
   pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
@@ -122,16 +124,9 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f
   double_dot_active("double_dot", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
-  f0(f),
-  beta(b),
   t(0),
   g(constants::GRAVITY),
-  eps(0) {
-  static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
-    "planar geometry required");
-    coriolis.f0 = f;
-    coriolis.beta = b;
-  }
+  eps(0) {}
 
 
 template <typename SeedType>
@@ -332,7 +327,7 @@ template <typename SeedType>
 Real SWE<SeedType>::total_enstrophy() const {
   Real ens;
   Kokkos::parallel_reduce("SWE enstrophy", mesh.n_faces_host(),
-    ScalarSquareIntegralFunctor(rel_vort_active, mesh.faces.area, mesh.faces.mask), ens);
+    ScalarSquareIntegralFunctor(rel_vort_active.view, mesh.faces.area, mesh.faces.mask), ens);
   return ens;
 }
 
@@ -340,7 +335,7 @@ template <typename SeedType>
 Real SWE<SeedType>::kinetic_energy() const {
   Real ke;
   Kokkos::parallel_reduce("SWE kinetic energy", mesh.n_faces_host(),
-    KineticEnergyFunctor(velocity_active, mesh.faces.area, mesh.faces.mask), ke);
+    KineticEnergyFunctor<typename SeedType::geo>(depth_active.view, velocity_active.view, mesh.faces.area, mesh.faces.mask), ke);
   return 0.5*ke;
 }
 
@@ -348,7 +343,7 @@ template <typename SeedType>
 Real SWE<SeedType>::potential_energy() const {
   Real pe;
   Kokkos::parallel_reduce("SWE potential energy", mesh.n_faces_host(),
-    ScalarSquareIntegralFunctor(depth_active, mesh.faces.area, mesh.faces.mask),
+    ScalarSquareIntegralFunctor(depth_active.view, mesh.faces.area, mesh.faces.mask),
     pe);
   return 0.5 * g * pe;
 }

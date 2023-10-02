@@ -8,6 +8,37 @@
 namespace Lpm {
 
 template <typename SeedType>
+SWEPSELaplacian<SeedType>::SWEPSELaplacian(SWE<SeedType>& swe, const Real pse_eps) :
+  surf_lap_passive(Kokkos::subview(swe.surf_laplacian_passive.view,
+      std::make_pair(0, swe.mesh.n_vertices_host()))),
+  surf_lap_active(Kokkos::subview(swe.surf_laplacian_active.view,
+    std::make_pair(0, swe.mesh.n_faces_host()))),
+  x_passive(Kokkos::subview(swe.mesh.vertices.phys_crds.view,
+    std::make_pair(0, swe.mesh.n_vertices_host()), Kokkos::ALL)),
+  x_active(Kokkos::subview(swe.mesh.faces.phys_crds.view,
+    std::make_pair(0, swe.mesh.n_faces_host()), Kokkos::ALL)),
+  surface_passive(Kokkos::subview(swe.surf_passive.view,
+    std::make_pair(0, swe.mesh.n_vertices_host()))),
+  surface_active(Kokkos::subview(swe.surf_active.view,
+    std::make_pair(0, swe.mesh.n_faces_host()))),
+  area_active(Kokkos::subview(swe.mesh.faces.area,
+    std::make_pair(0, swe.mesh.n_faces_host()))),
+  n_passive(swe.mesh.n_vertices_host()),
+  n_active(swe.mesh.n_faces_host()),
+  eps(pse_eps) {}
+
+
+template <typename SeedType>
+void SWEPSELaplacian<SeedType>::update_src_data(const crd_view xp, const crd_view xa,
+  const scalar_view_type sp, const scalar_view_type sa, const scalar_view_type ar) {
+  x_passive = xp;
+  x_active = xa;
+  surface_passive = sp;
+  surface_active = sa;
+  area_active = ar;
+}
+
+template <typename SeedType>
 void SWEPSELaplacian<SeedType>::compute() {
   Kokkos::TeamPolicy<> passive_policy(n_passive, Kokkos::AUTO());
   Kokkos::TeamPolicy<> active_policy(n_active, Kokkos::AUTO());
@@ -18,7 +49,7 @@ void SWEPSELaplacian<SeedType>::compute() {
 
   Kokkos::parallel_for("PSE Laplacian (active)", active_policy,
     pse::ScalarLaplacian<pse_type>(surf_lap_active, x_active, x_active,
-      surface_active, surface_active, eps, n_active));
+      surface_active, surface_active, area_active, eps, n_active));
 }
 
 template <typename SeedType>

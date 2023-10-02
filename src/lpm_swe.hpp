@@ -24,9 +24,7 @@ class SWE {
     using coords_type = Coords<geo>;
     using crd_view = typename coords_type::view_type;
     using vec_view = typename geo::vec_view_type;
-    using coriolis_type = typename std::conditional<
-      std::is_same<typename SeedType::geo, SphereGeometry>::value,
-      CoriolisSphere, CoriolisBetaPlane>::type;
+    using coriolis_type = Coriolis<typename SeedType::geo>;
 
     /// relative vorticity
     ScalarField<VertexField> rel_vort_passive;
@@ -102,17 +100,15 @@ class SWE {
     Real potential_energy() const;
     Real total_enstrophy() const;
 
-    std::string info_string(const int tab_level, const bool verbose=false) const;
+    std::string info_string(const int tab_level=0, const bool verbose=false) const;
 
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
 
-    /// constructor for spherical problems
+    /// constructor
     SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real Omg);
 
-    /// constructor for planar problems
-    SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f, const Real b);
-
+    SWE(const PolyMeshParameters<SeedType>& mesh_params);
 };
 
 

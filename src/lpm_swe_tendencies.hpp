@@ -13,9 +13,7 @@ struct SWEPassiveTendencies {
   static constexpr int ndim = Geo::ndim;
   using crd_view = typename Geo::crd_view_type;
   using vec_view = typename Geo::vec_view_type;
-  using coriolis_type = typename std::conditional<
-    std::is_same<Geo, SphereGeometry>::value,
-    CoriolisSphere, CoriolisBetaPlane>::type;
+  using coriolis_type = Coriolis<Geo>;
   scalar_view_type dzeta;
   scalar_view_type dsigma;
   scalar_view_type ddepth;
@@ -67,9 +65,7 @@ struct SWEActiveTendencies {
   static constexpr int ndim = Geo::ndim;
   using crd_view = typename Geo::crd_view_type;
   using vec_view = typename Geo::vec_view_type;
-  using coriolis_type = typename std::conditional<
-    std::is_same<Geo, SphereGeometry>::value,
-    CoriolisSphere, CoriolisBetaPlane>::type;
+  using coriolis_type = Coriolis<Geo>;
   scalar_view_type dzeta;
   scalar_view_type dsigma;
   scalar_view_type darea;

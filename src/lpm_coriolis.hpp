@@ -7,18 +7,44 @@
 
 namespace Lpm {
 
-struct CoriolisBetaPlane {
+template <typename Geo>
+struct Coriolis {
+  KOKKOS_INLINE_FUNCTION
+  Coriolis() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  Real f(const Real c) const {return 0;}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real f(const PtType& pt) const {return 0;}
+
+  KOKKOS_INLINE_FUNCTION
+  Real dfdt(const Real c) const {return 0;}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real dfdt(const PtType& pt) const {return 0;}
+};
+
+template<>
+struct Coriolis<PlaneGeometry> {
   Real f0;
   Real beta;
-  static constexpr Real Omega = 2*constants::PI;
+  Real Omega;
 
   KOKKOS_INLINE_FUNCTION
-  CoriolisBetaPlane() = default;
+  Coriolis() = default;
 
   KOKKOS_INLINE_FUNCTION
-  explicit CoriolisBetaPlane(const Real phi0) :
-    f0(2*Omega*sin(phi0)),
-    beta(2*Omega*cos(phi0)) {}
+  void set_params(const Real base_lat) {
+    f0 = 2*Omega*sin(base_lat);
+    beta = 2*Omega*cos(base_lat);
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Coriolis(const Real base_lat, const Real Omega=2*constants::PI) :
+    f0(2*Omega*sin(base_lat)), beta(2*Omega*cos(base_lat)), Omega(Omega) {}
 
   KOKKOS_INLINE_FUNCTION
   Real f(const Real y) const {return f0 + beta*y;}
@@ -35,14 +61,12 @@ struct CoriolisBetaPlane {
   Real dfdt(const PtType& xy) {return beta;}
 };
 
-struct CoriolisSphere {
+template <>
+struct Coriolis<SphereGeometry> {
   Real Omega;
 
   KOKKOS_INLINE_FUNCTION
-  CoriolisSphere() = default;
-
-  KOKKOS_INLINE_FUNCTION
-  explicit CoriolisSphere(const Real Omg) :
+  explicit Coriolis(const Real Omg=2*constants::PI) :
     Omega(Omg) {}
 
   KOKKOS_INLINE_FUNCTION

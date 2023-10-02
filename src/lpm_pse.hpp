@@ -119,8 +119,10 @@ struct LaplacianReducer {
     const auto mtgt = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
     const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
     const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+//     const auto kern =
+//         PSEKind::laplacian(rscaled) / (ndim == 2 ? eps_sq : cube(epsilon));
     const auto kern =
-        PSEKind::laplacian(rscaled) / (ndim == 2 ? eps_sq : cube(epsilon));
+        PSEKind::laplacian(rscaled) / eps_sq;
     val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
   }
 };
