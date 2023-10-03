@@ -2,9 +2,9 @@
 #define LPM_SWE_KERNELS_HPP
 
 #include "LpmConfig.h"
+#include "lpm_assert.hpp"
 #include "lpm_geometry.hpp"
 #include "util/lpm_math.hpp"
-#include "lpm_assert.hpp"
 
 namespace Lpm {
 
@@ -25,24 +25,28 @@ kzeta_sphere(UType &u, const XType &x, const YType &y, const Real vort_y,
 }
 
 template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION void
-kzeta_plane(UType& u, const XType& x, const YType& y, const Real vort_y, const Real area_y, const Real eps = 0) {
+KOKKOS_INLINE_FUNCTION void kzeta_plane(UType &u, const XType &x,
+                                        const YType &y, const Real vort_y,
+                                        const Real area_y, const Real eps = 0) {
   Real xmy[2];
   xmy[0] = x[0] - y[0];
   xmy[1] = x[1] - y[1];
-  const Real denom = 2*constants::PI * (PlaneGeometry::norm2(xmy) + square(eps));
+  const Real denom =
+      2 * constants::PI * (PlaneGeometry::norm2(xmy) + square(eps));
   const Real strength = vort_y * area_y / denom;
   u[0] = -xmy[1] * strength;
-  u[1] =  xmy[0] * strength;
+  u[1] = xmy[0] * strength;
 }
 
 template <typename UType, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void
-ksigma_plane(UType& u, const XType& x, const YType& y, const Real div_y, const Real area_y, const Real eps = 0) {
+ksigma_plane(UType &u, const XType &x, const YType &y, const Real div_y,
+             const Real area_y, const Real eps = 0) {
   Real xmy[2];
   xmy[0] = x[0] - y[0];
   xmy[1] = x[1] - y[1];
-  const Real denom = 2*constants::PI * (PlaneGeometry::norm2(xmy) + square(eps));
+  const Real denom =
+      2 * constants::PI * (PlaneGeometry::norm2(xmy) + square(eps));
   const Real strength = div_y * area_y / denom;
   u[0] = xmy[0] * strength;
   u[1] = xmy[1] * strength;
@@ -68,43 +72,47 @@ ksigma_sphere(UType &u, const XType &x, const YType &y, const Real div_y,
 }
 
 template <typename Matrix2by2, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-void grad_kzeta_plane(Matrix2by2& gkz, const XType& x, const YType& y, const Real eps = 0) {
+KOKKOS_INLINE_FUNCTION void grad_kzeta_plane(Matrix2by2 &gkz, const XType &x,
+                                             const YType &y,
+                                             const Real eps = 0) {
   Real xmy[2];
   xmy[0] = x[0] - y[0];
   xmy[1] = x[1] - y[1];
   const Real epssq = square(eps);
-  const Real denom = 1.0/(2*constants::PI * square((PlaneGeometry::norm2(xmy) + epssq)));
-  gkz[0] =  2*xmy[0] * xmy[1]; // matrix 1,1
-  gkz[1] =  square(xmy[0]) - square(xmy[1]) + epssq; // matrix 1, 2
+  const Real denom =
+      1.0 / (2 * constants::PI * square((PlaneGeometry::norm2(xmy) + epssq)));
+  gkz[0] = 2 * xmy[0] * xmy[1];                      // matrix 1,1
+  gkz[1] = square(xmy[0]) - square(xmy[1]) + epssq;  // matrix 1, 2
   gkz[2] = -square(xmy[0]) + square(xmy[1]) + epssq; // matrix 2, 1
-  gkz[3] = -2*xmy[0] * xmy[1]; // matrix 2,2
-  for (short i=0; i<4; ++i) {
+  gkz[3] = -2 * xmy[0] * xmy[1];                     // matrix 2,2
+  for (short i = 0; i < 4; ++i) {
     gkz[i] *= denom;
   }
 }
 
 template <typename Matrix2by2, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-void grad_ksigma_plane(Matrix2by2& gks, const XType& x, const YType& y, const Real eps=0) {
+KOKKOS_INLINE_FUNCTION void grad_ksigma_plane(Matrix2by2 &gks, const XType &x,
+                                              const YType &y,
+                                              const Real eps = 0) {
   Real xmy[2];
   xmy[0] = x[0] - y[0];
   xmy[1] = x[1] - y[1];
   const Real epssq = square(eps);
-  const Real denom = 1.0/(2*constants::PI * square((PlaneGeometry::norm2(xmy) + epssq)));
+  const Real denom =
+      1.0 / (2 * constants::PI * square((PlaneGeometry::norm2(xmy) + epssq)));
   gks[0] = -square(xmy[0]) + square(xmy[1]) + epssq;
-  gks[1] = -2*xmy[0]*xmy[1];
-  gks[2] = -2*xmy[0]*xmy[1];
-  gks[3] =  square(xmy[0]) - square(xmy[1]) + epssq;
-  for (short i=0; i<4; ++i) {
+  gks[1] = -2 * xmy[0] * xmy[1];
+  gks[2] = -2 * xmy[0] * xmy[1];
+  gks[3] = square(xmy[0]) - square(xmy[1]) + epssq;
+  for (short i = 0; i < 4; ++i) {
     gks[i] *= denom;
   }
 }
 
 template <typename Matrix3by3, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-void grad_kzeta_sphere(Matrix3by3 &gkz, const XType &x,
-                                       const YType &y, const Real eps = 0) {
+KOKKOS_INLINE_FUNCTION void grad_kzeta_sphere(Matrix3by3 &gkz, const XType &x,
+                                              const YType &y,
+                                              const Real eps = 0) {
   const Real epssq = square(eps);
   const Real denom =
       1.0 / (4 * constants::PI * square(1 - SphereGeometry::dot(x, y) + epssq));
@@ -155,7 +163,8 @@ void grad_kzeta_sphere(Matrix3by3 &gkz, const XType &x,
 
 template <typename Matrix3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_ksigma_sphere(Matrix3by3 &gks, const XType &x,
-                                        const YType &y, const Real eps = 0) {
+                                               const YType &y,
+                                               const Real eps = 0) {
   const Real epssq = square(eps);
   const Real denom =
       1.0 / (4 * constants::PI * square(1 - SphereGeometry::dot(x, y) + epssq));
@@ -286,32 +295,32 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma_sphere(Matrix3by3 &gks, const XType &x,
 
 } // namespace impl
 
-
-/**  This interface allows the compiler to select the appropriate velocity kernel
-  functions.   It must be specialized for each geometry type.
+/**  This interface allows the compiler to select the appropriate velocity
+  kernel functions.   It must be specialized for each geometry type.
 */
-template <typename Geo>
-struct SWEVelocity {
+template <typename Geo> struct SWEVelocity {
   template <typename UType, typename XType, typename YType>
-  KOKKOS_INLINE_FUNCTION
-  static void kzeta(UType& u, const XType& x, const YType& y, const Real vort_y, const Real area_y, const Real eps = 0) {}
+  KOKKOS_INLINE_FUNCTION static void
+  kzeta(UType &u, const XType &x, const YType &y, const Real vort_y,
+        const Real area_y, const Real eps = 0) {}
 
   template <typename UType, typename XType, typename YType>
-  KOKKOS_INLINE_FUNCTION
-  static void ksigma(UType& u, const XType& x, const YType& y, const Real div_y, const Real area_y, const Real eps=0) {}
+  KOKKOS_INLINE_FUNCTION static void
+  ksigma(UType &u, const XType &x, const YType &y, const Real div_y,
+         const Real area_y, const Real eps = 0) {}
 
   template <typename MatrixType, typename XType, typename YType>
-  KOKKOS_INLINE_FUNCTION
-  static void grad_kzeta(MatrixType& gkz, const XType& x, const YType& y, const Real eps = 0) {}
+  KOKKOS_INLINE_FUNCTION static void grad_kzeta(MatrixType &gkz, const XType &x,
+                                                const YType &y,
+                                                const Real eps = 0) {}
 
   template <typename MatrixType, typename XType, typename YType>
-  KOKKOS_INLINE_FUNCTION
-  static void grad_ksigma(MatrixType& gks, const XType& x, const YType& y, const Real eps = 0) {}
+  KOKKOS_INLINE_FUNCTION static void grad_ksigma(MatrixType &gks,
+                                                 const XType &x, const YType &y,
+                                                 const Real eps = 0) {}
 };
 
-
-template <>
-struct SWEVelocity<PlaneGeometry> {
+template <> struct SWEVelocity<PlaneGeometry> {
   /**  Biot-Savart kernel for planar problems.
 
   @param [in/out] u velocity contribution from vorticity
@@ -322,8 +331,9 @@ struct SWEVelocity<PlaneGeometry> {
   @param [in] eps regularization parameter
 */
   template <typename UType, typename XType, typename YType>
-  KOKKOS_INLINE_FUNCTION
-  static void kzeta(UType& u, const XType& x, const YType& y, const Real vort_y, const Real area_y, const Real eps = 0) {
+  KOKKOS_INLINE_FUNCTION static void
+  kzeta(UType &u, const XType &x, const YType &y, const Real vort_y,
+        const Real area_y, const Real eps = 0) {
     LPM_KERNEL_ASSERT(eps >= 0);
     return impl::kzeta_plane(u, x, y, vort_y, area_y, eps);
   }
@@ -337,45 +347,45 @@ struct SWEVelocity<PlaneGeometry> {
   @param [in] area_y source area
   @param [in] eps regularization parameter
 */
-template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void ksigma(UType &u, const XType &x, const YType &y, const Real div_y, const Real area_y, const Real eps = 0) {
-  LPM_KERNEL_ASSERT(eps >= 0);
-  return impl::ksigma_plane(u, x, y, div_y, area_y, eps);
-}
+  template <typename UType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void
+  ksigma(UType &u, const XType &x, const YType &y, const Real div_y,
+         const Real area_y, const Real eps = 0) {
+    LPM_KERNEL_ASSERT(eps >= 0);
+    return impl::ksigma_plane(u, x, y, div_y, area_y, eps);
+  }
 
-/** Tensor gradient of the Biot-Savart kernel for the plane.
+  /** Tensor gradient of the Biot-Savart kernel for the plane.
 
-  @param [out] gkz  gradient matrix
-  @param [in] x target location
-  @param [in] y source location
-  @param [in] eps regularization parameter
-*/
-template <typename MatrixType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void grad_kzeta(MatrixType& gkz, const XType& x, const YType& y, const Real eps=0) {
-  LPM_KERNEL_ASSERT(eps >= 0);
-  return impl::grad_kzeta_plane(gkz, x, y, eps);
-}
+    @param [out] gkz  gradient matrix
+    @param [in] x target location
+    @param [in] y source location
+    @param [in] eps regularization parameter
+  */
+  template <typename MatrixType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void grad_kzeta(MatrixType &gkz, const XType &x,
+                                                const YType &y,
+                                                const Real eps = 0) {
+    LPM_KERNEL_ASSERT(eps >= 0);
+    return impl::grad_kzeta_plane(gkz, x, y, eps);
+  }
 
-/** Tensor gradient of the scalar potential velocity kernel for the plane.
+  /** Tensor gradient of the scalar potential velocity kernel for the plane.
 
-  @param [out] gkz  gradient matrix
-  @param [in] x target location
-  @param [in] y source location
-  @param [in] eps regularization parameter
-*/
-template <typename MatrixType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void grad_ksigma(MatrixType& gks, const XType& x, const YType& y, const Real eps = 0) {
-  return impl::grad_ksigma_plane(gks, x, y, eps);
-}
-
+    @param [out] gkz  gradient matrix
+    @param [in] x target location
+    @param [in] y source location
+    @param [in] eps regularization parameter
+  */
+  template <typename MatrixType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void grad_ksigma(MatrixType &gks,
+                                                 const XType &x, const YType &y,
+                                                 const Real eps = 0) {
+    return impl::grad_ksigma_plane(gks, x, y, eps);
+  }
 };
 
-
-template<>
-struct SWEVelocity<SphereGeometry> {
+template <> struct SWEVelocity<SphereGeometry> {
   /**  Biot-Savart kernel for spherical problems.
 
   @param [in/out] u velocity contribution from vorticity
@@ -385,59 +395,60 @@ struct SWEVelocity<SphereGeometry> {
   @param [in] area_y source area
   @param [in] eps regularization parameter
 */
-template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void kzeta(UType &u, const XType &x, const YType &y, const Real vort_y, const Real area_y, const Real eps = 0) {
-  LPM_KERNEL_ASSERT(eps >= 0);
-  return impl::kzeta_sphere(u, x, y, vort_y, area_y, eps);
-}
+  template <typename UType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void
+  kzeta(UType &u, const XType &x, const YType &y, const Real vort_y,
+        const Real area_y, const Real eps = 0) {
+    LPM_KERNEL_ASSERT(eps >= 0);
+    return impl::kzeta_sphere(u, x, y, vort_y, area_y, eps);
+  }
 
-/**  Scalar potential velocity kernel for spherical problems.
+  /**  Scalar potential velocity kernel for spherical problems.
 
-  @param [in/out] u velocity contribution from vorticity
-  @param [in] x target location
-  @param [in] y source location
-  @param [in] div_y source vorticity
-  @param [in] area_y source area
-  @param [in] eps regularization parameter
-*/
-template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void ksigma(UType &u, const XType &x, const YType &y, const Real div_y, const Real area_y, const Real eps = 0) {
-  LPM_KERNEL_ASSERT(eps >= 0);
-  return impl::ksigma_sphere(u, x, y, div_y, area_y, eps);
-}
+    @param [in/out] u velocity contribution from vorticity
+    @param [in] x target location
+    @param [in] y source location
+    @param [in] div_y source vorticity
+    @param [in] area_y source area
+    @param [in] eps regularization parameter
+  */
+  template <typename UType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void
+  ksigma(UType &u, const XType &x, const YType &y, const Real div_y,
+         const Real area_y, const Real eps = 0) {
+    LPM_KERNEL_ASSERT(eps >= 0);
+    return impl::ksigma_sphere(u, x, y, div_y, area_y, eps);
+  }
 
-/** Tensor gradient of the Biot-Savart kernel for the sphere.
+  /** Tensor gradient of the Biot-Savart kernel for the sphere.
 
-  @param [out] gkz  gradient matrix
-  @param [in] x target location
-  @param [in] y source location
-  @param [in] eps regularization parameter
-*/
-template <typename MatrixType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void grad_kzeta(MatrixType& gkz, const XType& x, const YType& y, const Real eps=0) {
-  LPM_KERNEL_ASSERT(eps >= 0);
-  return impl::grad_kzeta_sphere(gkz, x, y, eps);
-}
+    @param [out] gkz  gradient matrix
+    @param [in] x target location
+    @param [in] y source location
+    @param [in] eps regularization parameter
+  */
+  template <typename MatrixType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void grad_kzeta(MatrixType &gkz, const XType &x,
+                                                const YType &y,
+                                                const Real eps = 0) {
+    LPM_KERNEL_ASSERT(eps >= 0);
+    return impl::grad_kzeta_sphere(gkz, x, y, eps);
+  }
 
-/** Tensor gradient of the scalar potential velocity kernel for the sphere.
+  /** Tensor gradient of the scalar potential velocity kernel for the sphere.
 
-  @param [out] gkz  gradient matrix
-  @param [in] x target location
-  @param [in] y source location
-  @param [in] eps regularization parameter
-*/
-template <typename MatrixType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-static void grad_ksigma(MatrixType& gks, const XType& x, const YType& y, const Real eps = 0) {
-  return impl::grad_ksigma_sphere(gks, x, y, eps);
-}
-
+    @param [out] gkz  gradient matrix
+    @param [in] x target location
+    @param [in] y source location
+    @param [in] eps regularization parameter
+  */
+  template <typename MatrixType, typename XType, typename YType>
+  KOKKOS_INLINE_FUNCTION static void grad_ksigma(MatrixType &gks,
+                                                 const XType &x, const YType &y,
+                                                 const Real eps = 0) {
+    return impl::grad_ksigma_sphere(gks, x, y, eps);
+  }
 };
-
-
 
 } // namespace Lpm
 #endif
