@@ -204,10 +204,12 @@ void SWE<SeedType>::init_swe_problem(const InitialCondition& ic, SurfaceLaplacia
         mass(i) = 0;
       }
     });
-
+  std::cout << "initializing velocity and double dot product.\n";
   init_velocity(); // to compute double dot
+  std::cout << "initializing surface.\n";
   lap.update_src_data(mesh.vertices.phys_crds.view, mesh.faces.phys_crds.view,
     surf_passive.view, surf_active.view, mesh.faces.area);
+  std::cout << "computing surface laplacian.\n";
   lap.compute();
 }
 

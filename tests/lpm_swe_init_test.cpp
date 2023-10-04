@@ -77,7 +77,8 @@ typedef QuadRectSeed seed_type;
 
 TEST_CASE("sphere swe", "[swe]") {
   typedef SWETestCase2 ic_type;
-  typedef CubedSphereSeed seed_type;
+//   typedef CubedSphereSeed seed_type;
+  typedef IcosTriSphereSeed seed_type;
 
   int tree_init_depth = 5;
   Comm comm;
@@ -113,6 +114,7 @@ TEST_CASE("sphere swe", "[swe]") {
     logger.info("{}: gmls: {}", test_name, gmls_params.info_string());
 
     SWEGMLSLaplacian<seed_type> surf_lap(*sphere, gmls_params);
+    sphere->init_swe_problem(ic, surf_lap);
 #ifdef LPM_USE_VTK
   auto vtk = vtk_mesh_interface(*sphere);
   vtk.write(test_name + vtp_suffix());

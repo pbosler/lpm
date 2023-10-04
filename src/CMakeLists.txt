@@ -15,8 +15,7 @@ if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
 endif()
 
-set(LPM_SOURCES
-                lpm_bve_sphere.cpp
+set(LPM_SOURCES lpm_bve_sphere.cpp
                 lpm_bve_rk4.cpp
                 lpm_comm.cpp
                 lpm_coords.cpp
@@ -36,12 +35,6 @@ set(LPM_SOURCES
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/lpm_timer.cpp)
-#    LpmCompadre.cpp
-#    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
-#    LpmOctreeLUT.cpp
-#    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
-#    LpmSWEGallery.cpp
-#                )
 
 if (LPM_USE_NETCDF)
   LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
@@ -127,7 +120,7 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
 #              LpmBVERK4.hpp LpmBVERK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
 #              LpmNetCDF.hpp LpmSWEGallery.hpp
     DESTINATION include)
-install(TARGETS lpm DESTINATION lib)
+install(TARGETS lpm lpm_fortran DESTINATION lib)
 
 ###########################################
 ###       Testing micro-libraries       ###
