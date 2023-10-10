@@ -47,6 +47,9 @@ include(lpm_build_catch2)
 #include(lpm_find_netcdf)
 include(lpm_find_vtk)
 include(lpm_find_compose)
+if (LPM_ENABLE_FastBVE)
+  include(lpm_find_fastbve)
+endif()
 
 
 #
