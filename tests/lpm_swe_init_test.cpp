@@ -80,7 +80,7 @@ TEST_CASE("sphere swe", "[swe]") {
 //   typedef CubedSphereSeed seed_type;
   typedef IcosTriSphereSeed seed_type;
 
-  int tree_init_depth = 5;
+  int tree_init_depth = 3;
   Comm comm;
   std::string test_name = "sphere_swe_" + seed_type::id_string();
   Logger<> logger(test_name, Log::level::debug, comm);

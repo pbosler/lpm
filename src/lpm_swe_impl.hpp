@@ -6,6 +6,7 @@
 #include "lpm_swe.hpp"
 #include "lpm_swe_kernels.hpp"
 #include "lpm_swe_tendencies.hpp"
+#include "lpm_velocity_gallery.hpp"
 
 #include <KokkosBlas.hpp>
 
@@ -235,9 +236,9 @@ void SWE<SeedType>::init_velocity_from_function() {
     typename VelocityType::geo>::value,
     "Geometry types must match");
 
-  Kokkos::parallel_for(mesh.n_vertices_host(),
-    VelocityKernel<VelocityType>(velocity_passive.view,
-      mesh.vertices.phys_crds.view, 0));
+  Kokkos::parallel_for(this->mesh.n_vertices_host(),
+    VelocityKernel<VelocityType>(this->velocity_passive.view,
+      this->mesh.vertices.phys_crds.view, 0));
   Kokkos::parallel_for(mesh.n_faces_host(),
     VelocityKernel<VelocityType>(velocity_active.view,
       mesh.faces.phys_crds.view, 0));
