@@ -1,43 +1,96 @@
 #include "lpm_netcdf_reader.hpp"
 #include "lpm_netcdf_reader_impl.hpp"
+#include "lpm_assert.hpp"
+#include "util/lpm_stl_utils.hpp"
 #ifdef LPM_USE_NETCDF
 
 namespace Lpm {
 
+NcReader::NcReader(const std::string& full_filename, const Comm& comm) :
+      fname(full_filename),
+      name_varid_map(),
+      name_dimid_map(),
+      logger("NcReader", Log::level::debug, comm) {
+      int retval = nc_open(full_filename.c_str(), NC_NOWRITE, &ncid);
+      if (retval != NC_NOERR) {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_REQUIRE_MSG(false, "error opening netcdf file");
+      }
+      logger.debug("ncid = {}", ncid);
+      inq_dims();
+      inq_vars();
+    }
+
 void NcReader::inq_dims() {
   int retval = nc_inq_ndims(ncid, &ndims);
-  CHECK_NCERR(retval);
-
+  if (retval != NC_NOERR) {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_REQUIRE_MSG(false, "error reading netcdf dimensions");
+  }
+  logger.debug("found {} dims", ndims);
   auto dimids = std::vector<int>(ndims, NC_EBADID);
   const int include_parents = 1;
   retval = nc_inq_dimids(ncid, &ndims, &dimids[0], include_parents);
-  CHECK_NCERR(retval);
-
-  char dimname[NC_MAX_NAME];
-  for (auto& id : dimids) {
-    retval = nc_inq_dimname(ncid, id, dimname);
-    CHECK_NCERR(retval);
-    name_dimid_map.emplace(std::string(dimname), id);
+  if (retval != NC_NOERR) {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_REQUIRE_MSG(false, "error reading netcdf dimensions");
   }
-  time_dimid = name_dimid_map.at("time");
+
+  char dimname[NC_MAX_NAME+1];
+  for (auto& id : dimids) {
+    retval = nc_inq_dimname(ncid, id, &dimname[0]);
+    if (retval != NC_NOERR) {
+      const auto msg = CHECK_NCERR(retval);
+      logger.error(msg);
+      LPM_REQUIRE_MSG(false, "error reading netcdf dimensions");
+    }
+    name_dimid_map.emplace(std::string(dimname), id);
+    logger.debug("found dimension: {}", std::string(dimname));
+  }
+  if (map_contains(name_dimid_map, "time")) {
+    time_dimid = name_dimid_map.at("time");
+  }
+  else {
+    time_dimid = LPM_NULL_IDX;
+  }
 }
 
 void NcReader::inq_vars() {
   int retval = nc_inq_nvars(ncid, &nvars);
-  CHECK_NCERR(retval);
+  if (retval != NC_NOERR) {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_REQUIRE_MSG(false, "error reading netcdf variables");
+  }
 
   auto varids = std::vector<int>(nvars, NC_EBADID);
-
   retval = nc_inq_varids(ncid, &nvars, &varids[0]);
-  CHECK_NCERR(retval);
+  if (retval != NC_NOERR) {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_REQUIRE_MSG(false, "error reading netcdf variables");
+  }
 
-  char varname[NC_MAX_NAME];
+  char varname[NC_MAX_NAME+1];
   for (auto& vid : varids) {
     retval = nc_inq_varname(ncid, vid, varname);
-    CHECK_NCERR(retval);
+    if (retval != NC_NOERR) {
+      const auto msg = CHECK_NCERR(retval);
+      logger.error(msg);
+      LPM_REQUIRE_MSG(false, "error reading netcdf variables");
+    }
     name_varid_map.emplace(std::string(varname), vid);
+    logger.debug("found variable: {}", std::string(varname));
   }
-  time_varid = name_varid_map.at("time");
+  if (map_contains(name_varid_map, "time")) {
+    time_varid = name_varid_map.at("time");
+  }
+  else {
+    time_varid = LPM_NULL_IDX;
+  }
 }
 
 std::string NcReader::info_string(const int tab_level) const {

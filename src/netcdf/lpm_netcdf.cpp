@@ -94,8 +94,296 @@ std::string nc_decode_error(const int& ec, const std::string& file, const std::s
       ss << "name breaks NetCDF naming rules.";
       break;
     }
+    case (NC_EBADID): {
+      ss << "bad id: specified id does not refer to an open dataset";
+      break;
+    }
+    case (NC_EINVALCOORDS): {
+      ss << "specified indices are out of range";
+      break;
+    }
+    case (NC_ENOTATT): {
+      ss << "attribute not found.";
+      break;
+    }
+    case (NC_EMAXATTS) : {
+      ss << "NC_MAX_ATTRS exceeded.";
+      break;
+    }
+    case (NC_EBADDIM): {
+      ss << "invalid dimension id or name";
+      break;
+    }
+    case (NC_EUNLIMPOS) : {
+      ss << "NC_UNLIMITED in wrong position";
+      break;
+    }
+    case (NC_EMAXVARS) : {
+      ss << "NC_MAX_VARS exceeded";
+      break;
+    }
+    case (NC_EGLOBAL) : {
+      ss << "action prohibited for NC_GLOBAL varid";
+      break;
+    }
+    case (NC_ENOTNC) : {
+      ss << "not a netcdf file";
+      break;
+    }
+    case (NC_ENORECVARS) : {
+      ss << "no record vars";
+      break;
+    }
+    case (NC_ECHAR) : {
+      ss << "attempt to convert between text and numbers";
+      break;
+    }
+    case (NC_EEDGE) : {
+      ss << "start + count exceeds dimension bound";
+      break;
+    }
+    case (NC_ESTRIDE) : {
+      ss << "illegal stride";
+      break;
+    }
+    case (NC_ERANGE) : {
+      ss << "one or more of the values are out of range by the desired type";
+      break;
+    }
+    case (NC_EVARSIZE) : {
+      ss << "one or more variables violate form constraints";
+      break;
+    }
+    case (NC_ETRUNC) : {
+      ss <<  "file likely truncated or possibly corrupted";
+      break;
+    }
+    case (NC_EAXISTYPE): {
+      ss << "unknown axis type";
+      break;
+    }
+    case (NC_EDAP) : {
+      ss << "generic DAP error";
+      break;
+    }
+    case (NC_ECURL) : {
+      ss << "generic libcurl error";
+      break;
+    }
+    case (NC_EIO) : {
+      ss << "generic io error";
+      break;
+    }
+    case (NC_ENODATA) : {
+      ss << "attempted to access variable with no data";
+      break;
+    }
+    case (NC_EDAPSVC) : {
+      ss << "DAP server error";
+      break;
+    }
+    case (NC_EDAS) : {
+      ss << "malformed or inaccessible DAS";
+      break;
+    }
+    case (NC_EDMR) : {
+      ss << "Dap4 alias";
+      break;
+    }
+    case (NC_ENOTFOUND) : {
+      ss << "no such file";
+      break;
+    }
+    case (NC_EDATADDS) : {
+      ss << "malformed or inaccessible DATADDS";
+      break;
+    }
+    case (NC_EDAPURL) : {
+      ss << "malformed DAP URL";
+      break;
+    }
+    case (NC_EDAPCONSTRAINT): {
+      ss << "malformed DAP constraint";
+      break;
+    }
+    case (NC_ETRANSLATION) : {
+      ss << "untranslatable construct";
+      break;
+    }
+    case (NC_EACCESS) : {
+      ss << "access failure";
+      break;
+    }
+    case (NC_EAUTH) : {
+      ss << "authorization failure";
+      break;
+    }
+    case (NC_ECANTREMOVE) : {
+      ss << "can't remove file";
+      break;
+    }
+    case (NC_EINTERNAL) : {
+      ss << "netcdf internal error";
+      break;
+    }
+    case (NC_EPNETCDF) : {
+      ss << "error at pnetcdf layer";
+      break;
+    }
+    case (NC4_FIRST_ERROR) : {
+      ss << "internal hdf5 error";
+      break;
+    }
+    case (NC_ECANTREAD) : {
+      ss << "can't read";
+      break;
+    }
+    case (NC_ECANTWRITE) : {
+      ss << "can't write";
+      break;
+    }
+//     case (NC_CANTCREATE) : {
+//       ss << "can't create";
+//       break;
+//     }
+    case (NC_EDIMMETA) : {
+      ss << "problem with dimension metadata";
+      break;
+    }
+    case (NC_EATTMETA) : {
+      ss << "problem with attribute metadata";
+      break;
+    }
+    case (NC_EVARMETA) : {
+      ss << "problem with variable metadata";
+      break;
+    }
+    case (NC_ENOCOMPOUND) : {
+      ss << "not a compound type";
+      break;
+    }
+    case (NC_EATTEXISTS) : {
+      ss << "attribute already exists";
+      break;
+    }
+    case (NC_ENOTNC4) : {
+      ss << "attempting netcdf-4 operation on netcdf-3 file.";
+      break;
+    }
+    case (NC_ESTRICTNC3) : {
+      ss << "attempting netcdf-4 operation on strict nc3 netcdf-4 file";
+      break;
+    }
+    case (NC_ENOTNC3) : {
+      ss << "attempting netcdf-3 operation on netcdf-4 file";
+      break;
+    }
+    case (NC_ENOPAR) : {
+      ss << "parallel operation opened for non-parallel access";
+      break;
+    }
+    case (NC_EPARINIT) : {
+      ss << "error initializing parallel access";
+      break;
+    }
+    case (NC_EBADGRPID) : {
+      ss << "bad group id";
+      break;
+    }
+    case (NC_EBADTYPID) : {
+      ss << "bad type id";
+      break;
+    }
+    case (NC_ETYPDEFINED) : {
+      ss << "type already defined";
+      break;
+    }
+//     case (NC_EBADFIELDID) : {
+//       ss << "bad field id";
+//       break;
+//     }
+    case (NC_EBADCLASS) : {
+      ss << "bad class";
+      break;
+    }
+    case (NC_EMAPTYPE) : {
+      ss << "mapped access for atomic types only";
+      break;
+    }
+    case (NC_EDIMSCALE) : {
+      ss << "HDF5 dimscale error";
+      break;
+    }
+    case (NC_ENOGRP) : {
+      ss << "no group found";
+      break;
+    }
+    case (NC_ESTORAGE) : {
+      ss << "can't specify both contiguous and chunking";
+      break;
+    }
+    case (NC_EBADCHUNK) : {
+      ss << "bad chunk size";
+      break;
+    }
+    case (NC_ENOTBUILT) : {
+      ss << "attempt to use feature that was not turned on when netCDF was configured";
+      break;
+    }
+    case (NC_ECANTEXTEND) : {
+      ss << "attempt to extend dataset during ind. I/O operation";
+      break;
+    }
+    case (NC_EMPI) : {
+      ss << "MPI operation failed.";
+      break;
+    }
+    case (NC_EFILTER) : {
+      ss << "filter operation failed";
+      break;
+    }
+    case (NC_ERCFILE) : {
+      ss << "RC file error";
+      break;
+    }
+    case (NC_ENULLPAD) : {
+      ss << "header bytes not null-padded";
+      break;
+    }
+    case (NC_EINMEMORY) : {
+      ss << "in-memory file error";
+      break;
+    }
+    case (NC_ENOFILTER) : {
+      ss << "filter not defined on variable";
+      break;
+    }
+    case (NC_ENCZARR) : {
+      ss << "error at NCZarr layer";
+      break;
+    }
+    case (NC_ES3) : {
+      ss << "generic S3 error";
+      break;
+    }
+    case (NC_EEMPTY) : {
+      ss << "attempt to read empty NCZarr key";
+      break;
+    }
+    case (NC_EOBJECT) : {
+      ss << "some object exists when it should not";
+      break;
+    }
+    case (NC_ENOOBJECT) : {
+      ss << "object not found";
+      break;
+    }
+    case (NC_EPLUGIN) : {
+      ss << "unclassified failure accessing a dynamically-allocated plugin";
+      break;
+    }
     default: {
-      ss << "unknown netcdf error; ec = " << ec;
+      ss << "unknown netcdf error (" << ec << ")";
     }
   }
   return ss.str();

@@ -16,14 +16,9 @@ UnstructuredNcReader<Geo>::UnstructuredNcReader(const std::string& full_filename
   nodes_dimid(NC_EBADID),
   unpacked_coords(false),
   is_lat_lon(false),
-  coord_var_name()
+  coord_var_names()
   {
-    nodes_dimid = name_dimid_map.at("n_nodes");
-    size_t nn;
-    int retval = nc_inq_dimlen(ncid, nodes_dimid, &nn);
-    CHECK_NCERR(retval);
-    n_nodes = Index(nn);
-    find_coord_var();
+    find_coord_vars();
   }
 
 template <typename Geo>
@@ -37,27 +32,31 @@ std::string UnstructuredNcReader<Geo>::info_string(const int tab_level) const {
 }
 
 template <typename Geo>
-void UnstructuredNcReader<Geo>::find_coord_var() {
+void UnstructuredNcReader<Geo>::find_coord_vars() {
   if constexpr (std::is_same<Geo, SphereGeometry>::value) {
     is_lat_lon = false;
     if (map_contains(name_varid_map, "lat") and map_contains(name_varid_map, "lon") ) {
       unpacked_coords = true;
       is_lat_lon = true;
+      coord_var_names.push_back("lat");
+      coord_var_names.push_back("lon");
     }
     else {
       if (map_contains(name_varid_map, "coord")) {
         unpacked_coords = false;
-        coord_var_name = "coord";
+        coord_var_names.push_back("coord");
       }
       else if (map_contains(name_varid_map, "xyz")) {
         unpacked_coords = false;
-        coord_var_name = "xyz";
+        coord_var_names.push_back("xyz");
       }
       else {
         if ( (map_contains(name_varid_map, "coordx") and map_contains(name_varid_map, "coordy"))
           and map_contains(name_varid_map, "coordz") ) {
             unpacked_coords = true;
-            coord_var_name = "coordx";
+            coord_var_names.push_back("coordx");
+            coord_var_names.push_back("coordy");
+            coord_var_names.push_back("coordz");
         }
         else {
           LPM_REQUIRE_MSG(false, "UnstructuredNcReader error: unknown coordinate variable");
@@ -65,6 +64,7 @@ void UnstructuredNcReader<Geo>::find_coord_var() {
       }
     }
   }
+  LPM_ASSERT( unpacked_coords == (coord_var_names.size() > 1) );
 }
 
 template <typename Geo>

@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_netcdf.hpp"
 #include "lpm_field.hpp"
+#include "lpm_logger.hpp"
 
 namespace Lpm {
 // namespace netCDF {
@@ -26,24 +27,20 @@ class NcReader {
     virtual Index n_points() const = 0;
 
   protected:
-    explicit NcReader(const std::string& full_filename) :
-      fname(full_filename),
-      name_varid_map(),
-      name_dimid_map() {
-      nc_open(full_filename.c_str(), NC_NOWRITE, &ncid);
-      inq_dims();
-      inq_vars();
-    }
-
-    void inq_dims();
-    void inq_vars();
+    explicit NcReader(const std::string& full_filename, const Comm& comm = Comm());
 
     int ncid;
     int ndims;
     int nvars;
+    int natts;
     std::string fname;
     int time_dimid;
     int time_varid;
+
+    void inq_dims();
+    void inq_vars();
+
+    Logger<> logger;
 
     std::map<std::string, int> name_dimid_map;
     std::map<std::string, int> name_varid_map;
@@ -71,9 +68,9 @@ class UnstructuredNcReader : public NcReader {
     int nodes_dimid;
     bool unpacked_coords;
     bool is_lat_lon;
-    std::string coord_var_name;
+    std::vector<std::string> coord_var_names;
 
-    void find_coord_var();
+    void find_coord_vars();
 };
 
 // } // namespace netCDF
