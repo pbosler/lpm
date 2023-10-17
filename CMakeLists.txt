@@ -80,8 +80,6 @@ configure_file("${CMAKE_SOURCE_DIR}/LpmConfig.h.in" "${PROJECT_BINARY_DIR}/LpmCo
 include(GNUInstallDirs)
 
 printvar(LPM_INCLUDE_DIRS)
-printvar(LPM_LIBRARIES)
-
 
 add_subdirectory(src)
 set(LPM_LIBRARIES lpm

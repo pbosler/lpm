@@ -82,10 +82,11 @@ int main(int argc, char* argv[]) {
       vtk.write(input.vtk_fname);
 #endif
 #ifdef LPM_USE_NETCDF
-      /** Output mesh to a netCDF file */
-      NcWriter<SphereGeometry> nc(input.nc_fname);
-      nc.define_polymesh(*sphere);
-      logger.debug(nc.info_string());
+// TODO
+//       * Output mesh to a netCDF file */
+//       NcWriter<SphereGeometry> nc(input.nc_fname);
+//       nc.define_polymesh(*sphere);
+//       logger.debug(nc.info_string());
 #endif
   }
 

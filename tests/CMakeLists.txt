@@ -73,6 +73,8 @@ CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
 CreateUnitTest(test_stub lpm_test_stub.cpp)
 
+CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
+
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})
 #ADD_TEST(lpmKernelTest lpmKernelTest)

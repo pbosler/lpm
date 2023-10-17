@@ -1,12 +1,5 @@
 
 macro(setup_platform)
-
-
-
-#  if (UNIX AND NOT APPLE)
-#    set(LINUX ON)
-#  endif()
-#
  # do we have openmp?
  # TODO: Use Kokkos to determine this
 if (APPLE)
@@ -24,7 +17,7 @@ endif()
 
 if (LPM_ENABLE_BOOST)
   find_package(Boost REQUIRED COMPONENTS math_tr1)
-  set(LPM_USE_BOOST TRUE)
+  set(LPM_USE_BOOST TRUE CACHE BOOL "Boost math enabled")
 endif()
 
 if (LPM_USE_OPENMP)
@@ -49,9 +42,11 @@ endif()
 
 include(lpm_build_spdlog)
 include(lpm_build_catch2)
-#include(lpm_find_netcdf)
 include(lpm_find_vtk)
 include(lpm_find_compose)
+if (LPM_ENABLE_NETCDF)
+  include(lpm_find_netcdf)
+endif()
 if (LPM_ENABLE_FastBVE)
   include(lpm_find_fastbve)
 endif()

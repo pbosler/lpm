@@ -292,6 +292,32 @@ struct SphereGeometry {
     return std::atan2(v[1], v[0]);
   }
 
+  /** \brief Returns Cartesian coordiantes of a point with given latitude and longitude
+
+    \param xyz [out] Cartesian coordinates
+    \param lon [in] longitude
+    \param lat [in] latitude
+  */
+  template <typename VT>
+  KOKKOS_INLINE_FUNCTION static void xyz_from_lon_lat(VT& xyz, const Real lon, const Real lat) {
+    xyz[0] = cos(lat)*cos(lon);
+    xyz[1] = cos(lat)*sin(lon);
+    xyz[2] = sin(lat);
+  }
+
+  /** \brief Returns Cartesian coordiantes of a point with given colatitude and azimuth
+
+    \param xyz [out] Cartesian coordinates
+    \param az [in] azimuth
+    \param colat [in] colatitude
+  */
+  template <typename VT>
+  KOKKOS_INLINE_FUNCTION static void xyz_from_azimuth_colat(VT& xyz, const Real az, const Real colat) {
+    xyz[0] = sin(colat)*cos(az);
+    xyz[1] = sin(colat)*sin(az);
+    xyz[2] = cos(colat);
+  }
+
   /** \brief Sets all components of vector to zero.
 
   \param v view of a position vector v = [v0,v1,v2]
