@@ -3,6 +3,7 @@
 
 #include "lpm_netcdf_reader.hpp"
 #include "lpm_coords.hpp"
+#include "lpm_field.hpp"
 #include "util/lpm_stl_utils.hpp"
 #include "util/lpm_string_util.hpp"
 #include "lpm_field.hpp"
@@ -13,7 +14,6 @@ template <typename Geo>
 UnstructuredNcReader<Geo>::UnstructuredNcReader(const std::string& full_filename) :
   NcReader(full_filename),
   n_nodes(0),
-  nodes_dimid(NC_EBADID),
   unpacked_coords(false),
   is_lat_lon(false),
   coord_var_names()
@@ -28,7 +28,37 @@ std::string UnstructuredNcReader<Geo>::info_string(const int tab_level) const {
   auto tabstr = indent_string(tab_level);
   tabstr += "\t";
   ss << "n_nodes = " << n_nodes << "\n";
+  ss << "coord_var_names : [";
+  for (const auto& cv : coord_var_names) {
+    ss << cv << " ";
+  }
+  ss << "]\n";
   return ss.str();
+}
+
+template <typename Geo>
+ScalarField<ParticleField> UnstructuredNcReader<Geo>::create_scalar_field(const std::string& name) {
+  if (not map_contains(name_varid_map, name) ) {
+    logger.error("field {} not found in .nc file", name);
+    LPM_STOP("");
+  }
+  auto metadata = get_field_metadata(name);
+  std::string unit_str;
+  if (map_contains(metadata, "units")) {
+    unit_str = metadata.at("units");
+    metadata.erase("units");
+  }
+  ScalarField<ParticleField> result(name, n_nodes, unit_str, metadata);
+  const size_t start = 0;
+  const size_t count = n_nodes;
+  int retval = nc_get_vara(ncid, name_varid_map.at(name), &start, &count, result.hview.data());
+  if (retval != NC_NOERR)  {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_STOP("");
+  }
+  result.update_device();
+  return result;
 }
 
 template <typename Geo>
@@ -58,71 +88,142 @@ void UnstructuredNcReader<Geo>::find_coord_vars() {
             coord_var_names.push_back("coordy");
             coord_var_names.push_back("coordz");
         }
+        else if ( (map_contains(name_varid_map, "x") and map_contains(name_varid_map, "y")) and map_contains(name_varid_map, "z") ) {
+            unpacked_coords = true;
+            coord_var_names.push_back("x");
+            coord_var_names.push_back("y");
+            coord_var_names.push_back("z");
+        }
         else {
-          LPM_REQUIRE_MSG(false, "UnstructuredNcReader error: unknown coordinate variable");
+          LPM_STOP("UnstructuredNcReader error: unknown coordinate variable");
         }
       }
     }
   }
+  else {
+    if constexpr (std::is_same<Geo,PlaneGeometry>::value) {
+      if (map_contains(name_varid_map, "xy")) {
+        unpacked_coords = false;
+        coord_var_names.push_back("xy");
+      }
+      else if (map_contains(name_varid_map, "x") and map_contains(name_varid_map, "y")) {
+          unpacked_coords = true;
+          coord_var_names.push_back("x");
+          coord_var_names.push_back("y");
+      }
+    }
+  }
   LPM_ASSERT( unpacked_coords == (coord_var_names.size() > 1) );
+  size_t nn;
+  if (map_contains(name_dimid_map, "nnodes")) {
+    int retval = nc_inq_dimlen(ncid, name_dimid_map.at("nnodes"), &nn);
+    if (retval != NC_NOERR) {
+      const auto msg = CHECK_NCERR(retval);
+      logger.error(msg);
+      LPM_STOP("error loading nnodes");
+    }
+  }
+  else if (map_contains(name_dimid_map, "n_nodes")) {
+    int retval = nc_inq_dimlen(ncid, name_dimid_map.at("n_nodes"), &nn);
+    if (retval != NC_NOERR) {
+      const auto msg = CHECK_NCERR(retval);
+      logger.error(msg);
+      LPM_STOP("error loading n_nodes");
+    }
+  }
+  else {
+    logger.error("expected nnodes dimension for packed coordinates");
+    LPM_STOP("");
+  }
+  n_nodes = Index(nn);
+//   logger.debug("n_nodes = {}", n_nodes);
 }
 
 template <typename Geo>
-Coords<Geo> UnstructuredNcReader<Geo>::create_coords() const {
+Coords<Geo> UnstructuredNcReader<Geo>::create_coords() {
   Coords<Geo> result(n_nodes);
-  if (is_lat_lon) {
-    Kokkos::View<Real*> lats("lats", n_nodes);
-    Kokkos::View<Real*> lons("lons", n_nodes);
-    auto h_lats = Kokkos::create_mirror_view(lats);
-    auto h_lons = Kokkos::create_mirror_view(lons);
-    const size_t start = 0;
-    const size_t count = n_nodes;
-    int retval = nc_get_vara(ncid, name_varid_map.at("lat"), &start, &count, h_lats.data());
-    CHECK_NCERR(retval);
-    retval = nc_get_vara(ncid, name_varid_map.at("lon"), &start, &count, h_lons.data());
-    CHECK_NCERR(retval);
-    Kokkos::deep_copy(lats, h_lats);
-    Kokkos::deep_copy(lons, h_lons);
-    Kokkos::parallel_for("define_lat_lon_coords", n_nodes,
-      KOKKOS_LAMBDA (const Index i) {
-        auto mxyz = Kokkos::subview(result.view, i, Kokkos::ALL);
-        SphereGeometry::xyz_from_lon_lat(mxyz, lons(i), lats(i));
-      });
-    result.update_host();
+  result._nh() = n_nodes;
+  if constexpr (std::is_same<Geo,SphereGeometry>::value) {
+    if (is_lat_lon) {
+      Kokkos::View<Real*> lats("lats", n_nodes);
+      Kokkos::View<Real*> lons("lons", n_nodes);
+      auto h_lats = Kokkos::create_mirror_view(lats);
+      auto h_lons = Kokkos::create_mirror_view(lons);
+      const size_t start = 0;
+      const size_t count = n_nodes;
+      int retval = nc_get_vara(ncid, name_varid_map.at("lat"), &start, &count, h_lats.data());
+      if (retval != NC_NOERR) {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_STOP("");
+      }
+      retval = nc_get_vara(ncid, name_varid_map.at("lon"), &start, &count, h_lons.data());
+      if (retval != NC_NOERR) {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_STOP("");
+      }
+      Kokkos::deep_copy(lats, h_lats);
+      Kokkos::deep_copy(lons, h_lons);
+      Kokkos::parallel_for("define_lat_lon_coords", n_nodes,
+        KOKKOS_LAMBDA (const Index i) {
+          auto mxyz = Kokkos::subview(result.view, i, Kokkos::ALL);
+          SphereGeometry::xyz_from_lon_lat(mxyz, lons(i), lats(i));
+        });
+      result.update_host();
+    }
+    else {
+      LPM_STOP("UnstructuredNcReader::create_coords error: not implemented yet");
+    }
   }
   else {
-    LPM_REQUIRE_MSG(false, "UnstructuredNcReader::create_coords error: not implemented yet");
+    if (unpacked_coords) {
+      Kokkos::View<Real*> x("x", n_nodes);
+      Kokkos::View<Real*> y("y", n_nodes);
+      auto h_x = Kokkos::create_mirror_view(x);
+      auto h_y = Kokkos::create_mirror_view(y);
+      const size_t start = 0;
+      const size_t count = n_nodes;
+      int retval = nc_get_vara(ncid, name_varid_map.at("x"), &start, &count, h_x.data());
+
+      if (retval != NC_NOERR)  {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_STOP("");
+      }
+      retval = nc_get_vara(ncid, name_varid_map.at("y"), &start, &count, h_y.data());
+      if (retval != NC_NOERR)  {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_STOP("");
+      }
+
+      Kokkos::deep_copy(x, h_x);
+      Kokkos::deep_copy(y, h_y);
+      auto crds = result.view;
+      Kokkos::parallel_for(n_nodes, KOKKOS_LAMBDA (const Index i) {
+        crds(i,0) = x(i);
+        crds(i,1) = y(i);
+      });
+      result.update_host();
+    }
+    else {
+      size_t start[2], count[2];
+      start[0] = 0;
+      start[1] = 0;
+      count[0] = 2;
+      count[1] = n_nodes;
+      int retval = nc_get_vara(ncid, name_varid_map.at("xy"), start, count, result.get_host_crd_view().data());
+      if (retval != NC_NOERR) {
+        const auto msg = CHECK_NCERR(retval);
+        logger.error(msg);
+        LPM_STOP("");
+      }
+      result.update_device();
+    }
   }
   return result;
 }
-
-// template <typename Geo>
-// metadata_type UnstructuredNcReader<Geo>::get_field_metadata(const std::string& field_name) const {
-//   metadata_type result;
-//   constexpr int MAX_NAME_LEN = 32;
-//   const int varid = name_varid_map.at(name);
-//   int natts;
-//   int retval = nc_inq_varnatts(ncid, varid, &natts);
-//   CHECK_NCERR(retval);
-//   std::vector<std::string> att_names;
-//   std::vector<size_t> att_lens;
-//   for (int i=0; i<natts; ++i) {
-//     char name[MAX_NAME_LEN];
-//     retval = nc_inq_attname(ncid, varid, i, name);
-//     CHECK_NCERR(retval);
-//     att_names.push_back(rstrip(std::string(name)));
-//     size_t len;
-//     retval = nc_inq_attlen(ncid, varid, name, &len);
-//     att_lens.push_back(len);
-//   }
-//   for (int i=0; i<natts; ++i) {
-//     att_str = (char *) malloc(att_lens[i]);
-//     retval = nc_get_att_text(ncid, varid, att_names[i].c_str(), att_str);
-//     result.emplace(att_names[i], std::string(att_str));
-//     free(att_str);
-//   }
-//   return result;
-// }
 
 // template <typename Geo>
 // ScalarField<ParticleField> UnstructuredNcReader<Geo>::create_scalar_field(const std::string& name) const {

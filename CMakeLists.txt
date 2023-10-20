@@ -37,17 +37,6 @@ message(STATUS "Configuring for device: ${LPM_DEVICE} (${LPM_DEVICE_ARCH})")
 message(STATUS "Configuring with build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Generating project files in build directory: ${PROJECT_BINARY_DIR}")
 
-# Floating point precision
-if (LPM_PRECISION STREQUAL "single")
-  set(LPM_REAL_TYPE "float")
-  set(LPM_DOUBLE_PRECISION 0)
-elseif(LPM_PRECISION STREQUAL "double")
-  set(LPM_REAL_TYPE "double")
-  set(LPM_DOUBLE_PRECISION 1)
-else()
-  message(FATAL_ERROR "Invalid LPM_PRECISION: ${LPM_PRECISION} (use 'single' or 'double')")
-endif()
-
 # Add external libraries
 set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES} )
 set(LPM_EXT_INCLUDE_DIRS ${MPI_C_INCLUDE_DIRS} )

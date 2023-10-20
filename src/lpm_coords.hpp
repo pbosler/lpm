@@ -15,6 +15,8 @@ namespace Lpm {
 #ifdef LPM_USE_NETCDF
 template <typename Geo>
 class NcWriter;
+template <typename Geo>
+class UnstructuredNcReader;
 class PolymeshReader;
 #endif
 
@@ -50,7 +52,7 @@ class Coords {
 
 #ifdef LPM_USE_NETCDF
   friend class NcWriter<Geo>;
-
+  friend class UnstructuredNcReader<Geo>;
   friend class PolymeshReader;
 #endif
 

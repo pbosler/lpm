@@ -26,6 +26,8 @@ class NcReader {
 
     virtual Index n_points() const = 0;
 
+    metadata_type get_field_metadata(const std::string& field_name);
+
   protected:
     explicit NcReader(const std::string& full_filename, const Comm& comm = Comm());
 
@@ -46,26 +48,32 @@ class NcReader {
     std::map<std::string, int> name_varid_map;
 };
 
+/** Unstructured points reader.
+
+  Expects a single list of `n_nodes` points.
+
+  Coordinates may be packed in a single (d x n_nodes) array or unpacked in
+  individual arrays of size 1 x n_nodes.
+
+*/
 template <typename Geo>
 class UnstructuredNcReader : public NcReader {
   using Layout = NcDataLayoutTraits<1>;
   public:
     UnstructuredNcReader(const std::string& full_filename);
 
-    Coords<Geo> create_coords() const;
+    Coords<Geo> create_coords();
 
-    ScalarField<ParticleField> create_scalar_field(const std::string& name) const;
-    VectorField<Geo,ParticleField> create_vector_Field(const std::string& name) const;
+    ScalarField<ParticleField> create_scalar_field(const std::string& name);
+//     VectorField<Geo,ParticleField> create_vector_Field(const std::string& name) const;
 
     Index n_points() const override {return n_nodes;}
 
     std::string info_string(const int tab_level=0) const override;
 
-//     std::vector<text_att_type> get_field_metadata(const std::string& field_name) const;
 
   protected:
     Index n_nodes;
-    int nodes_dimid;
     bool unpacked_coords;
     bool is_lat_lon;
     std::vector<std::string> coord_var_names;

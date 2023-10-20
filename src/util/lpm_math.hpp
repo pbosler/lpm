@@ -61,13 +61,13 @@ using std::abs;
       return boost::math::legendre_p<Real>(l, m, z);
     }
   #else
-    #ifdef LPM_DOUBLE_PRECISION
+//     #ifdef LPM_DOUBLE_PRECISION
       KOKKOS_INLINE_FUNCTION
       Real cyl_bessel_j(const int n, const Real x) { return jn(n, x); }
-    #else
-      KOKKOS_INLINE_FUNCTION
-      Real cyl_bessel_j(const int n, const Real x) { return jnf(n, x); }
-    #endif
+//     #else
+//       KOKKOS_INLINE_FUNCTION
+//       Real cyl_bessel_j(const int n, const Real x) { return jnf(n, x); }
+//     #endif
   #endif
 #endif
 
