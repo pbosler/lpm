@@ -197,7 +197,7 @@ Input::Input(int argc, char* argv[]) {
   LPM_REQUIRE_MSG(amr_valid, "valid input for amr requires both refinement buffer and refinement limit to be zero (no amr) or to be positive");
   ofroot += (std::is_same<CubedSphereSeed, seed_type>::value ?
     "cubed_sphere" : "icos_tri_sphere") + std::to_string(init_depth)
-      + (amr_refinement_buffer > 0 ? "_amr" + std::tostring(amr_refinement_buffer) : "_unif");
+      + (amr_refinement_buffer > 0 ? "_amr" + std::to_string(amr_refinement_buffer) : "_unif");
 
   vtk_fname = ofroot + ".vtp";
   nc_fname = ofroot + ".nc";

@@ -76,8 +76,8 @@ ScalarField<ParticleField> UnstructuredNcReader<Geo>::create_scalar_field(const 
   }
   ScalarField<ParticleField> result(name, n_nodes, unit_str, metadata);
 
-  const size_t start[2];
-  const size_t count[2];
+  size_t start[2];
+  size_t count[2];
   const auto time_dim_id = name_dimid_map.at("time");
   if (time_dim_id == 0) {
     start[0] = time_idx;
