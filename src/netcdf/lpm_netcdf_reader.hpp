@@ -65,6 +65,7 @@ class UnstructuredNcReader : public NcReader {
     Coords<Geo> create_coords();
 
     ScalarField<ParticleField> create_scalar_field(const std::string& name);
+    ScalarField<ParticleField> create_scalar_field(const std::string& name, const int time_idx);
 //     VectorField<Geo,ParticleField> create_vector_Field(const std::string& name) const;
 
     Index n_points() const override {return n_nodes;}

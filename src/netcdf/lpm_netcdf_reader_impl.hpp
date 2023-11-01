@@ -62,6 +62,47 @@ ScalarField<ParticleField> UnstructuredNcReader<Geo>::create_scalar_field(const 
 }
 
 template <typename Geo>
+ScalarField<ParticleField> UnstructuredNcReader<Geo>::create_scalar_field(const std::string& name, const int time_idx) {
+  if (not map_contains(name_varid_map, name)) {
+    logger.error("field {} not found in .nc file", name);
+    LPM_STOP("");
+  }
+  LPM_REQUIRE(map_contains(name_dimid_map, "time"));
+  auto metadata = get_field_metadata(name);
+  std::string unit_str;
+  if (map_contains(metadata, "units")) {
+    unit_str = metadata.at("units");
+    metadata.erase("units");
+  }
+  ScalarField<ParticleField> result(name, n_nodes, unit_str, metadata);
+
+  const size_t start[2];
+  const size_t count[2];
+  const auto time_dim_id = name_dimid_map.at("time");
+  if (time_dim_id == 0) {
+    start[0] = time_idx;
+    start[1] = 0;
+    count[0] = 1;
+    count[1] = n_nodes;
+  }
+  else {
+    start[0] = 0;
+    start[1] = time_idx;
+    count[0] = n_nodes;
+    count[1] = 1;
+  }
+
+  int retval = nc_get_vara(ncid, name_varid_map.at(name), start, count, result.hview.data());
+  if (retval != NC_NOERR) {
+    const auto msg = CHECK_NCERR(retval);
+    logger.error(msg);
+    LPM_STOP("");
+  }
+  result.update_device();
+  return result;
+}
+
+template <typename Geo>
 void UnstructuredNcReader<Geo>::find_coord_vars() {
   if constexpr (std::is_same<Geo, SphereGeometry>::value) {
     is_lat_lon = false;
