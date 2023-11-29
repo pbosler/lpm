@@ -121,7 +121,7 @@ class DFSBVE {
     void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
     template <typename VelocityType>
-    void init_velocity();
+    void init_velocity(const VelocityType& vel_fn);
 
     void init_velocity_from_vorticity();
 

@@ -105,22 +105,22 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
 };
 
 template <typename SeedType> template <typename VelocityType>
-void DFSBVE<SeedType>::init_velocity() {
+void DFSBVE<SeedType>::init_velocity(const VelocityType& vel_fn) {
   auto u_verts = velocity_passive.view;
   auto vert_crds = mesh.vertices.phys_crds.view;
   Kokkos::parallel_for("initialize velocity (passive)",
     mesh.n_vertices_host(),
-    VelocityKernel<VelocityType>(u_verts, vert_crds, 0));
+    VelocityKernel<VelocityType>(u_verts, vert_crds, 0, vel_fn));
   auto u_faces = velocity_active.view;
   auto face_crds = mesh.faces.phys_crds.view;
   Kokkos::parallel_for("initialize velocity (active)",
     mesh.n_faces_host(),
-    VelocityKernel<VelocityType>(u_faces, face_crds, 0));
+    VelocityKernel<VelocityType>(u_faces, face_crds, 0, vel_fn));
   auto u_grid = velocity_grid.view;
   auto gridcrds = grid_crds.view;
   Kokkos::parallel_for("initialize velocity (grid)",
     grid.size(),
-    VelocityKernel<VelocityType>(u_grid, gridcrds, 0));
+    VelocityKernel<VelocityType>(u_grid, gridcrds, 0, vel_fn));
 }
 
 #ifdef LPM_USE_VTK

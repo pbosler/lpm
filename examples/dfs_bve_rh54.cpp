@@ -116,8 +116,8 @@ int main(int argc, char* argv[]) {
     const Int nlon = input.nlon;
     const Int ntracers = 0;
     // problem types: velocity and vorticity
-    typedef RossbyWave54Velocity velocity_type;
-    RossbyHaurwitz54 vorticity_fn;
+    RossbyWave54Velocity velocity_fn(constants::PI/7);
+    RossbyHaurwitz54 vorticity_fn(constants::PI/7);
 
     // LPM particle/panel initialization
     typedef CubedSphereSeed seed_type;
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
     sphere.init_vorticity(vorticity_fn);
-    sphere.template init_velocity<velocity_type>();
+    sphere.init_velocity(velocity_fn);
     logger.info(sphere.info_string());
 
     ScalarField<VertexField> vert_rel_vort_error("relative_vorticity_error", sphere.mesh.n_vertices_host());
