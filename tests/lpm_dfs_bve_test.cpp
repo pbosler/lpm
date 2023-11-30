@@ -22,7 +22,7 @@ TEST_CASE("dfs_bve_unit_tests", "[dfs]") {
   const Int ntracers = 0;
 
   typedef CubedSphereSeed seed_type;
-  typedef RossbyWave54Velocity velocity_type;
+  RossbyWave54Velocity velocity_fn;
   RossbyHaurwitz54 vorticity_fn;
 
   const Int mesh_depth = 3;
@@ -32,7 +32,7 @@ TEST_CASE("dfs_bve_unit_tests", "[dfs]") {
 
   DFS::DFSBVE<seed_type> dfs_bve(mesh_params, nlon, ntracers, gmls_params);
   dfs_bve.init_vorticity(vorticity_fn);
-  dfs_bve.template init_velocity<velocity_type>();
+  dfs_bve.init_velocity(velocity_fn);
 
   // mesh to grid
   ScalarField<VertexField> rel_vort_grid_gmls("relative_vorticity_gmls",
