@@ -48,6 +48,13 @@ void DFSRK2<SeedType>::advance_timestep()  {
   // rk update: set new vorticity
   KokkosBlas::update(0.5, rel_vort_particles1, 0.5, rel_vort_particles2, 1, rel_vort_particles);
 
+  // update velocity to the particles
+  interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles,
+    xyz_grid, rel_vort_particles);
+
+  dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
+
+
   ++t_idx;
 }
 
