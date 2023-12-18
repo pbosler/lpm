@@ -10,7 +10,7 @@
 #include "netcdf/lpm_netcdf_reader.hpp"
 #include "netcdf/lpm_netcdf_reader_impl.hpp"
 #include <netcdf.h>
-#endif
+
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -78,3 +78,4 @@ TEST_CASE("lpm netcdf test", "") {
     logger.debug(pcrds.info_string(label, indent, dump_all));
   }
 }
+#endif // use netcdf
