@@ -15,6 +15,8 @@ namespace Lpm {
 #ifdef LPM_USE_NETCDF
 template <typename Geo>
 class NcWriter;
+template <typename Geo>
+class UnstructuredNcReader;
 class PolymeshReader;
 #endif
 
@@ -50,7 +52,7 @@ class Coords {
 
 #ifdef LPM_USE_NETCDF
   friend class NcWriter<Geo>;
-
+  friend class UnstructuredNcReader<Geo>;
   friend class PolymeshReader;
 #endif
 
@@ -160,7 +162,7 @@ class Coords {
 
   \param label name of instance
   */
-  std::string info_string(const std::string& label, const short& tab_level = 0,
+  std::string info_string(const std::string& label="", const short& tab_level = 0,
                           const bool& dump_all = false) const;
 
   /** \brief Initializes a random set of coordinates.

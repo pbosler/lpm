@@ -45,6 +45,10 @@ inline std::string float_str(const T val, const int width = 5) {
   return ss.str();
 }
 
+std::string rstrip(std::string str, const std::string& chars_to_strip=" \t\f\v\n\r");
+
+std::string lstrip(std::string str, const std::string& chars_to_strip=" \t\f\v\n\r");
+
 }  // namespace Lpm
 
 #endif

@@ -22,8 +22,6 @@ enum FieldLocation { ParticleField, VertexField, EdgeField, FaceField };
 static const FieldLocation AllFieldLocs[] = {ParticleField, VertexField,
                                              EdgeField, FaceField};
 
-typedef std::map<std::string, std::string> metadata_type;
-
 std::string field_loc_string(const FieldLocation& floc);
 
 template <FieldLocation FL>

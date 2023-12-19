@@ -29,4 +29,23 @@ std::string format_strings_as_list(const char** strings, const Short n) {
   return ss.str();
 }
 
+std::string rstrip(std::string str, const std::string& chars_to_strip) {
+  std::string result(str);
+  const auto found_stripchar = result.find_last_not_of(chars_to_strip);
+  if (found_stripchar != std::string::npos) {
+    result.erase(found_stripchar + 1);
+  }
+  else {
+    result.clear();
+  }
+  return result;
+}
+
+std::string lstrip(std::string str, const std::string& chars_to_strip) {
+  std::string result(str);
+  const auto found_char = result.find_first_not_of(chars_to_strip);
+  result.erase(0, std::min(found_char, result.size()-1));
+  return result;
+}
+
 }  // namespace Lpm

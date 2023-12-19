@@ -19,7 +19,7 @@
 #include "util/lpm_test_utils.hpp"
 #include "util/lpm_matlab_io.hpp"
 
-#include "Compadre_Evaluator.hpp"
+#include <Compadre_Evaluator.hpp>
 
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"

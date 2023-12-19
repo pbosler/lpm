@@ -45,3 +45,4 @@ LpmConfig.h
 *.nc
 *.vtk
 *.vtp
+build*

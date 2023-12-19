@@ -43,8 +43,9 @@ set(LPM_SOURCES
 
 if (LPM_USE_NETCDF)
   LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
-    netcdf/lpm_polymesh_reader.cpp
-    netcdf/lpm_polymesh_writer.cpp)
+    netcdf/lpm_netcdf_reader.cpp
+    netcdf/lpm_netcdf_writer.cpp
+  )
 endif()
 
 if (LPM_USE_VTK)
@@ -62,13 +63,11 @@ target_link_libraries(lpm PUBLIC
                           Kokkos::kokkos
                           Kokkos::kokkoskernels
                           Compadre::compadre
+                          compose
                           spdlog
                           )
 if (LPM_USE_NETCDF)
-  target_link_libraries(lpm PUBLIC ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
-endif()
-if (LPM_USE_COMPOSE)
-  target_link_libraries(lpm PUBLIC compose)
+  target_link_libraries(lpm PUBLIC NetCDF::NetCDF)
 endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
@@ -105,27 +104,23 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               mesh/lpm_refinement_flags.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
+              netcdf/lpm_netcdf_reader.hpp
+              netcdf/lpm_netcdf_writer.hpp
               tree/lpm_box3d.hpp
               tree/lpm_cpu_tree.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp
               util/lpm_progress_bar.hpp
+              util/lpm_stl_util.hpp
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
               util/lpm_tuple.hpp
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
-
-
-#              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
-#              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
-#              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
 #              LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
 #              LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
-#              LpmBVERK4.hpp LpmBVERK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
-#              LpmNetCDF.hpp LpmSWEGallery.hpp
     DESTINATION include)
-install(TARGETS lpm DESTINATION lib)
+install(TARGETS lpm lpm_fortran DESTINATION lib)
 
 ###########################################
 ###       Testing micro-libraries       ###
