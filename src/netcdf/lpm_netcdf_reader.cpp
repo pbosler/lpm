@@ -102,11 +102,11 @@ std::string NcReader::info_string(const int tab_level) const {
   ss << tabstr << "filename: " << fname << "\n";
   ss << tabstr << "found dims:\n";
   for (auto& dim : name_dimid_map) {
-    ss << tabstr << "\t" << dim.first << "\n";
+    ss << tabstr << "\t" << dim.first <<  " at id : " << dim.second << "\n";
   }
   ss << tabstr << "found vars:\n";
   for (auto& var : name_varid_map) {
-    ss << tabstr << "\t" << var.first << "\n";
+    ss << tabstr << "\t" << var.first << " at id: " << var.second << "\n";
   }
   return ss.str();
 }

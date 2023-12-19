@@ -63,7 +63,8 @@ add_test(NAME bve_solid_body_rotation
 add_test(NAME sphere_transport
  COMMAND sphere_transport -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
 
-
+add_test(NAME sphere_from_data
+  COMMAND sphere_from_data ${PROJECT_SOURCE_DIR}/tests/data/so2_plume.nc -f so2)
 
 else()
   message("VTK not found. Skipping examples:

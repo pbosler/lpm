@@ -4,6 +4,7 @@
 #include "lpm_netcdf_reader.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_field.hpp"
+#include "lpm_constants.hpp"
 #include "util/lpm_stl_utils.hpp"
 #include "util/lpm_string_util.hpp"
 #include "lpm_field.hpp"
@@ -206,10 +207,12 @@ Coords<Geo> UnstructuredNcReader<Geo>::create_coords() {
       }
       Kokkos::deep_copy(lats, h_lats);
       Kokkos::deep_copy(lons, h_lons);
+      constexpr Real deg2rad = 1/constants::RAD2DEG;
       Kokkos::parallel_for("define_lat_lon_coords", n_nodes,
         KOKKOS_LAMBDA (const Index i) {
           auto mxyz = Kokkos::subview(result.view, i, Kokkos::ALL);
-          SphereGeometry::xyz_from_lon_lat(mxyz, lons(i), lats(i));
+          SphereGeometry::xyz_from_lon_lat(mxyz,
+             lons(i) * deg2rad, lats(i) * deg2rad);
         });
       result.update_host();
     }
