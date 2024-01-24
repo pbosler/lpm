@@ -55,6 +55,8 @@ namespace Lpm {
   IMPL_THROW(condition, msg, std::runtime_error)
 #define LPM_KERNEL_REQUIRE(condition) IMPL_KERNEL_THROW(condition, "")
 #define LPM_KERNEL_REQUIRE_MSG(condition, msg) IMPL_KERNEL_THROW(condition, msg)
+#define LPM_STOP(msg) IMPL_THROW(false, msg, std::runtime_error)
+#define LPM_KERNEL_STOP(msg) IMPL_KERNEL_THROW(false, msg)
 
 }  // namespace Lpm
 #endif

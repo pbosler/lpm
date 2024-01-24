@@ -59,8 +59,9 @@ endif()
 
 if (LPM_USE_NETCDF)
   LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
-    netcdf/lpm_polymesh_reader.cpp
-    netcdf/lpm_polymesh_writer.cpp)
+    netcdf/lpm_netcdf_reader.cpp
+    netcdf/lpm_netcdf_writer.cpp
+  )
 endif()
 
 if (LPM_USE_VTK)
@@ -73,17 +74,16 @@ target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 
 add_dependencies(lpm spdlog)
 
-target_link_libraries(lpm PUBLIC lpm_fortran
+target_link_libraries(lpm PUBLIC
+                          lpm_fortran
                           Kokkos::kokkos
                           Kokkos::kokkoskernels
                           Compadre::compadre
+                          compose
                           spdlog
                           )
 if (LPM_USE_NETCDF)
-  target_link_libraries(lpm PUBLIC ${HDF5_LIBRARY} ${HDF5_HL_LIBRARY} ${NETCDF_LIBRARY})
-endif()
-if (LPM_USE_COMPOSE)
-  target_link_libraries(lpm PUBLIC compose)
+  target_link_libraries(lpm PUBLIC NetCDF::NetCDF)
 endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
@@ -126,11 +126,14 @@ set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
               mesh/lpm_vertices_impl.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
+              netcdf/lpm_netcdf_reader.hpp
+              netcdf/lpm_netcdf_writer.hpp
               tree/lpm_box3d.hpp
               tree/lpm_cpu_tree.hpp
               util/lpm_floating_point.hpp
               util/lpm_math.hpp
               util/lpm_progress_bar.hpp
+              util/lpm_stl_util.hpp
               util/lpm_string_util.hpp
               util/lpm_timer.hpp
               util/lpm_tuple.hpp
@@ -159,7 +162,7 @@ endif()
 
 install(FILES ${LPM_HEADERS}
     DESTINATION include)
-install(TARGETS lpm DESTINATION lib)
+install(TARGETS lpm lpm_fortran DESTINATION lib)
 
 ###########################################
 ###       Testing micro-libraries       ###

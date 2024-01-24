@@ -3,9 +3,20 @@
 
 #include "LpmConfig.h"
 
-
 namespace Lpm {
 
+/** All refinement flag functors toggle a flag view entry to True
+if their condition is met.
+
+They do not change an existing True in that same entry.
+*/
+
+/** A flag view is 1-1 with a mesh's panels.
+
+  flag_view(i) = true will trigger refinement of that panel in an
+          adaptive refinement workflow.
+  flag_view(i) = false will not.
+*/
 typedef Kokkos::View<bool*> flag_view;
 
 template <typename MeshSeedType>
@@ -53,6 +64,25 @@ struct FlowMapVariationFlag {
       }
 
       flags(i) = (flags(i) or (dsum > tol));
+    }
+  }
+};
+
+struct ScalarMaxFlag {
+  flag_view flags;
+  scalar_view_type face_vals;
+  mask_view_type facemask;
+  Index nfaces;
+  Real tol;
+
+  ScalarMaxFlag(flag_view f, const scalar_view_type fv,
+    const mask_view_type m, const Index n, const Real eps) :
+    flags(f), face_vals(fv), facemask(m), nfaces(n), tol(eps) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    if (not facemask(i) ) {
+      flags(i) = ( flags(i) or ( abs(face_vals(i)) > tol ) );
     }
   }
 };

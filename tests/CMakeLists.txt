@@ -71,6 +71,10 @@ CreateUnitTest(swe_kernels lpm_swe_kernels_tests.cpp)
 
 CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
+CreateUnitTest(test_stub lpm_test_stub.cpp)
+
+CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
+
 if (LPM_ENABLE_DFS)
 
 CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp)
