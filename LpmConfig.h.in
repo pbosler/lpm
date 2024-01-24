@@ -21,10 +21,17 @@
 
 #include "Kokkos_Core.hpp"
 
+#ifdef LPM_ENABLE_DFS
+#include <Kokkos_Complex.hpp>
+#endif
+
 namespace Lpm {
 
 	typedef int Index;
 	typedef @LPM_REAL_TYPE@ Real;
+#ifdef LPM_ENABLE_DFS
+	typedef std::complex<Real> Complex;
+#endif
 	typedef int Int;
 	typedef unsigned Uint;
 	typedef short Short;

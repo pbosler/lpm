@@ -1,7 +1,7 @@
 #ifndef DFS_LAPLACIAN_NEW_HPP
 #define DFS_LAPLACIAN_NEW_HPP
 
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 #include <KokkosBlas3_gemm.hpp>
 
 namespace SpherePoisson {
@@ -45,10 +45,10 @@ namespace SpherePoisson {
 
 
         }
-        
+
     };
 
-    // Multiplying sin^2 the  and 
+    // Multiplying sin^2 the  and
     //D2, the second derivative matrix Fourier space
     // and add to K^2sin^2
     // sin^2*D2 + K^2sin^2
@@ -74,6 +74,6 @@ namespace SpherePoisson {
 
     void even_odd_laplacian_matrix(view_2d<Real> Lo_matrix, view_2d<Real> Le_matrix, Real Kappa);
 
-    
+
 }
 #endif

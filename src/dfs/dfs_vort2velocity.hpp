@@ -1,7 +1,7 @@
 #ifndef DFS_VORT2VELOCITY_HPP
 #define DFS_VORT2VELOCITY_HPP
 
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 #include <KokkosBlas1_axpby.hpp>
 #include "dfs_laplacian_new.hpp"
 #include "dfs_rhs_new.hpp"
@@ -42,10 +42,10 @@ namespace SpherePoisson {
 
 
 
-     
+
     */
     void dfs_vort_2_velocity(view_r3pts<Real> X, view_1d<Real> vort,view_r3pts<Real> U_X);
-    
+
 
 }
 #endif

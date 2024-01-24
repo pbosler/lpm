@@ -1,7 +1,7 @@
 #ifndef DFS_VELOCITY_HPP
 #define DFS_VELOCITY_HPP
 
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 #include<KokkosBlas1_axpby.hpp>
 #include <string>
 
@@ -24,14 +24,14 @@ namespace SpherePoisson {
     // i.e. cos(theta) * A
     void multi_cos(view_2d<Complex> mat, view_2d<Complex> res);
 
-    // Function for dividing by sin(theta) in 
+    // Function for dividing by sin(theta) in
     // Fourier space
     void divide_sin(view_2d<Complex> mat, view_2d<Complex> res);
 
     // Given vorticity on the grid compute velocity (u, v, w)
     // on the grid
     void velocity_on_grid(view_2d<Complex> vort, view_2d<Complex> U,  view_2d<Complex> V, view_2d<Complex> W);
-    
+
 
 }
 #endif

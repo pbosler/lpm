@@ -3,13 +3,13 @@
 #include <fftw3.h>
 
 #include "KokkosBlas.hpp"
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 
 
 namespace SpherePoisson {
     // Thomas algorithm: the tridiagonal solver
      // In our application we expect real RHS and
-     // Complex left handside 
+     // Complex left handside
     template<typename T>
     void tridiag_solver(view_2d<T> A, view_1d<Complex> d);
 
@@ -28,8 +28,8 @@ namespace SpherePoisson {
     void solver(view_2d<Real> Le, view_2d<Real> Lo, view_2d<Complex> rhse,  view_2d<Complex> rhso, view_2d<Complex> UU,
     view_1d<Int> io, view_1d<Int> ie, Real Kappa);
 
-    
 
-    
+
+
 }
 #endif

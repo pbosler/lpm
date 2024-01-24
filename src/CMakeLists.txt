@@ -28,7 +28,6 @@ set(LPM_SOURCES
                 lpm_error.cpp
                 lpm_field.cpp
                 lpm_lat_lon_pts.cpp
-                dfs/lpm_dfs_grid.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
@@ -41,22 +40,22 @@ set(LPM_SOURCES
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
                 util/lpm_timer.cpp
-		dfs/dfs_doubling.cpp
+)
+
+if (LPM_ENABLE_DFS)
+  LIST(APPEND LPM_SOURCES
+    dfs/dfs_doubling.cpp
 		dfs/dfs_laplacian_new.cpp
 		dfs/dfs_rhs_new.cpp
  		dfs/dfs_solve_new.cpp
 		dfs/dfs_test_support.cpp
-    		dfs/dfs_velocity.cpp
+    dfs/dfs_velocity.cpp
 		dfs/dfs_interpolation.cpp
 		dfs/dfs_vort2velocity.cpp
  		dfs/dfs_surface_grad.cpp
-)
-#    LpmCompadre.cpp
-#    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
-#    LpmOctreeLUT.cpp
-#    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
-#    LpmSWEGallery.cpp
-#                )
+ 		dfs/lpm_dfs_grid.cpp
+ 	)
+endif()
 
 if (LPM_USE_NETCDF)
   LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
@@ -97,12 +96,7 @@ if (LPM_USE_FINUFFT)
   add_link_options(-fsanitize=address)
 endif()
 
-#if (USE_SPHEREPACK)
-#    message(STATUS "linking to spherepack")
-#    target_link_libraries(lpm spherepack)
-#endif()
-
-install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
+set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere.hpp
               lpm_bve_sphere_impl.hpp
               lpm_bve_sphere_kernels.hpp
@@ -115,21 +109,6 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_sphere_functions.hpp
               lpm_lat_lon_pts.hpp
               lpm_matlab_io.hpp
-              dfs/lpm_dfs_grid.hpp
-              dfs/lpm_dfs_bve.hpp
-              dfs/lpm_dfs_bve_impl.hpp
-              dfs/lpm_dfs_bve_solver.hpp
-              dfs/lpm_dfs_bve_solver_impl.hpp
-              dfs/lpm_dfs_impl.hpp
-	      dfs/dfs_doubling.hpp
-	      dfs/dfs_laplacian_new.hpp
-	      dfs/dfs_rhs_new.hpp
-	      dfs/dfs_solve_new.hpp
-	      dfs/dfs_test_support.hpp
-	      dfs/spectral/dfs_velocity.hpp
-	      dfs/dfs_interpolation.hpp
-	      dfs/dfs_vort2velocity.hpp
-	      dfs/dfs_surface_grad.hpp
               fortran/lpm_f_interp.hpp
               fortran/lpm_f_interp_impl.hpp
               mesh/lpm_edges.hpp
@@ -157,15 +136,28 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/lpm_tuple.hpp
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
+              )
+if (LPM_ENABLE_DFS)
+  list(APPEND LPM_HEADERS
+        dfs/lpm_dfs_grid.hpp
+        dfs/lpm_dfs_bve.hpp
+        dfs/lpm_dfs_bve_impl.hpp
+        dfs/lpm_dfs_bve_solver.hpp
+        dfs/lpm_dfs_bve_solver_impl.hpp
+        dfs/lpm_dfs_impl.hpp
+	      dfs/dfs_doubling.hpp
+	      dfs/dfs_laplacian_new.hpp
+	      dfs/dfs_rhs_new.hpp
+	      dfs/dfs_solve_new.hpp
+	      dfs/dfs_test_support.hpp
+	      dfs/spectral/dfs_velocity.hpp
+	      dfs/dfs_interpolation.hpp
+	      dfs/dfs_vort2velocity.hpp
+	      dfs/dfs_surface_grad.hpp
+	      )
+endif()
 
-
-#              LpmMeshSeed.hpp LpmVtkIO.hpp LpmCompadre.hpp LpmPolyMesh2d.hpp LpmGeometry.hpp
-#              LpmKokkosUtil.hpp LpmParticleSet.hpp LpmSpherePoisson.hpp LpmBVESphere.hpp
-#              LpmBVEKernels.hpp LpmLatLonMesh.hpp LpmRossbyWaves.hpp LpmMatlabIO.hpp
-#              LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
-#              LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
-#              LpmBVERK4.hpp LpmBVERK4_Impl.hpp LpmPolyMesh2dVtkInterface.hpp LpmTimer.hpp
-#              LpmNetCDF.hpp LpmSWEGallery.hpp
+install(FILES ${LPM_HEADERS}
     DESTINATION include)
 install(TARGETS lpm DESTINATION lib)
 

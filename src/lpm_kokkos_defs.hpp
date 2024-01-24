@@ -38,8 +38,6 @@ typedef ko::View<Index* [4], Dev> quad_tree_view;
 typedef ko::View<bool*, Dev> mask_view_type;
 typedef ko::View<const bool*, Dev> const_mask_view_type;
 
-typedef Kokkos::complex<double> Complex;
-
 template <typename T>
 using view_1d = Kokkos::View<T*>;
 

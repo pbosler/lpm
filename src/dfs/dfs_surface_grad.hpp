@@ -7,6 +7,7 @@
 #include<KokkosBlas1_scal.hpp>
 #include "dfs_doubling.hpp"
 #include "dfs_rhs_new.hpp"
+#include "dfs_config.hpp"
 
 
 namespace SpherePoisson {
@@ -18,7 +19,7 @@ namespace SpherePoisson {
 
    /*
     optimal division by cosine in Fourier space
-    mat refers to any nrows by ncols matrix of Fourier 
+    mat refers to any nrows by ncols matrix of Fourier
     coeffiecients.
     cos(theta) = nrows by nrows matrix
     */
@@ -44,9 +45,9 @@ namespace SpherePoisson {
    void double_dot_gradU(view_2d<Complex> U, view_2d<Complex> V, view_2d<Complex> W, view_1d<Real> gradU_ddot);
 
    /*
-        Compute double product of the 
+        Compute double product of the
    */
   void compute_ddot_X(view_2d<Complex> U, view_2d<Complex> V, view_2d<Complex> W, view_r3pts<Real> X,view_r3pts<Real> uddot_x);
-     
+
 }
 #endif
