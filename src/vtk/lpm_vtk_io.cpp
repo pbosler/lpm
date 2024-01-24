@@ -156,7 +156,7 @@ void VtkInterface<Geo, FaceKind>::addVectorToCellData(
   }
   cd->AddArray(data);
 }
-
+#ifdef LPM_ENABLE_DFS
 VtkGridInterface::VtkGridInterface(const DFS::DFSGrid& dfs_grid) :
   grid_(dfs_grid),
   vtk_grid_(dfs_grid.vtk_grid()) {}
@@ -167,6 +167,7 @@ void VtkGridInterface::write(const std::string& ofilename) {
   writer_->SetFileName(ofilename.c_str());
   writer_->Write();
 }
+#endif
 
 /// ETI
 template class VtkInterface<PlaneGeometry, TriFace>;

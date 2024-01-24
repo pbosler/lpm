@@ -12,6 +12,7 @@
 #cmakedefine LPM_USE_COMPOSE
 #cmakedefine LPM_USE_FINUFFT
 #cmakedefine LPM_USE_FFTW3
+#cmakedefine LPM_ENABLE_DFS
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 
