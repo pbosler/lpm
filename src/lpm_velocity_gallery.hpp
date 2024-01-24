@@ -30,6 +30,10 @@ struct VelocityKernel {
                  const Real tt)
       : velocity(u), xcrds(x), t(tt) {}
 
+  VelocityKernel(Kokkos::View<Real**> u, const Kokkos::View<Real**> x,
+    const Real tt, const VelocityFtor& vel_fn) :
+      velocity(u), xcrds(x), t(tt), velfn(vel_fn) {}
+
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
     const auto myx = Kokkos::subview(xcrds, i, Kokkos::ALL);
@@ -248,6 +252,9 @@ struct RossbyWave54Velocity {
   KOKKOS_INLINE_FUNCTION
   RossbyWave54Velocity(const Real u0 = 0, const Real amp=1) :
     background_rotation(u0), rh54_amplitude(amp) {}
+
+  KOKKOS_INLINE_FUNCTION
+  RossbyWave54Velocity(const RossbyWave54Velocity& other) = default;
 
   std::string name() const { return "RossbyWave54Velocity"; }
 

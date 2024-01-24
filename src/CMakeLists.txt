@@ -1,7 +1,8 @@
 include_directories(${LPM_INCLUDE_DIRS}
                     ${Trilinos_INCLUDE_DIRS}
                     ${Trilinos_TPL_INCLUDE_DIRS}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran)
+                    ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+)
 
 add_subdirectory(fortran)
 
@@ -13,6 +14,9 @@ if (LPM_USE_NETCDF)
 endif()
 if (LPM_USE_VTK)
   include_directories(${VTK_INCLUDE_DIRS})
+endif()
+if(LPM_USE_FFTW3)
+	include_directories(${FFTW3_INCLUDE_DIR})
 endif()
 
 set(LPM_SOURCES
@@ -29,17 +33,29 @@ set(LPM_SOURCES
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
                 mesh/lpm_polymesh2d.cpp
+                mesh/lpm_gather_mesh_data.cpp
+                mesh/lpm_scatter_mesh_data.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp
                 util/lpm_progress_bar.cpp
-                util/lpm_timer.cpp)
-#    LpmCompadre.cpp
-#    LpmLatLonMesh.cpp LpmMatlabIO.cpp LpmGaussGrid.cpp
-#    LpmOctreeLUT.cpp
-#    LpmNodeArrayD.cpp LpmNodeArrayInternal.cpp LpmOctree.cpp
-#    LpmSWEGallery.cpp
-#                )
+                util/lpm_timer.cpp
+)
+
+if (LPM_ENABLE_DFS)
+  LIST(APPEND LPM_SOURCES
+    dfs/dfs_doubling.cpp
+		dfs/dfs_laplacian_new.cpp
+		dfs/dfs_rhs_new.cpp
+ 		dfs/dfs_solve_new.cpp
+		dfs/dfs_test_support.cpp
+    dfs/dfs_velocity.cpp
+		dfs/dfs_interpolation.cpp
+		dfs/dfs_vort2velocity.cpp
+ 		dfs/dfs_surface_grad.cpp
+ 		dfs/lpm_dfs_grid.cpp
+ 	)
+endif()
 
 if (LPM_USE_NETCDF)
   LIST(APPEND LPM_SOURCES netcdf/lpm_netcdf.cpp
@@ -72,13 +88,15 @@ endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
 endif()
+if (LPM_USE_FFTW3)
+  target_link_libraries(lpm PUBLIC ${FFTW_LIBRARIES})
+endif()
+if (LPM_USE_FINUFFT)
+  target_link_libraries(lpm PUBLIC finufft_static)
+  add_link_options(-fsanitize=address)
+endif()
 
-#if (USE_SPHEREPACK)
-#    message(STATUS "linking to spherepack")
-#    target_link_libraries(lpm spherepack)
-#endif()
-
-install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
+set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_bve_sphere.hpp
               lpm_bve_sphere_impl.hpp
               lpm_bve_sphere_kernels.hpp
@@ -93,15 +111,19 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               lpm_matlab_io.hpp
               fortran/lpm_f_interp.hpp
               fortran/lpm_f_interp_impl.hpp
-              mesh/lpm_mesh_seed.hpp
-              mesh/lpm_vertices.hpp
-              mesh/lpm_vertices_impl.hpp
               mesh/lpm_edges.hpp
               mesh/lpm_faces.hpp
               mesh/lpm_faces_impl.hpp
+              mesh/lpm_gather_mesh_data.hpp
+              mesh/lpm_gather_mesh_data_impl.hpp
+              mesh/lpm_mesh_seed.hpp
               mesh/lpm_polymesh2d.hpp
               mesh/lpm_polymesh2d_impl.hpp
               mesh/lpm_refinement_flags.hpp
+              mesh/lpm_scatter_mesh_data.hpp
+              mesh/lpm_scatter_mesh_data_impl.hpp
+              mesh/lpm_vertices.hpp
+              mesh/lpm_vertices_impl.hpp
               netcdf/lpm_netcdf.hpp
               netcdf/lpm_netcdf_impl.hpp
               netcdf/lpm_netcdf_reader.hpp
@@ -117,8 +139,28 @@ install(FILES ${PROJECT_BINARY_DIR}/LpmConfig.h
               util/lpm_tuple.hpp
               vtk/lpm_vtk_io.hpp
               vtk/lpm_vtk_io_impl.hpp
-#              LpmGaussGrid.hpp LpmOctreeUtil.hpp LpmBox3d.hpp LpmNodeArrayD.hpp
-#              LpmNodeArrayInternal.hpp LpmOctreeLUT.hpp LpmOctree.hpp LpmVorticityGallery.hpp
+              )
+if (LPM_ENABLE_DFS)
+  list(APPEND LPM_HEADERS
+        dfs/lpm_dfs_grid.hpp
+        dfs/lpm_dfs_bve.hpp
+        dfs/lpm_dfs_bve_impl.hpp
+        dfs/lpm_dfs_bve_solver.hpp
+        dfs/lpm_dfs_bve_solver_impl.hpp
+        dfs/lpm_dfs_impl.hpp
+	      dfs/dfs_doubling.hpp
+	      dfs/dfs_laplacian_new.hpp
+	      dfs/dfs_rhs_new.hpp
+	      dfs/dfs_solve_new.hpp
+	      dfs/dfs_test_support.hpp
+	      dfs/spectral/dfs_velocity.hpp
+	      dfs/dfs_interpolation.hpp
+	      dfs/dfs_vort2velocity.hpp
+	      dfs/dfs_surface_grad.hpp
+	      )
+endif()
+
+install(FILES ${LPM_HEADERS}
     DESTINATION include)
 install(TARGETS lpm lpm_fortran DESTINATION lib)
 

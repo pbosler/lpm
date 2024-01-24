@@ -40,7 +40,6 @@ message(STATUS "Generating project files in build directory: ${PROJECT_BINARY_DI
 # Add external libraries
 set(LPM_EXT_LIBRARIES ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES} )
 set(LPM_EXT_INCLUDE_DIRS ${MPI_C_INCLUDE_DIRS} )
-#add_subdirectory(ext)
 # Set all installation folders for third-party libraries, and figure out which
 # ones have to be built.
 message(STATUS "setting up platform")

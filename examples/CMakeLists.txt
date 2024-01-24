@@ -44,6 +44,7 @@ target_include_directories(sphere_convergence_tests PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
+if (LPM_ENABLE_NETCDF)
 add_executable(sphere_from_data sphere_from_data.cpp)
 target_link_libraries(sphere_from_data PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
 target_include_directories(sphere_convergence_tests PUBLIC
@@ -54,6 +55,24 @@ target_include_directories(sphere_convergence_tests PUBLIC
  ${CMAKE_CURRENT_SOURCE_DIR}
  ${lpmtest_INCLUDE_DIRS}
 )
+
+add_test(NAME sphere_from_data
+  COMMAND sphere_from_data ${PROJECT_SOURCE_DIR}/tests/data/so2_plume.nc -f so2)
+endif()
+
+if (LPM_ENABLE_DFS)
+  add_executable(dfs_bve_rh54 dfs_bve_rh54.cpp)
+  target_link_libraries(dfs_bve_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+  target_include_directories(dfs_bve_rh54 PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+
+  add_executable(dfs_bve_gauss_vort dfs_bve_gauss_vort.cpp)
+  target_link_libraries(dfs_bve_gauss_vort PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+  target_include_directories(dfs_bve_gauss_vort PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_test(NAME dfs_bve_rh54 COMMAND dfs_bve_rh54 -d 2 -nl 10 -dt 0.05 -tf 0.05)
+
+endif(LPM_ENABLE_DFS)
+
 add_test(NAME sphere_mesh_init
   COMMAND sphere_mesh_init -o sph_mesh_example.vtk -n 2)
 
@@ -63,8 +82,6 @@ add_test(NAME bve_solid_body_rotation
 add_test(NAME sphere_transport
  COMMAND sphere_transport -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
 
-add_test(NAME sphere_from_data
-  COMMAND sphere_from_data ${PROJECT_SOURCE_DIR}/tests/data/so2_plume.nc -f so2)
 
 else()
   message("VTK not found. Skipping examples:
