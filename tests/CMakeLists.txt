@@ -73,7 +73,9 @@ CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
 CreateUnitTest(test_stub lpm_test_stub.cpp)
 
+if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
+endif()
 
 if (LPM_ENABLE_DFS)
 
