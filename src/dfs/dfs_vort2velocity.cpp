@@ -38,6 +38,7 @@ namespace SpherePoisson {
         interp_shifts(grid_type, cn);
         poisson_rhs(grid_type, ie, io, cn, vort, vort_rhso, vort_rhse);
 
+          
         /*
             Sove the Fourier coefficients of the stream function
         */
@@ -74,13 +75,6 @@ namespace SpherePoisson {
         */
        dfs_interp(U, V, W, co_lat, lon, U_X);
 
-
-      
-
-
-
-
-        
      }
 
     

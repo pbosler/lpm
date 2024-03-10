@@ -75,7 +75,7 @@ struct GaussianVortexSphere {
 
   KOKKOS_INLINE_FUNCTION
   void set_gauss_const(const Real vorticity_sum, const Index n) {
-    gauss_const = vorticity_sum / (4 * constants::PI * n);
+    gauss_const = vorticity_sum / (4 * constants::PI); /// (4 * constants::PI * n);
   }
 
   KOKKOS_INLINE_FUNCTION

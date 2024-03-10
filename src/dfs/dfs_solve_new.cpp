@@ -235,14 +235,15 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
         Int nrows = rhse.extent(0);
         Int mid = ncols/2;
 
-        view_2d<Real> Llo_k("Lok", nrows, nrows);
-        view_2d<Real> Lle_k("Lek", nrows, nrows);
-        view_1d<Complex> fo("fo", nrows);
-        view_1d<Complex> fe("fe", nrows);
+        
 
        
         Kokkos::parallel_for(mid, [=](Int k){
                 Real dd =- pow(double(mid - k),2);
+                view_2d<Real> Llo_k("Lok", nrows, nrows);
+                view_2d<Real> Lle_k("Lek", nrows, nrows);
+                view_1d<Complex> fo("fo", nrows);
+                view_1d<Complex> fe("fe", nrows);
                 
                 for(int i=0; i<nrows; i++)
             {
@@ -257,8 +258,6 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
                 fo(i) = rhso(i, k);
             }
 
-                
-                   
                     tridiag_solver(Lle_k, fe);  
                     tridiag_solver(Llo_k, fo);
 
@@ -275,47 +274,49 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
         // Solving for the odd zero mode
         view_2d<Real> Lo_k("Lok", nrows, nrows);
         view_2d<Complex> Le_k("Lek", nrows, nrows);
-        //view_1d<Complex> fo("fo", nrows);
-       // view_1d<Complex> fe("fe", nrows);
+        view_1d<Complex> fol("fo", nrows);
+        view_1d<Complex> fel("fe", nrows);
         Kokkos::parallel_for(nrows, [=](Int i){
-            
+            if(i !=0){
                 Lo_k(i,i-1) = Lo(i,i-1);
                 Le_k(i,i-1) = Le(i,i-1);
-                
+            }
+            if (i != nrows -1){
                 Lo_k(i,i+1) = Lo(i,i+1);
                 Le_k(i,i+1) = Le(i,i+1);
-    
-                Lo_k(i,i) = Lo(i,i); 
-                Le_k(i,i) = Le(i,i);
+            }
+            
+            Lo_k(i,i) = Lo(i,i); 
+            Le_k(i,i) = Le(i,i);
 
-                fe(i) = rhse(i,mid);
-                fo(i) = rhso(i,mid);
+            fel(i) = rhse(i,mid);
+            fol(i) = rhso(i,mid);
 
      });
 
     Lo_k(0,nrows-1) = Lo(0,nrows-1);
     Lo_k(nrows-1,0) = Lo(nrows-1,0);
-    tridiag_solver(Lo_k, fo);
+    tridiag_solver(Lo_k, fol);
     
     Le_k(0,nrows-1) = Le(0,nrows-1);
     Le_k(nrows-1,0) = Le(nrows-1,0);
-        
+
+      
      if(Kappa == 0 )
     {
         // Use the integral constraint to regularize
-        special_solver(Le_k, fe, ie);
+        special_solver(Le_k, fel, ie);
        
-
      }
      else
      {
-        tridiag_solver(Le_k, fe);
+        tridiag_solver(Le_k, fel);
      }
     
     // Update UU for the zero mode
     Kokkos::parallel_for("solves", nrows, KOKKOS_LAMBDA(const Int i){
-            UU(io(i), mid) = fo(i);
-            UU(ie(i), mid) = fe(i);
+            UU(io(i), mid) = fol(i);
+            UU(ie(i), mid) = fel(i);
         
         });
 
@@ -331,8 +332,7 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
     
     });
 
-
-
 }
+
 
 }

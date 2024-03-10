@@ -64,9 +64,9 @@ namespace SpherePoisson {
 
         // compute fft using fftw3
         fftw_plan plan;
-        int threads = 8;
+        int nthreads = omp_get_max_threads();
         fftw_init_threads();
-        fftw_plan_with_nthreads(threads);
+        fftw_plan_with_nthreads(nthreads);
         fftw_complex *X;
         X = fftw_alloc_complex(sizeof(fftw_complex) * (nrows * ncols));
         Kokkos::parallel_for("Copy X",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
@@ -82,7 +82,9 @@ namespace SpherePoisson {
            F(i,j) = Complex(X[i*ncols+j][0], X[i*ncols+j][1]);
   
         });
-    
+    	
+	fftw_free(X);
+	fftw_cleanup_threads();
         // perform the bivariate fftshift
         fftshift(F);
 
@@ -198,9 +200,9 @@ namespace SpherePoisson {
         // 2D FFT
         fftw_complex *X;
         fftw_plan plan;
-        Int threads = 8;
+        Int nthreads = omp_get_max_threads();
         fftw_init_threads();
-        fftw_plan_with_nthreads(threads);
+        fftw_plan_with_nthreads(nthreads);
         X = fftw_alloc_complex(sizeof(fftw_complex) * (dnrows * ncols));
         Kokkos::parallel_for("Copy X",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {dnrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
            X[i*ncols+j][0] = F(i,j).real();
@@ -234,7 +236,9 @@ namespace SpherePoisson {
                 f(nrows,j+w) = X[j][0];
             });
         }
-
+	
+	fftw_free(X);
+	fftw_cleanup_threads();
     
     }
 

@@ -93,8 +93,8 @@ if (LPM_USE_FFTW3)
   target_link_libraries(lpm PUBLIC ${FFTW_LIBRARIES})
 endif()
 if (LPM_USE_FINUFFT)
-  target_link_libraries(lpm PUBLIC finufft_static)
-  add_link_options(-fsanitize=address)
+  target_link_libraries(lpm PUBLIC finufft)
+ 
 endif()
 
 #if (USE_SPHEREPACK)
