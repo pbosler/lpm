@@ -1,18 +1,23 @@
 #ifndef DFS_RHS_NEW_HPP
 #define DFS_RHS_NEW_HPP
 #include <fftw3.h>
+<<<<<<< HEAD
 #include <omp.h>
 #include "kokkos_dfs_types.hpp"
+=======
+
+#include "dfs_config.hpp"
+>>>>>>> e05b3ae84674b7e65b32a455c624687264531a63
 #include <KokkosBlas3_gemm.hpp>
 #include "dfs_doubling.hpp"
 
 
 namespace SpherePoisson {
-    // function to compute       sshift necessary to interpolate 
+    // function to compute       sshift necessary to interpolate
     // in the interval [-pi, pi] by [0, 2pi]
     void interp_shifts(const GridType grid_type, view_1d<Complex> cn);
 
-    // Computes the fftshift for the case where both 
+    // Computes the fftshift for the case where both
     // nrows and ncols is even
      void fftshift(view_2d<Complex> data);
 
@@ -40,10 +45,10 @@ namespace SpherePoisson {
     void splitrhs(view_1d<int>ie, view_1d<int>io, view_2d<Complex> rhs, view_2d<Complex> rhse, view_2d<Complex> rhso);
 
 
-    
+
 
     // Compute the Fourier coefficients of right handside of poisson
-    // Problem on the sphere, scales it by sin^2, and splits it 
+    // Problem on the sphere, scales it by sin^2, and splits it
     // on even and parts to reduce computational complexity
     // by a factor of two
     void poisson_rhs(GridType grid_type, view_1d<Int>ie, view_1d<Int>io, view_1d<Complex>cn, view_1d<Real> f, view_2d<Complex> rhso, view_2d<Complex> rhse);
@@ -53,6 +58,6 @@ namespace SpherePoisson {
     // Fourier coefficients
     void coeffs2valsDbl(GridType grid_type, view_1d<Complex> cn, view_2d<Complex> F, view_2d<Real> f);
 
-    
+
 }
 #endif

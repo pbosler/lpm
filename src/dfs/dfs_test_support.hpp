@@ -1,12 +1,12 @@
 #ifndef DFS_TEST_SUPPORT_HPP
 #define DFS_TEST_SUPPORT_HPP
 
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 
 namespace SpherePoisson {
     // my test grid
     void coords(view_1d<Real> lat, view_1d<Real> lon);
-    
+
     // my test vorticity function
     void my_vort(view_1d<Real> lat, view_1d<Real> lon, view_2d<Real> vort);
 

@@ -28,15 +28,15 @@ void Edges::insert_host(const Index o, const Index d, const Index l,
 }
 
 #ifdef LPM_USE_NETCDF
-Edges::Edges(const PolymeshReader& reader) : Edges(reader.n_edges()) {
-  reader.fill_origs(_ho);
-  reader.fill_dests(_hd);
-  reader.fill_lefts(_hl);
-  reader.fill_rights(_hr);
-  reader.fill_edge_tree(_hp, _hk, _hn_leaves());
-  _nh() = origs.extent(0);
-  updateDevice();
-}
+// Edges::Edges(const PolymeshReader& reader) : Edges(reader.n_edges()) {
+//   reader.fill_origs(_ho);
+//   reader.fill_dests(_hd);
+//   reader.fill_lefts(_hl);
+//   reader.fill_rights(_hr);
+//   reader.fill_edge_tree(_hp, _hk, _hn_leaves());
+//   _nh() = origs.extent(0);
+//   updateDevice();
+// }
 #endif
 
 template <typename SeedType>

@@ -71,9 +71,19 @@ CreateUnitTest(swe_kernels lpm_swe_kernels_tests.cpp)
 
 CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
+CreateUnitTest(test_stub lpm_test_stub.cpp)
+
+if (LPM_ENABLE_NETCDF)
+CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
+endif()
+
+if (LPM_ENABLE_DFS)
+
 CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp)
 
 CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp)
+
+endif()
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
 #TARGET_LINK_LIBRARIES(lpmKernelTest lpm ${Trilinos_LIBRARIES} ${VTK_LIBRARIES} ${Trilinos_TPL_LIBRARIES})

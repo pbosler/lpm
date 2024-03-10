@@ -75,6 +75,7 @@ class VtkPolymeshInterface {
   vtkSmartPointer<vtkDoubleArray> make_cell_area() const;
 };
 
+#ifdef LPM_ENABLE_DFS
 /** VTK Interface fro DFSGrid
 */
 class VtkGridInterface {
@@ -94,7 +95,7 @@ class VtkGridInterface {
     vtkSmartPointer<vtkPointData> pointdata_;
     vtkSmartPointer<vtkXMLStructuredGridWriter> writer_;
 };
-
+#endif
 
 /** Generic VTK interface.
 

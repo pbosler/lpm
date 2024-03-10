@@ -239,6 +239,8 @@ void VtkPolymeshInterface<SeedType>::add_vector_cell_data(
   polydata_->GetCellData()->AddArray(cell_vectors);
 }
 
+#ifdef LPM_ENABLE_DFS
+
 template <typename VT>
 void VtkGridInterface::add_scalar_point_data(const VT& s, const std::string& name) {
   auto h_scalars = Kokkos::create_mirror_view(s);
@@ -276,6 +278,7 @@ void VtkGridInterface::add_vector_point_data(const VT& v, const std::string& nam
   }
   vtk_grid_->GetPointData()->AddArray(vtk_vector);
 }
+#endif
 
 }  // namespace Lpm
 

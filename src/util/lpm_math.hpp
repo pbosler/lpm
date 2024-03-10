@@ -45,31 +45,30 @@ using std::min;
 using std::abs;
 
 #ifdef LPM_USE_BOOST
-#ifndef LPM_USE_CUDA
-KOKKOS_INLINE_FUNCTION
-Real cyl_bessel_j(const int j, const Real x) {
-  return boost::math::cyl_bessel_j<int, Real>(j, x);
-}
+  #ifndef LPM_USE_CUDA
+    KOKKOS_INLINE_FUNCTION
+    Real cyl_bessel_j(const int j, const Real x) {
+      return boost::math::cyl_bessel_j<int, Real>(j, x);
+    }
 
-KOKKOS_INLINE_FUNCTION
-Real legendre_p(const int l, const Real z) {
-  return boost::math::legendre_p<Real>(l, z);
-}
+    KOKKOS_INLINE_FUNCTION
+    Real legendre_p(const int l, const Real z) {
+      return boost::math::legendre_p<Real>(l, z);
+    }
 
-KOKKOS_INLINE_FUNCTION
-Real legendre_p(const int l, const int m, const Real z) {
-  return boost::math::legendre_p<Real>(l, m, z);
-}
-#else
-#ifdef LPM_DOUBLE_PRECISION
-KOKKOS_INLINE_FUNCTION
-Real cyl_bessel_j(const int n, const Real x) { return jn(n, x); }
-#else
-KOKKOS_INLINE_FUNCTION
-Real cyl_bessel_j(const int n, const Real x) { return jnf(n, x); }
-
-#endif
-#endif
+    KOKKOS_INLINE_FUNCTION
+    Real legendre_p(const int l, const int m, const Real z) {
+      return boost::math::legendre_p<Real>(l, m, z);
+    }
+  #else
+//     #ifdef LPM_DOUBLE_PRECISION
+      KOKKOS_INLINE_FUNCTION
+      Real cyl_bessel_j(const int n, const Real x) { return jn(n, x); }
+//     #else
+//       KOKKOS_INLINE_FUNCTION
+//       Real cyl_bessel_j(const int n, const Real x) { return jnf(n, x); }
+//     #endif
+  #endif
 #endif
 
 /// Inverse tangent with quadrant information, but with output range in [0,

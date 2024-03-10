@@ -154,15 +154,13 @@ struct CollidingDipolePairPlane {
   Real dipole_radiusB;
   Kokkos::Tuple<Real, 2> xyz_ctrB;
 
-  CollidingDipolePairPlane(const Real strA, const Real radA,
-                           const Tuple<Real, 2> ctrA, const Real strB,
-                           const Real radB, const Tuple<Real, 2> ctrB)
-      : dipole_strengthA(strA),
-        dipole_radiusA(radA),
-        xyz_ctrA(ctrA),
-        dipole_strengthB(strB),
-        dipole_radiusB(radB),
-        xyz_ctrB(ctrB) {}
+  CollidingDipolePairPlane()
+      : dipole_strengthA(1.0),
+        dipole_radiusA(1.0),
+        xyz_ctrA({-2,0}),
+        dipole_strengthB(-1),
+        dipole_radiusB(2),
+        xyz_ctrB({ 2,0}) {}
 
   inline Real operator()(const Real& x, const Real& y, const Real& z) const {
     return 0;

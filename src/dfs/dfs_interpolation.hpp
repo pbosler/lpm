@@ -1,8 +1,7 @@
 #ifndef DFS_INTERPOLATION_HPP
 #define DFS_INTERPOLATION_HPP
 
-
-#include "kokkos_dfs_types.hpp"
+#include "dfs_config.hpp"
 #include <finufft.h>
 #include <iostream>
 #include <complex>
@@ -14,8 +13,8 @@
 namespace SpherePoisson {
 
     // defines an interpolation on the sphere that exploits the
-    // double Fourier sphere method and the non uniform fast 
-    // fourier for a fast and exponentially convergent 
+    // double Fourier sphere method and the non uniform fast
+    // fourier for a fast and exponentially convergent
     // interpolation
     /*
     INPUTS:
@@ -28,6 +27,6 @@ namespace SpherePoisson {
     */
     void dfs_interp(view_2d<Complex> U, view_2d<Complex> V, view_2d<Complex> W,
      view_1d<Real> th, view_1d<Real> lb, view_r3pts<Real> U_X);
-     
+
 }
 #endif
