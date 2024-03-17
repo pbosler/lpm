@@ -76,7 +76,7 @@ class VtkPolymeshInterface {
 };
 
 #ifdef LPM_ENABLE_DFS
-/** VTK Interface fro DFSGrid
+/** VTK Interface for DFSGrid
 */
 class VtkGridInterface {
   public:
