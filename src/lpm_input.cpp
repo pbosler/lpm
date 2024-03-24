@@ -39,23 +39,23 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     value{default_value} {}
 
 std::string Option::info_string(const int tab_level) const {
-  auto tab_str = indent_string(tab_level);
+  std::string tab_str = indent_string(tab_level);
   std::ostringstream ss;
   ss << tab_str << "Option: " << name << "\n";
   tab_str += "\t";
   ss << tab_str << short_flag << ", " << long_flag << "\n";
   ss << tab_str << description << "\n";
   if (std::holds_alternative<Int>(value)) {
-    ss << tab_str << "value (Int) = " << this->get_int() << "\n";
+    ss << tab_str << "value (Int) = " << this->get_int();
   }
   else if (std::holds_alternative<Real>(value))  {
-    ss << tab_str << "value (Real) = " << this->get_real() << "\n";
+    ss << tab_str << "value (Real) = " << this->get_real();
   }
   else if (std::holds_alternative<std::string>(value) ) {
-    ss << tab_str << "value (std::string) = " << this->get_str() << "\n";
+    ss << tab_str << "value (std::string) = " << this->get_str();
   }
   else if (std::holds_alternative<bool>(value) ) {
-    ss << tab_str << "value (bool) = " << std::boolalpha << this->get_bool() << "\n";
+    ss << tab_str << "value (bool) = " << std::boolalpha << this->get_bool();
   }
   return ss.str();
 }
@@ -159,19 +159,20 @@ std::string Input::usage() const {
   return ss.str();
 }
 
-std::string Input::info_string(const int tab_level) const  {
+std::string Input::info_string(const int tab_level, const bool verbose) const  {
   std::ostringstream ss;
-  auto tab_str = indent_string(tab_level);
-  ss << "Input info:\n";
-  tab_str += "\t";
+  std::string tab_str = indent_string(tab_level);
+  ss << tab_str << "Input info:\n";
   ss << tab_str << "meta: " << meta_description << "\n";
   for (const auto& o : options) {
-    ss << o.second.info_string(tab_level+2);
+    ss << o.second.info_string(tab_level) << "\n";
   }
   return ss.str();
 }
 
 void Input::add_option(const Option& default_opt) {
+  short_flags.insert(default_opt.short_flag);
+  long_flags.insert(default_opt.long_flag);
   options.emplace(default_opt.name, std::move(default_opt));
 }
 

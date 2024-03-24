@@ -16,7 +16,7 @@ template <typename InitialCondition> struct SWEInitializeProblem;
 
 template <typename SeedType>
 class SWE {
-  public:
+  public: // members
     typedef typename SeedType::geo geo;
     using coords_type = Coords<geo>;
     using crd_view = typename coords_type::view_type;
@@ -34,12 +34,23 @@ class SWE {
     /// surface height
     ScalarField<VertexField> surf_passive;
     ScalarField<FaceField> surf_active;
+    // bottom topography
+    ScalarField<VertexField> bottom_passive;
+    ScalarField<FaceField> bottom_active;
+    /// surface laplacian
+    ScalarField<VertexField> surf_lap_passive;
+    ScalarField<FaceField> surf_lap_active;
     /// fluid depth
     ScalarField<VertexField> depth_passive;
     ScalarField<FaceField> depth_active;
+    /// double dot product
+    ScalarField<VertexField> double_dot_passive;
+    ScalarField<FaceField> double_dot_active;
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
+    /// mass
+    ScalarField<FaceField> mass_active;
     /// Lagrangian particle/panel mesh
     PolyMesh2d<SeedType> mesh;
 
@@ -48,27 +59,62 @@ class SWE {
     Real beta;
     /// for spherical problems, Coriolis parameter f = 2*Omega*z
     Real Omega;
+    /// gravity
+    Real g;
     /// time
     Real t;
 
+  public: // functions
     void update_host();
     void update_device();
 
+    /**  @brief Sets bottom topography values on all particles.
+
+      Should be called at each time increment to update bottom
+      topography values to new particle locations.
+    */
     template <typename TopoType>
     void set_bottom_topography(const TopoType& topo);
 
+    /** @brief Sets initial (t=0) velocity on all particles.
+
+        Velocity function should be consistent with the initial
+        vorticity and divergence profiles.
+    */
     template <typename VelocityType>
     void init_velocity_from_function();
 
-    template <typename VorticityType>
-    void init_vorticity(const VorticityType& vort_fn);
+    /** @brief Sets initial vorticity on all particles.
 
+      If depth_set = true, also sets potential voricity.
+    */
+    template <typename VorticityType>
+    void init_vorticity(const VorticityType& vort_fn, const bool depth_set=false);
+
+
+    /** @brief Sets initial divergence values for all particles.
+    */
     template <typename DivergenceType>
     void init_divergence(const DivergenceType& div_fn);
 
+    /* @brief Sets all initial data on all particles (WIP).
+
+      TODO: InitialConditions type is not a fixed definition yet.
+    */
     template <typename InitialConditions>
     void init_swe_problem(const InitialConditions& ic);
 
+    /* @brief Sets initial surface height and depth at all particles.
+    */
+    template <typename BottomType, typename SurfaceType>
+    void init_surface(const BottomType& topo, const SurfaceType& surf);
+
+    /* @brief Sets initial velocity from initial vorticity and divergence
+      values (when a function is not available.)
+
+      @warning Initial vorticity and divergence must be set prior to
+      calling this function.
+    */
     void init_velocity();
 
     Real total_mass() const;

@@ -57,6 +57,8 @@ struct Option {
 struct Input {
   std::string meta_description;
   std::map<std::string, Option> options;
+  std::set<std::string> short_flags;
+  std::set<std::string> long_flags;
   bool help_and_exit;
 
   Input() = default;
@@ -65,7 +67,7 @@ struct Input {
 
   std::string usage() const;
 
-  std::string info_string(const int tab_level = 0) const;
+  std::string info_string(const int tab_level = 0, const bool verbose = false) const;
 
   void add_option(const Option& default_opt);
 
