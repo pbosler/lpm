@@ -6,6 +6,8 @@
 #include "lpm_swe.hpp"
 #include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe_impl.hpp"
+#include "lpm_swe_rk4.hpp"
+#include "lpm_swe_rk4_impl.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
 #ifdef LPM_USE_VTK
@@ -111,6 +113,8 @@ int main (int argc, char* argv[]) {
     }
 #endif
 
+    // setup time stepper
+    auto solver = std::make_unique<SWERK4<seed_type, topography_type>>(dt, *plane, topo);
 
     total_time.stop();
     logger.info("total time: {}", total_time.info_string());

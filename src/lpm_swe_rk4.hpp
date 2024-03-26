@@ -8,26 +8,28 @@ namespace Lpm {
 template <typename SeedType, typename TopoType>
 class SWERK4 {
   public:
-    using geo = SeedType::geo;
-    using crd_view = SeedType::geo::crd_view_type;
-    using vec_view = SeedType::geo::vec_view_type;
+    using geo = typename SeedType::geo;
+    using crd_view = typename SeedType::geo::crd_view_type;
+    using vec_view = typename SeedType::geo::vec_view_type;
 
     Real dt;
     Int t_idx;
 
     crd_view passive_x;
-    scalar_view_type passive_relvort;
+    scalar_view_type passive_rel_vort;
     scalar_view_type passive_divergence;
     scalar_view_type passive_depth;
+    scalar_view_type passive_surface;
     vec_view passive_vel;
     scalar_view_type passive_ddot;
     scalar_view_type passive_laps;
     scalar_view_type passive_bottom;
 
     crd_view active_x;
-    scalar_view_type active_relvort;
+    scalar_view_type active_rel_vort;
     scalar_view_type active_divergence;
     scalar_view_type active_depth;
+    scalar_view_type active_surface;
     vec_view active_vel;
     scalar_view_type active_area;
     scalar_view_type active_mass;
@@ -101,6 +103,19 @@ class SWERK4 {
     std::unique_ptr<Kokkos::TeamPolicy<>> active_policy;
 
     void set_fixed_views();
+
+    void advance_timestep(crd_view& vx,
+                          scalar_view_type& vzeta,
+                          scalar_view_type& vsigma,
+                          scalar_view_type& vh,
+                          scalar_view_type& vvel,
+                          crd_view& fx,
+                          scalar_view_type& fzeta,
+                          scalar_view_type& fsigma,
+                          scalar_view_type& fh,
+                          scalar_view_type& farea,
+                          const scalar_view_type& fmass,
+                          const mask_view_type& fmask);
 };
 
 

@@ -11,11 +11,11 @@ namespace Lpm {
 /** @brief Evaluates the Biot-Savart kernel in the plane.
 */
 template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION kzeta_plane(
+KOKKOS_INLINE_FUNCTION void kzeta_plane(
   UType& u, /// [out] kernel output
   XType& x, /// [in] target coordinates
   YType& y, /// [in] source coordinates
-  Real& eps, /// [in] regularization parameter
+  Real& eps /// [in] regularization parameter
 ) {
   const Real denom = 2 * constants::PI * (square(PlaneGeometry::distance(x, y)) + square(eps));
   u[0] = -(x[1] - y[1]) / denom;
@@ -25,11 +25,11 @@ KOKKOS_INLINE_FUNCTION kzeta_plane(
 /** @brief Evaluates the velocity potential kernel in the plane.
 */
 template <typename UType, typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION ksigma_plane(
+KOKKOS_INLINE_FUNCTION void ksigma_plane(
   UType& u, /// [out] kernel output
   XType& x, /// [in] target coordinates
   YType& y, /// [in] source coordinates
-  Real& eps, /// [in] regularization parameter
+  Real& eps /// [in] regularization parameter
 ) {
   const Real denom = 2 * constants::PI * (square(PlaneGeometry::distance(x, y)) + square(eps));
   u[0] = -(x[1] - y[1]) / denom;
@@ -267,7 +267,7 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
   index 5: dv/dy
   index 6: laplacian(sfc) from PSE
 */
-template <typename XType, typename YType, typename PSEType>
+template <typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
 Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   const XType& tgt_x, /// coordinates of target point
@@ -280,13 +280,14 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   const Real& eps, /// velocity kernel regularization parameter
   const Real& pse_eps /// PSE kernel width parameter
 ){
+  using pse_type = pse::BivariateOrder8<PlaneGeometry>;
   Kokkos::Tuple<Real, 7> result;
 
   const Real Rvec[2] = {-(tgt_x[1] - src_y[1]), tgt_x[0] - src_y[0]};
   const Real Svec[2] = {  tgt_x[0] - src_y[0] , tgt_x[1] - src_y[1]};
   const Real denom = PlaneGeometry::norm2(Svec) + square(eps);
   const Real rot_str = src_zeta * src_area;
-  const Real pot_str = src_sigma * src area;
+  const Real pot_str = src_sigma * src_area;
   constexpr Real oo2pi = 1.0 / (2*constants::PI);
   // u
   result[0] = oo2pi * (Rvec[0]*rot_str + Svec[0]*pot_str) / denom;
@@ -301,8 +302,8 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   // dv/dy
   result[5] = oo2pi * ( pot_str / denom - (2*Svec[1]/square(denom)) * (Rvec[1]*rot_str + Svec[1]*pot_str));
   // lap(s)
-  const Real pse_input = PSEType::kernel_input(tgt_x, src_y, pse_eps);
-  const Real pse_val = PSEType::laplacian(pse_input);
+  const Real pse_input = pse_type::kernel_input(tgt_x, src_y, pse_eps);
+  const Real pse_val = pse_type::laplacian(pse_input);
   result[6] = (src_s - tgt_s) * src_area * pse_val / square(pse_eps);
 
   return result;
@@ -313,7 +314,6 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
 
   This functor will be called from a Kokkos::parallel_reduce kernel.
 */
-template <typename PSEType>
 struct PlanarSwePseDirectSumReducer {
   using crd_view = PlaneGeometry::crd_view_type;
   using value_type = Kokkos::Tuple<Real,7>;
@@ -379,7 +379,6 @@ struct PlanarSwePseDirectSumReducer {
 struct PlanarSWEVertexSums {
   using vec_view = PlaneGeometry::vec_view_type;
   using crd_view = PlaneGeometry::crd_view_type;
-  using pse_type = BivariateOrder8;
 
   vec_view vert_u; /// [out] velocity at vertices
   scalar_view_type vert_ddot; /// [out] double dot product at vertices
@@ -394,12 +393,14 @@ struct PlanarSWEVertexSums {
   scalar_view_type face_s; /// [in] surface height at faces
   Real eps; /// [in] velocity kernel smoothing parameter
   Real pse_eps; /// [in] PSE kernel width parameter
+  Index nfaces; /// [in] total number of faces (including divided faces)
 
   PlanarSWEVertexSums(vec_view& vu, scalar_view_type& vdd, scalar_view_type& vls,
     const crd_view vx, const scalar_view_type vsfc, const crd_view fy,
     const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask,
-    const scalar_view_type fsfc, const Real eps, const Real pse_eps) :
+    const scalar_view_type fsfc, const Real eps, const Real pse_eps,
+    const Index nfaces) :
     vert_u(vu),
     vert_ddot(vdd),
     vert_laps(vls),
@@ -412,7 +413,8 @@ struct PlanarSWEVertexSums {
     face_mask(fmask),
     face_s(fsfc),
     eps(eps),
-    pse_eps(pse_eps) {}
+    pse_eps(pse_eps),
+    nfaces(nfaces) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const member_type& thread_team) const {
@@ -421,8 +423,8 @@ struct PlanarSWEVertexSums {
     // perform packed reduction, dispatching 1 thread team per target
     Kokkos::Tuple<Real,7> sums;
     constexpr bool collocated = false;
-    Kokkos::parallel_reduce(Kokkos::ThreadTeamRange(thread_team, nfaces),
-      PlanarSwePseDirectSumReducer<pse_type>(vert_x, vert_s, i, face_y, collocated,
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+      PlanarSwePseDirectSumReducer(vert_x, vert_s, i, face_y, collocated,
         face_zeta, face_sigma, face_area, face_mask, face_s,
         eps, pse_eps), sums);
 
@@ -439,7 +441,6 @@ struct PlanarSWEVertexSums {
 struct PlanarSWEFaceSums {
   using vec_view = PlaneGeometry::vec_view_type;
   using crd_view = PlaneGeometry::crd_view_type;
-  using pse_type = BivariateOrder8;
 
   vec_view face_u; /// [out] velocity at faces (targets)
   scalar_view_type face_ddot; /// [out] double dot product at faces
@@ -451,12 +452,13 @@ struct PlanarSWEFaceSums {
   mask_view_type face_mask; /// [in] mask to exclude divided panels
   scalar_view_type face_s; /// [in] surface height at faces
   Real eps; /// [in] velocity kernel smoothing parameter
-  Real pse_epse; /// [in] PSE kernel width parameter
+  Real pse_eps; /// [in] PSE kernel width parameter
+  Index nfaces; /// [in] total number of faces (including divided faces)
 
   PlanarSWEFaceSums(vec_view& fu, scalar_view_type& fdd, scalar_view_type& fls,
     const crd_view fxy, const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask, const scalar_view_type fsfc,
-    const Real eps, const Real pse_eps) :
+    const Real eps, const Real pse_eps, const Index nfaces) :
     face_u(fu),
     face_ddot(fdd),
     face_laps(fls),
@@ -467,7 +469,8 @@ struct PlanarSWEFaceSums {
     face_mask(fmask),
     face_s(fsfc),
     eps(eps),
-    pse_eps(pse_eps) {}
+    pse_eps(pse_eps),
+    nfaces(nfaces) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const member_type& thread_team) const {
@@ -476,7 +479,7 @@ struct PlanarSWEFaceSums {
     // perform packed reduction, 1 thread team per target
     Kokkos::Tuple<Real,7> sums;
     const bool collocated = !(eps > 0);
-    Kokkos::parallel_reduce(Kokkos::ThreadTeamRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
       PlanarSwePseDirectSumReducer(face_xy, face_s, i, face_xy, collocated,
         face_zeta, face_sigma, face_area, face_mask, face_s,
         eps, pse_eps), sums);
@@ -533,6 +536,7 @@ struct PlanarSWEVorticityDivergenceAreaTendencies {
   scalar_view_type darea; /// [out] area tendency
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergences
+  scalar_view_type area; /// [in] areas
   scalar_view_type ddot; /// [in] double dot product
   scalar_view_type laps; /// [in] surface Laplacian
   Real f; /// [in] Coriolis (f-plane) parameter
@@ -567,7 +571,7 @@ struct PlanarSWEVorticityDivergenceAreaTendencies {
 
 template <typename Geo, typename TopoType>
 struct SetSurfaceFromDepth {
-  using crd_view = Geo::crd_view_type;
+  using crd_view = typename Geo::crd_view_type;
 
   scalar_view_type s; /// [out] surface height at passive particles
   scalar_view_type b; /// [out] bottom height at passive particles
@@ -590,7 +594,7 @@ struct SetSurfaceFromDepth {
 
 template <typename Geo, typename TopoType>
 struct SetDepthAndSurfaceFromMassAndArea {
-  using crd_view = Geo::crd_view_type;
+  using crd_view = typename Geo::crd_view_type;
 
   scalar_view_type h; /// [out] depth at active particles
   scalar_view_type s; /// [out] surface height at active particles

@@ -10,8 +10,9 @@
 
 namespace Lpm {
 
-template <typename Geo> SWERK4Update {
-  using crd_view = Geo::crd_view_type;
+template <typename Geo>
+struct SWERK4Update {
+  using crd_view = typename Geo::crd_view_type;
 
   static constexpr Real third = 1.0/3.0;
   static constexpr Real sixth = 1.0/6.0;
@@ -85,62 +86,63 @@ template <typename Geo> SWERK4Update {
 
 // constructor
 template <typename SeedType, typename TopoType>
-SWERK4<SeedType>::SWERK4(const Real timestep, SWE<SeedType>& swe_mesh, TopoType& topo):
+SWERK4<SeedType, TopoType>::SWERK4(const Real timestep, SWE<SeedType>& swe, TopoType& topo):
   dt(timestep),
   t_idx(0),
-  swe(swe_mesh),
+  swe(swe),
   topo(topo),
-  passive_x1("passive_x1", swe_mesh.n_vertices_host()),
-  passive_x2("passive_x2", swe_mesh.n_vertices_host()),
-  passive_x3("passive_x3", swe_mesh.n_vertices_host()),
-  passive_x4("passive_x4", swe_mesh.n_vertices_host()),
-  passive_xwork("passive_xwork", swe_mesh.n_vertices_host()),
-  passive_rel_vort1("passive_rel_vort1", swe_mesh.n_vertices_host()),
-  passive_rel_vort2("passive_rel_vort2", swe_mesh.n_vertices_host()),
-  passive_rel_vort3("passive_rel_vort3", swe_mesh.n_vertices_host()),
-  passive_rel_vort4("passive_rel_vort4", swe_mesh.n_vertices_host()),
-  passive_rel_vortwork("passive_rel_vortwork", swe_mesh.n_vertices_host()),
-  passive_div1("passive_div1", swe_mesh.n_vertices_host()),
-  passive_div2("passive_div2", swe_mesh.n_vertices_host()),
-  passive_div3("passive_div3", swe_mesh.n_vertices_host()),
-  passive_div4("passive_div4", swe_mesh.n_vertices_host()),
-  passive_divwork("passive_divwork", swe_mesh.n_vertices_host()),
-  passive_depth1("passive_depth1", swe_mesh.n_vertices_host()),
-  passive_depth2("passive_depth2", swe_mesh.n_vertices_host()),
-  passive_depth3("passive_depth3", swe_mesh.n_vertices_host()),
-  passive_depth4("passive_depth4", swe_mesh.n_vertices_host()),
-  passive_depthwork("passive_depthwork", swe_mesh.n_vertices_host()),
-  active_x1("active_x1", swe_mesh.n_faces_host()),
-  active_x2("active_x2", swe_mesh.n_faces_host()),
-  active_x3("active_x3", swe_mesh.n_faces_host()),
-  active_x4("active_x4", swe_mesh.n_faces_host()),
-  active_xwork("active_xwork", swe_mesh.n_faces_host()),
-  active_rel_vort1("active_rel_vort1", swe_mesh.n_faces_host()),
-  active_rel_vort2("active_rel_vort2", swe_mesh.n_faces_host()),
-  active_rel_vort3("active_rel_vort3", swe_mesh.n_faces_host()),
-  active_rel_vort4("active_rel_vort4", swe_mesh.n_faces_host()),
-  active_rel_vortwork("active_rel_vortwork", swe_mesh.n_faces_host()),
-  active_div1("active_div1", swe_mesh.n_faces_host()),
-  active_div2("active_div2", swe_mesh.n_faces_host()),
-  active_div3("active_div3", swe_mesh.n_faces_host()),
-  active_div4("active_div4", swe_mesh.n_faces_host()),
-  active_divwork("active_divwork", swe_mesh.n_faces_host()),
-  active_area1("active_area1", swe_mesh.n_faces_host()),
-  active_area2("active_area2", swe_mesh.n_faces_host()),
-  active_area3("active_area3", swe_mesh.n_faces_host()),
-  active_area4("active_area4", swe_mesh.n_faces_host()),
-  active_areawork("active_areawork", swe_mesh.n_faces_host()) {
-    passive_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe_mesh.n_vertices_host(), Kokkos::AUTO());
-    active_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe_mesh.n_faces_host(), Kokkos::AUTO());
+  passive_x1("passive_x1", swe.mesh.n_vertices_host()),
+  passive_x2("passive_x2", swe.mesh.n_vertices_host()),
+  passive_x3("passive_x3", swe.mesh.n_vertices_host()),
+  passive_x4("passive_x4", swe.mesh.n_vertices_host()),
+  passive_xwork("passive_xwork", swe.mesh.n_vertices_host()),
+  passive_rel_vort1("passive_rel_vort1", swe.mesh.n_vertices_host()),
+  passive_rel_vort2("passive_rel_vort2", swe.mesh.n_vertices_host()),
+  passive_rel_vort3("passive_rel_vort3", swe.mesh.n_vertices_host()),
+  passive_rel_vort4("passive_rel_vort4", swe.mesh.n_vertices_host()),
+  passive_rel_vortwork("passive_rel_vortwork", swe.mesh.n_vertices_host()),
+  passive_div1("passive_div1", swe.mesh.n_vertices_host()),
+  passive_div2("passive_div2", swe.mesh.n_vertices_host()),
+  passive_div3("passive_div3", swe.mesh.n_vertices_host()),
+  passive_div4("passive_div4", swe.mesh.n_vertices_host()),
+  passive_divwork("passive_divwork", swe.mesh.n_vertices_host()),
+  passive_depth1("passive_depth1", swe.mesh.n_vertices_host()),
+  passive_depth2("passive_depth2", swe.mesh.n_vertices_host()),
+  passive_depth3("passive_depth3", swe.mesh.n_vertices_host()),
+  passive_depth4("passive_depth4", swe.mesh.n_vertices_host()),
+  passive_depthwork("passive_depthwork", swe.mesh.n_vertices_host()),
+  active_x1("active_x1", swe.mesh.n_faces_host()),
+  active_x2("active_x2", swe.mesh.n_faces_host()),
+  active_x3("active_x3", swe.mesh.n_faces_host()),
+  active_x4("active_x4", swe.mesh.n_faces_host()),
+  active_xwork("active_xwork", swe.mesh.n_faces_host()),
+  active_rel_vort1("active_rel_vort1", swe.mesh.n_faces_host()),
+  active_rel_vort2("active_rel_vort2", swe.mesh.n_faces_host()),
+  active_rel_vort3("active_rel_vort3", swe.mesh.n_faces_host()),
+  active_rel_vort4("active_rel_vort4", swe.mesh.n_faces_host()),
+  active_rel_vortwork("active_rel_vortwork", swe.mesh.n_faces_host()),
+  active_div1("active_div1", swe.mesh.n_faces_host()),
+  active_div2("active_div2", swe.mesh.n_faces_host()),
+  active_div3("active_div3", swe.mesh.n_faces_host()),
+  active_div4("active_div4", swe.mesh.n_faces_host()),
+  active_divwork("active_divwork", swe.mesh.n_faces_host()),
+  active_area1("active_area1", swe.mesh.n_faces_host()),
+  active_area2("active_area2", swe.mesh.n_faces_host()),
+  active_area3("active_area3", swe.mesh.n_faces_host()),
+  active_area4("active_area4", swe.mesh.n_faces_host()),
+  active_areawork("active_areawork", swe.mesh.n_faces_host()) {
+    passive_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe.mesh.n_vertices_host(), Kokkos::AUTO());
+    active_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe.mesh.n_faces_host(), Kokkos::AUTO());
     set_fixed_views();
   }
 
-template <typename SeedType>
-void SWERK4<SeedType>::set_fixed_views() {
+template <typename SeedType, typename TopoType>
+void SWERK4<SeedType, TopoType>::set_fixed_views() {
   passive_x = swe.mesh.vertices.phys_crds.view;
   passive_rel_vort = swe.rel_vort_passive.view;
   passive_divergence = swe.div_passive.view;
   passive_depth = swe.depth_passive.view;
+  passive_surface = swe.surf_passive.view;
   passive_vel = swe.velocity_passive.view;
   passive_ddot = swe.double_dot_passive.view;
   passive_laps = swe.surf_lap_passive.view;
@@ -150,6 +152,7 @@ void SWERK4<SeedType>::set_fixed_views() {
   active_rel_vort = swe.rel_vort_active.view;
   active_divergence = swe.div_active.view;
   active_depth = swe.depth_active.view;
+  active_surface = swe.surf_active.view;
   active_vel = swe.velocity_active.view;
   active_ddot = swe.double_dot_active.view;
   active_laps = swe.surf_lap_active.view;
@@ -159,13 +162,13 @@ void SWERK4<SeedType>::set_fixed_views() {
   active_mask = swe.mesh.faces.mask;
 }
 
-template <typename SeedType>
-void SWERK4<SeedType>::advance_timestep() {
+template <typename SeedType, typename TopoType>
+void SWERK4<SeedType, TopoType>::advance_timestep() {
 
 }
 
-template <typename SeedType>
-void SWERK4<SeedType>::advance_timestep(crd_view& vx,
+template <typename SeedType, typename TopoType>
+void SWERK4<SeedType, TopoType>::advance_timestep(crd_view& vx,
                                         scalar_view_type& vzeta,
                                         scalar_view_type& vsigma,
                                         scalar_view_type& vh,
@@ -364,7 +367,7 @@ void SWERK4<SeedType>::advance_timestep(crd_view& vx,
   Kokkos::parallel_for("RK4-final direct sum, active",
     swe.mesh.n_faces_host(),
     PlanarSWEFaceSums(active_vel, active_ddot, active_laps,
-      active_xw, active_rel_vort, active_divergence, active_area,
+      active_x, active_rel_vort, active_divergence, active_area,
       active_mask, active_surface, eps, pse_eps));
 
   ++t_idx;
