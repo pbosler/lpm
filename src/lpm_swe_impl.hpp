@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
 #include "lpm_swe.hpp"
+#include "lpm_swe_kernels.hpp"
 
 namespace Lpm {
 
@@ -49,6 +50,39 @@ template <typename InitialCondition>
       }
 };
 
+template <typename SeedType>
+SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& params, const Coriolis& coriolis) :
+  rel_vort_passive("relative_vorticity", params.nmaxverts),
+  rel_vort_active("relative_vorticity", params.nmaxfaces),
+  pot_vort_passive("potential_vorticity", params.nmaxverts),
+  pot_vort_active("potential_vorticity", params.nmaxfaces),
+  div_passive("divergence", params.nmaxverts),
+  div_active("divergence", params.nmaxfaces),
+  surf_passive("surface_height", params.nmaxverts),
+  surf_active("surface_height", params.nmaxfaces),
+  surf_lap_passive("surface_laplacian", params.nmaxverts),
+  surf_lap_active("surface_laplaican", params.nmaxfaces),
+  bottom_passive("bottom_height", params.nmaxverts),
+  bottom_active("bottom_height", params.nmaxfaces),
+  depth_passive("depth", params.nmaxverts),
+  depth_active("depth", params.nmaxfaces),
+  velocity_passive("velocity", params.nmaxverts),
+  velocity_active("velocity", params.nmaxfaces),
+  double_dot_passive("double_dot", params.nmaxverts),
+  double_dot_active("double_dot", params.nmaxfaces),
+  mass_active("mass", params.nmaxfaces),
+  mesh(params),
+  g(1),
+  t(0),
+  coriolis(coriolis) {}
+
+template <typename SeedType>
+void SWE<SeedType>::set_kernel_parameters(const Real vel_eps, const Real pse_eps) {
+  LPM_ASSERT(vel_eps >= 0);
+  LPM_ASSERT(pse_eps > 0);
+  this->eps = vel_eps;
+  this->pse_eps = pse_eps;
+}
 
 template <typename SeedType>
 SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real Omg) :
@@ -72,7 +106,6 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real O
   double_dot_active("double_dot", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
-  Omega(Omg),
   g(1),
   t(0) {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
@@ -101,8 +134,6 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f
   double_dot_active("double_dot", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
-  f0(f),
-  beta(b),
   g(1),
   t(0) {
   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
@@ -234,10 +265,67 @@ void SWE<SeedType>::init_surface(const BottomType& topo, const SurfaceType& sfc)
     });
 }
 
+
 template <typename SeedType> template <typename SolverType>
 void SWE<SeedType>::advance_timestep(SolverType& solver) {
   solver.advance_timestep();
   t = solver.t_idx * solver.dt;
+}
+
+template <typename SeedType>
+void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
+
+  Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
+  Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
+
+  Kokkos::parallel_for("initialize direct sums, passive",
+    vertex_policy,
+    PlanarSWEVertexSums(velocity_passive.view,
+      double_dot_passive.view,
+      surf_lap_passive.view,
+      mesh.vertices.phys_crds.view,
+      surf_passive.view,
+      mesh.faces.phys_crds.view,
+      rel_vort_active.view,
+      div_active.view,
+      mesh.faces.area,
+      mesh.faces.mask,
+      surf_active.view,
+      eps,
+      pse_eps,
+      mesh.n_faces_host(),
+      do_velocity));
+
+  Kokkos::parallel_for("initialize direct sums, active",
+    face_policy,
+    PlanarSWEFaceSums(velocity_active.view,
+      double_dot_active.view,
+      surf_lap_active.view,
+      mesh.faces.phys_crds.view,
+      rel_vort_active.view,
+      div_active.view,
+      mesh.faces.area,
+      mesh.faces.mask,
+      surf_active.view,
+      eps,
+      pse_eps,
+      mesh.n_faces_host(),
+      do_velocity));
+
+}
+
+template <typename SeedType>
+std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) const {
+  std::ostringstream ss;
+  std::string tabstr = indent_string(tab_level);
+  ss << tabstr << "SWE info:\n";
+  tabstr += "\t";
+  ss << tabstr << "g = " << g << "\n"
+     << tabstr << "t = " << t << "\n"
+     << tabstr << "eps = " << eps << "\n"
+     << tabstr << "pse_epse = " << pse_eps << "\n";
+  ss << tabstr << mesh.info_string("swe mesh", tab_level, verbose);
+  return ss.str();
 }
 
 #ifdef LPM_USE_VTK

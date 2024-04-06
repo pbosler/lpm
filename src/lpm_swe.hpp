@@ -17,10 +17,13 @@ template <typename InitialCondition> struct SWEInitializeProblem;
 template <typename SeedType>
 class SWE {
   public: // members
-    typedef typename SeedType::geo geo;
+    using geo = typename SeedType::geo;
     using coords_type = Coords<geo>;
     using crd_view = typename coords_type::view_type;
     using vec_view = typename geo::vec_view_type;
+    using Coriolis = typename std::conditional<
+      std::is_same<geo, PlaneGeometry>::value,
+      CoriolisBetaPlane, CoriolisSphere>::type;
 
     /// relative vorticity
     ScalarField<VertexField> rel_vort_passive;
@@ -54,17 +57,26 @@ class SWE {
     /// Lagrangian particle/panel mesh
     PolyMesh2d<SeedType> mesh;
 
-    /// for planar problems, Coriolis parameter f = f0 + beta*y
-    Real f0;
-    Real beta;
-    /// for spherical problems, Coriolis parameter f = 2*Omega*z
-    Real Omega;
+    Coriolis coriolis;
+
     /// gravity
     Real g;
     /// time
     Real t;
+    /// velocity kernel smoothing parameter
+    Real eps;
+    /// PSE kernel width parameter
+    Real pse_eps;
 
   public: // functions
+
+    /** Set kernel widths.
+
+      @param [in] vel_eps must be nonnegative
+      @param [in] pse_eps must be positive
+    */
+    void set_kernel_parameters(const Real vel_eps, const Real pse_eps);
+
     void update_host();
     void update_device();
 
@@ -77,6 +89,10 @@ class SWE {
     void set_bottom_topography(const TopoType& topo);
 
     /** @brief Sets initial (t=0) velocity on all particles.
+
+        @warning Set do_velocity = false in ::init_direct_sums
+        when using this method to set velocity, otherwise
+        this method's results will be overwritten.
 
         Velocity function should be consistent with the initial
         vorticity and divergence profiles.
@@ -97,25 +113,24 @@ class SWE {
     template <typename DivergenceType>
     void init_divergence(const DivergenceType& div_fn);
 
-    /* @brief Sets all initial data on all particles (WIP).
+    /** @brief Sets all initial data on all particles (WIP).
 
       TODO: InitialConditions type is not a fixed definition yet.
     */
     template <typename InitialConditions>
     void init_swe_problem(const InitialConditions& ic);
 
-    /* @brief Sets initial surface height and depth at all particles.
+    /** @brief Sets initial surface height and depth at all particles.
     */
     template <typename BottomType, typename SurfaceType>
     void init_surface(const BottomType& topo, const SurfaceType& surf);
 
-    /* @brief Sets initial velocity from initial vorticity and divergence
-      values (when a function is not available.)
-
-      @warning Initial vorticity and divergence must be set prior to
-      calling this function.
+    /** @brief initializes fields that must be computed, i.e.,
+      velocity (optionally)
+      the double dot product, and the surfaace Laplacian,
+      using direct summation.
     */
-    void init_velocity();
+    void init_direct_sums(const bool do_velocity = true);
 
     Real total_mass() const;
     Real total_energy() const;
@@ -123,17 +138,19 @@ class SWE {
     Real potential_energy() const;
     Real total_enstrophy() const;
 
-    std::string info_string(const int tab_level, const bool verbose=false) const;
+    std::string info_string(const int tab_level=0, const bool verbose=false) const;
 
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
 
-    /// constructor for spherical problems
+    /// constructor for spherical problems @deprecated
     SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real Omg);
 
-    /// constructor for planar problems
+    /// constructor for planar problems @deprecated
     SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f, const Real b);
 
+    ///  primary constructor
+    SWE(const PolyMeshParameters<SeedType>& mesh_params, const Coriolis& coriolis);
 };
 
 

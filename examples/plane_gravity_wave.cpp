@@ -1,7 +1,10 @@
 #include "LpmConfig.h"
 #include "lpm_comm.hpp"
+#include "lpm_coriolis.hpp"
+#include "lpm_geometry.hpp"
 #include "lpm_input.hpp"
 #include "lpm_logger.hpp"
+#include "lpm_pse.hpp"
 #include "lpm_surface_gallery.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_problem_gallery.hpp"
@@ -23,13 +26,15 @@ int main (int argc, char* argv[]) {
   Logger<> logger("plane_gravity_wave", Log::level::debug, comm);
 
   // compile-time settings
-
   // mesh seed
-  typedef QuadRectSeed seed_type;
-  //typedef TriHexSeed seed_type;
+  using seed_type = QuadRectSeed; // TriHexSeed;
 
-  typedef PlanarGaussianMountain topography_type;
-  typedef PlanarGaussianSurfacePerturbation init_sfc_type;
+  // plane gravity wave problem setup
+  using topography_type  = PlanarGaussianMountain;
+  using init_sfc_type = PlanarGaussianSurfacePerturbation;
+  using coriolis_type = CoriolisBetaPlane;
+  using geo = PlaneGeometry;
+  using pse_type = pse::BivariateOrder8<geo>;
 
   Kokkos::initialize(argc, argv);
   { // Kokkos scope
@@ -65,6 +70,13 @@ int main (int argc, char* argv[]) {
 
       user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
       input.add_option(output_write_frequency_option);
+
+      user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
+      input.add_option(kernel_smoothing_parameter_option);
+
+      user::Option pse_power_option("pse_kernel_width_power", "-pse", "--pse-kernel-width-power", "pse kernel width power",
+        11.0/20);
+      input.add_option(pse_power_option);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -89,15 +101,22 @@ int main (int argc, char* argv[]) {
       input.get_option("mesh_radius").get_real(),
       input.get_option("amr_limit").get_int());
 
-    auto plane = std::make_unique<SWE<seed_type>>(mesh_params,
-      input.get_option("f-coriolis").get_real(),
+    coriolis_type coriolis(input.get_option("f-coriolis").get_real(),
       input.get_option("beta-coriolis").get_real());
+
+    auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
 
     // set problem initial conditions
     topography_type topo;
     init_sfc_type sfc;
     plane->init_surface(topo, sfc);
+    constexpr bool do_velocity = true;
+    plane->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
+      pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
+    plane->init_direct_sums(do_velocity);
 
+    logger.info("mesh initialized");
+    logger.info(plane->info_string());
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());

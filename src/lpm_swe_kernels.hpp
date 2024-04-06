@@ -394,13 +394,14 @@ struct PlanarSWEVertexSums {
   Real eps; /// [in] velocity kernel smoothing parameter
   Real pse_eps; /// [in] PSE kernel width parameter
   Index nfaces; /// [in] total number of faces (including divided faces)
+  bool do_velocity; /// [in] if true, overwrite velocity
 
   PlanarSWEVertexSums(vec_view& vu, scalar_view_type& vdd, scalar_view_type& vls,
     const crd_view vx, const scalar_view_type vsfc, const crd_view fy,
     const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask,
     const scalar_view_type fsfc, const Real eps, const Real pse_eps,
-    const Index nfaces) :
+    const Index nfaces, const bool do_velocity = true) :
     vert_u(vu),
     vert_ddot(vdd),
     vert_laps(vls),
@@ -429,8 +430,10 @@ struct PlanarSWEVertexSums {
         eps, pse_eps), sums);
 
     // unpack reduction results
-    vert_u(i,0) = sums[0];
-    vert_u(i,1) = sums[1];
+    if (do_velocity) {
+      vert_u(i,0) = sums[0];
+      vert_u(i,1) = sums[1];
+    }
     vert_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
     vert_laps(i) = sums[6];
   }
@@ -454,11 +457,13 @@ struct PlanarSWEFaceSums {
   Real eps; /// [in] velocity kernel smoothing parameter
   Real pse_eps; /// [in] PSE kernel width parameter
   Index nfaces; /// [in] total number of faces (including divided faces)
+  bool do_velocity; /// [in] if true, overwrite velocity
 
   PlanarSWEFaceSums(vec_view& fu, scalar_view_type& fdd, scalar_view_type& fls,
     const crd_view fxy, const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask, const scalar_view_type fsfc,
-    const Real eps, const Real pse_eps, const Index nfaces) :
+    const Real eps, const Real pse_eps, const Index nfaces,
+    const bool do_velocity = true) :
     face_u(fu),
     face_ddot(fdd),
     face_laps(fls),
@@ -470,7 +475,8 @@ struct PlanarSWEFaceSums {
     face_s(fsfc),
     eps(eps),
     pse_eps(pse_eps),
-    nfaces(nfaces) {}
+    nfaces(nfaces),
+    do_velocity(do_velocity) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const member_type& thread_team) const {
@@ -485,8 +491,10 @@ struct PlanarSWEFaceSums {
         eps, pse_eps), sums);
 
     // unpack reduction results
-    face_u(i,0) = sums[0];
-    face_u(i,1) = sums[1];
+    if (do_velocity) {
+      face_u(i,0) = sums[0];
+      face_u(i,1) = sums[1];
+    }
     face_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
     face_laps(i) = sums[6];
   }
