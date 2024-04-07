@@ -27,6 +27,7 @@ set(LPM_SOURCES
                 lpm_compadre.cpp
                 lpm_error.cpp
                 lpm_field.cpp
+                lpm_input.cpp
                 lpm_lat_lon_pts.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp

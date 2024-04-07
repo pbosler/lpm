@@ -25,7 +25,8 @@
 
 namespace Lpm {
 
-/** @brief Parameters that define a mesh for initialization.
+/** @brief Parameters that define a mesh and its memory requirements
+    for initialization.
 
   @param depth initial depth of mesh quadtree, uniform resolution
   @param r radius of initial mesh in physical space
@@ -47,6 +48,8 @@ struct PolyMeshParameters {
 
   PolyMeshParameters(const PolyMeshParameters& other) = default;
 
+  /** Use this constructor when memory allocations have been determined elsewhere.
+  */
   PolyMeshParameters(const Index nmv, const Index nme, const Index nmf)
       : nmaxverts(nmv),
         nmaxedges(nme),
@@ -55,6 +58,13 @@ struct PolyMeshParameters {
         radius(1),
         amr_limit(0) {}
 
+  /** @brief Primary constructor.
+
+    @param [in] depth Initial uniform depth of mesh quadtree
+    @param [in] r radius Radius in R3 or R2 of mesh's maximum extent
+    @param [in] amr Memory allocations will yield enough space for each face to be divided (depth + amr) times;
+      hence, any amr computation requires amr > 0.
+  */
   PolyMeshParameters(const Int depth, const Real r = 1, const Int amr = 0)
       : init_depth(depth), amr_limit(amr), seed(r) {
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr);
