@@ -310,6 +310,68 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   return result;
 }
 
+/**
+
+  index 0 : u
+  index 1 : v
+  index 2 : w
+  index 3 : du/dx
+  index 4 : du/dy
+  index 5 : du/dz
+  index 6 : dv/dx
+  index 7 : dv/dy
+  index 8 : dv/dz
+  index 9 : dw/dx
+  index 10: dw/dy
+  index 11: dw/dz
+  index 12: laplacian(sfc)
+*/
+template <typename XType, typename YType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,13> sphere_swe_sums_rhs_pse(
+  const XType& tgt_x,
+  const YType& src_y,
+  const Real& src_zeta,
+  const Real& src_sigma,
+  const Real& src_area,
+  const Real& src_s,
+  const Real& tgt_s,
+  const Real& eps,
+  const Real& pse_eps
+  )
+{
+  using pse_type = pse::BivariateOrder8<PlaneGeometry>;
+  Kokkos::Tuple<Real,13> result;
+
+  // compute the velocity contribution from vorticity interaction
+  // between target particle x and source particle y
+  Real vel[3];
+  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
+  // sum in the velocity contribution from dilatation interaction
+  // between target particle x and source particle y
+  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
+  // compute the solenoidal velocity gradient contributions
+  Real gkz[9];
+  grad_kzeta(gkz, tgt_x, src_y, eps);
+  // compute the irrotational velocity gradient contributions
+  Real gks[9];
+  grad_ksigma(gks, tgt_x, src_y, eps);
+  const Real rot_str = src_zeta * src_area;
+  const Real pot_str = src_sigma * src_area;
+  for (int k=0; k<9; ++k) {
+    result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
+  }
+  if (SphereGeometry::dot(tgt_x, src_y) > 0) {
+    const Real pse_input = pse_type::kernel_input(tgt_x, src_y, pse_eps);
+    const Real pse_val = pse_type::laplacian(pse_input);
+    result[12] = (src_s - tgt_s) * src_area * pse_val / square(pse_eps);
+  }
+  else {
+    result[12] = 0;
+  }
+  return result;
+}
+
 /** @brief Customized Kokkos Reducer for planar SWE direct summation,
   with Particle Strength Exchange for the Laplacian.
 
@@ -369,6 +431,41 @@ struct PlanarSwePseDirectSumReducer {
           planar_swe_sums_rhs_pse(xcrd, ycrd, src_zeta(j), src_sigma(j),
             src_area(j), src_sfc(j), tgt_sfc(i), eps, pse_eps);
 
+        r += local_result;
+      }
+    }
+  }
+};
+
+struct SphereSweDirectSumReducer {
+  using crd_view = SphereGeometry::crd_view_type;
+  using value_type = Kokkos::Tuple<Real,13>;
+  crd_view tgt_x;
+  scalar_view_type tgt_sfc;
+  Index i;
+  crd_view src_y;
+  bool collocated_src_tgt;
+  scalar_view_type src_zeta;
+  scalar_view_type src_sigma;
+  scalar_view_type src_area;
+  mask_view_type src_mask;
+  scalar_view_type src_sfc;
+  Real eps;
+  Real pse_eps;
+
+  // RESUME HERE: Need a constructor
+  //  - "using" declarations for RK4 to select the proper (i.e., sphere or plane)
+  //    functors
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& r) const {
+    if (!collocated_src_tgt or i != j) {
+      if (!src_mask(j)) {
+        const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
+        const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
+        const value_type local_result =
+          sphere_swe_sums_rhs_pse(xcrd, ycrd, src_zeta(j), src_sigma(j),
+            src_area(j), src_sfc(j), tgt_sfc(j), eps, pse_eps);
         r += local_result;
       }
     }

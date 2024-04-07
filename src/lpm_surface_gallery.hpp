@@ -2,6 +2,7 @@
 #define LPM_SURFACE_GALLERY_HPP
 
 #include "LpmConfig.h"
+#include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 
 namespace Lpm {
@@ -102,6 +103,19 @@ struct UniformDepthSurface {
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION Real operator() (const CV x) const {return H0;}
+};
+
+struct SphereTestCase2InitialSurface {
+  static constexpr Real h0 = 0.002;
+  static constexpr Real g = 1.0;
+  static constexpr Real u0 = 2*constants::PI / 12;
+  static constexpr Real term2 = 2*constants::PI * u0 + 0.5*u0*u0;
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    return h0 - (term2 *  square(xyz[2]))/g;
+  }
 };
 
 }  // namespace Lpm

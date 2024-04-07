@@ -207,5 +207,13 @@ struct CollidingDipolePairPlane {
   std::string name() const { return "PlanarCollidingDipoles"; }
 };
 
+/** Relative vorticity from shallow water test case 2 in
+  Williamson et al., 1992.
+*/
+struct SphereTestCase2Vorticity {
+  static constexpr Real sphere_radius = 1.0;
+
+};
+
 }  // namespace Lpm
 #endif
