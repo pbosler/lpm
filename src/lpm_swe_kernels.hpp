@@ -2,6 +2,7 @@
 #define LPM_SWE_KERNELS_HPP
 
 #include "LpmConfig.h"
+#include "lpm_coriolis.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_pse.hpp"
 #include "util/lpm_math.hpp"
@@ -415,7 +416,8 @@ struct PlanarSWEVertexSums {
     face_s(fsfc),
     eps(eps),
     pse_eps(pse_eps),
-    nfaces(nfaces) {}
+    nfaces(nfaces),
+    do_velocity(do_velocity) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const member_type& thread_team) const {
@@ -504,35 +506,42 @@ struct PlanarSWEVorticityDivergenceHeightTendencies {
   scalar_view_type dzeta; /// [out] vorticity tendency
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type dh; /// [out] depth tendency
+  PlaneGeometry::crd_view_type x; /// [in] physical coordinates
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergence
   scalar_view_type h; /// [in] depth
   scalar_view_type ddot; /// [in] double dot product
   scalar_view_type laps; /// [in] surface Laplacian
-  Real f; /// [in] Coriolis (f-plane) parameter
+  CoriolisBetaPlane coriolis; /// [in] Coriolis functor
   Real g; /// [in] gravity
   Real dt; /// [in] time step size
 
   PlanarSWEVorticityDivergenceHeightTendencies(scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& dh,
+    const typename PlaneGeometry::crd_view_type& x,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type h, const scalar_view_type ddot,
-    const scalar_view_type laps, const Real f, const Real g, const Real dt) :
+    const scalar_view_type laps,
+    const CoriolisBetaPlane& cor, const Real g,
+    const Real dt) :
     dzeta(dzeta),
     dsigma(dsigma),
     dh(dh),
+    x(x),
     zeta(zeta),
     sigma(sigma),
     h(h),
     ddot(ddot),
     laps(laps),
-    f(f),
     g(g),
+    coriolis(cor),
     dt(dt) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    dzeta(i) = ((zeta(i) + f) * sigma(i))*dt;
+    const auto xy = Kokkos::subview(x, i, Kokkos::ALL);
+    const Real f = coriolis.f(xy);
+    dzeta(i) = (-coriolis.dfdt(xy) + (zeta(i) + f) * sigma(i))*dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i))*dt;
     dh(i) = (-sigma(i) * h(i))*dt;
   }
@@ -542,36 +551,42 @@ struct PlanarSWEVorticityDivergenceAreaTendencies {
   scalar_view_type dzeta; /// [out] vorticity tendency
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type darea; /// [out] area tendency
+  typename PlaneGeometry::crd_view_type& x; /// [in] physical coordinates
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergences
   scalar_view_type area; /// [in] areas
   scalar_view_type ddot; /// [in] double dot product
   scalar_view_type laps; /// [in] surface Laplacian
-  Real f; /// [in] Coriolis (f-plane) parameter
+  CoriolisBetaPlane coriolis; /// [in] Coriolis functor
   Real g; /// [in] gravity
   Real dt; /// [in] time step size
 
   PlanarSWEVorticityDivergenceAreaTendencies(
     scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& darea,
+    typename PlaneGeometry::crd_view_type& x,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type area, const scalar_view_type ddot,
-    const scalar_view_type laps, const Real f, const Real g, const Real dt) :
+    const scalar_view_type laps,
+    const CoriolisBetaPlane& cor, const Real g, const Real dt) :
     dzeta(dzeta),
     dsigma(dsigma),
     darea(darea),
+    x(x),
     zeta(zeta),
     sigma(sigma),
     area(area),
     ddot(ddot),
     laps(laps),
-    f(f),
+    coriolis(cor),
     g(g),
     dt(dt) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    dzeta(i) = ((zeta(i) + f) * sigma(i)) * dt;
+    const auto xy = Kokkos::subview(x, i, Kokkos::ALL);
+    const Real f = coriolis.f(xy);
+    dzeta(i) = (-coriolis.dfdt(xy) + (zeta(i) + f) * sigma(i)) * dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i)) * dt;
     darea(i) = (sigma(i) * area(i)) * dt;
   }

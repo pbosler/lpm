@@ -78,62 +78,122 @@ coriolis_dfdt(const Real Omega, const Real w) {
 
 /** @brief Coriolis parameter definition and evaluation
   for problems on the beta plane.
+
+  @f$ f(x) = f_0 + \beta * x_2 @f$
+
+  @f$ df/df = \beta * d x_2 / dt @f$
+
 */
 struct CoriolisBetaPlane {
+  /// f-plane parameter, or central latitude parameter for beta plane
   Real f0;
+  /// beta parameter
   Real beta;
+  /// reference rotation to relate f0 and beta to a base latitude
   static constexpr Real Omega = 2*constants::PI;
 
+  /// default constructor disables Coriolis
   KOKKOS_INLINE_FUNCTION
   CoriolisBetaPlane() : f0(0), beta(0) {}
 
+  /** constructor, sets parameters based on a central latitude
+
+    @param [in] phi0 base latitude (radians)
+  */
   KOKKOS_INLINE_FUNCTION
   explicit CoriolisBetaPlane(const Real phi0) :
     f0(2*Omega*sin(phi0)),
     beta(2*Omega*cos(phi0)) {}
 
+  /** constructor with explicit values for f0 and beta.
+  */
   KOKKOS_INLINE_FUNCTION
   CoriolisBetaPlane(const Real f0, const Real beta) :
     f0(f0), beta(beta) {}
 
+  /// helpful for GPU (makes copy constructor available on device).
   KOKKOS_INLINE_FUNCTION
   CoriolisBetaPlane(const CoriolisBetaPlane& other) = default;
 
+  /** Evaluate Coriolis parameter
+
+    @param [in] y y coordinate
+  */
   KOKKOS_INLINE_FUNCTION
   Real f(const Real y) const {return f0 + beta*y;}
 
+  /** Evaluate Coriolis parameter at a given position
+
+    @param [in] xy position
+  */
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real f(const PtType& xy) const {return f0 + beta*xy[1];}
 
+  /** Evaluate Coriolis parameter time derivative
+
+    @param [in] v y-component of velocity
+  */
   KOKKOS_INLINE_FUNCTION
   Real dfdt(const Real v) const {return beta * v;}
 
+  /** Evaluate Coriolis parameter time derivative for a  given velocity
+
+    @param [in] uv velocity
+  */
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
-  Real dfdt(const PtType& uv) {return beta * uv[1];}
+  Real dfdt(const PtType& uv) const {return beta * uv[1];}
 };
 
+
+/**  Coriolis evaluation for a sphere with constant background
+  rotation about the positive z-axis.
+*/
 struct CoriolisSphere {
+  /// Angular velocity of sphere
   Real Omega;
 
+  /** Default constructor initializes period of rotation to 2*pi or
+    user-specified value.
+
+    @param [in] Omg constant angular velocity
+  */
   KOKKOS_INLINE_FUNCTION
   explicit CoriolisSphere(const Real Omg=2*constants::PI) :
     Omega(Omg) {}
 
+  /// helpful for GPU (makes copy constructor available on device).
   KOKKOS_INLINE_FUNCTION
   CoriolisSphere(const CoriolisSphere& other) = default;
 
+  /** Evaluate Coriolis parameter
+
+    @param [in] z z coordinate
+  */
   KOKKOS_INLINE_FUNCTION
   Real f (const Real z) const {return 2*Omega*z;}
 
+  /** Evaluate Coriolis parameter at a given position
+
+    @param [in] xyz position
+  */
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real f (const PtType& xyz) const {return 2*Omega*xyz[2];}
 
+
+  /** Evaluate Coriolis parameter time derivative
+
+    @param [in] w z-component of velocity
+  */
   KOKKOS_INLINE_FUNCTION
   Real dfdt(const Real& w) const {return 2*Omega*w;}
 
+  /** Evaluate Coriolis parameter time derivative for a given velocity
+
+    @param [in] uvw velocity
+  */
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real dfdt (const PtType& uvw) const {return 2*Omega*uvw[2];}

@@ -323,7 +323,7 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
   ss << tabstr << "g = " << g << "\n"
      << tabstr << "t = " << t << "\n"
      << tabstr << "eps = " << eps << "\n"
-     << tabstr << "pse_epse = " << pse_eps << "\n";
+     << tabstr << "pse_eps = " << pse_eps << "\n";
   ss << tabstr << mesh.info_string("swe mesh", tab_level, verbose);
   return ss.str();
 }

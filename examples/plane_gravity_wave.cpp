@@ -41,13 +41,13 @@ int main (int argc, char* argv[]) {
     user::Input input("plane_gravity_wave");
     {
       // define user parameters
-      user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final", 0.1);
+      user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final", 0.5);
       input.add_option(tfinal_option);
 
-      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps", 10);
+      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps", 5);
       input.add_option(nsteps_option);
 
-      user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 5);
+      user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 4);
 
       input.add_option(tree_depth_option);
       user::Option f_coriolis_option("f-coriolis", "-f", "--f-coriolis", "f coriolis", 0.0);
@@ -86,12 +86,11 @@ int main (int argc, char* argv[]) {
       return 1;
     }
 
-    const Real dt = input.get_option("tfinal").get_real() /
-      input.get_option("nsteps").get_int();
+    const int nsteps = input.get_option("nsteps").get_int();
+    const Real dt = input.get_option("tfinal").get_real() / nsteps;
     int frame_counter = 0;
-    int write_frequency = input.get_option("output_write_frequency").get_int();
+    const int write_frequency = input.get_option("output_write_frequency").get_int();
     logger.info(input.info_string());
-    logger.info("dt = {}", dt);
 
     Timer total_time("total_time");
 
@@ -134,6 +133,23 @@ int main (int argc, char* argv[]) {
 
     // setup time stepper
     auto solver = std::make_unique<SWERK4<seed_type, topography_type>>(dt, *plane, topo);
+    logger.info(solver->info_string());
+
+    for (int t_idx=0; t_idx<nsteps; ++t_idx) {
+      plane->advance_timestep(*solver);
+      logger.debug("t = {}", plane->t);
+
+#ifdef LPM_USE_VTK
+      if ((t_idx+1)%write_frequency == 0) {
+        plane->update_host();
+        auto vtk = vtk_mesh_interface(*plane);
+        auto ctr_str = zero_fill_str(++frame_counter);
+        const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
+        logger.info("writing output at t = {} to file: {}", plane->t, vtk_fname);
+        vtk.write(vtk_fname);
+      }
+#endif
+    }
 
     total_time.stop();
     logger.info("total time: {}", total_time.info_string());

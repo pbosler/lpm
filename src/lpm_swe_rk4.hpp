@@ -49,6 +49,8 @@ class SWERK4 {
     // constructor
     SWERK4(const Real timestep, SWE<SeedType>& swe_mesh, TopoType& topo);
 
+    std::string info_string(const int tab_level=0) const;
+
   private:
 
     crd_view passive_x1;
@@ -108,11 +110,12 @@ class SWERK4 {
                           scalar_view_type& vzeta,
                           scalar_view_type& vsigma,
                           scalar_view_type& vh,
-                          scalar_view_type& vvel,
+                          vec_view& vvel,
                           crd_view& fx,
                           scalar_view_type& fzeta,
                           scalar_view_type& fsigma,
                           scalar_view_type& fh,
+                          vec_view& fvel,
                           scalar_view_type& farea,
                           const scalar_view_type& fmass,
                           const mask_view_type& fmask);
