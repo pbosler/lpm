@@ -55,6 +55,17 @@ target_include_directories(plane_gravity_wave PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
+add_executable(colliding_dipoles plane_colliding_dipoles.cpp)
+target_link_libraries(colliding_dipoles PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(colliding_dipoles PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
 if (LPM_ENABLE_NETCDF)
 add_executable(sphere_from_data sphere_from_data.cpp)
 target_link_libraries(sphere_from_data PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})

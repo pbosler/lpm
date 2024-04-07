@@ -80,14 +80,28 @@ struct PlanarGaussianSurfacePerturbation {
   }
 };
 
+/** Topography functor for a flat bottom
+*/
 struct ZeroBottom {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real operator() (const CV x) {return 0;}
+  Real operator() (const CV x) const {return 0;}
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real laplacian(const CV x) {return 0;}
+  Real laplacian(const CV x) const {return 0;}
+};
+
+/** Surface functor for uniform depth
+*/
+struct UniformDepthSurface {
+  Real H0;
+
+  KOKKOS_INLINE_FUNCTION
+  explicit UniformDepthSurface(const Real h0=1) : H0(h0) {}
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Real operator() (const CV x) const {return H0;}
 };
 
 }  // namespace Lpm

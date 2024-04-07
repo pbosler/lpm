@@ -265,6 +265,38 @@ void SWE<SeedType>::init_surface(const BottomType& topo, const SurfaceType& sfc)
     });
 }
 
+template <typename SeedType> template <typename VorticityType>
+void SWE<SeedType>::init_vorticity(const VorticityType& vorticity, const bool depth_set) {
+  auto crds = mesh.vertices.phys_crds.view;
+  auto relvort_view = rel_vort_passive.view;
+  auto potvort_view = pot_vort_passive.view;
+  auto depth_view = depth_passive.view;
+  Kokkos::parallel_for("SWE::init_vorticity (passive)",
+    mesh.n_vertices_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+      const Real zeta = vorticity(mcrd);
+      relvort_view(i) = zeta;
+      if (depth_set) {
+        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+      }
+    });
+
+  crds = mesh.faces.phys_crds.view;
+  relvort_view = rel_vort_active.view;
+  potvort_view = pot_vort_active.view;
+  depth_view = depth_active.view;
+  Kokkos::parallel_for("SWE::init_vorticity (active)",
+    mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+      const Real zeta = vorticity(mcrd);
+      relvort_view(i) = zeta;
+      if (depth_set) {
+        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+      }
+    });
+}
 
 template <typename SeedType> template <typename SolverType>
 void SWE<SeedType>::advance_timestep(SolverType& solver) {
