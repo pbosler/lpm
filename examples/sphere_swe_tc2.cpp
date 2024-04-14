@@ -7,10 +7,11 @@
 #include "lpm_pse.hpp"
 #include "lpm_surface_gallery.hpp"
 #include "lpm_swe.hpp"
-#include "lpm_swe_problem_gallery.hpp"
+// #include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe_impl.hpp"
-#include "lpm_swe_rk4.hpp"
-#include "lpm_swe_rk4_impl.hpp"
+#include "lpm_swe_rk2.hpp"
+#include "lpm_swe_rk2_impl.hpp"
+#include "lpm_vorticity_gallery.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
 #ifdef LPM_USE_VTK
@@ -23,7 +24,7 @@ using namespace Lpm;
 int main (int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
-  Logger<> logger("plane_gravity_wave", Log::level::debug, comm);
+  Logger<> logger("sphere_swe_tc2", Log::level::debug, comm);
 
   // compile-time settings
   // mesh seed (choose one, comment-out the other
@@ -34,6 +35,7 @@ int main (int argc, char* argv[]) {
   using topography_type  = ZeroBottom;
   using init_sfc_type = SphereTestCase2InitialSurface;
   using coriolis_type = CoriolisSphere;
+  using vorticity_type = SphereTestCase2Vorticity;
   using geo = SphereGeometry;
   using pse_type = pse::BivariateOrder8<PlaneGeometry>;
 
@@ -104,13 +106,24 @@ int main (int argc, char* argv[]) {
     topography_type topo;
     init_sfc_type sfc;
     sphere->init_surface(topo, sfc);
+    constexpr bool depth_set = true;
+    vorticity_type vorticity;
+    sphere->init_vorticity(vorticity, depth_set);
     constexpr bool do_velocity = true;
     sphere->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
       pse_type::epsilon(sphere->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
     sphere->init_direct_sums(do_velocity);
 
+    // setup time stepper
+    constexpr Int gmls_order = 4;
+    const gmls::Params gmls_params(gmls_order, SphereGeometry::ndim);
+    auto solver = std::make_unique<SWERK2<seed_type, topography_type>>(dt, *sphere, topo, gmls_params);
+    logger.info(solver->info_string());
+
     logger.info("mesh initialized");
-    logger.info(sphere->info_string());
+    constexpr int tabs = 0;
+    constexpr bool verbose = true;
+    logger.info(sphere->info_string(tabs, verbose));
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
@@ -118,7 +131,7 @@ int main (int argc, char* argv[]) {
       + "_" + seed_type::id_string() + resolution_str + "_";
     {
       sphere->update_host();
-      auto vtk = vtk_mesh_interface(*plane);
+      auto vtk = vtk_mesh_interface(*sphere);
       auto ctr_str = zero_fill_str(frame_counter);
       const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
       logger.info("writing output at t = {} to file: {}", sphere->t, vtk_fname);
@@ -126,9 +139,6 @@ int main (int argc, char* argv[]) {
     }
 #endif
 
-    // setup time stepper
-    auto solver = std::make_unique<SWERK4<seed_type, topography_type>>(dt, *sphere, topo);
-    logger.info(solver->info_string());
 
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
       sphere->advance_timestep(*solver);
@@ -137,7 +147,7 @@ int main (int argc, char* argv[]) {
 #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {
         sphere->update_host();
-        auto vtk = vtk_mesh_interface(*plane);
+        auto vtk = vtk_mesh_interface(*sphere);
         auto ctr_str = zero_fill_str(++frame_counter);
         const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
         logger.info("writing output at t = {} to file: {}", sphere->t, vtk_fname);

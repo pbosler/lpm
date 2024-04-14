@@ -44,7 +44,7 @@ class SWERK4 {
     Real eps; /// velocity kernel smoothing parameter
     Real pse_eps; /// pse kernel width parameter
 
-    void advance_timestep();
+    void advance_timestep_impl();
 
     // constructor
     SWERK4(const Real timestep, SWE<SeedType>& swe_mesh, TopoType& topo);

@@ -66,9 +66,9 @@ target_include_directories(colliding_dipoles PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
-add_executable(test_case2 sphere_swe_tc2.cpp)
-target_link_libraries(test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(test_case2 PUBLIC
+add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
+target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_swe_test_case2 PUBLIC
  ${LPM_INCLUDE_DIRS}
  ${Trilinos_INCLUDE_DIRS}
  ${Trilinos_TPL_INCLUDE_DIRS}

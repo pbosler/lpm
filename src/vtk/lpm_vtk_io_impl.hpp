@@ -63,11 +63,22 @@ vtkSmartPointer<vtkPoints> VtkPolymeshInterface<SeedType>::make_points(
   auto result = vtkSmartPointer<vtkPoints>::New();
   const auto vert_crd_view = mesh_.vertices.phys_crds._hostview;
   Real crds[SeedType::geo::ndim];
-  for (Index i = 0; i < mesh_.n_vertices_host(); ++i) {
-    for (Short j = 0; j < SeedType::geo::ndim; ++j) {
-      crds[j] = vert_crd_view(i, j);
+  if constexpr (std::is_same<typename SeedType::geo, PlaneGeometry>::value) {
+    for (Index i = 0; i < mesh_.n_vertices_host(); ++i) {
+      for (Short j = 0; j < SeedType::geo::ndim; ++j) {
+        crds[j] = vert_crd_view(i, j);
+      }
+      result->InsertNextPoint(crds[0], crds[1], height_field(i));
     }
-    result->InsertNextPoint(crds[0], crds[1], height_field(i));
+  }
+  else {
+    if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+      for (Index i=0; i<mesh_.n_vertices_host(); ++i) {
+        for (Short j=0; j<SeedType::geo::ndim; ++j) {
+          crds[j] = (1 + height_field(i)) * vert_crd_view(i,j);
+        }
+      }
+    }
   }
   return result;
 }

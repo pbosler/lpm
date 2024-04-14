@@ -212,7 +212,17 @@ struct CollidingDipolePairPlane {
 */
 struct SphereTestCase2Vorticity {
   static constexpr Real sphere_radius = 1.0;
+  static constexpr Real u0 = 2*constants::PI / 12;
 
+  KOKKOS_INLINE_FUNCTION
+  SphereTestCase2Vorticity() = default;
+
+  template <typename CV> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV& xyz) const {
+    return 2*u0*xyz[2];
+  }
+
+  std::string name() const {return "SphereTestCase2Vorticity";}
 };
 
 }  // namespace Lpm

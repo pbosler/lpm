@@ -106,7 +106,7 @@ struct UniformDepthSurface {
 };
 
 struct SphereTestCase2InitialSurface {
-  static constexpr Real h0 = 0.002;
+  static constexpr Real h0 = 1;
   static constexpr Real g = 1.0;
   static constexpr Real u0 = 2*constants::PI / 12;
   static constexpr Real term2 = 2*constants::PI * u0 + 0.5*u0*u0;
@@ -114,7 +114,27 @@ struct SphereTestCase2InitialSurface {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
   Real operator() (const CV xyz) const {
-    return h0 - (term2 *  square(xyz[2]))/g;
+    const Real result = h0 - (term2 *  square(xyz[2]))/g;
+    LPM_KERNEL_ASSERT(result > 0);
+    return result;
+  }
+};
+
+struct SphereTestCase5Bottom {
+  static constexpr Real h_mtn = 1E-4;
+  static constexpr Real r_mtn = constants::PI/9;
+  static constexpr Real r_mtn2 = r_mtn*r_mtn;
+  static constexpr Real lambda_ctr = 1.5*constants::PI;
+  static constexpr Real theta_ctr = constants::PI/6;
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    const Real lambda = SphereGeometry::longitude(xyz);
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real ll_dist_sq = square(lambda - lambda_ctr) + square(theta - theta_ctr);
+    const Real r = (r_mtn2 < ll_dist_sq ? r_mtn : sqrt(ll_dist_sq));
+    return h_mtn * (1 - r / r_mtn);
   }
 };
 

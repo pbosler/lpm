@@ -153,6 +153,49 @@ KOKKOS_INLINE_FUNCTION T cube(const T& x) {
   return x * x * x;
 }
 
+/// rotation matrix to move an arbitrary point on the sphere to the north pole
+template <typename Compressed3by3, typename PtType>
+KOKKOS_INLINE_FUNCTION
+void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
+  const Real cosy = sqrt(square(xyz[1]) + square(xyz[2]));
+  const Real siny = xyz[0];
+  const bool on_x_axis = FloatingPoint<Real>::zero(cosy);
+  const Real cosx = (on_x_axis ? 1 : xyz[2]/cosy);
+  const Real sinx = (on_x_axis ? 0 : xyz[1]/cosy);
+  rmat[0] =  cosy;
+  rmat[1] = -sinx * siny;
+  rmat[2] = -cosx * siny;
+  rmat[3] =  0;
+  rmat[4] =  cosx;
+  rmat[5] = -sinx;
+  rmat[6] =  siny;
+  rmat[7] =  cosy * sinx;
+  rmat[8] =  cosx * cosy;
+}
+
+template <typename PtType, typename Compressed3by3, typename ConstPtType>
+KOKKOS_INLINE_FUNCTION
+void apply_3by3(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
+  for (int i=0; i<3; ++i) {
+    xyzp[i] = 0;
+    for (int j=0; j<3; ++j) {
+      xyzp[i] += mat[3*i + j]*xyz[j];
+    }
+  }
+}
+
+template <typename PtType, typename Compressed3by3, typename ConstPtType>
+KOKKOS_INLINE_FUNCTION
+void apply_3by3_transpose(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
+  for (int i=0; i<3; ++i) {
+    xyzp[i] = 0;
+    for (int j=0; j<3; ++j) {
+      xyzp[i] += mat[3*j + i]*xyz[j];
+    }
+  }
+}
+
+
 /** Return the Bessel function B_0(x) for any real number x.
 
  The polynomial approximation by

@@ -203,6 +203,15 @@ TEST_CASE("planar mesh", "") {
     PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
     pse_test.run();
   }
+
+  SECTION("quadrilateral panels") {
+    typedef QuadRectSeed seed_type;
+    typedef PlanarConstantEastward velocity_type;
+    const Real radius = 6;
+
+    PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
+    pse_test.run();
+  }
 }
 TEST_CASE("sphere mesh", "") {
   const int start_depth = 2;
@@ -214,20 +223,20 @@ TEST_CASE("sphere mesh", "") {
   }
 
   SECTION("quadrilateral panels") {
-    typedef QuadRectSeed seed_type;
-    typedef PlanarConstantEastward velocity_type;
-    const Real radius = 6;
+    typedef CubedSphereSeed seed_type;
+    typedef SphericalRigidRotation velocity_type;
+    const Real radius = 1;
 
     PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
     pse_test.run();
   }
 
-//   SECTION("triangular panels") {
-//     typedef IcosTriSphereSeed seed_type;
-//     typedef SphericalRigidRotation velocity_type;
-//     const Real radius = 1;
-//
-//     PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
-//     pse_test.run();
-//   }
+  SECTION("triangular panels") {
+    typedef IcosTriSphereSeed seed_type;
+    typedef SphericalRigidRotation velocity_type;
+    const Real radius = 1;
+
+    PSEConvergenceTest<velocity_type, seed_type> pse_test(start_depth, end_depth, radius);
+    pse_test.run();
+  }
 }
