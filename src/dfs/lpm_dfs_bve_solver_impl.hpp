@@ -54,6 +54,7 @@ void DFSRK2<SeedType>::advance_timestep()  {
 
   dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
 
+  sphere.rel_vort_grid.view = rel_vort_grid;
 
   ++t_idx;
 }

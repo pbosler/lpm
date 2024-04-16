@@ -73,6 +73,8 @@ CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
 CreateUnitTest(test_stub lpm_test_stub.cpp)
 
+CreateUnitTest(input_test lpm_input_test.cpp)
+
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
 endif()
