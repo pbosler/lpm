@@ -2,7 +2,7 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_swe.hpp"
-#include "lpm_swe_gallery.hpp"
+#include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe_impl.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
