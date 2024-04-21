@@ -3,6 +3,7 @@
 
 #include "LpmConfig.h"
 #include "lpm_kokkos_defs.hpp"
+#include "lpm_field_impl.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_kernels.hpp"
 
@@ -265,10 +266,42 @@ void SWE<SeedType>::init_surface(const BottomType& topo, const SurfaceType& sfc)
     });
 }
 
+template <typename SeedType> template <typename VorticityType>
+void SWE<SeedType>::init_vorticity(const VorticityType& vorticity, const bool depth_set) {
+  auto crds = mesh.vertices.phys_crds.view;
+  auto relvort_view = rel_vort_passive.view;
+  auto potvort_view = pot_vort_passive.view;
+  auto depth_view = depth_passive.view;
+  Kokkos::parallel_for("SWE::init_vorticity (passive)",
+    mesh.n_vertices_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+      const Real zeta = vorticity(mcrd);
+      relvort_view(i) = zeta;
+      if (depth_set) {
+        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+      }
+    });
+
+  crds = mesh.faces.phys_crds.view;
+  relvort_view = rel_vort_active.view;
+  potvort_view = pot_vort_active.view;
+  depth_view = depth_active.view;
+  Kokkos::parallel_for("SWE::init_vorticity (active)",
+    mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+      const Real zeta = vorticity(mcrd);
+      relvort_view(i) = zeta;
+      if (depth_set) {
+        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+      }
+    });
+}
 
 template <typename SeedType> template <typename SolverType>
 void SWE<SeedType>::advance_timestep(SolverType& solver) {
-  solver.advance_timestep();
+  solver.advance_timestep_impl();
   t = solver.t_idx * solver.dt;
 }
 
@@ -278,40 +311,66 @@ void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
   Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
   Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
 
-  Kokkos::parallel_for("initialize direct sums, passive",
-    vertex_policy,
-    PlanarSWEVertexSums(velocity_passive.view,
-      double_dot_passive.view,
-      surf_lap_passive.view,
-      mesh.vertices.phys_crds.view,
-      surf_passive.view,
-      mesh.faces.phys_crds.view,
-      rel_vort_active.view,
-      div_active.view,
-      mesh.faces.area,
-      mesh.faces.mask,
-      surf_active.view,
-      eps,
-      pse_eps,
-      mesh.n_faces_host(),
-      do_velocity));
+  if constexpr (std::is_same<typename SeedType::geo, PlaneGeometry>::value) {
+    Kokkos::parallel_for("initialize direct sums, passive",
+      vertex_policy,
+      PlanarSWEVertexSums(velocity_passive.view,
+        double_dot_passive.view,
+        surf_lap_passive.view,
+        mesh.vertices.phys_crds.view,
+        surf_passive.view,
+        mesh.faces.phys_crds.view,
+        rel_vort_active.view,
+        div_active.view,
+        mesh.faces.area,
+        mesh.faces.mask,
+        surf_active.view,
+        eps,
+        pse_eps,
+        mesh.n_faces_host(),
+        do_velocity));
 
-  Kokkos::parallel_for("initialize direct sums, active",
-    face_policy,
-    PlanarSWEFaceSums(velocity_active.view,
-      double_dot_active.view,
-      surf_lap_active.view,
-      mesh.faces.phys_crds.view,
-      rel_vort_active.view,
-      div_active.view,
-      mesh.faces.area,
-      mesh.faces.mask,
-      surf_active.view,
-      eps,
-      pse_eps,
-      mesh.n_faces_host(),
-      do_velocity));
+    Kokkos::parallel_for("initialize direct sums, active",
+      face_policy,
+      PlanarSWEFaceSums(velocity_active.view,
+        double_dot_active.view,
+        surf_lap_active.view,
+        mesh.faces.phys_crds.view,
+        rel_vort_active.view,
+        div_active.view,
+        mesh.faces.area,
+        mesh.faces.mask,
+        surf_active.view,
+        eps,
+        pse_eps,
+        mesh.n_faces_host(),
+        do_velocity));
+  }
+  else {
+    if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+      Kokkos::parallel_for("init direct sums, passive",
+        vertex_policy,
+        SphereVertexSums(velocity_passive.view, double_dot_passive.view,
+          mesh.vertices.lag_crds.view,
+          mesh.faces.lag_crds.view,
+          rel_vort_active.view,
+          div_active.view,
+          mesh.faces.area,
+          mesh.faces.mask,
+          eps, mesh.n_faces_host(),
+          do_velocity));
 
+      Kokkos::parallel_for("init direct sums, active",
+        face_policy,
+        SphereFaceSums(velocity_active.view, double_dot_active.view,
+          mesh.faces.lag_crds.view,
+          rel_vort_active.view,
+          div_active.view,
+          mesh.faces.area,
+          mesh.faces.mask,
+          eps, mesh.n_faces_host(), do_velocity));
+    }
+  }
 }
 
 template <typename SeedType>
@@ -325,6 +384,27 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
      << tabstr << "eps = " << eps << "\n"
      << tabstr << "pse_eps = " << pse_eps << "\n";
   ss << tabstr << mesh.info_string("swe mesh", tab_level, verbose);
+  if (verbose) {
+    ss << "passive fields:\n";
+    ss << tabstr << rel_vort_passive.info_string()
+       << tabstr << pot_vort_passive.info_string()
+       << tabstr << div_passive.info_string()
+       << tabstr << surf_passive.info_string()
+       << tabstr << surf_lap_passive.info_string()
+       << tabstr << depth_passive.info_string()
+       << tabstr << double_dot_passive.info_string()
+       << tabstr << velocity_passive.info_string();
+    ss << "active fields:\n";
+    ss << tabstr << rel_vort_active.info_string()
+       << tabstr << pot_vort_active.info_string()
+       << tabstr << div_active.info_string()
+       << tabstr << surf_active.info_string()
+       << tabstr << surf_lap_active.info_string()
+       << tabstr << depth_active.info_string()
+       << tabstr << double_dot_active.info_string()
+       << tabstr << mass_active.info_string()
+       << tabstr << velocity_active.info_string();
+  }
   return ss.str();
 }
 
@@ -332,7 +412,8 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
   template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe) {
 
-  VtkPolymeshInterface<SeedType> vtk(swe.mesh, swe.surf_passive.hview);
+//   VtkPolymeshInterface<SeedType> vtk(swe.mesh, swe.surf_passive.hview);
+  VtkPolymeshInterface<SeedType> vtk(swe.mesh);
   vtk.add_scalar_point_data(swe.rel_vort_passive.view);
   vtk.add_scalar_point_data(swe.pot_vort_passive.view);
   vtk.add_scalar_point_data(swe.div_passive.view);

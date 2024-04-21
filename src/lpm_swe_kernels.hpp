@@ -252,6 +252,54 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
   }
 }
 
+/**
+
+  index 0 : u
+  index 1 : v
+  index 2 : w
+  index 3 : du/dx
+  index 4 : du/dy
+  index 5 : du/dz
+  index 6 : dv/dx
+  index 7 : dv/dy
+  index 8 : dv/dz
+  index 9 : dw/dx
+  index 10: dw/dy
+  index 11: dw/dz
+*/
+template <typename XType, typename YType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
+  const YType& src_y,
+  const Real& src_zeta,
+  const Real& src_sigma,
+  const Real& src_area,
+  const Real& eps) {
+  Kokkos::Tuple<Real,12> result;
+  // compute the velocity contribution from vorticity interaction
+  // between target particle x and source particle y
+  Real vel[3];
+  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
+  // sum in the velocity contribution from dilatation interaction
+  // between target particle x and source particle y
+  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
+  for (int k=0; k<3; ++k) {
+    result[k] = vel[k];
+  }
+  // compute the solenoidal velocity gradient contributions
+  Real gkz[9];
+  grad_kzeta(gkz, tgt_x, src_y, eps);
+  // compute the irrotational velocity gradient contributions
+  Real gks[9];
+  grad_ksigma(gks, tgt_x, src_y, eps);
+  const Real rot_str = src_zeta * src_area;
+  const Real pot_str = src_sigma * src_area;
+  for (int k=0; k<9; ++k) {
+    result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
+  }
+  return result;
+}
+
 /** Evaluates the RHS terms for the planar shallow water equations
   using Particle Strength Exchange (PSE) to compute the Laplacian
   of the fluid surface.
@@ -307,6 +355,68 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   const Real pse_val = pse_type::laplacian(pse_input);
   result[6] = (src_s - tgt_s) * src_area * pse_val / square(pse_eps);
 
+  return result;
+}
+
+/**
+
+  index 0 : u
+  index 1 : v
+  index 2 : w
+  index 3 : du/dx
+  index 4 : du/dy
+  index 5 : du/dz
+  index 6 : dv/dx
+  index 7 : dv/dy
+  index 8 : dv/dz
+  index 9 : dw/dx
+  index 10: dw/dy
+  index 11: dw/dz
+  index 12: laplacian(sfc)
+*/
+template <typename XType, typename YType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,13> sphere_swe_sums_rhs_pse(
+  const XType& tgt_x,
+  const YType& src_y,
+  const Real& src_zeta,
+  const Real& src_sigma,
+  const Real& src_area,
+  const Real& src_s,
+  const Real& tgt_s,
+  const Real& eps,
+  const Real& pse_eps
+  )
+{
+  using pse_type = pse::BivariateOrder8<PlaneGeometry>;
+  Kokkos::Tuple<Real,13> result;
+
+  // compute the velocity contribution from vorticity interaction
+  // between target particle x and source particle y
+  Real vel[3];
+  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
+  // sum in the velocity contribution from dilatation interaction
+  // between target particle x and source particle y
+  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
+  // compute the solenoidal velocity gradient contributions
+  Real gkz[9];
+  grad_kzeta(gkz, tgt_x, src_y, eps);
+  // compute the irrotational velocity gradient contributions
+  Real gks[9];
+  grad_ksigma(gks, tgt_x, src_y, eps);
+  const Real rot_str = src_zeta * src_area;
+  const Real pot_str = src_sigma * src_area;
+  for (int k=0; k<9; ++k) {
+    result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
+  }
+  if (SphereGeometry::dot(tgt_x, src_y) > 0) {
+    const Real pse_input = pse_type::kernel_input(tgt_x, src_y, pse_eps);
+    const Real pse_val = pse_type::laplacian(pse_input);
+    result[12] = (src_s - tgt_s) * src_area * pse_val / square(pse_eps);
+  }
+  else {
+    result[12] = 0;
+  }
   return result;
 }
 
@@ -369,6 +479,48 @@ struct PlanarSwePseDirectSumReducer {
           planar_swe_sums_rhs_pse(xcrd, ycrd, src_zeta(j), src_sigma(j),
             src_area(j), src_sfc(j), tgt_sfc(i), eps, pse_eps);
 
+        r += local_result;
+      }
+    }
+  }
+};
+
+struct SphereSweDirectSumReducer {
+  using crd_view = SphereGeometry::crd_view_type;
+  using value_type = Kokkos::Tuple<Real,12>;
+  crd_view tgt_x;
+  Index i;
+  crd_view src_y;
+  bool collocated_src_tgt;
+  scalar_view_type src_zeta;
+  scalar_view_type src_sigma;
+  scalar_view_type src_area;
+  mask_view_type src_mask;
+  Real eps;
+
+  SphereSweDirectSumReducer(const crd_view& tx, const Index tgt_idx,
+    const crd_view& sy, const bool colloc, const scalar_view_type& sz,
+    const scalar_view_type& ss, const scalar_view_type& sa,
+    const mask_view_type m, const Real eps) :
+    tgt_x(tx),
+    i(tgt_idx),
+    src_y(sy),
+    collocated_src_tgt(colloc),
+    src_zeta(sz),
+    src_sigma(ss),
+    src_area(sa),
+    src_mask(m),
+    eps(eps) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& j, value_type& r) const {
+    if (!collocated_src_tgt or i != j) {
+      if (!src_mask(j)) {
+        const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
+        const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
+        const value_type local_result =
+          sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
+            src_area(j), eps);
         r += local_result;
       }
     }
@@ -441,6 +593,63 @@ struct PlanarSWEVertexSums {
   }
 };
 
+struct SphereVertexSums {
+  using vec_view = SphereGeometry::vec_view_type;
+  using crd_view = SphereGeometry::crd_view_type;
+
+  vec_view vert_u;
+  scalar_view_type vert_ddot;
+  crd_view vert_x;
+  crd_view face_y;
+  scalar_view_type face_zeta;
+  scalar_view_type face_sigma;
+  scalar_view_type face_area;
+  mask_view_type face_mask;
+  Real eps;
+  Index nfaces;
+  bool do_velocity;
+
+  SphereVertexSums(vec_view& vu, scalar_view_type& vdd,
+    const crd_view& vx, const crd_view& fy,
+    const scalar_view_type& fz, const scalar_view_type& fs,
+    const scalar_view_type& fa, const mask_view_type& fm,
+    const Real eps, const Index nf, const bool do_velocity) :
+    vert_u(vu),
+    vert_ddot(vdd),
+    vert_x(vx),
+    face_y(fy),
+    face_zeta(fz),
+    face_sigma(fs),
+    face_area(fa),
+    face_mask(fm),
+    eps(eps),
+    nfaces(nf),
+    do_velocity(do_velocity) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& thread_team) const {
+    const Index i = thread_team.league_rank();
+
+    Kokkos::Tuple<Real, 12> sums;
+    constexpr bool collocated = false;
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+      SphereSweDirectSumReducer(vert_x, i, face_y, collocated, face_zeta,
+        face_sigma, face_area, face_mask, eps), sums);
+
+    if (do_velocity) {
+      for (int k = 0; k<3; ++k) {
+        vert_u(i,k) = sums[k];
+      }
+    }
+    vert_ddot(i) = 0;
+    for (int ii=0; ii<3; ++ii) {
+      for (int jj=0; jj<3; ++jj) {
+        vert_ddot(i) += sums[3 + 3*ii+jj] * sums[3 + 3*jj+ii];
+      }
+    }
+  }
+};
+
 /** @brief Direct sum functor for Planar SWE (active particles).
 */
 struct PlanarSWEFaceSums {
@@ -502,27 +711,86 @@ struct PlanarSWEFaceSums {
   }
 };
 
-struct PlanarSWEVorticityDivergenceHeightTendencies {
+struct SphereFaceSums {
+  using vec_view = SphereGeometry::vec_view_type;
+  using crd_view = SphereGeometry::crd_view_type;
+
+  vec_view face_u;
+  scalar_view_type face_ddot;
+  crd_view face_xy;
+  scalar_view_type face_zeta;
+  scalar_view_type face_sigma;
+  scalar_view_type face_area;
+  mask_view_type face_mask;
+  Real eps;
+  Index nfaces;
+  bool do_velocity;
+
+  SphereFaceSums(vec_view& fu, scalar_view_type& fdd,
+    const crd_view& fxy, const scalar_view_type& fz,
+    const scalar_view_type& fs, const scalar_view_type& fa,
+    const mask_view_type& fm, const Real eps,
+    const Index nf, const bool do_velocity) :
+    face_u(fu),
+    face_ddot(fdd),
+    face_xy(fxy),
+    face_zeta(fz),
+    face_sigma(fs),
+    face_area(fa),
+    face_mask(fm),
+    eps(eps),
+    nfaces(nf),
+    do_velocity(do_velocity) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const member_type& thread_team) const {
+    const Index i = thread_team.league_rank();
+
+    Kokkos::Tuple<Real,12> sums;
+    const bool collocated = !(eps>0);
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+      SphereSweDirectSumReducer(face_xy, i, face_xy, collocated, face_zeta,
+        face_sigma, face_area, face_mask, eps), sums);
+    if (do_velocity) {
+      for (int k = 0; k<3; ++k) {
+        face_u(i,k) = sums[k];
+      }
+    }
+    face_ddot(i) = 0;
+    for (int ii=0; ii<3; ++ii) {
+      for (int jj=0; jj<3; ++jj) {
+        face_ddot(i) += sums[3 + 3*ii+jj] * sums[3 + 3*jj+ii];
+      }
+    }
+  }
+};
+
+template <typename Geo>
+struct SWEVorticityDivergenceHeightTendencies {
+  using crd_view = typename Geo::crd_view_type;
+  using coriolis_type = typename std::conditional<
+    std::is_same<Geo, PlaneGeometry>::value, CoriolisBetaPlane,
+      CoriolisSphere>::type;
   scalar_view_type dzeta; /// [out] vorticity tendency
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type dh; /// [out] depth tendency
-  PlaneGeometry::crd_view_type x; /// [in] physical coordinates
+  crd_view x; /// [in] physical coordinates
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergence
   scalar_view_type h; /// [in] depth
   scalar_view_type ddot; /// [in] double dot product
   scalar_view_type laps; /// [in] surface Laplacian
-  CoriolisBetaPlane coriolis; /// [in] Coriolis functor
+  coriolis_type coriolis; /// [in] Coriolis functor
   Real g; /// [in] gravity
   Real dt; /// [in] time step size
 
-  PlanarSWEVorticityDivergenceHeightTendencies(scalar_view_type& dzeta,
+  SWEVorticityDivergenceHeightTendencies(scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& dh,
-    const typename PlaneGeometry::crd_view_type& x,
+    const crd_view& x,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type h, const scalar_view_type ddot,
     const scalar_view_type laps,
-    const CoriolisBetaPlane& cor, const Real g,
+    const coriolis_type& cor, const Real g,
     const Real dt) :
     dzeta(dzeta),
     dsigma(dsigma),
@@ -539,36 +807,41 @@ struct PlanarSWEVorticityDivergenceHeightTendencies {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    const auto xy = Kokkos::subview(x, i, Kokkos::ALL);
-    const Real f = coriolis.f(xy);
-    dzeta(i) = (-coriolis.dfdt(xy) + (zeta(i) + f) * sigma(i))*dt;
+    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    const Real f = coriolis.f(xi);
+    dzeta(i) = (-coriolis.dfdt(xi) + (zeta(i) + f) * sigma(i))*dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i))*dt;
     dh(i) = (-sigma(i) * h(i))*dt;
   }
 };
 
-struct PlanarSWEVorticityDivergenceAreaTendencies {
+template <typename Geo>
+struct SWEVorticityDivergenceAreaTendencies {
+  using crd_view = typename Geo::crd_view_type;
+  using coriolis_type = typename std::conditional<
+    std::is_same<Geo, PlaneGeometry>::value, CoriolisBetaPlane,
+      CoriolisSphere>::type;
   scalar_view_type dzeta; /// [out] vorticity tendency
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type darea; /// [out] area tendency
-  typename PlaneGeometry::crd_view_type& x; /// [in] physical coordinates
+  crd_view x; /// [in] physical coordinates
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergences
   scalar_view_type area; /// [in] areas
   scalar_view_type ddot; /// [in] double dot product
   scalar_view_type laps; /// [in] surface Laplacian
-  CoriolisBetaPlane coriolis; /// [in] Coriolis functor
+  coriolis_type coriolis; /// [in] Coriolis functor
   Real g; /// [in] gravity
   Real dt; /// [in] time step size
 
-  PlanarSWEVorticityDivergenceAreaTendencies(
+  SWEVorticityDivergenceAreaTendencies(
     scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& darea,
-    typename PlaneGeometry::crd_view_type& x,
+    const crd_view& x,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type area, const scalar_view_type ddot,
     const scalar_view_type laps,
-    const CoriolisBetaPlane& cor, const Real g, const Real dt) :
+    const coriolis_type& cor, const Real g, const Real dt) :
     dzeta(dzeta),
     dsigma(dsigma),
     darea(darea),
@@ -584,9 +857,9 @@ struct PlanarSWEVorticityDivergenceAreaTendencies {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    const auto xy = Kokkos::subview(x, i, Kokkos::ALL);
-    const Real f = coriolis.f(xy);
-    dzeta(i) = (-coriolis.dfdt(xy) + (zeta(i) + f) * sigma(i)) * dt;
+    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    const Real f = coriolis.f(xi);
+    dzeta(i) = (-coriolis.dfdt(xi) + (zeta(i) + f) * sigma(i)) * dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i)) * dt;
     darea(i) = (sigma(i) * area(i)) * dt;
   }
@@ -609,8 +882,8 @@ struct SetSurfaceFromDepth {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    const auto mx = Kokkos::subview(x, i, Kokkos::ALL);
-    b(i) = topo(mx);
+    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    b(i) = topo(xi);
     s(i) = h(i) + b(i);
   }
 };
@@ -642,8 +915,8 @@ struct SetDepthAndSurfaceFromMassAndArea {
   void operator() (const Index i) const {
     if (!mask(i)) {
       h(i) = m(i) / area(i);
-      const auto mx = Kokkos::subview(x, i, Kokkos::ALL);
-      b(i) = topo(mx);
+      const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+      b(i) = topo(xi);
       s(i) = b(i) + h(i);
     }
   }

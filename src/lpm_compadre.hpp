@@ -63,6 +63,9 @@ struct Neighborhoods {
   Neighborhoods(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params);
 
+  Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
+                const Params& params);
+
   KOKKOS_INLINE_FUNCTION
   Real min_radius() const { return r_min; }
 
@@ -77,6 +80,10 @@ struct Neighborhoods {
 
   void update_neighbors(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params,
+                const bool verbose=false);
+
+  void update_neighbors(const host_crd_view host_colloc_src_tgt_crds,
+                const Params& params,
                 const bool verbose=false);
 
   struct RadiusReducer {

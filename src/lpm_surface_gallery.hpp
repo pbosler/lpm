@@ -2,6 +2,7 @@
 #define LPM_SURFACE_GALLERY_HPP
 
 #include "LpmConfig.h"
+#include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 
 namespace Lpm {
@@ -80,14 +81,61 @@ struct PlanarGaussianSurfacePerturbation {
   }
 };
 
+/** Topography functor for a flat bottom
+*/
 struct ZeroBottom {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real operator() (const CV x) {return 0;}
+  Real operator() (const CV x) const {return 0;}
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real laplacian(const CV x) {return 0;}
+  Real laplacian(const CV x) const {return 0;}
+};
+
+/** Surface functor for uniform depth
+*/
+struct UniformDepthSurface {
+  Real H0;
+
+  KOKKOS_INLINE_FUNCTION
+  explicit UniformDepthSurface(const Real h0=1) : H0(h0) {}
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Real operator() (const CV x) const {return H0;}
+};
+
+struct SphereTestCase2InitialSurface {
+  static constexpr Real h0 = 10;
+  static constexpr Real g = 1.0;
+  static constexpr Real u0 = 2*constants::PI / 12;
+  static constexpr Real term2 = 2*constants::PI * u0 + 0.5*u0*u0;
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    const Real result = h0 - (term2 *  square(xyz[2]))/g;
+    LPM_KERNEL_ASSERT(result > 0);
+    return result;
+  }
+};
+
+struct SphereTestCase5Bottom {
+  static constexpr Real h_mtn = 1E-4;
+  static constexpr Real r_mtn = constants::PI/9;
+  static constexpr Real r_mtn2 = r_mtn*r_mtn;
+  static constexpr Real lambda_ctr = 1.5*constants::PI;
+  static constexpr Real theta_ctr = constants::PI/6;
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    const Real lambda = SphereGeometry::longitude(xyz);
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real ll_dist_sq = square(lambda - lambda_ctr) + square(theta - theta_ctr);
+    const Real r = (r_mtn2 < ll_dist_sq ? r_mtn : sqrt(ll_dist_sq));
+    return h_mtn * (1 - r / r_mtn);
+  }
 };
 
 }  // namespace Lpm

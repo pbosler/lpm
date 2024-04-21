@@ -11,7 +11,7 @@ else ()
   set (DEFAULT_MAX_THREADS 16)
 endif ()
 
-set (LPM_TEST_MAX_RANKS 4 CACHE STRING "Max number of ranks for tests")
+set (LPM_TEST_MAX_RANKS 2 CACHE STRING "Max number of ranks for tests")
 set (LPM_TEST_MAX_THREADS ${DEFAULT_MAX_THREADS} CACHE STRING "Max number of threads for tests")
 set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
 
@@ -74,6 +74,8 @@ CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 CreateUnitTest(test_stub lpm_test_stub.cpp)
 
 CreateUnitTest(input_test lpm_input_test.cpp)
+
+CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp)
 
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)

@@ -393,6 +393,20 @@ struct LatitudeTracer {
   }
 };
 
+template <typename Geo>
+struct FtleTracer {
+  typedef Geo geo;
+
+  KOKKOS_INLINE_FUNCTION
+  FtleTracer() = default;
+
+  inline std::string name() const {return "FtleTracer";}
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& x) const {return 1;}
+};
+
 struct SphereXYZTrigTracer {
   typedef SphereGeometry geo;
 
