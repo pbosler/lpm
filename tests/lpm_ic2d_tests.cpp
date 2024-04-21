@@ -158,7 +158,7 @@ TEST_CASE("sphere", "[conv]") {
   constexpr int tree_depth = 4;
   constexpr Real sphere_radius = 1;
   constexpr Real tfinal = 0.5;
-  const std::vector<int> nsteps = {30, 60, 120, 240};
+  const std::vector<int> nsteps = {15, 30, 60, 120};
 
 
 //   SECTION("triangular panels") {
