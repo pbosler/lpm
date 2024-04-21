@@ -47,13 +47,16 @@ class Incompressible2D {
 
   public:  // functions
 
-    Incompressible2D(const PolyMeshParameters<SeedType>& mesh_params, const Coriolis& coriolis, const Real velocity_eps, const std::vector<std::string>& tracers = std::vector<std::string>());
+    Incompressible2D(const PolyMeshParameters<SeedType>& mesh_params, const Coriolis& coriolis, const Real velocity_eps); //, const std::vector<std::string>& tracers = std::vector<std::string>());
 
     void update_host();
     void update_device();
 
     template <typename VorticityType>
     void init_vorticity(const VorticityType& vorticity);
+
+    template <typename TracerType>
+    void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
     void init_direct_sums();
 

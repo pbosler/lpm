@@ -5,6 +5,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_incompressible2d.hpp"
 #include "lpm_incompressible2d_kernels.hpp"
+#include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -12,7 +13,7 @@
 namespace Lpm {
 
 template <typename SeedType>
-Incompressible2D<SeedType>::Incompressible2D(const PolyMeshParameters<SeedType>& mesh_params, const Coriolis& coriolis, const Real velocity_eps, const std::vector<std::string>& tracers) :
+Incompressible2D<SeedType>::Incompressible2D(const PolyMeshParameters<SeedType>& mesh_params, const Coriolis& coriolis, const Real velocity_eps) : //, const std::vector<std::string>& tracers) :
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
   rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
   abs_vort_passive("absolute_vorticity", mesh_params.nmaxverts),
@@ -26,10 +27,10 @@ Incompressible2D<SeedType>::Incompressible2D(const PolyMeshParameters<SeedType>&
   t(0),
   eps(velocity_eps)
 {
-  for (int k=0; k<tracers.size(); ++k) {
-    tracer_passive.emplace(tracers[k], ScalarField<VertexField>(tracers[k], mesh_params.nmaxverts));
-    tracer_active.emplace(tracers[k], ScalarField<FaceField>(tracers[k], mesh_params.nmaxfaces));
-  }
+//   for (int k=0; k<tracers.size(); ++k) {
+//     tracer_passive.emplace(tracers[k], ScalarField<VertexField>(tracers[k], mesh_params.nmaxverts));
+//     tracer_active.emplace(tracers[k], ScalarField<FaceField>(tracers[k], mesh_params.nmaxfaces));
+//   }
 }
 
 template <typename SeedType>
@@ -91,6 +92,41 @@ void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity) 
       relvort_view(i) = zeta;
       absvort_view(i) = zeta + cor.f(mcrd);
     });
+}
+
+template <typename SeedType> template <typename TracerType>
+void Incompressible2D<SeedType>::init_tracer(const TracerType& tracer, const std::string& tname) {
+  static_assert(std::is_same<typename SeedType::geo,
+      typename TracerType::geo>::value, "Geometry types must match.");
+
+  const std::string name = (tname.empty() ? tracer.name() : tname);
+  tracer_passive.emplace(name,
+    ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name,
+    ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+
+  if constexpr (std::is_same<TracerType,
+    FtleTracer<typename SeedType::geo>>::value) {
+    Kokkos::deep_copy(tracer_passive.at(name).view, 1);
+    Kokkos::deep_copy(tracer_active.at(name).view, 1);
+  }
+  else {
+    auto tracer_view = tracer_passive.at(name).view;
+    auto lag_crd_view = mesh.vertices.lag_crds.view;
+    Kokkos::parallel_for(mesh.n_vertices_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto mcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+        tracer_view(i) = tracer(mcrd);
+      });
+
+    tracer_view = tracer_active.at(name).view;
+    lag_crd_view = mesh.faces.lag_crds.view;
+    Kokkos::parallel_for(mesh.n_faces_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto mcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+        tracer_view(i) = tracer(mcrd);
+      });
+  }
 }
 
 template <typename SeedType>

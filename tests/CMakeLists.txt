@@ -75,6 +75,8 @@ CreateUnitTest(test_stub lpm_test_stub.cpp)
 
 CreateUnitTest(input_test lpm_input_test.cpp)
 
+CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp)
+
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
 endif()

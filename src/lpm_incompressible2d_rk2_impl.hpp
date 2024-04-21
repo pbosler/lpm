@@ -76,7 +76,7 @@ void Incompressible2DRK2<SeedType>::advance_timestep_impl() {
   Kokkos::parallel_for("Incompressible2DRK2-1 velocity, passive",
     *passive_policy,
     Incompressible2DPassiveSums<geo>(ic2d.velocity_passive.view,
-      ic2d.stream_fn_passsive.view,
+      ic2d.stream_fn_passive.view,
       passive_xwork,
       active_xwork,
       active_rel_vortwork,
@@ -110,14 +110,16 @@ void Incompressible2DRK2<SeedType>::advance_timestep_impl() {
       ic2d.velocity_active.view, ic2d.coriolis));
 
   // rk2 update to next time
-  KokkosBlas::update(0.5, passive_rel_vort1, 0.5, passive_rel_vort2, 1, ic2d.rel_vort_passive.view);
-  KokkosBlas::update(0.5, active_rel_vort1, 0.5, active_rel_vort2, 1, ic2d.rel_vort_active.view);
+  KokkosBlas::update(0.5 * dt, passive_rel_vort1, 0.5 * dt, passive_rel_vort2,
+    1, ic2d.rel_vort_passive.view);
+  KokkosBlas::update(0.5 * dt, active_rel_vort1, 0.5 * dt, active_rel_vort2,
+    1, ic2d.rel_vort_active.view);
   KokkosBlas::update(0.5, passive_x1, 0.5, passive_x2, 1, ic2d.mesh.vertices.phys_crds.view);
   KokkosBlas::update(0.5, active_x1, 0.5, active_x2, 1, ic2d.mesh.faces.phys_crds.view);
 
   Kokkos::parallel_for(*passive_policy,
     Incompressible2DPassiveSums<geo>(ic2d.velocity_passive.view,
-      ic2d.stream_fn_passsive.view,
+      ic2d.stream_fn_passive.view,
       ic2d.mesh.vertices.phys_crds.view,
       ic2d.mesh.faces.phys_crds.view,
       ic2d.rel_vort_active.view,
