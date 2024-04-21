@@ -252,6 +252,54 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
   }
 }
 
+/**
+
+  index 0 : u
+  index 1 : v
+  index 2 : w
+  index 3 : du/dx
+  index 4 : du/dy
+  index 5 : du/dz
+  index 6 : dv/dx
+  index 7 : dv/dy
+  index 8 : dv/dz
+  index 9 : dw/dx
+  index 10: dw/dy
+  index 11: dw/dz
+*/
+template <typename XType, typename YType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
+  const YType& src_y,
+  const Real& src_zeta,
+  const Real& src_sigma,
+  const Real& src_area,
+  const Real& eps) {
+  Kokkos::Tuple<Real,12> result;
+  // compute the velocity contribution from vorticity interaction
+  // between target particle x and source particle y
+  Real vel[3];
+  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
+  // sum in the velocity contribution from dilatation interaction
+  // between target particle x and source particle y
+  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
+  for (int k=0; k<3; ++k) {
+    result[k] = vel[k];
+  }
+  // compute the solenoidal velocity gradient contributions
+  Real gkz[9];
+  grad_kzeta(gkz, tgt_x, src_y, eps);
+  // compute the irrotational velocity gradient contributions
+  Real gks[9];
+  grad_ksigma(gks, tgt_x, src_y, eps);
+  const Real rot_str = src_zeta * src_area;
+  const Real pot_str = src_sigma * src_area;
+  for (int k=0; k<9; ++k) {
+    result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
+  }
+  return result;
+}
+
 /** Evaluates the RHS terms for the planar shallow water equations
   using Particle Strength Exchange (PSE) to compute the Laplacian
   of the fluid surface.
@@ -567,9 +615,10 @@ struct SphereVertexSums {
     const scalar_view_type& fa, const mask_view_type& fm,
     const Real eps, const Index nf, const bool do_velocity) :
     vert_u(vu),
+    vert_ddot(vdd),
     vert_x(vx),
     face_y(fy),
-    face_z(fz),
+    face_zeta(fz),
     face_sigma(fs),
     face_area(fa),
     face_mask(fm),
@@ -583,7 +632,7 @@ struct SphereVertexSums {
 
     Kokkos::Tuple<Real, 12> sums;
     constexpr bool collocated = false;
-    Kokkos::parallel_for(Kokkos::TeamThreadRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
       SphereSweDirectSumReducer(vert_x, i, face_y, collocated, face_zeta,
         face_sigma, face_area, face_mask, eps), sums);
 
@@ -704,13 +753,13 @@ struct SphereFaceSums {
         face_sigma, face_area, face_mask, eps), sums);
     if (do_velocity) {
       for (int k = 0; k<3; ++k) {
-        vert_u(i,k) = sums[k];
+        face_u(i,k) = sums[k];
       }
     }
-    vert_ddot(i) = 0;
+    face_ddot(i) = 0;
     for (int ii=0; ii<3; ++ii) {
       for (int jj=0; jj<3; ++jj) {
-        vert_ddot(i) += sums[3 + 3*ii+jj] * sums[3 + 3*jj+ii];
+        face_ddot(i) += sums[3 + 3*ii+jj] * sums[3 + 3*jj+ii];
       }
     }
   }
@@ -873,50 +922,7 @@ struct SetDepthAndSurfaceFromMassAndArea {
   }
 };
 
-/**
 
-  index 0 : u
-  index 1 : v
-  index 2 : w
-  index 3 : du/dx
-  index 4 : du/dy
-  index 5 : du/dz
-  index 6 : dv/dx
-  index 7 : dv/dy
-  index 8 : dv/dz
-  index 9 : dw/dx
-  index 10: dw/dy
-  index 11: dw/dz
-*/
-template <typename XType, typename YType>
-KOKKOS_INLINE_FUNCTION
-Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
-  const YType& src_y,
-  const Real& src_zeta,
-  const Real& src_sigma,
-  const Real& src_area,
-  const Real& eps) {
-  Kokkos::Tuple<Real,12> result;
-  // compute the velocity contribution from vorticity interaction
-  // between target particle x and source particle y
-  Real vel[3];
-  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
-  // sum in the velocity contribution from dilatation interaction
-  // between target particle x and source particle y
-  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
-  // compute the solenoidal velocity gradient contributions
-  Real gkz[9];
-  grad_kzeta(gkz, tgt_x, src_y, eps);
-  // compute the irrotational velocity gradient contributions
-  Real gks[9];
-  grad_ksigma(gks, tgt_x, src_y, eps);
-  const Real rot_str = src_zeta * src_area;
-  const Real pot_str = src_sigma * src_area;
-  for (int k=0; k<9; ++k) {
-    result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
-  }
-  return result;
-}
 
 } // namespace Lpm
 

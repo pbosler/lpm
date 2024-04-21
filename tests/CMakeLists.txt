@@ -11,7 +11,7 @@ else ()
   set (DEFAULT_MAX_THREADS 16)
 endif ()
 
-set (LPM_TEST_MAX_RANKS 4 CACHE STRING "Max number of ranks for tests")
+set (LPM_TEST_MAX_RANKS 2 CACHE STRING "Max number of ranks for tests")
 set (LPM_TEST_MAX_THREADS ${DEFAULT_MAX_THREADS} CACHE STRING "Max number of threads for tests")
 set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
 

@@ -1,5 +1,5 @@
-#ifndef LPM_HEADER_HPP
-#define LPM_HEADER_HPP
+#ifndef LPM_INPUT_HPP
+#define LPM_INPUT_HPP
 
 #include "LpmConfig.h"
 

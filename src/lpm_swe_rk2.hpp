@@ -75,8 +75,10 @@ class SWERK2 {
     std::unique_ptr<Kokkos::TeamPolicy<>> passive_policy;
     std::unique_ptr<Kokkos::TeamPolicy<>> active_policy;
 
-    std::map<std::string, ScalarField<VertexField>> passive_field_map;
-    std::map<std::string, ScalarField<FaceField>> active_field_map;
+    std::map<std::string, ScalarField<VertexField>> passive_field_map_gather;
+    std::map<std::string, ScalarField<FaceField>> active_field_map_gather;
+    std::map<std::string, ScalarField<VertexField>> passive_field_map_scatter;
+    std::map<std::string, ScalarField<FaceField>> active_field_map_scatter;
 
     std::vector<Compadre::TargetOperation> gmls_ops;
 };

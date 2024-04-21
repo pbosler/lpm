@@ -106,7 +106,7 @@ struct UniformDepthSurface {
 };
 
 struct SphereTestCase2InitialSurface {
-  static constexpr Real h0 = 1;
+  static constexpr Real h0 = 10;
   static constexpr Real g = 1.0;
   static constexpr Real u0 = 2*constants::PI / 12;
   static constexpr Real term2 = 2*constants::PI * u0 + 0.5*u0*u0;

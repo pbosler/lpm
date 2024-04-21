@@ -360,7 +360,7 @@ struct SphereGeometry {
     \return \f$c = a \times b \f$
   */
   template <typename V, typename CV, typename CV2>
-  KOKKOS_INLINE_FUNCTION static void cross(V c, const CV a, const CV2 b) {
+  KOKKOS_INLINE_FUNCTION static void cross(V& c, const CV& a, const CV2& b) {
     c[0] = a[1] * b[2] - a[2] * b[1];
     c[1] = a[2] * b[0] - a[0] * b[2];
     c[2] = a[0] * b[1] - a[1] * b[0];
@@ -450,9 +450,9 @@ struct SphereGeometry {
   template <typename CV, typename CV2>
   KOKKOS_INLINE_FUNCTION static Real distance(const CV a, const CV2 b) {
     Real cp[3];
-    cross<Real*, CV>(cp, a, b);
+    cross(cp, a, b);
     const Real dp = dot(a, b);
-    return std::atan2(mag<Real*>(cp), dp);
+    return std::atan2(mag(cp), dp);
   }
 
   /**\brief  Computes the squared Euclidean distance between two points on the

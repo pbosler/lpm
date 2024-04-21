@@ -346,6 +346,31 @@ void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
         mesh.n_faces_host(),
         do_velocity));
   }
+  else {
+    if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+      Kokkos::parallel_for("init direct sums, passive",
+        vertex_policy,
+        SphereVertexSums(velocity_passive.view, double_dot_passive.view,
+          mesh.vertices.lag_crds.view,
+          mesh.faces.lag_crds.view,
+          rel_vort_active.view,
+          div_active.view,
+          mesh.faces.area,
+          mesh.faces.mask,
+          eps, mesh.n_faces_host(),
+          do_velocity));
+
+      Kokkos::parallel_for("init direct sums, active",
+        face_policy,
+        SphereFaceSums(velocity_active.view, double_dot_active.view,
+          mesh.faces.lag_crds.view,
+          rel_vort_active.view,
+          div_active.view,
+          mesh.faces.area,
+          mesh.faces.mask,
+          eps, mesh.n_faces_host(), do_velocity));
+    }
+  }
 }
 
 template <typename SeedType>

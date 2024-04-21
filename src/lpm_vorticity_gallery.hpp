@@ -86,6 +86,15 @@ struct GaussianVortexSphere {
     return zeta;
   }
 
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& xyz) const {
+    const Real distsq = 2*(1.0 - xyz[0] * xyz_ctr[0] - xyz[1] * xyz_ctr[1] - xyz[2] * xyz_ctr[2]);
+    const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
+           gauss_const;
+    return zeta;
+  }
+
   Real operator()(const Real& x, const Real& y) const { return 0; }
 
   inline std::string name() const { return "SphericalGaussianVortex"; }

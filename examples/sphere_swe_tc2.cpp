@@ -112,6 +112,7 @@ int main (int argc, char* argv[]) {
     constexpr bool do_velocity = true;
     sphere->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
       pse_type::epsilon(sphere->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
+
     sphere->init_direct_sums(do_velocity);
 
     // setup time stepper
@@ -122,7 +123,7 @@ int main (int argc, char* argv[]) {
 
     logger.info("mesh initialized");
     constexpr int tabs = 0;
-    constexpr bool verbose = true;
+    constexpr bool verbose = false;
     logger.info(sphere->info_string(tabs, verbose));
 
 #ifdef LPM_USE_VTK

@@ -31,18 +31,18 @@ SWERK2<SeedType,TopoType>::SWERK2(const Real timestep, SWE<SeedType>& swe, TopoT
   passive_depth1("passive_depth1", swe.mesh.n_vertices_host()),
   passive_depth2("passive_depth2", swe.mesh.n_vertices_host()),
   passive_depthwork("passive_depthwork", swe.mesh.n_vertices_host()),
-  active_x1("active_x1", swe.mesh.n_vertices_host()),
-  active_x2("active_x2", swe.mesh.n_vertices_host()),
-  active_xwork("active_xwork", swe.mesh.n_vertices_host()),
-  active_rel_vort1("active_rel_vort1", swe.mesh.n_vertices_host()),
-  active_rel_vort2("active_rel_vort2", swe.mesh.n_vertices_host()),
-  active_rel_vortwork("active_rel_vortwork", swe.mesh.n_vertices_host()),
-  active_div1("active_div1", swe.mesh.n_vertices_host()),
-  active_div2("active_div2", swe.mesh.n_vertices_host()),
-  active_divwork("active_divwork", swe.mesh.n_vertices_host()),
-  active_area1("active_area1", swe.mesh.n_vertices_host()),
-  active_area2("active_area2", swe.mesh.n_vertices_host()),
-  active_areawork("active_areawork", swe.mesh.n_vertices_host())
+  active_x1("active_x1", swe.mesh.n_faces_host()),
+  active_x2("active_x2", swe.mesh.n_faces_host()),
+  active_xwork("active_xwork", swe.mesh.n_faces_host()),
+  active_rel_vort1("active_rel_vort1", swe.mesh.n_faces_host()),
+  active_rel_vort2("active_rel_vort2", swe.mesh.n_faces_host()),
+  active_rel_vortwork("active_rel_vortwork", swe.mesh.n_faces_host()),
+  active_div1("active_div1", swe.mesh.n_faces_host()),
+  active_div2("active_div2", swe.mesh.n_faces_host()),
+  active_divwork("active_divwork", swe.mesh.n_faces_host()),
+  active_area1("active_area1", swe.mesh.n_faces_host()),
+  active_area2("active_area2", swe.mesh.n_faces_host()),
+  active_areawork("active_areawork", swe.mesh.n_faces_host())
 {
   passive_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe.mesh.n_vertices_host(), Kokkos::AUTO());
   active_policy = std::make_unique<Kokkos::TeamPolicy<>>(swe.mesh.n_faces_host(), Kokkos::AUTO());
@@ -50,13 +50,15 @@ SWERK2<SeedType,TopoType>::SWERK2(const Real timestep, SWE<SeedType>& swe, TopoT
   gather = std::make_unique<GatherMeshData<SeedType>>(swe.mesh);
   scatter = std::make_unique<ScatterMeshData<SeedType>>(*gather, swe.mesh);
 
-  passive_field_map.emplace("surface_height", swe.surf_passive);
-  passive_field_map.emplace("surface_laplacian", swe.surf_lap_passive);
-  active_field_map.emplace("surface_height", swe.surf_active);
-  active_field_map.emplace("surface_laplacian", swe.surf_lap_active);
+  passive_field_map_gather.emplace("surface_height", swe.surf_passive);
+  passive_field_map_gather.emplace("surface_laplacian", swe.surf_lap_passive);
+  active_field_map_gather.emplace("surface_height", swe.surf_active);
+  active_field_map_gather.emplace("surface_laplacian", swe.surf_lap_active);
+  passive_field_map_scatter.emplace("surface_laplacian", swe.surf_lap_passive);
+  active_field_map_scatter.emplace("surface_laplacian", swe.surf_lap_active);
 
-  gather->init_scalar_fields(passive_field_map, active_field_map);
-  gather->gather_scalar_fields(passive_field_map, active_field_map);
+  gather->init_scalar_fields(passive_field_map_gather, active_field_map_gather);
+  gather->gather_scalar_fields(passive_field_map_gather, active_field_map_gather);
   const auto neighbors = gmls::Neighborhoods(gather->h_phys_crds,
     gmls_params);
   gmls_ops = std::vector<Compadre::TargetOperation>(
@@ -69,7 +71,7 @@ SWERK2<SeedType,TopoType>::SWERK2(const Real timestep, SWE<SeedType>& swe, TopoT
       gather->scalar_fields.at("surface_height"),
       Compadre::LaplacianOfScalarPointEvaluation,
       Compadre::PointSample);
-  scatter->scatter_fields(passive_field_map, active_field_map);
+  scatter->scatter_fields(passive_field_map_scatter, active_field_map_scatter);
 }
 
 template <typename SeedType, typename TopoType>
@@ -105,17 +107,35 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
   KokkosBlas::update(1, swe.rel_vort_active.view, 1, active_rel_vort1, 0, active_rel_vortwork);
   KokkosBlas::update(1, swe.div_active.view, 1, active_div1, 0, active_divwork);
   KokkosBlas::update(1, swe.depth_passive.view, 1, passive_depth1, 0, passive_depthwork);
-  KokkosBlas::udpate(1, swe.mesh.faces.area, 1, active_area1, 0, active_areawork);
+  KokkosBlas::update(1, swe.mesh.faces.area, 1, active_area1, 0, active_areawork);
   Kokkos::parallel_for("RK2-2 surface input, passive",
     nverts,
     SetSurfaceFromDepth<geo, TopoType>(swe.surf_passive.view, swe.bottom_passive.view,
       passive_xwork, passive_depthwork, topo));
   Kokkos::parallel_for("RK2-2 surface input, active",
     nfaces,
-    SetDepthAndSurfaceFromMassAndArea(swe.depth_active.view, swe.surf_active.view,
+    SetDepthAndSurfaceFromMassAndArea<geo,TopoType>(swe.depth_active.view, swe.surf_active.view,
       swe.bottom_active.view, active_xwork, swe.mass_active.view,
       active_areawork, swe.mesh.faces.mask, topo));
+
   if constexpr (std::is_same<geo, SphereGeometry>::value) {
+    /// update surface Laplacian
+    gather->gather_coordinates(passive_xwork, active_xwork);
+    gather->update_host();
+    gather->gather_scalar_fields(passive_field_map_gather, active_field_map_gather);
+    {
+      const auto neighbors = gmls::Neighborhoods(gather->h_phys_crds, gmls_params);
+      auto surf_gmls = gmls::sphere_scalar_gmls(gather->phys_crds, gather->phys_crds,
+        neighbors, gmls_params, gmls_ops);
+      auto eval = Compadre::Evaluator(&surf_gmls);
+      gather->scalar_fields.at("surface_laplacian") =
+        eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
+        gather->scalar_fields.at("surface_height"),
+        Compadre::LaplacianOfScalarPointEvaluation, Compadre::PointSample);
+    }
+    scatter->scatter_fields(passive_field_map_scatter, active_field_map_scatter);
+
+    /// update velocity
     Kokkos::parallel_for("RK2-2 direct sums, passive",
       *passive_policy,
       SphereVertexSums(swe.velocity_passive.view, swe.double_dot_passive.view,
@@ -127,9 +147,59 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
       SphereFaceSums(swe.velocity_active.view, swe.double_dot_active.view,
         active_xwork, active_rel_vortwork, active_divwork, active_areawork,
         swe.mesh.faces.mask, eps, nfaces, do_velocity));
-    /// update surface Laplacian
-    gather->gather_coordindates(passive_xwork, active_xwork);
+
+    Kokkos::parallel_for("RK2-2 vertex tendencies",
+    nverts,
+    SWEVorticityDivergenceHeightTendencies<geo>(
+      passive_rel_vort2, passive_div2, passive_depth2,
+      passive_xwork,
+      passive_rel_vortwork, passive_divwork, passive_depthwork,
+      swe.double_dot_passive.view, swe.surf_lap_passive.view, swe.coriolis, swe.g, dt));
+
+    Kokkos::parallel_for("RK2-2 face tendencies",
+      nfaces,
+      SWEVorticityDivergenceAreaTendencies<geo>(
+        active_rel_vort2, active_div2, active_area2,
+        active_xwork, active_rel_vortwork, active_divwork, active_areawork,
+        swe.double_dot_active.view, swe.surf_lap_active.view, swe.coriolis, swe.g, dt));
+
+    KokkosBlas::update(0.5, passive_x1, 0.5, passive_x2, 1, swe.mesh.vertices.phys_crds.view);
+    KokkosBlas::update(0.5, passive_rel_vort1, 0.5, passive_rel_vort2, 1, swe.rel_vort_passive.view);
+    KokkosBlas::update(0.5, passive_div1, 0.5, passive_div2, 1, swe.div_passive.view);
+    KokkosBlas::update(0.5, passive_depth1, 0.5, passive_depth2, 1, swe.depth_passive.view);
+    KokkosBlas::update(0.5, active_x1, 0.5, active_x2, 1, swe.mesh.faces.phys_crds.view);
+    KokkosBlas::update(0.5, active_rel_vort1, 0.5, active_rel_vort2, 1, swe.rel_vort_active.view);
+    KokkosBlas::update(0.5, active_div1, 0.5, active_div2, 1, swe.div_active.view);
+    KokkosBlas::update(0.5, active_area1, 0.5, active_area2, 1, swe.mesh.faces.area);
+
+    Kokkos::parallel_for("RK2-2 surface update, passive",
+      nverts,
+      SetSurfaceFromDepth<geo, TopoType>(swe.surf_passive.view, swe.bottom_passive.view,
+        swe.mesh.vertices.phys_crds.view, swe.depth_passive.view, topo));
+    Kokkos::parallel_for("RK2-2 surface update, active",
+      nfaces,
+      SetDepthAndSurfaceFromMassAndArea<geo,TopoType>(swe.depth_active.view, swe.surf_active.view,
+        swe.bottom_active.view, swe.mesh.faces.phys_crds.view, swe.mass_active.view,
+        swe.mesh.faces.area, swe.mesh.faces.mask, topo));
+
+    Kokkos::parallel_for("RK2-2 velocity update, passive",
+      *passive_policy,
+      SphereVertexSums(swe.velocity_passive.view, swe.double_dot_passive.view,
+          swe.mesh.vertices.phys_crds.view, swe.mesh.faces.phys_crds.view,
+          swe.rel_vort_active.view, swe.div_active.view,
+          swe.mesh.faces.area, swe.mesh.faces.mask, eps, nfaces,
+          do_velocity));
+
+    Kokkos::parallel_for("RK2-2 velocity update, active",
+      *active_policy,
+      SphereFaceSums(swe.velocity_active.view, swe.double_dot_active.view,
+        swe.mesh.faces.phys_crds.view, swe.rel_vort_active.view,
+        swe.div_active.view, swe.mesh.faces.area,
+        swe.mesh.faces.mask, eps, nfaces, do_velocity));
+
+    gather->gather_coordinates(swe.mesh.vertices.phys_crds.view, swe.mesh.faces.phys_crds.view);
     gather->update_host();
+    gather->gather_scalar_fields(passive_field_map_gather, active_field_map_gather);
     {
       const auto neighbors = gmls::Neighborhoods(gather->h_phys_crds, gmls_params);
       auto surf_gmls = gmls::sphere_scalar_gmls(gather->phys_crds, gather->phys_crds,
@@ -139,12 +209,13 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
         eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
         gather->scalar_fields.at("surface_height"),
         Compadre::LaplacianOfScalarPointEvaluation, Compadre::PointSample);
-      scatter->scatter_fields(passive_field_map, active_field_map);
     }
+    scatter->scatter_fields(passive_field_map_scatter, active_field_map_scatter);
   }
   else {
     // TODO : planar RK2 goes here
   }
+  ++t_idx;
 }
 
 template <typename SeedType, typename TopoType>
