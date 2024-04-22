@@ -91,7 +91,7 @@ target_include_directories(sphere_swe_test_case2 PUBLIC
 if (LPM_ENABLE_NETCDF)
 add_executable(sphere_from_data sphere_from_data.cpp)
 target_link_libraries(sphere_from_data PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_convergence_tests PUBLIC
+target_include_directories(sphere_from_data PUBLIC
  ${LPM_INCLUDE_DIRS}
  ${Trilinos_INCLUDE_DIRS}
  ${Trilinos_TPL_INCLUDE_DIRS}
