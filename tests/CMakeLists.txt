@@ -5,10 +5,10 @@ enable_testing()
 ###    THREADING    ###
 #######################
 
-if (LPM_USE_CUDA)
+if (LPM_USE_OPENMP)
+  set (DEFAULT_MAX_THREADS $ENV{OMP_NUM_THREADS})
+else()
   set (DEFAULT_MAX_THREADS 1)
-else ()
-  set (DEFAULT_MAX_THREADS 16)
 endif ()
 
 set (LPM_TEST_MAX_RANKS 2 CACHE STRING "Max number of ranks for tests")
@@ -51,9 +51,11 @@ CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
 
 CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
 
-CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
+CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
-CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
+CreateUnitTest(pse_unit_test lpm_pse_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
 CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
 
@@ -75,7 +77,8 @@ CreateUnitTest(test_stub lpm_test_stub.cpp)
 
 CreateUnitTest(input_test lpm_input_test.cpp)
 
-CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp)
+CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)
