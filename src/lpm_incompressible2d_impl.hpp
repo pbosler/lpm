@@ -5,6 +5,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_incompressible2d.hpp"
 #include "lpm_incompressible2d_kernels.hpp"
+#include "lpm_field_impl.hpp"
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "vtk/lpm_vtk_io.hpp"
@@ -184,6 +185,16 @@ template <typename SeedType>
 Int Incompressible2D<SeedType>::n_tracers() const {
   LPM_ASSERT(tracer_active.size() == tracer_passive.size());
   return tracer_active.size();
+}
+
+template <typename SeedType>
+std::string Incompressible2D<SeedType>::info_string(const int tab_level) const {
+  std::ostringstream ss;
+  const std::string label = "Incompressible2D<" + SeedType::id_string() + "> info:\n";
+  ss << mesh.info_string(label, tab_level);
+  ss << rel_vort_active.info_string(tab_level+1);
+  ss << velocity_active.info_string(tab_level+1);
+  return ss.str();
 }
 
 #ifdef LPM_USE_VTK

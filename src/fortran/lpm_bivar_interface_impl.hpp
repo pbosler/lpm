@@ -75,9 +75,9 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
 
     c_idbvip(md, nsrc, xin.data(), yin.data(), zin.data(), ndst, x_out.data(),
              y_out.data(), zout.data(), integer_work.data(), real_work.data());
-    md = 3;  /// Tell bivar.f90 that the input data will not change
+    md = 3;  /// Tell bivar.f90 that the source and target locations will not change
   }
-  /// todo: testing required --- is it faster to interpolate one component at a
+  /// todo: testing required --- is it faster to interpolate one component of a vector at a
   /// time, or one pair of components individually, in a loop?
   //// to start, we do one component at a time, which requires an extra deep
   ///copy
@@ -123,19 +123,45 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
 
 template <typename SeedType>
 void BivarInterface<SeedType>::interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds) {
-  Kokkos::View<Real*, Host> lag_x_out("bivar_lag_x_out", x_out.extent(0));
-  Kokkos::View<Real*, Host> lag_y_out("bivar_lag_x_out", x_out.extent(0));
+  Kokkos::View<Real*, Host> lag_x_out("bivar_lag_x_out", lcrds.extent(0));
+  Kokkos::View<Real*, Host> lag_y_out("bivar_lag_x_out", lcrds.extent(0));
 
-  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_x.data(),
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_x.data(), lcrds.extent(0),
     x_out.data(), y_out.data(), lag_x_out.data(), integer_work.data(),
     real_work.data());
-  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_y.data(),
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_y.data(), lcrds.extent(0),
     x_out.data(), y_out.data(), lag_y_out.data(), integer_work.data(),
     real_work.data());
 
-  for (int i=0; i<x_out.extent(0); ++i) {
+  for (int i=0; i<lcrds.extent(0); ++i) {
     lcrds(i, 0) = lag_x_out(i);
     lcrds(i, 1) = lag_y_out(i);
+  }
+}
+
+template <typename SeedType>
+void BivarInterface<SeedType>::interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds,
+  const Index start_idx, const Index end_idx) {
+  const Index n_tgts = end_idx - start_idx + 1;
+  Kokkos::View<Real*, Host> lag_x_out("bivar_lag_x_out", n_tgts);
+  Kokkos::View<Real*, Host> lag_y_out("bivar_lag_x_out", n_tgts);
+
+  const auto tgt_range = std::make_pair(start_idx, end_idx+1);
+  auto x_tgt = Kokkos::subview(x_out, tgt_range);
+  auto y_tgt = Kokkos::subview(y_out, tgt_range);
+
+  md = 2;
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_x.data(), n_tgts,
+    x_tgt.data(), y_tgt.data(), lag_x_out.data(), integer_work.data(),
+    real_work.data());
+  md = 3;
+  c_idbvip(md, input.n(), input.h_x.data(), input.h_y.data(), input.h_lag_y.data(), n_tgts,
+    x_tgt.data(), y_tgt.data(), lag_y_out.data(), integer_work.data(),
+    real_work.data());
+
+  for (int i=0; i<n_tgts; ++i) {
+    lcrds(start_idx + i, 0) = lag_x_out(i);
+    lcrds(start_idx + i, 1) = lag_y_out(i);
   }
 }
 

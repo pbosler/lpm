@@ -16,6 +16,7 @@ namespace Lpm {
 struct PlanarGaussian {
   typedef PlaneGeometry geo;
   static constexpr Real b = 1;
+  static constexpr bool IsVorticity = false;
 
   KOKKOS_INLINE_FUNCTION
   PlanarGaussian() = default;
@@ -38,6 +39,7 @@ struct PlanarGaussian {
 
 struct PlanarRings {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = false;
 
   KOKKOS_INLINE_FUNCTION
   PlanarRings() = default;
@@ -64,6 +66,7 @@ struct PlanarRings {
 */
 struct PlanarHump {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real x0 = 0.25;
   static constexpr Real y0 = 0.5;
   static constexpr Real r0 = 0.15;
@@ -86,6 +89,7 @@ struct PlanarHump {
 
 struct PlanarSlottedDisk {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real x0 = 0.5;
   static constexpr Real y0 = 0.75;
   static constexpr Real r0 = 0.15;
@@ -114,6 +118,7 @@ struct PlanarSlottedDisk {
 
 struct PlanarCone {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real x0 = 0.5;
   static constexpr Real y0 = 0.25;
   static constexpr Real r0 = 0.15;
@@ -138,6 +143,7 @@ struct PlanarCone {
 
 struct SphericalSlottedCylinders {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5 * constants::PI / 6;
   static constexpr Real lat2 = 0;
@@ -217,6 +223,7 @@ struct SphericalSlottedCylinders {
 
 struct SphericalCosineBells {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5 * constants::PI / 6;
   static constexpr Real lat2 = 0;
@@ -283,6 +290,7 @@ struct SphericalCosineBells {
 
 struct SphericalGaussianHills {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real lat1 = 0;
   static constexpr Real lon1 = 5 * constants::PI / 6;
   static constexpr Real lat2 = 0;
@@ -335,6 +343,7 @@ struct SphericalGaussianHills {
 
 struct MovingVorticesTracer {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
   static constexpr Real u0 = 2 * constants::PI / 12;
 
   KOKKOS_INLINE_FUNCTION
@@ -376,6 +385,7 @@ struct MovingVorticesTracer {
 
 struct LatitudeTracer {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
   KOKKOS_INLINE_FUNCTION
   LatitudeTracer() = default;
 
@@ -396,6 +406,7 @@ struct LatitudeTracer {
 template <typename Geo>
 struct FtleTracer {
   typedef Geo geo;
+  static constexpr bool IsVorticity = false;
 
   KOKKOS_INLINE_FUNCTION
   FtleTracer() = default;
@@ -409,6 +420,7 @@ struct FtleTracer {
 
 struct SphereXYZTrigTracer {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = false;
 
   KOKKOS_INLINE_FUNCTION
   SphereXYZTrigTracer() = default;

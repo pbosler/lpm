@@ -54,8 +54,8 @@ inline Real courant_number(const Real dt, const Real dlam) {
 typedef CubedSphereSeed seed_type;
 // typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
-// typedef SphericalGaussianHills tracer_type;
-typedef RossbyHaurwitz54 tracer_type;
+typedef SphericalGaussianHills tracer_type;
+// typedef RossbyHaurwitz54 tracer_type;
 
 /** @brief Collect all input values into a single struct; like a fortran
   namelist.
@@ -537,12 +537,12 @@ Input::Input(int argc, char* argv[]) {
     vtk_base_name += "var" + std::string(&buf[0], sz) + "_";
   }
   if (nsteps > 0) {
-    const char* fmt = "dt%.3f";
-    int sz = std::snprintf(nullptr, 0, fmt, dt);
-    std::vector<char> buf(sz + 1);
-    std::snprintf(&buf[0], buf.size(), fmt, dt);
-    vtk_base_name += std::string(&buf[0], sz);
-    vtk_base_name += "_rm" + std::to_string(remesh_interval) + "_";
+//     const char* fmt = "dt%.3f";
+//     int sz = std::snprintf(nullptr, 0, fmt, dt);
+//     std::vector<char> buf(sz + 1);
+//     std::snprintf(&buf[0], buf.size(), fmt, dt);
+//     vtk_base_name += std::string(&buf[0], sz);
+    vtk_base_name += dt_str(dt) + "_rm" + std::to_string(remesh_interval) + "_";
   }
 }
 

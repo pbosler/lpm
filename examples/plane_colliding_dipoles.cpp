@@ -6,11 +6,12 @@
 #include "lpm_logger.hpp"
 #include "lpm_pse.hpp"
 #include "lpm_surface_gallery.hpp"
-#include "lpm_swe.hpp"
-#include "lpm_swe_problem_gallery.hpp"
-#include "lpm_swe_impl.hpp"
-#include "lpm_swe_rk4.hpp"
-#include "lpm_swe_rk4_impl.hpp"
+#include "lpm_incompressible2d.hpp"
+#include "lpm_incompressible2d_impl.hpp"
+#include "lpm_incompressible2d_rk2.hpp"
+#include "lpm_incompressible2d_rk2_impl.hpp"
+#include "mesh/lpm_bivar_remesh.hpp"
+#include "mesh/lpm_bivar_remesh_impl.hpp"
 #include "lpm_vorticity_gallery.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
@@ -31,12 +32,9 @@ int main (int argc, char* argv[]) {
   using seed_type = QuadRectSeed; // TriHexSeed;
 
   // plane gravity wave problem setup
-  using topography_type  = ZeroBottom;
-  using init_sfc_type = UniformDepthSurface;
   using vorticity_type = CollidingDipolePairPlane;
   using coriolis_type = CoriolisBetaPlane;
   using geo = PlaneGeometry;
-  using pse_type = pse::BivariateOrder8<geo>;
 
   Kokkos::initialize(argc, argv);
   { // Kokkos scope
@@ -70,7 +68,7 @@ int main (int argc, char* argv[]) {
       user::Option output_file_directory_option("output_file_directory", "-odir", "--output-dir", "output file directory", std::string("."));
       input.add_option(output_file_directory_option);
 
-      user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("planar_dipoles"));
+      user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("colliding_dipoles"));
       input.add_option(output_file_root_option);
 
       user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
@@ -79,9 +77,6 @@ int main (int argc, char* argv[]) {
       user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
       input.add_option(kernel_smoothing_parameter_option);
 
-      user::Option pse_power_option("pse_kernel_width_power", "-pse", "--pse-kernel-width-power", "pse kernel width power",
-        11.0/20);
-      input.add_option(pse_power_option);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -107,23 +102,23 @@ int main (int argc, char* argv[]) {
 
     coriolis_type coriolis(input.get_option("f-coriolis").get_real(),
       input.get_option("beta-coriolis").get_real());
-
-    auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
+    const Real epsilon = input.get_option("kernel_smoothing_parameter").get_real();
+    auto plane = std::make_unique<Incompressible2D<seed_type>>(mesh_params, coriolis, epsilon);
 
     // set problem initial conditions
-    topography_type topo;
-    init_sfc_type sfc;
-    plane->init_surface(topo, sfc);
-    constexpr bool depth_set = true;
-    constexpr bool do_velocity = true;
     vorticity_type vorticity;
-    plane->init_vorticity(vorticity, depth_set);
-    plane->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
-      pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
-    plane->init_direct_sums(do_velocity);
+    plane->init_vorticity(vorticity);
+    plane->init_direct_sums();
 
+    const auto vel_range = plane->velocity_active.range(plane->mesh.n_faces_host());
+    const Real cr = vel_range.second * dt / plane->mesh.appx_mesh_size();
+    logger.info("velocity magnitude (min, max) = ({}, {}); approximate Courant number = {}",
+      vel_range.first, vel_range.second, cr);
     logger.info("mesh initialized");
     logger.info(plane->info_string());
+    if (cr > 0.5) {
+        logger.warn("Courant number {} may be too high.", cr);
+      }
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
@@ -141,7 +136,7 @@ int main (int argc, char* argv[]) {
 #endif
 
     // setup time stepper
-    auto solver = std::make_unique<SWERK4<seed_type, topography_type>>(dt, *plane, topo);
+    auto solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *plane);
     logger.info(solver->info_string());
 
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {

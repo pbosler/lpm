@@ -32,6 +32,7 @@ struct TotalVorticity {
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
+  static constexpr bool IsVorticity = true;
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
@@ -58,6 +59,7 @@ struct SolidBodyRotation {
 
 struct GaussianVortexSphere {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real gauss_const;
   Real vortex_strength;
   Real shape_parameter;
@@ -102,6 +104,7 @@ struct GaussianVortexSphere {
 
 struct RossbyHaurwitz54 {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real u0;
   Real rh54_amplitude;
 
@@ -166,6 +169,7 @@ Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
 
 struct CollidingDipolePairPlane {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real dipole_strengthA;
   Real dipole_radiusA;
   Kokkos::Tuple<Real, 2> xyz_ctrA;
@@ -222,6 +226,7 @@ struct CollidingDipolePairPlane {
 struct SphereTestCase2Vorticity {
   static constexpr Real sphere_radius = 1.0;
   static constexpr Real u0 = 2*constants::PI / 12;
+  static constexpr bool IsVorticity = true;
 
   KOKKOS_INLINE_FUNCTION
   SphereTestCase2Vorticity() = default;
