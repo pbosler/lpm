@@ -122,6 +122,59 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
 }
 
 template <typename SeedType>
+void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
+                                           const vfield_map& output_vectors,
+                                           const Index start_idx,
+                                           const Index end_idx) {
+  const auto n_tgts = end_idx - start_idx + 1;
+  const auto range = std::make_pair(start_idx, end_idx+1);
+  md = 2;
+  const auto xout = Kokkos::subview(x_out, range);
+  const auto yout = Kokkos::subview(y_out, range);
+  const auto nsrc = input.n();
+  const auto xin = input.h_x;
+  const auto yin = input.h_y;
+
+  for (const auto& io: scalar_in_out_map) {
+    const auto zin = input.scalar_fields.at(io.first);
+    LPM_REQUIRE_MSG(output_scalars.count(io.second) == 1,
+      "BivarInterface::interpolate error: output scalar field " +
+      io.second + " not found.");
+
+    const auto zout = Kokkos::subview(output_scalars.at(io.second), range);
+
+    c_idbvip(md, nsrc, xin.data(), yin.data(), zin.data(), n_tgts,
+      xout.data(), yout.data(), zout.data(), integer_work.data(),
+      real_work.data());
+    md = 3;
+  }
+
+  Kokkos::View<Real*, Host> vec_comp_in("bivar_vec_component_in", input.n());
+  Kokkos::View<Real*, Host> vec_comp_out("bivar_vec_component_out", n_tgts);
+  for (const auto& io : vector_in_out_map) {
+    LPM_REQUIRE_MSG(output_vectors.count(io.second) == 1,
+      "BivarInterface::interpolate error: output vector field " +
+      io.second + " not found.");
+
+    for (int j=0; j<SeedType::ndim; ++j) {
+      const auto vci = Kokkos::subview(input.h_vector_fields.at(io.first), Kokkos::ALL, j);
+      for (Index i=0; i<input.n(); ++i) {
+        vec_comp_in(i) = vci(i);
+      }
+
+      c_idbvip(md, nsrc, xin.data(), yin.data(), vec_comp_in.data(), n_tgts,
+        xout.data(), yout.data(), vec_comp_out.data(),
+        integer_work.data(), real_work.data());
+      md = 3;
+      const auto vco = Kokkos::subview(output_vectors.at(io.second), Kokkos::ALL, j);
+      for (Index i=0; i<n_tgts; ++i) {
+        vco(start_idx+i) = vec_comp_out(i);
+      }
+    }
+  }
+}
+
+template <typename SeedType>
 void BivarInterface<SeedType>::interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds) {
   Kokkos::View<Real*, Host> lag_x_out("bivar_lag_x_out", lcrds.extent(0));
   Kokkos::View<Real*, Host> lag_y_out("bivar_lag_x_out", lcrds.extent(0));

@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
+#include "mesh/lpm_bivar_remesh.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 
 #include <map>
@@ -78,6 +79,8 @@ class Incompressible2D {
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const Incompressible2D<SeedType>& ic2d);
 #endif
 
+template <typename SeedType>
+BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d, const Incompressible2D<SeedType>& old_ic2d);
 
 } // namespace Lpm
 

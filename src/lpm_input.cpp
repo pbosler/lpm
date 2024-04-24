@@ -66,7 +66,7 @@ Int Option::get_int() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad int access. " << ex.what();
+    ss << "Option: " << description << " bad int access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -79,7 +79,7 @@ bool Option::get_bool() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option:: bad bool access. " << ex.what();
+    ss << "Option: " << description << " bad bool access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -92,7 +92,7 @@ Real Option::get_real() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad real access. " << ex.what();
+    ss << "Option: " << description << " bad real access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -105,7 +105,7 @@ std::string Option::get_str() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad string access. " << ex.what();
+    ss << "Option: " << description << " bad string access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -170,8 +170,14 @@ std::string Input::info_string(const int tab_level, const bool verbose) const  {
 }
 
 void Input::add_option(const Option& default_opt) {
+  LPM_REQUIRE_MSG(short_flags.count(default_opt.short_flag) == 0,
+    "Input::add_option error: Option short flags must be unique.");
   short_flags.insert(default_opt.short_flag);
+
+  LPM_REQUIRE_MSG(long_flags.count(default_opt.long_flag) == 0,
+    "Input::add_option error: Option long flags must be unique.");
   long_flags.insert(default_opt.long_flag);
+
   options.emplace(default_opt.name, std::move(default_opt));
 }
 

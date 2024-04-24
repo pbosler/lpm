@@ -77,6 +77,8 @@ int main (int argc, char* argv[]) {
       user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
       input.add_option(kernel_smoothing_parameter_option);
 
+      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", int(1e9));
+      input.add_option(remesh_interval_option);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -118,13 +120,15 @@ int main (int argc, char* argv[]) {
     logger.info(plane->info_string());
     if (cr > 0.5) {
         logger.warn("Courant number {} may be too high.", cr);
-      }
+    }
+    const Int remesh_interval = input.get_option("remesh_interval").get_int();
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
+    const std::string remesh_str = (remesh_interval < nsteps ? "rm" + std::to_string(remesh_interval) : "no_rm");
     const std::string vtk_file_root = input.get_option("output_file_directory").get_str() +
        "/" + input.get_option("output_file_root").get_str() +
-       "_" + seed_type::id_string() + resolution_str + "_";
+       "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + "_";
     {
       plane->update_host();
       auto vtk = vtk_mesh_interface(*plane);
@@ -138,10 +142,25 @@ int main (int argc, char* argv[]) {
     // setup time stepper
     auto solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *plane);
     logger.info(solver->info_string());
+    int remesh_counter = 0;
 
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
       plane->advance_timestep(*solver);
       logger.debug("t = {}", plane->t);
+
+      if ((t_idx+1)%remesh_interval == 0) {
+        logger.debug("remesh {} triggered by remesh interval", ++remesh_counter);
+
+        auto new_plane = std::make_unique<Incompressible2D<seed_type>>(mesh_params, coriolis, epsilon);
+        auto remesh = bivar_remesh(*new_plane, *plane);
+        remesh.uniform_direct_remesh();
+
+        plane = std::move(new_plane);
+        plane->update_device();
+        auto new_solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *plane, solver->t_idx);
+        solver = std::move(new_solver);
+
+      }
 
 #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {
