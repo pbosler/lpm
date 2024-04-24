@@ -52,8 +52,8 @@ struct Incompressible2DKernels<PlaneGeometry> {
     const Real arg = PlaneGeometry::norm2(xmy) + square(eps);
     const Real denom = 2*constants::PI * arg;
     Kokkos::Tuple<Real,3> result;
-    result[0] =   xmy[1]/denom;
-    result[1] = - xmy[0]/denom;
+    result[0] = - xmy[1]/denom;
+    result[1] =   xmy[0]/denom;
     result[2] = - log(arg)/(4*constants::PI);
     return result;
   }

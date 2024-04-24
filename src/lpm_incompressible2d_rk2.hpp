@@ -30,6 +30,8 @@ class Incompressible2DRK2 {
 
   Incompressible2DRK2(const Real dt, Incompressible2D<SeedType>& ic2d);
 
+  Incompressible2DRK2(const Real dt, Incompressible2D<SeedType>& ic2d, const Index t_idx);
+
   private:
 
     crd_view passive_x1;

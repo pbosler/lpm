@@ -1,13 +1,14 @@
 #ifndef LPM_COMPADRE_HPP
 #define LPM_COMPADRE_HPP
 
-#include "Compadre_Evaluator.hpp"
-#include "Compadre_GMLS.hpp"
-#include "Compadre_Operators.hpp"
 #include "LpmConfig.h"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
+
+#include <Compadre_Evaluator.hpp>
+#include <Compadre_GMLS.hpp>
+#include <Compadre_Operators.hpp>
 
 namespace Lpm {
 namespace gmls {

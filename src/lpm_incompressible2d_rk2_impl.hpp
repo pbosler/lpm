@@ -39,6 +39,31 @@ Incompressible2DRK2<SeedType>::Incompressible2DRK2(const Real dt,
 }
 
 template <typename SeedType>
+Incompressible2DRK2<SeedType>::Incompressible2DRK2(const Real dt, Incompressible2D<SeedType>& ic2d, const Index t_idx) :
+  dt(dt),
+  ic2d(ic2d),
+  t_idx(t_idx),
+  n_passive(ic2d.mesh.n_vertices_host()),
+  n_active(ic2d.mesh.n_faces_host()),
+  eps(ic2d.eps),
+  passive_x1("passive_x1", ic2d.mesh.n_vertices_host()),
+  passive_x2("passive_x1", ic2d.mesh.n_vertices_host()),
+  passive_xwork("passive_x1", ic2d.mesh.n_vertices_host()),
+  passive_rel_vort1("passive_rel_vort1", ic2d.mesh.n_vertices_host()),
+  passive_rel_vort2("passive_rel_vort1", ic2d.mesh.n_vertices_host()),
+  passive_rel_vortwork("passive_rel_vort1", ic2d.mesh.n_vertices_host()),
+  active_x1("active_x1", ic2d.mesh.n_faces_host()),
+  active_x2("active_x1", ic2d.mesh.n_faces_host()),
+  active_xwork("active_x1", ic2d.mesh.n_faces_host()),
+  active_rel_vort1("active_rel_vort1", ic2d.mesh.n_faces_host()),
+  active_rel_vort2("active_rel_vort1", ic2d.mesh.n_faces_host()),
+  active_rel_vortwork("active_rel_vort1", ic2d.mesh.n_faces_host())
+{
+  passive_policy = std::make_unique<Kokkos::TeamPolicy<>>(ic2d.mesh.n_vertices_host(), Kokkos::AUTO());
+  active_policy = std::make_unique<Kokkos::TeamPolicy<>>(ic2d.mesh.n_faces_host(), Kokkos::AUTO());
+}
+
+template <typename SeedType>
 void Incompressible2DRK2<SeedType>::advance_timestep_impl() {
 
   // rk stage 1: position
