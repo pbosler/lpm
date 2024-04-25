@@ -1,13 +1,12 @@
 #ifndef DFS_RHS_NEW_HPP
 #define DFS_RHS_NEW_HPP
 #include <fftw3.h>
-<<<<<<< HEAD
+//<<<<<<< HEAD
 #include <omp.h>
-#include "kokkos_dfs_types.hpp"
-=======
+//=======
 
 #include "dfs_config.hpp"
->>>>>>> e05b3ae84674b7e65b32a455c624687264531a63
+//>>>>>>> e05b3ae84674b7e65b32a455c624687264531a63
 #include <KokkosBlas3_gemm.hpp>
 #include "dfs_doubling.hpp"
 
