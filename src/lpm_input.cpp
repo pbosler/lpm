@@ -12,7 +12,8 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     short_flag(sf),
     long_flag(lf),
     description(desc),
-    value{default_value} {}
+    value{default_value},
+    allowable_values() {}
 
 Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
     const double default_value) :
@@ -20,7 +21,8 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     short_flag(sf),
     long_flag(lf),
     description(desc),
-    value{default_value} {}
+    value{default_value},
+    allowable_values() {}
 
 Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
     const bool default_value) :
@@ -38,6 +40,18 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     description(desc),
     value{default_value} {}
 
+Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
+    const std::string& default_value,
+    const std::set<std::string>& allowable_values) :
+    name(name),
+    short_flag(sf),
+    long_flag(lf),
+    description(desc),
+    value{default_value},
+    allowable_values(std::move(allowable_values)) {
+        LPM_ASSERT(allowable_values.count(default_value) == 1);
+    }
+
 std::string Option::info_string(const int tab_level) const {
   std::string tab_str = indent_string(tab_level);
   std::ostringstream ss;
@@ -52,6 +66,12 @@ std::string Option::info_string(const int tab_level) const {
   }
   else if (std::holds_alternative<std::string>(value) ) {
     ss << tab_str << "value (std::string) = " << this->get_str();
+    if (!allowable_values.empty()) {
+      ss << "\n allowable_values: ";
+      for (const auto& s : allowable_values) {
+        ss << s << " ";
+      }
+    }
   }
   else if (std::holds_alternative<bool>(value) ) {
     ss << tab_str << "value (bool) = " << std::boolalpha << this->get_bool();
@@ -109,6 +129,24 @@ std::string Option::get_str() const {
     LPM_STOP(ss.str());
   }
   return val;
+}
+
+void Option::validate() const {
+  if (std::holds_alternative<std::string>(value)) {
+    if (!allowable_values.empty()) {
+      const auto val = get_str();
+      const bool is_valid = (allowable_values.count(val) == 1);
+      if (!is_valid) {
+        std::ostringstream ss;
+        ss << "Option: " << description << " has invalid value: " << val << "\n";
+        ss << "   allowable values are: ";
+        for (const auto& s : allowable_values) {
+          ss << s << " ";
+        }
+        LPM_STOP(ss.str());
+      }
+    }
+  }
 }
 
 
