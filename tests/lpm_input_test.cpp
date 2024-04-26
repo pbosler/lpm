@@ -106,5 +106,11 @@ TEST_CASE("input", "") {
     REQUIRE(input.get_option("tfinal").get_real() == Approx(1.0));
     REQUIRE(input.get_option("nsteps").get_int() == 200);
     REQUIRE(input.get_option("tree_depth").get_int() == 5);
+
+    Option duplicate_short_flag_option("duplicate_short_flag", "-i", "--duplicate-input", "duplicate input",
+      std::string("duplicate_input.txt"));
+    REQUIRE_THROWS(input.add_option(duplicate_short_flag_option));
+    Option duplicate_long_flag_option("duplicate_long_flag", "-oo", "--output", "duplicate output", std::string("duplicate_out.txt"));
+    REQUIRE_THROWS(input.add_option(duplicate_long_flag_option));
   }
 }

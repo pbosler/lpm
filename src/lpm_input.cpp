@@ -49,7 +49,8 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     description(desc),
     value{default_value},
     allowable_values(std::move(allowable_values)) {
-        LPM_ASSERT(allowable_values.count(default_value) == 1);
+        LPM_REQUIRE_MSG(allowable_values.count(default_value) == 1,
+          "Option: default value must be included in allowable values");
     }
 
 std::string Option::info_string(const int tab_level) const {
@@ -208,14 +209,20 @@ std::string Input::info_string(const int tab_level, const bool verbose) const  {
 }
 
 void Input::add_option(const Option& default_opt) {
-  LPM_REQUIRE_MSG(short_flags.count(default_opt.short_flag) == 0,
-    "Input::add_option error: Option short flags must be unique.");
+  if (short_flags.count(default_opt.short_flag) > 0) {
+    std::ostringstream ss;
+    ss << "Input::add_option error: Option short flags must be unique ("
+       << default_opt.short_flag << ")";
+    LPM_STOP(ss.str());
+  }
+  if (long_flags.count(default_opt.long_flag) > 0) {
+    std::ostringstream ss;
+    ss << "Input::add_option error: Option long flags must be unique ("
+       << default_opt.long_flag << ")";
+    LPM_STOP(ss.str());
+  }
   short_flags.insert(default_opt.short_flag);
-
-  LPM_REQUIRE_MSG(long_flags.count(default_opt.long_flag) == 0,
-    "Input::add_option error: Option long flags must be unique.");
   long_flags.insert(default_opt.long_flag);
-
   options.emplace(default_opt.name, std::move(default_opt));
 }
 

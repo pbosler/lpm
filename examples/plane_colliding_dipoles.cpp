@@ -77,8 +77,11 @@ int main (int argc, char* argv[]) {
       user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
       input.add_option(kernel_smoothing_parameter_option);
 
-      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", int(1e9));
+      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", Int(1e9));
       input.add_option(remesh_interval_option);
+
+      user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
+      input.add_option(remesh_strategy_option);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -122,10 +125,11 @@ int main (int argc, char* argv[]) {
         logger.warn("Courant number {} may be too high.", cr);
     }
     const Int remesh_interval = input.get_option("remesh_interval").get_int();
+    const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
-    const std::string remesh_str = (remesh_interval < nsteps ? "rm" + std::to_string(remesh_interval) : "no_rm");
+    const std::string remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
     const std::string vtk_file_root = input.get_option("output_file_directory").get_str() +
        "/" + input.get_option("output_file_root").get_str() +
        "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + "_";
@@ -153,7 +157,13 @@ int main (int argc, char* argv[]) {
 
         auto new_plane = std::make_unique<Incompressible2D<seed_type>>(mesh_params, coriolis, epsilon);
         auto remesh = bivar_remesh(*new_plane, *plane);
-        remesh.uniform_direct_remesh();
+
+        if (remesh_strategy == "direct") {
+          remesh.uniform_direct_remesh();
+        }
+        else {
+          remesh.uniform_indirect_remesh(vorticity, coriolis);
+        }
 
         plane = std::move(new_plane);
         plane->update_device();

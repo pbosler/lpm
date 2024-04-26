@@ -80,6 +80,28 @@ void BivarRemesh<SeedType>::uniform_direct_remesh() {
     new_vert_vectors, new_face_vectors);
 }
 
+template <typename SeedType> template <typename VorticityFunctor>
+void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
+  const CoriolisBetaPlane& coriolis) {
+  bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+  Kokkos::deep_copy(new_gather->lag_crds, new_gather->h_lag_crds);
+  auto lag_crd_view = new_gather->lag_crds;
+  auto phys_crd_view = new_gather->phys_crds;
+  auto abs_vort_view = new_gather->scalar_fields.at("absolute_vorticity");
+  auto rel_vort_view = new_gather->scalar_fields.at("relative_vorticity");
+  Kokkos::parallel_for(new_gather->n(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mpcrd = Kokkos::subview(phys_crd_view, i, Kokkos::ALL);
+      const auto mlcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+      const Real omega = vorticity(mlcrd) + coriolis.f(mlcrd);
+      abs_vort_view(i) = omega;
+      rel_vort_view(i) = omega - coriolis.f(mpcrd);
+    });
+  new_gather->update_device();
+  new_scatter->scatter_lag_crds();
+  new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+}
 
 
 

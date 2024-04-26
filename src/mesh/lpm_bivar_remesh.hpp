@@ -77,7 +77,11 @@ template <typename SeedType> struct BivarRemesh {
       or lpm_vorticity_gallery.hpp).
   */
   template <typename FunctorMapType>
-  void uniform_indirect_remesh(FunctorMapType& functor_map);
+  void uniform_indirect_remesh(const FunctorMapType& tracer_functor_map);
+
+  template <typename VorticityFunctor>
+  void uniform_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis);
 
 //
 //   template <typename FunctorMapType, typename FlagType>
