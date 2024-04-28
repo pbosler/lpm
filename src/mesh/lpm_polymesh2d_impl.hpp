@@ -122,13 +122,13 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
         n_faces_host(),
         KOKKOS_LAMBDA(const Index i, Index& s) { s += (flags(i) ? 1 : 0); },
         flag_count);
-    const Index space_left = params_.nmaxfaces - n_faces_host();
+    const Index space_left = params.nmaxfaces - n_faces_host();
 
     if (flag_count > space_left / 4) {
       logger.warn(
           "divide_flagged_faces: not enough memory (flag count = {}, nfaces = "
           "{}, nmaxfaces = {})",
-          flag_count, n_faces_host(), params_.nmaxfaces);
+          flag_count, n_faces_host(), params.nmaxfaces);
       return;
     }
     const Index n_faces_in = n_faces_host();
@@ -138,7 +138,7 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
     bool limit_reached = false;
     for (Index i = 0; i < n_faces_in; ++i) {
       if (host_flags(i)) {
-        if (faces.host_level(i) <= params_.init_depth + params_.amr_limit) {
+        if (faces.host_level(i) <= params.init_depth + params.amr_limit) {
           divide_face(i, logger);
           ++refine_count;
         } else {

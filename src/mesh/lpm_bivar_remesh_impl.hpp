@@ -3,6 +3,8 @@
 
 #include "LpmConfig.h"
 #include "lpm_bivar_remesh.hpp"
+#include "mesh/lpm_refinement.hpp"
+#include "mesh/lpm_refinement_flags.hpp"
 #include "util/lpm_stl_utils.hpp"
 
 namespace Lpm {
@@ -17,7 +19,8 @@ BivarRemesh<SeedType>::BivarRemesh(PolyMesh2d<SeedType>& new_mesh,
     const vert_scalar_field_map& old_vert_scalars,
     const face_scalar_field_map& old_face_scalars,
     const vert_vector_field_map& old_vert_vectors,
-    const face_vector_field_map& old_face_vectors) :
+    const face_vector_field_map& old_face_vectors,
+    const std::shared_ptr<spdlog::logger> login) :
     new_mesh(new_mesh),
     old_mesh(old_mesh),
     old_vert_scalars(old_vert_scalars),
@@ -27,7 +30,8 @@ BivarRemesh<SeedType>::BivarRemesh(PolyMesh2d<SeedType>& new_mesh,
     new_vert_scalars(new_vert_scalars),
     new_face_scalars(new_face_scalars),
     new_vert_vectors(new_vert_vectors),
-    new_face_vectors(new_face_vectors)
+    new_face_vectors(new_face_vectors),
+    logger(login)
   {
     old_gather = std::make_unique<GatherMeshData<SeedType>>(old_mesh);
     old_gather->unpack_coordinates();
@@ -48,6 +52,10 @@ BivarRemesh<SeedType>::BivarRemesh(PolyMesh2d<SeedType>& new_mesh,
     bivar = std::make_unique<BivarInterface<SeedType>>(*old_gather,
       new_gather->h_x, new_gather->h_y,
       scalar_in_out_map, vector_in_out_map);
+
+    if (!logger) {
+      logger = lpm_logger();
+    }
   }
 
 template <typename SeedType>
@@ -80,11 +88,84 @@ void BivarRemesh<SeedType>::uniform_direct_remesh() {
     new_vert_vectors, new_face_vectors);
 }
 
+template <typename SeedType> template <typename FlagType>
+void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+  const FlagType& flag) {
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    bivar->set_md_same_source_new_target();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather = std::make_unique<GatherMeshData<SeedType>>(new_mesh);
+    new_gather->unpack_coordinates();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+    bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
+
+    new_gather->update_device();
+
+    new_scatter = std::make_unique<ScatterMeshData<SeedType>>(*new_gather, new_mesh);
+    new_scatter->scatter_lag_crds();
+    new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
+
+template <typename SeedType> template <typename FlagType1, typename FlagType2>
+void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+  const FlagType1& flag1, const FlagType2& flag2) {
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    bivar->set_md_same_source_new_target();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather = std::make_unique<GatherMeshData<SeedType>>(new_mesh);
+    new_gather->unpack_coordinates();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+    bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
+
+    new_gather->update_device();
+
+    new_scatter = std::make_unique<ScatterMeshData<SeedType>>(*new_gather, new_mesh);
+    new_scatter->scatter_lag_crds();
+    new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
+
 template <typename SeedType> template <typename VorticityFunctor>
 void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
   const CoriolisBetaPlane& coriolis) {
   bivar->interpolate_lag_crds(new_gather->h_lag_crds);
-  Kokkos::deep_copy(new_gather->lag_crds, new_gather->h_lag_crds);
+  bivar->interpolate_vectors(new_gather->h_vector_fields);
+  new_gather->update_device();
   auto lag_crd_view = new_gather->lag_crds;
   auto phys_crd_view = new_gather->phys_crds;
   auto abs_vort_view = new_gather->scalar_fields.at("absolute_vorticity");
@@ -97,7 +178,59 @@ void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vort
       abs_vort_view(i) = omega;
       rel_vort_view(i) = omega - coriolis.f(mpcrd);
     });
+  new_scatter->scatter_lag_crds();
+  new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+}
+
+template <typename SeedType> template <typename VorticityFunctor, typename Tracer1>
+void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
+  const CoriolisBetaPlane& coriolis, const Tracer1& tracer1) {
+  bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+  bivar->interpolate_vectors(new_gather->h_vector_fields);
   new_gather->update_device();
+  auto lag_crd_view = new_gather->lag_crds;
+  auto phys_crd_view = new_gather->phys_crds;
+  auto abs_vort_view = new_gather->scalar_fields.at("absolute_vorticity");
+  auto rel_vort_view = new_gather->scalar_fields.at("relative_vorticity");
+  auto tracer_view1 = new_gather->scalar_fields.at(tracer1.name());
+  Kokkos::parallel_for(new_gather->n(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mpcrd = Kokkos::subview(phys_crd_view, i, Kokkos::ALL);
+      const auto mlcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+      const Real omega = vorticity(mlcrd) + coriolis.f(mlcrd);
+      abs_vort_view(i) = omega;
+      rel_vort_view(i) = omega - coriolis.f(mpcrd);
+      tracer_view1(i) = tracer1(mlcrd);
+    });
+  new_scatter->scatter_lag_crds();
+  new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+}
+
+template <typename SeedType> template <typename VorticityFunctor, typename Tracer1, typename Tracer2>
+void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
+  const CoriolisBetaPlane& coriolis, const Tracer1& tracer1,
+  const Tracer2& tracer2) {
+  bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+  bivar->interpolate_vectors(new_gather->h_vector_fields);
+  new_gather->update_device();
+  auto lag_crd_view = new_gather->lag_crds;
+  auto phys_crd_view = new_gather->phys_crds;
+  auto abs_vort_view = new_gather->scalar_fields.at("absolute_vorticity");
+  auto rel_vort_view = new_gather->scalar_fields.at("relative_vorticity");
+  auto tracer_view1 = new_gather->scalar_fields.at(tracer1.name());
+  auto tracer_view2 = new_gather->scalar_fields.at(tracer2.name());
+  Kokkos::parallel_for(new_gather->n(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mpcrd = Kokkos::subview(phys_crd_view, i, Kokkos::ALL);
+      const auto mlcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+      const Real omega = vorticity(mlcrd) + coriolis.f(mlcrd);
+      abs_vort_view(i) = omega;
+      rel_vort_view(i) = omega - coriolis.f(mpcrd);
+      tracer_view1(i) = tracer1(mlcrd);
+      tracer_view2(i) = tracer2(mlcrd);
+    });
   new_scatter->scatter_lag_crds();
   new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);

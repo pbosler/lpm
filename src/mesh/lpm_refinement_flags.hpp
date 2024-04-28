@@ -35,11 +35,14 @@ struct FlowMapVariationFlag {
   Real tol;
   static constexpr Int nverts = MeshSeedType::faceKind::nverts;
 
+  KOKKOS_INLINE_FUNCTION
+  FlowMapVariationFlag(const FlowMapVariationFlag& other) = default;
+
   FlowMapVariationFlag(
       flag_view f, const PolyMesh2d<MeshSeedType>& mesh,
       const Real rtol)
       : flags(f),
-        vertex_lag_crds(mesh.vertices.lag_crds.crds),
+        vertex_lag_crds(mesh.vertices.lag_crds.view),
         face_vertex_view(mesh.faces.verts),
         facemask(mesh.faces.mask),
         nfaces(mesh.n_faces_host()),
@@ -124,6 +127,9 @@ struct ScalarMaxFlag {
   Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarMaxFlag(const ScalarMaxFlag& other) = default;
+
   /** Constructor.
 
     @param [in/out] f flag_view
@@ -176,6 +182,8 @@ struct ScalarIntegralFlag {
   Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarIntegralFlag(const ScalarIntegralFlag& other) = default;
 
   ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
                      const scalar_view_type a, const mask_view_type m,
@@ -220,6 +228,9 @@ struct ScalarVariationFlag {
   Index nfaces;
   Real relative_tol;
   Real tol;
+
+  KOKKOS_INLINE_FUNCTION
+  ScalarVariationFlag(const ScalarVariationFlag& other) = default;
 
   ScalarVariationFlag(flag_view f, const scalar_view_type fv,
                       const scalar_view_type vv,

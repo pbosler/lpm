@@ -122,6 +122,39 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
 }
 
 template <typename SeedType>
+void BivarInterface<SeedType>::interpolate_vectors(const vfield_map& output_vectors) {
+
+  LPM_ASSERT_MSG( !vector_in_out_map.empty(), "BivarInterface::interpolate_vector called on empty vector in/out map.");
+  LPM_ASSERT_MSG( !output_vectors.empty(), "BivarInterface::interpolate_vector called on empty output_vector map.");
+  const Index nsrc = input.x.extent(0);
+  const Index ndst = x_out.extent(0);
+  const auto xin = input.h_x;
+  const auto yin = input.h_y;
+  Kokkos::View<Real*, Host> vec_comp_in("bivar_vec_component_in", input.n());
+  Kokkos::View<Real*, Host> vec_comp_out("bivar_vec_component_out", x_out.extent(0));
+  for (const auto& io : vector_in_out_map) {
+    LPM_REQUIRE_MSG(
+          output_vectors.count(io.second) == 1,
+          "BivarInterface::interpolate_vectors error: output vector field " +
+              io.second + " not found.");
+    for (int j=0; j<SeedType::geo::ndim; ++j) {
+      const auto vci = Kokkos::subview(input.h_vector_fields.at(io.first), Kokkos::ALL, j);
+      for (Index i=0; i<input.n(); ++i) {
+        vec_comp_in(i) = vci(i);
+      }
+      c_idbvip(md, nsrc, xin.data(), yin.data(), vec_comp_in.data(), ndst,
+        x_out.data(), y_out.data(), vec_comp_out.data(),
+        integer_work.data(), real_work.data());
+      md=3;
+      const auto vco = Kokkos::subview(output_vectors.at(io.second), Kokkos::ALL, j);
+      for (Index i=0; i<x_out.extent(0); ++i) {
+        vco(i) = vec_comp_out(i);
+      }
+    }
+  }
+}
+
+template <typename SeedType>
 void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
                                            const vfield_map& output_vectors,
                                            const Index start_idx,
@@ -173,6 +206,48 @@ void BivarInterface<SeedType>::interpolate(const sfield_map& output_scalars,
     }
   }
 }
+
+template <typename SeedType>
+void BivarInterface<SeedType>::interpolate_vectors(const vfield_map& output_vectors,
+                                                   const Index start_idx,
+                                                   const Index end_idx) {
+
+  LPM_ASSERT_MSG( !vector_in_out_map.empty(), "BivarInterface::interpolate_vector called on empty vector in/out map.");
+  LPM_ASSERT_MSG( !output_vectors.empty(), "BivarInterface::interpolate_vector called on empty output_vector map.");
+
+  const auto n_tgts = end_idx - start_idx + 1;
+  const auto range = std::make_pair(start_idx, end_idx+1);
+  md = 2;
+  const auto xout = Kokkos::subview(x_out, range);
+  const auto yout = Kokkos::subview(y_out, range);
+  const auto nsrc = input.n();
+  const auto xin = input.h_x;
+  const auto yin = input.h_y;
+
+  Kokkos::View<Real*, Host> vec_comp_in("bivar_vec_component_in", input.n());
+  Kokkos::View<Real*, Host> vec_comp_out("bivar_vec_component_out", n_tgts);
+  for (const auto& io : vector_in_out_map) {
+    LPM_REQUIRE_MSG(output_vectors.count(io.second) == 1,
+      "BivarInterface::interpolate_vectors error: output vector field " +
+      io.second + " not found.");
+    for (int j=0; j<SeedType::ndim; ++j) {
+      const auto vci = Kokkos::subview(input.h_vector_fields.at(io.first), Kokkos::ALL, j);
+      for (Index i=0; i<input.n(); ++i) {
+        vec_comp_in(i) = vci(i);
+      }
+
+      c_idbvip(md, nsrc, xin.data(), yin.data(), vec_comp_in.data(), n_tgts,
+        xout.data(), yout.data(), vec_comp_out.data(),
+        integer_work.data(), real_work.data());
+      md = 3;
+      const auto vco = Kokkos::subview(output_vectors.at(io.second), Kokkos::ALL, j);
+      for (Index i=0; i<n_tgts; ++i) {
+        vco(start_idx+i) = vec_comp_out(i);
+      }
+    }
+  }
+}
+
 
 template <typename SeedType>
 void BivarInterface<SeedType>::interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds) {

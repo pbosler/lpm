@@ -29,6 +29,7 @@ set(LPM_SOURCES
                 lpm_field.cpp
                 lpm_input.cpp
                 lpm_lat_lon_pts.cpp
+                lpm_logger.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_vertices.cpp
                 mesh/lpm_edges.cpp
