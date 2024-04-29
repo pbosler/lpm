@@ -115,7 +115,7 @@ void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner
 
     bivar.reset(new BivarInterface<SeedType>(*old_gather,
       new_gather->h_x, new_gather->h_y,
-      scalar_in_out_map, vector_in_out_map);
+      scalar_in_out_map, vector_in_out_map));
     bivar->interpolate_lag_crds(new_gather->h_lag_crds);
     bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
 
@@ -173,6 +173,50 @@ void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner
     face_start_idx = face_end_idx;
   }
 }
+
+template <typename SeedType> template <typename FlagType1, typename FlagType2, typename FlagType3>
+void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+  const FlagType1& flag1, const FlagType2& flag2, const FlagType3& flag3) {
+
+  uniform_direct_remesh();
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2, flag3);
+    logger->debug("amr iter. {}: flag1 count {}, flag2 count {}.",
+      i, refiner.count[0], refiner.count[1]);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+    new_gather->unpack_coordinates();
+    new_gather->update_host();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map));
+
+    bivar->interpolate_lag_crds(new_gather->h_lag_crds);
+    bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
+
+    new_gather->update_device();
+
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+    new_scatter->scatter_lag_crds();
+    new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
+    new_vert_vectors, new_face_vectors);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
+
 
 template <typename SeedType> template <typename VorticityFunctor>
 void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
@@ -250,7 +294,122 @@ void BivarRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vort
     new_vert_vectors, new_face_vectors);
 }
 
+template <typename SeedType>
+template <typename VorticityFunctor, typename RefinerType, typename FlagType>
+void BivarRemesh<SeedType>::adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType& flag) {
 
+  uniform_indirect_remesh(vorticity, coriolis);
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag);
+    logger->debug("amr iter. {}: flag1 count {}", i, refiner.count[0]);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+    new_gather->unpack_coordinates();
+    new_gather->update_host();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map));
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+    uniform_indirect_remesh(vorticity, coriolis);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
+
+template <typename SeedType>
+template <typename VorticityFunctor, typename RefinerType,
+          typename FlagType1, typename FlagType2>
+void BivarRemesh<SeedType>::adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag2) {
+
+  uniform_indirect_remesh(vorticity, coriolis);
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2);
+    logger->debug("amr iter. {}: flag1 count {}", i, refiner.count[0]);
+    logger->debug("amr iter. {}: flag2 count {}", i, refiner.count[1]);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+    new_gather->unpack_coordinates();
+    new_gather->update_host();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map));
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+    uniform_indirect_remesh(vorticity, coriolis);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
+
+template <typename SeedType>
+template <typename VorticityFunctor, typename RefinerType,
+          typename FlagType1, typename FlagType2, typename FlagType3>
+void BivarRemesh<SeedType>::adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag2,
+    const FlagType3& flag3) {
+
+  uniform_indirect_remesh(vorticity, coriolis);
+
+  Index vert_start_idx = 0;
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index vert_end_idx = new_mesh.n_vertices_host();
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2, flag3);
+    logger->debug("amr iter. {}: flag1 count {}", i, refiner.count[0]);
+    logger->debug("amr iter. {}: flag2 count {}", i, refiner.count[1]);
+    logger->debug("amr iter. {}: flag3 count {}", i, refiner.count[2]);
+
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+    new_gather->unpack_coordinates();
+    new_gather->update_host();
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map));
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+    uniform_indirect_remesh(vorticity, coriolis);
+
+    vert_start_idx = vert_end_idx;
+    face_start_idx = face_end_idx;
+  }
+}
 
 } // namespace Lpm
 

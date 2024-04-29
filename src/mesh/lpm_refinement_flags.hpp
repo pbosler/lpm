@@ -22,6 +22,35 @@ They do not change an existing True in that same entry.
 */
 typedef Kokkos::View<bool*> flag_view;
 
+/** Flag to make sure that adjacent faces differ by at most 1 refinement level.
+
+*/
+// TODO: as written, this likely won't work on device
+template <typename MeshSeedType>
+struct NeighborsFlag {
+  flag_view flags;
+  const PolyMesh2d<MeshSeedType>& mesh;
+
+  NeighborsFlag(flag_view f, const PolyMesh2d<MeshSeedType>& mesh) :
+    flags(f), mesh(mesh) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    Index adj_faces[MeshSeedType::nfaceverts * LPM_MAX_AMR_LIMIT];
+    Int n_adj;
+    mesh.ccw_adjacent_faces(adj_faces, n_adj, i);
+    const Int m_lev = mesh.faces.level(i);
+    bool refine_i = false;
+    for (int j=0; j<n_adj; ++j) {
+      if (mesh.faces.level(adj_faces[j]) > m_lev + 1) {
+        refine_i = true;
+        break;
+      }
+    }
+    flags(i) = (flags(i) or refine_i);
+  }
+};
+
 template <typename MeshSeedType>
 struct FlowMapVariationFlag {
   typedef typename MeshSeedType::geo::crd_view_type crd_view_type;

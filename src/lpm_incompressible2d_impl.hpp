@@ -73,35 +73,37 @@ void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity) 
     0, mesh.n_faces_host());
 }
 
-template <typename SeedType> template <typename VorticityType>
-void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity,
-  const Index vert_start_idx, const Index vert_end_idx,
-  const Index face_start_idx, const Index face_end_idx) {
-  auto crds = mesh.vertices.phys_crds.view;
-  auto relvort_view = rel_vort_passive.view;
-  auto absvort_view = abs_vort_passive.view;
-  auto cor = coriolis;
-
-  Kokkos::parallel_for("Incompressible2D::init_vorticity, passive",
-    Kokkos::RangePolicy(vert_start_idx, vert_end_idx),
-    KOKKOS_LAMBDA (const Index i) {
-      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
-      const Real zeta = vorticity(mcrd);
-      relvort_view(i) = zeta;
-      absvort_view(i) = zeta + cor.f(mcrd);
-    });
-  crds = mesh.faces.phys_crds.view;
-  relvort_view = rel_vort_active.view;
-  absvort_view = abs_vort_active.view;
-  Kokkos::parallel_for("Incompressible2D::init_vorticity, active",
-    Kokkos::RangePolicy(face_start_idx, face_end_idx),
-    KOKKOS_LAMBDA (const Index i) {
-      const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
-      const Real zeta = vorticity(mcrd);
-      relvort_view(i) = zeta;
-      absvort_view(i) = zeta + cor.f(mcrd);
-    });
-}
+// template <typename SeedType> template <typename VorticityType>
+// void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity,
+//   const Index vert_start_idx, const Index vert_end_idx,
+//   const Index face_start_idx, const Index face_end_idx) {
+//
+//   // passive particles
+//   auto crds = mesh.vertices.phys_crds.view;
+//   auto relvort_view = rel_vort_passive.view;
+//   auto absvort_view = abs_vort_passive.view;
+//   auto cor = coriolis;
+//   Kokkos::parallel_for("Incompressible2D::init_vorticity, passive",
+//     Kokkos::RangePolicy(vert_start_idx, vert_end_idx),
+//     KOKKOS_LAMBDA (const Index i) {
+//       const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+//       const Real zeta = vorticity(mcrd);
+//       relvort_view(i) = zeta;
+//       absvort_view(i) = zeta + cor.f(mcrd);
+//     });
+//   // active particles
+//   crds = mesh.faces.phys_crds.view;
+//   relvort_view = rel_vort_active.view;
+//   absvort_view = abs_vort_active.view;
+//   Kokkos::parallel_for("Incompressible2D::init_vorticity, active",
+//     Kokkos::RangePolicy(face_start_idx, face_end_idx),
+//     KOKKOS_LAMBDA (const Index i) {
+//       const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
+//       const Real zeta = vorticity(mcrd);
+//       relvort_view(i) = zeta;
+//       absvort_view(i) = zeta + cor.f(mcrd);
+//     });
+// }
 
 template <typename SeedType> template <typename TracerType>
 void Incompressible2D<SeedType>::init_tracer(const TracerType& tracer, const std::string& tname) {

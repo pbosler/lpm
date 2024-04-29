@@ -350,6 +350,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
   }
   LPM_ASSERT(verts.nh() == verts.phys_crds.nh());
 
+#ifndef NDEBUG
   // debug: check vertex connectivity
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -357,6 +358,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
                       "TriFace::divide error: vertex connectivity");
     }
   }
+#endif
 
   /// create new interior edges
   const Index edge_ins_pt = edges.nh();

@@ -96,20 +96,27 @@ template <typename SeedType> struct BivarRemesh {
   void adaptive_direct_remesh(Refinement<SeedType>& refiner,
     const FlagType1& flag1, const FlagType2& flag2);
 
-  template <typename VorticityFunctor, typename RefinerType>
-  void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
-    const CoriolisBetaPlane& coriolis,
-    const RefinerType& refiner);
+  template <typename FlagType1, typename FlagType2, typename FlagType3>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner,
+    const FlagType1& flag1, const FlagType2& flag2, const FlagType3& flag3);
 
-  template <typename VorticityFunctor, typename RefinerType, typename Tracer1>
+  template <typename VorticityFunctor, typename RefinerType, typename FlagType>
   void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisBetaPlane& coriolis,
-    const RefinerType& refiner, const Tracer1& tracer1);
+    RefinerType& refiner, const FlagType& flag);
 
-  template <typename VorticityFunctor, typename RefinerType, typename Tracer1, typename Tracer2>
+  template <typename VorticityFunctor, typename RefinerType,
+    typename FlagType1, typename FlagType2>
   void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisBetaPlane& coriolis,
-    const RefinerType& refiner, const Tracer1& tracer1, const Tracer2& tracer2);
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag);
+
+  template <typename VorticityFunctor, typename RefinerType,
+    typename FlagType1, typename FlagType2, typename FlagType3>
+  void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag,
+    const FlagType3& flag3);
 
   protected:
     std::unique_ptr<BivarInterface<SeedType>> bivar;

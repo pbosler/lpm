@@ -76,6 +76,9 @@ int main (int argc, char* argv[]) {
       user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
       input.add_option(max_circulation_option);
 
+      user::Option vorticity_variation_option("vorticity_variation_tol", "-z", "--zeta-variation", "amr max relative vorticity variation tolerance", std::numeric_limits<Real>::max());
+      input.add_option(vorticity_variation_option);
+
       user::Option flow_map_variation_option("flow_map_variation_tol", "-fv", "--flow-map-variation", "amr max flow map variation tolerance", std::numeric_limits<Real>::max());
       input.add_option(flow_map_variation_option);
 
@@ -126,9 +129,11 @@ int main (int argc, char* argv[]) {
       amr_buffer, amr_limit);
     Real max_circ_tol = input.get_option("max_circulation_tol").get_real();
     Real flow_map_var_tol = input.get_option("flow_map_variation_tol").get_real();
+    Real zeta_var_tol = input.get_option("vorticity_variation_tol").get_real();
     const bool amr = (mesh_params.amr_limit > 0 and
-                      (max_circ_tol < 0.5 * std::numeric_limits<Real>::max() or
-                       flow_map_var_tol < 0.5* std::numeric_limits<Real>::max() ));
+                      ( (max_circ_tol < 0.5 * std::numeric_limits<Real>::max() or
+                         flow_map_var_tol < 0.5* std::numeric_limits<Real>::max()) or
+                         zeta_var_tol < 0.5*std::numeric_limits<Real>::max()));
 
     coriolis_type coriolis(input.get_option("f-coriolis").get_real(),
       input.get_option("beta-coriolis").get_real());
@@ -151,27 +156,40 @@ int main (int argc, char* argv[]) {
         refiner.flags,
         plane->mesh,
         flow_map_var_tol);
+      ScalarVariationFlag zeta_var_flag(refiner.flags,
+        plane->rel_vort_active.view,
+        plane->rel_vort_passive.view,
+        plane->mesh.faces.verts,
+        plane->mesh.faces.mask,
+        plane->mesh.n_faces_host(),
+        zeta_var_tol);
+
 
       max_circulation_flag.set_tol_from_relative_value();
       max_circ_tol = max_circulation_flag.tol;
       flow_map_variation_flag.set_tol_from_relative_value();
       flow_map_var_tol = flow_map_variation_flag.tol;
+      zeta_var_flag.set_tol_from_relative_value();
+      zeta_var_tol = zeta_var_flag.tol;
 
-      logger.info("amr is enabled with limit {}, max_circ_tol = {}, and flow_map_var_tol = {}",  mesh_params.amr_limit, max_circ_tol, flow_map_var_tol);
+      logger.info("amr is enabled with limit {}, max_circ_tol = {}, flow_map_var_tol = {}, zeta_var_tol = {}",  mesh_params.amr_limit, max_circ_tol, flow_map_var_tol, zeta_var_tol);
 
       Index vert_start_idx = 0;
       Index face_start_idx = 0;
       for (int i=0; i<amr_limit; ++i) {
         const Index vert_end_idx = plane->mesh.n_vertices_host();
         const Index face_end_idx = plane->mesh.n_faces_host();
-        refiner.iterate(face_start_idx, face_end_idx, max_circulation_flag);
+        refiner.iterate(face_start_idx, face_end_idx, max_circulation_flag, zeta_var_flag);
 
         logger.info("amr iteration {}: initial circulation refinement count = {}",
           i, refiner.count[0]);
+        logger.info("amr iteration {}: vorticity variation refinement count = {}",
+          i, refiner.count[1]);
 
         plane->mesh.divide_flagged_faces(refiner.flags, logger);
-        plane->init_vorticity(vorticity, vert_start_idx, vert_end_idx,
-          face_start_idx, face_end_idx);
+//         plane->init_vorticity(vorticity, vert_start_idx, vert_end_idx,
+//           face_start_idx, face_end_idx);
+        plane->init_vorticity(vorticity);
 
         plane->update_device();
 
@@ -186,10 +204,9 @@ int main (int argc, char* argv[]) {
 
     const auto vel_range = plane->velocity_active.range(plane->mesh.n_faces_host());
     const Real cr = vel_range.second * dt / plane->mesh.appx_min_mesh_size();
+    logger.info(plane->info_string());
     logger.info("velocity magnitude (min, max) = ({}, {}); approximate Courant number = {}",
       vel_range.first, vel_range.second, cr);
-    logger.info("mesh initialized");
-    logger.info(plane->info_string());
     if (cr > 0.5) {
         logger.warn("Courant number {} may be too high.", cr);
     }
@@ -199,11 +216,15 @@ int main (int argc, char* argv[]) {
 #ifdef LPM_USE_VTK
     std::string amr_str = "_";
     if (amr) {
+      amr_str = "amr" + std::to_string(amr_limit) + "_";
       if (max_circ_tol < 1) {
         amr_str += "gamma_tol" + float_str(max_circ_tol);
       }
       if (flow_map_var_tol < 10) {
         amr_str += "_fmap_tol" + float_str(flow_map_var_tol);
+      }
+      if (zeta_var_tol < 1) {
+        amr_str += "_zeta_var" + float_str(zeta_var_tol);
       }
       amr_str += "_";
     }
@@ -238,24 +259,32 @@ int main (int argc, char* argv[]) {
         auto remesh = bivar_remesh(*new_plane, *plane);
 
         if (amr) {
+          Refinement<seed_type> refiner(new_plane->mesh);
+          ScalarIntegralFlag max_circulation_flag(refiner.flags,
+            new_plane->rel_vort_active.view,
+            new_plane->mesh.faces.area,
+            new_plane->mesh.faces.mask,
+            new_plane->mesh.n_faces_host(),
+            max_circ_tol);
+
+          FlowMapVariationFlag<seed_type> flow_map_variation_flag(
+            refiner.flags,
+            new_plane->mesh,
+            flow_map_var_tol);
+
+          ScalarVariationFlag zeta_var_flag(refiner.flags,
+            new_plane->rel_vort_active.view,
+            new_plane->rel_vort_passive.view,
+            new_plane->mesh.faces.verts,
+            new_plane->mesh.faces.mask,
+            new_plane->mesh.n_faces_host(),
+            zeta_var_tol);
+
           if (remesh_strategy == "direct") {
-            Refinement<seed_type> refiner(new_plane->mesh);
-            ScalarIntegralFlag max_circulation_flag(refiner.flags,
-              new_plane->rel_vort_active.view,
-              new_plane->mesh.faces.area,
-              new_plane->mesh.faces.mask,
-              new_plane->mesh.n_faces_host(),
-              max_circ_tol);
-
-            FlowMapVariationFlag<seed_type> flow_map_variation_flag(
-              refiner.flags,
-              new_plane->mesh,
-              flow_map_var_tol);
-
-            remesh.adaptive_direct_remesh(refiner, max_circulation_flag, flow_map_variation_flag);
-
+            remesh.adaptive_direct_remesh(refiner, max_circulation_flag, zeta_var_flag, flow_map_variation_flag);
           }
           else {
+            remesh.adaptive_indirect_remesh(vorticity, coriolis, refiner, zeta_var_flag, max_circulation_flag, flow_map_variation_flag);
           }
         }
         else {

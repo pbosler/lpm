@@ -159,8 +159,7 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
       logger.info("divide_flagged_faces: {} faces divided.", refine_count);
     }
   }
-
-
+}  // namespace Lpm
 #endif
 
-}  // namespace Lpm
+
