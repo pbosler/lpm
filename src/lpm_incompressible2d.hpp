@@ -57,10 +57,10 @@ class Incompressible2D {
     template <typename VorticityType>
     void init_vorticity(const VorticityType& vorticity);
 
-//     template <typename VorticityType>
-//     void init_vorticity(const VorticityType& vorticity,
-//       const Index vert_start_idx, const Index vert_end_idx,
-//       const Index face_start_idx, const Index face_end_idx);
+    template <typename VorticityType>
+    void init_vorticity(const VorticityType& vorticity,
+      const Index vert_start_idx, const Index vert_end_idx,
+      const Index face_start_idx, const Index face_end_idx);
 
     template <typename TracerType>
     void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
