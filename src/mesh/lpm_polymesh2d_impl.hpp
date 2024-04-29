@@ -124,6 +124,8 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
         flag_count);
     const Index space_left = params.nmaxfaces - n_faces_host();
 
+    logger.debug("dividing {} flagged faces...", flag_count);
+
     if (flag_count > space_left / 4) {
       logger.warn(
           "divide_flagged_faces: not enough memory (flag count = {}, nfaces = "
@@ -146,6 +148,7 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
         }
       }
     }
+    faces.scan_leaves();
     if (limit_reached) {
       logger.warn(
           "divide_flagged_faces: local refinement limit reached; divided {} of "

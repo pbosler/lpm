@@ -33,7 +33,8 @@ int main (int argc, char* argv[]) {
 
   // compile-time settings
   // mesh seed
-  using seed_type = QuadRectSeed; // TriHexSeed;
+  using seed_type = QuadRectSeed;
+//   using seed_type = TriHexSeed;
 
   // plane gravity wave problem setup
   using vorticity_type = CollidingDipolePairPlane;
@@ -72,10 +73,10 @@ int main (int argc, char* argv[]) {
       user::Option amr_both_option("amr_both", "-amr", "--amr-both", "both amr buffer and limit values", LPM_NULL_IDX);
       input.add_option(amr_both_option);
 
-      user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", 0.0);
+      user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
       input.add_option(max_circulation_option);
 
-      user::Option flow_map_variation_option("flow_map_variation_tol", "-fv", "--flow-map-variation", "amr max flow map variation tolerance", 0.0);
+      user::Option flow_map_variation_option("flow_map_variation_tol", "-fv", "--flow-map-variation", "amr max flow map variation tolerance", std::numeric_limits<Real>::max());
       input.add_option(flow_map_variation_option);
 
       user::Option output_file_directory_option("output_file_directory", "-odir", "--output-dir", "output file directory", std::string("."));
@@ -90,7 +91,7 @@ int main (int argc, char* argv[]) {
       user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
       input.add_option(kernel_smoothing_parameter_option);
 
-      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", Int(1e9));
+      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
       input.add_option(remesh_interval_option);
 
       user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
@@ -126,7 +127,8 @@ int main (int argc, char* argv[]) {
     Real max_circ_tol = input.get_option("max_circulation_tol").get_real();
     Real flow_map_var_tol = input.get_option("flow_map_variation_tol").get_real();
     const bool amr = (mesh_params.amr_limit > 0 and
-                      (max_circ_tol > 0 or flow_map_var_tol > 0));
+                      (max_circ_tol < 0.5 * std::numeric_limits<Real>::max() or
+                       flow_map_var_tol < 0.5* std::numeric_limits<Real>::max() ));
 
     coriolis_type coriolis(input.get_option("f-coriolis").get_real(),
       input.get_option("beta-coriolis").get_real());
@@ -171,6 +173,8 @@ int main (int argc, char* argv[]) {
         plane->init_vorticity(vorticity, vert_start_idx, vert_end_idx,
           face_start_idx, face_end_idx);
 
+        plane->update_device();
+
         vert_start_idx = vert_end_idx;
         face_start_idx = face_end_idx;
       }
@@ -195,9 +199,15 @@ int main (int argc, char* argv[]) {
 #ifdef LPM_USE_VTK
     std::string amr_str = "_";
     if (amr) {
-      amr_str += "gamma_tol" + float_str(max_circ_tol) + "_fmap_tol" + float_str(flow_map_var_tol) + "_";
+      if (max_circ_tol < 1) {
+        amr_str += "gamma_tol" + float_str(max_circ_tol);
+      }
+      if (flow_map_var_tol < 10) {
+        amr_str += "_fmap_tol" + float_str(flow_map_var_tol);
+      }
+      amr_str += "_";
     }
-    const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
+    const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int()) + dt_str(dt);
     const std::string remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
     const std::string vtk_file_root = input.get_option("output_file_directory").get_str() +
        "/" + input.get_option("output_file_root").get_str() +
@@ -229,16 +239,17 @@ int main (int argc, char* argv[]) {
 
         if (amr) {
           if (remesh_strategy == "direct") {
-            Refinement<seed_type> refiner(plane->mesh);
+            Refinement<seed_type> refiner(new_plane->mesh);
             ScalarIntegralFlag max_circulation_flag(refiner.flags,
-              plane->rel_vort_active.view,
-              plane->mesh.faces.area,
-              plane->mesh.faces.mask,
-              plane->mesh.n_faces_host(),
+              new_plane->rel_vort_active.view,
+              new_plane->mesh.faces.area,
+              new_plane->mesh.faces.mask,
+              new_plane->mesh.n_faces_host(),
               max_circ_tol);
+
             FlowMapVariationFlag<seed_type> flow_map_variation_flag(
               refiner.flags,
-              plane->mesh,
+              new_plane->mesh,
               flow_map_var_tol);
 
             remesh.adaptive_direct_remesh(refiner, max_circulation_flag, flow_map_variation_flag);

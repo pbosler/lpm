@@ -56,6 +56,8 @@ BivarRemesh<SeedType>::BivarRemesh(PolyMesh2d<SeedType>& new_mesh,
     if (!logger) {
       logger = lpm_logger();
     }
+//     logger->debug("old_gather info: {}", old_gather->info_string());
+//     logger->debug("new_gather info: {}", new_gather->info_string());
   }
 
 template <typename SeedType>
@@ -86,11 +88,15 @@ void BivarRemesh<SeedType>::uniform_direct_remesh() {
   new_scatter->scatter_lag_crds();
   new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);
+
+  logger->debug("uniform direct remesh complete.");
 }
 
 template <typename SeedType> template <typename FlagType>
 void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
   const FlagType& flag) {
+
+  uniform_direct_remesh();
 
   Index vert_start_idx = 0;
   Index face_start_idx = 0;
@@ -98,23 +104,24 @@ void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner
     const Index vert_end_idx = new_mesh.n_vertices_host();
     const Index face_end_idx = new_mesh.n_faces_host();
 
-    bivar->set_md_same_source_new_target();
-
     refiner.iterate(face_start_idx, face_end_idx, flag);
-
     new_mesh.divide_flagged_faces(refiner.flags, *logger);
 
-    new_gather = std::make_unique<GatherMeshData<SeedType>>(new_mesh);
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
     new_gather->unpack_coordinates();
+    new_gather->update_host();
     new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
     new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
 
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map);
     bivar->interpolate_lag_crds(new_gather->h_lag_crds);
     bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
 
     new_gather->update_device();
 
-    new_scatter = std::make_unique<ScatterMeshData<SeedType>>(*new_gather, new_mesh);
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
     new_scatter->scatter_lag_crds();
     new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);
@@ -128,29 +135,36 @@ template <typename SeedType> template <typename FlagType1, typename FlagType2>
 void BivarRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
   const FlagType1& flag1, const FlagType2& flag2) {
 
+  uniform_direct_remesh();
+
   Index vert_start_idx = 0;
   Index face_start_idx = 0;
   for (int i=0; i<new_mesh.params.amr_limit; ++i) {
     const Index vert_end_idx = new_mesh.n_vertices_host();
     const Index face_end_idx = new_mesh.n_faces_host();
 
-    bivar->set_md_same_source_new_target();
-
     refiner.iterate(face_start_idx, face_end_idx, flag1, flag2);
+    logger->debug("amr iter. {}: flag1 count {}, flag2 count {}.",
+      i, refiner.count[0], refiner.count[1]);
 
     new_mesh.divide_flagged_faces(refiner.flags, *logger);
 
-    new_gather = std::make_unique<GatherMeshData<SeedType>>(new_mesh);
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
     new_gather->unpack_coordinates();
+    new_gather->update_host();
     new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
     new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+
+    bivar.reset(new BivarInterface<SeedType>(*old_gather,
+      new_gather->h_x, new_gather->h_y,
+      scalar_in_out_map, vector_in_out_map));
 
     bivar->interpolate_lag_crds(new_gather->h_lag_crds);
     bivar->interpolate(new_gather->h_scalar_fields, new_gather->h_vector_fields);
 
     new_gather->update_device();
 
-    new_scatter = std::make_unique<ScatterMeshData<SeedType>>(*new_gather, new_mesh);
+    new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
     new_scatter->scatter_lag_crds();
     new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);

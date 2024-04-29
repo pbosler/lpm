@@ -47,7 +47,9 @@ struct FlowMapVariationFlag {
         facemask(mesh.faces.mask),
         nfaces(mesh.n_faces_host()),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) {
+          LPM_ASSERT(rtol > 0);
+        }
 
   std::string description() const {
     return "FlowMapVariationFlag";
@@ -142,7 +144,7 @@ struct ScalarMaxFlag {
     const mask_view_type m, const Index n, const Real rtol) :
     flags(f), face_vals(fv), facemask(m), nfaces(n),
     relative_tol(rtol),
-    tol(rtol) {}
+    tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   /** Reset tolerance to absolute (not relative) values.  Should be
     called before using this functor to flag panels.
@@ -191,7 +193,7 @@ struct ScalarIntegralFlag {
                      const Real rtol)
       : flags(f), face_vals(fv), area(a), facemask(m), nfaces(n),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;
@@ -244,7 +246,7 @@ struct ScalarVariationFlag {
         facemask(m),
         nfaces(n),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;
