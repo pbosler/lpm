@@ -10,6 +10,11 @@
 namespace Lpm {
 
 /** @brief Evaluates the Biot-Savart kernel in the plane.
+
+    @param [out] u velocity contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] eps velocity smoothing parameter
 */
 template <typename UType, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void kzeta_plane(
@@ -24,6 +29,11 @@ KOKKOS_INLINE_FUNCTION void kzeta_plane(
 }
 
 /** @brief Evaluates the velocity potential kernel in the plane.
+
+    @param [out] u velocity contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] eps velocity smoothing parameter
 */
 template <typename UType, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void ksigma_plane(
@@ -37,6 +47,15 @@ KOKKOS_INLINE_FUNCTION void ksigma_plane(
   u[1] =  (x[0] - y[0]) / denom;
 }
 
+/** @brief Biot-Savart kernel for the sphere
+
+    @param [out] u velocity contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] vort_y relative vorticity at y
+    @param [in] area_y area weight of panel y
+    @param [in] eps kernel smoothing parameter
+*/
 template <typename UType, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void
 kzeta_sphere(UType &u, const XType &x, const YType &y, const Real vort_y,
@@ -51,6 +70,15 @@ kzeta_sphere(UType &u, const XType &x, const YType &y, const Real vort_y,
   }
 }
 
+/** @brief gradient of the potential kernel for the sphere
+
+    @param [out] u velocity contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] div_y divergence of velocity at y
+    @param [in] area_y area weight of panel y
+    @param [in] eps kernel smoothing parameter
+*/
 template <typename UType, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void
 ksigma_sphere(UType &u, const XType &x, const YType &y, const Real div_y,
@@ -70,6 +98,13 @@ ksigma_sphere(UType &u, const XType &x, const YType &y, const Real div_y,
   }
 }
 
+/** @brief Gradient of the Biot-Savart kernel (a 2-tensor)
+
+    @param [out] gkz contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] eps kernel smoothing parameter
+*/
 template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_kzeta(Compressed3by3 &gkz, const XType &x,
                                        const YType &y, const Real eps = 0) {
@@ -107,6 +142,14 @@ KOKKOS_INLINE_FUNCTION void grad_kzeta(Compressed3by3 &gkz, const XType &x,
   }
 }
 
+
+/** @brief Computes the double dot product sum, given
+  the gradient of velocity tensor
+
+    @param [in] mat a 1d array of size 9 containing the packed (row-major)
+                    entries of the velocity gradient matrix, @f$ \nabla \vec u  @f$
+    @return @f$ \nabla \vec{u} : \nabla \vec{u}^T @f$
+*/
 template <typename Compressed3by3>
 KOKKOS_INLINE_FUNCTION
 Real double_dot(const Compressed3by3& mat) {
@@ -121,6 +164,13 @@ Real double_dot(const Compressed3by3& mat) {
   return result;
 }
 
+/** @brief Gradient of the velocity potential kernel (a 2-tensor)
+
+    @param [out] gks contribution from source y on target x
+    @param [in] x target point
+    @param [in] y source point
+    @param [in] eps kernel smoothing parameter
+*/
 template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
                                         const YType &y, const Real eps = 0) {
@@ -252,7 +302,9 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
   }
 }
 
-/**
+/** Computes the direct sums for spherical velocity in a shallow water problem
+
+  The output tuple is packed with the following entries:
 
   index 0 : u
   index 1 : v
@@ -266,6 +318,14 @@ KOKKOS_INLINE_FUNCTION void grad_ksigma(Compressed3by3 &gks, const XType &x,
   index 9 : dw/dx
   index 10: dw/dy
   index 11: dw/dz
+
+  @param [in] tgt_x target point coordinates
+  @param [in] src_y source point coordinates
+  @param [in] src_zeta vorticity at source point
+  @param [in] src_sigma divergence at source point
+  @param [in] src_area area weight of source point
+  @param [in] eps kernel smoothing parameter
+  @return packed contributions of source y on target x
 */
 template <typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
@@ -315,6 +375,17 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   index 4: dv/dx
   index 5: dv/dy
   index 6: laplacian(sfc) from PSE
+
+  @param [in] tgt_x target point coordinates
+  @param [in] src_y source point coordinates
+  @param [in] src_zeta vorticity at source point
+  @param [in] src_sigma divergence at source point
+  @param [in] src_area area weight of source point
+  @param [in] src_s surface height at source point
+  @param [in] tgt_s surface height at target point
+  @param [in] eps velocity kernel smoothing parameter
+  @param [in] pse_eps PSE kernel width parameter
+  @return packed contributions of source y on target x
 */
 template <typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
@@ -358,7 +429,14 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   return result;
 }
 
-/**
+/** Evaluates the RHS terms for the spherical shallow water equations
+  using Particle Strength Exchange (PSE) to compute the Laplacian
+  of the fluid surface.
+
+  Each call to this function computes 1 pairwise interaction, the
+  contributions of source particle y to target particle x.
+
+  Results are packed into a 13-tuple:
 
   index 0 : u
   index 1 : v
@@ -373,6 +451,17 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   index 10: dw/dy
   index 11: dw/dz
   index 12: laplacian(sfc)
+
+  @param [in] tgt_x target point coordinates
+  @param [in] src_y source point coordinates
+  @param [in] src_zeta vorticity at source point
+  @param [in] src_sigma divergence at source point
+  @param [in] src_area area weight of source point
+  @param [in] src_s surface height at source point
+  @param [in] tgt_s surface height at target point
+  @param [in] eps velocity kernel smoothing parameter
+  @param [in] pse_eps PSE kernel width parameter
+  @return packed contributions of source y on target x
 */
 template <typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
@@ -420,7 +509,7 @@ Kokkos::Tuple<Real,13> sphere_swe_sums_rhs_pse(
   return result;
 }
 
-/** @brief Customized Kokkos Reducer for planar SWE direct summation,
+/** @brief Kokkos Reducer concept for planar SWE direct summation,
   with Particle Strength Exchange for the Laplacian.
 
   This functor will be called from a Kokkos::parallel_reduce kernel.
@@ -485,6 +574,11 @@ struct PlanarSwePseDirectSumReducer {
   }
 };
 
+/** @brief Kokkos reducer concept for the spherical shallow water equations,
+  velocity sums only (no PSE)
+
+  This functor will be called from a Kokkos::parallel_reduce kernel.
+*/
 struct SphereSweDirectSumReducer {
   using crd_view = SphereGeometry::crd_view_type;
   using value_type = Kokkos::Tuple<Real,12>;
@@ -528,6 +622,9 @@ struct SphereSweDirectSumReducer {
 };
 
 /** @brief Direct sum functor for Planar SWE vertices (passive particles).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
 */
 struct PlanarSWEVertexSums {
   using vec_view = PlaneGeometry::vec_view_type;
@@ -593,6 +690,12 @@ struct PlanarSWEVertexSums {
   }
 };
 
+
+/** @brief Direct sum functor for spherical SWE vertices (passive particles).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
+*/
 struct SphereVertexSums {
   using vec_view = SphereGeometry::vec_view_type;
   using crd_view = SphereGeometry::crd_view_type;
@@ -651,6 +754,9 @@ struct SphereVertexSums {
 };
 
 /** @brief Direct sum functor for Planar SWE (active particles).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
 */
 struct PlanarSWEFaceSums {
   using vec_view = PlaneGeometry::vec_view_type;
@@ -711,6 +817,12 @@ struct PlanarSWEFaceSums {
   }
 };
 
+
+/** @brief Direct sum functor for spherical SWE (active particles).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
+*/
 struct SphereFaceSums {
   using vec_view = SphereGeometry::vec_view_type;
   using crd_view = SphereGeometry::crd_view_type;
@@ -765,9 +877,20 @@ struct SphereFaceSums {
   }
 };
 
+
+/** @brief  RHS tendencies for the shallow water equations
+  at passive particles (both planar and spherical problems)
+
+  If U is the state vector, and the SWE are written as a dynamical
+  system, dU/dt = F(U), this functor computes the RHS F, given U.
+
+  This functor will be called from a Kokkos::parallel_for, with a range
+  policy over all passive particles.
+*/
 template <typename Geo>
 struct SWEVorticityDivergenceHeightTendencies {
   using crd_view = typename Geo::crd_view_type;
+  using vec_view = typename Geo::vec_view_type;
   using coriolis_type = typename std::conditional<
     std::is_same<Geo, PlaneGeometry>::value, CoriolisBetaPlane,
       CoriolisSphere>::type;
@@ -775,6 +898,7 @@ struct SWEVorticityDivergenceHeightTendencies {
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type dh; /// [out] depth tendency
   crd_view x; /// [in] physical coordinates
+  vec_view u; /// [in] velocity
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergence
   scalar_view_type h; /// [in] depth
@@ -786,7 +910,7 @@ struct SWEVorticityDivergenceHeightTendencies {
 
   SWEVorticityDivergenceHeightTendencies(scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& dh,
-    const crd_view& x,
+    const crd_view& x, const vec_view& u,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type h, const scalar_view_type ddot,
     const scalar_view_type laps,
@@ -796,6 +920,7 @@ struct SWEVorticityDivergenceHeightTendencies {
     dsigma(dsigma),
     dh(dh),
     x(x),
+    u(u),
     zeta(zeta),
     sigma(sigma),
     h(h),
@@ -808,16 +933,28 @@ struct SWEVorticityDivergenceHeightTendencies {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
     const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
     const Real f = coriolis.f(xi);
-    dzeta(i) = (-coriolis.dfdt(xi) + (zeta(i) + f) * sigma(i))*dt;
+    dzeta(i) = (-coriolis.dfdt(ui) + (zeta(i) + f) * sigma(i))*dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i))*dt;
     dh(i) = (-sigma(i) * h(i))*dt;
   }
 };
 
+
+/** @brief  RHS tendencies for the shallow water equations
+  at active particles  (both planar and spherical problems)
+
+  If U is the state vector, and the SWE are written as a dynamical
+  system, dU/dt = F(U), this functor computes the RHS F, given U.
+
+  This functor will be called from a Kokkos::parallel_for, with a range
+  policy over all active particles.
+*/
 template <typename Geo>
 struct SWEVorticityDivergenceAreaTendencies {
   using crd_view = typename Geo::crd_view_type;
+  using vec_view = typename Geo::vec_view_type;
   using coriolis_type = typename std::conditional<
     std::is_same<Geo, PlaneGeometry>::value, CoriolisBetaPlane,
       CoriolisSphere>::type;
@@ -825,6 +962,7 @@ struct SWEVorticityDivergenceAreaTendencies {
   scalar_view_type dsigma; /// [out] divergence tendency
   scalar_view_type darea; /// [out] area tendency
   crd_view x; /// [in] physical coordinates
+  vec_view u; /// [in] velcocity
   scalar_view_type zeta; /// [in] vorticity
   scalar_view_type sigma; /// [in] divergences
   scalar_view_type area; /// [in] areas
@@ -837,7 +975,7 @@ struct SWEVorticityDivergenceAreaTendencies {
   SWEVorticityDivergenceAreaTendencies(
     scalar_view_type& dzeta,
     scalar_view_type& dsigma, scalar_view_type& darea,
-    const crd_view& x,
+    const crd_view& x, const vec_view& u,
     const scalar_view_type zeta, const scalar_view_type sigma,
     const scalar_view_type area, const scalar_view_type ddot,
     const scalar_view_type laps,
@@ -846,6 +984,7 @@ struct SWEVorticityDivergenceAreaTendencies {
     dsigma(dsigma),
     darea(darea),
     x(x),
+    u(u),
     zeta(zeta),
     sigma(sigma),
     area(area),
@@ -858,13 +997,22 @@ struct SWEVorticityDivergenceAreaTendencies {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
     const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
     const Real f = coriolis.f(xi);
-    dzeta(i) = (-coriolis.dfdt(xi) + (zeta(i) + f) * sigma(i)) * dt;
+    dzeta(i) = (-coriolis.dfdt(ui) + (zeta(i) + f) * sigma(i)) * dt;
     dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i)) * dt;
     darea(i) = (sigma(i) * area(i)) * dt;
   }
 };
 
+/** @brief  Given depth, this functor sets the surface height
+  for a bottom topography defined by TopoType.
+
+  For SWE (both planar and spherical) problems.
+
+  This functor will be called from a Kokkos::parallel_for, with a range
+  policy over all passive particles.
+*/
 template <typename Geo, typename TopoType>
 struct SetSurfaceFromDepth {
   using crd_view = typename Geo::crd_view_type;
@@ -888,6 +1036,15 @@ struct SetSurfaceFromDepth {
   }
 };
 
+
+/** @brief  Given mass and area, this functor sets the surface height
+  for a bottom topography defined by TopoType.
+
+  For SWE (both planar and spherical) problems.
+
+  This functor will be called from a Kokkos::parallel_for, with a range
+  policy over all active particles.
+*/
 template <typename Geo, typename TopoType>
 struct SetDepthAndSurfaceFromMassAndArea {
   using crd_view = typename Geo::crd_view_type;
