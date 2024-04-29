@@ -13,6 +13,26 @@
 
 namespace Lpm {
 
+template <typename Geo, typename TracerType>
+struct LagrangianTracerKernel {
+  using crd_view = typename Geo::crd_view_type;
+  scalar_view_type tracer_vals;
+  crd_view lag_crds;
+  TracerType tracer;
+
+  LagrangianTracerKernel(scalar_view_type vals, const crd_view& lcrds,
+    const TracerType& tr) :
+    tracer_vals(vals),
+    lag_crds(lcrds),
+    tracer(tr) {}
+
+    KOKKOS_INLINE_FUNCTION
+    void operator() (const Index i) const {
+      const auto mcrd = Kokkos::subview(lag_crds, i, Kokkos::ALL);
+      tracer_vals(i) = tracer(mcrd);
+    }
+};
+
 struct PlanarGaussian {
   typedef PlaneGeometry geo;
   static constexpr Real b = 1;

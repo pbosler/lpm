@@ -195,6 +195,35 @@ Real Faces<FaceKind, Geo>::surface_area_host() const {
 }
 
 template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::appx_mesh_size() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& s) {
+      if (!m(i)) {
+        s += ar(i);
+      }
+    }, result);
+  result /= _hn_leaves();
+  return sqrt(result);
+}
+
+template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::appx_min_mesh_size() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& a) {
+      if (!m(i)) {
+        a = (ar(i) < a ? ar(i) : a);
+      }
+    }, Kokkos::Min<Real>(result));
+  return sqrt(result);
+}
+
+template <typename FaceKind, typename Geo>
 std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
                                               const int& tab_level,
                                               const bool& dump_all) const {
@@ -202,8 +231,9 @@ std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
   const auto idnt = indent_string(tab_level);
   const auto bigidnt = indent_string(tab_level + 1);
   oss << idnt << "Faces " << label << " info: nh = (" << _nh()
-      << ") of nmax = " << _nmax << " in memory; " << _hn_leaves() << " leaves."
-      << std::endl;
+      << ") of nmax = " << _nmax << " in memory; " << _hn_leaves() << " leaves.\n"
+      << " appx avg mesh size = " << appx_mesh_size() << "\n"
+      << " appx min mesh size = " << appx_min_mesh_size() << "\n";
 
   if (dump_all) {
     for (Index i = 0; i < _nmax; ++i) {
@@ -320,6 +350,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
   }
   LPM_ASSERT(verts.nh() == verts.phys_crds.nh());
 
+#ifndef NDEBUG
   // debug: check vertex connectivity
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -327,6 +358,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
                       "TriFace::divide error: vertex connectivity");
     }
   }
+#endif
 
   /// create new interior edges
   const Index edge_ins_pt = edges.nh();

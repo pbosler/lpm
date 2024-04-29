@@ -50,6 +50,9 @@ class Incompressible2DRK2 {
     scalar_view_type active_rel_vort2;
     scalar_view_type active_rel_vortwork;
 
+    std::pair<Index, Index> vert_range;
+    std::pair<Index, Index> face_range;
+
     std::unique_ptr<Kokkos::TeamPolicy<>> passive_policy;
     std::unique_ptr<Kokkos::TeamPolicy<>> active_policy;
 };

@@ -60,6 +60,10 @@ struct BivarInterface final {
                    const Index start_idx,
                    const Index end_idx);
 
+  void interpolate_vectors(const vfield_map& output_vectors);
+
+  void interpolate_vectors(const vfield_map& output_vectors, const Index start, const Index end);
+
   void interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds);
 
   void interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds,

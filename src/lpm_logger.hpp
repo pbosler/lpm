@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <memory>
 
 #include "LpmConfig.h"
 #include "lpm_assert.hpp"
@@ -18,6 +19,8 @@ namespace Lpm {
 
 // expose the default logger; this is the easiest one to use
 namespace Log = spdlog;  // capitalized to avoid conflict with logarithm
+
+std::shared_ptr<spdlog::logger> lpm_logger(const Log::level::level_enum lev = Log::level::debug);
 
 /* A Logger class customized for console and file output.
 

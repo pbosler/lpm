@@ -8,6 +8,7 @@
 #include "fortran/lpm_bivar_interface_impl.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_refinement.hpp"
 #include "mesh/lpm_refinement_flags.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
@@ -59,7 +60,8 @@ template <typename SeedType> struct BivarRemesh {
      const vert_scalar_field_map& old_vert_scalars,
      const face_scalar_field_map& old_face_scalars,
      const vert_vector_field_map& old_vert_vectors,
-     const face_vector_field_map& old_face_vectors);
+     const face_vector_field_map& old_face_vectors,
+     const std::shared_ptr<spdlog::logger> login = nullptr);
 
   /** Directly interpolate all data from old mesh to new mesh without
     any spatial refinement.
@@ -68,46 +70,53 @@ template <typename SeedType> struct BivarRemesh {
 
   /** Interpolate data from old mesh to new mesh, without any
     spatial refinement.
-    Use indirect interpolation to define Lagrangian data, then
-    use direct interpolation for all other data.
+    Use indirect interpolation to define Lagrangian data.
 
     @param [in] functor_map <key, value> pairs where keys are std::strings
       naming Lagrangian scalar fields, and the values are the functors
       that define their initial data (e.g., from lpm_tracer_gallery.hpp
       or lpm_vorticity_gallery.hpp).
   */
-  template <typename FunctorMapType>
-  void uniform_indirect_remesh(FunctorMapType& functor_map);
+  template <typename VorticityFunctor>
+  void uniform_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis);
 
-//
-//   template <typename FunctorMapType, typename FlagType>
-//   void adaptive_indirect_remesh(FunctorMapType& functor_map, FlagType& flag,
-//     const vert_scalar_field_map& new_vert_scalars,
-//     const face_scalar_field_map& new_face_scalars,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, VertexField>>& new_vert_vectors,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, FaceField>>& new_face_vectors);
-//
-//   template <typename FunctorMapType, typename FlagType1, typename FlagType2>
-//   void adaptive_indirect_remesh(FunctorMapType& functor_map,
-//     FlagType1& flag1, FlagType2& flag2,
-//     const vert_scalar_field_map& new_vert_scalars,
-//     const face_scalar_field_map& new_face_scalars,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, VertexField>>& new_vert_vectors,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, FaceField>>& new_face_vectors);
-//
-//   template <typename FunctorMapType, typename FlagType1, typename FlagType2, typename FlagType3>
-//   void adaptive_indirect_remesh(FunctorMapType& functor_map,
-//     FlagType1& flag1, FlagType2& flag2, FlagType3& flag3,
-//     const vert_scalar_field_map& new_vert_scalars,
-//     const face_scalar_field_map& new_face_scalars,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, VertexField>>& new_vert_vectors,
-//     const std::map<std::string,
-//       VectorField<PlaneGeometry, FaceField>>& new_face_vectors);
+  template <typename VorticityFunctor, typename Tracer1>
+  void uniform_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis, const Tracer1& tracer1);
+
+  template <typename VorticityFunctor, typename Tracer1, typename Tracer2>
+  void uniform_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis, const Tracer1& tracer1, const Tracer2& tracer2);
+
+  template <typename FlagType>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType& flag);
+
+  template <typename FlagType1, typename FlagType2>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner,
+    const FlagType1& flag1, const FlagType2& flag2);
+
+  template <typename FlagType1, typename FlagType2, typename FlagType3>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner,
+    const FlagType1& flag1, const FlagType2& flag2, const FlagType3& flag3);
+
+  template <typename VorticityFunctor, typename RefinerType, typename FlagType>
+  void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType& flag);
+
+  template <typename VorticityFunctor, typename RefinerType,
+    typename FlagType1, typename FlagType2>
+  void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag);
+
+  template <typename VorticityFunctor, typename RefinerType,
+    typename FlagType1, typename FlagType2, typename FlagType3>
+  void adaptive_indirect_remesh(const VorticityFunctor& vorticity,
+    const CoriolisBetaPlane& coriolis,
+    RefinerType& refiner, const FlagType1& flag1, const FlagType2& flag,
+    const FlagType3& flag3);
 
   protected:
     std::unique_ptr<BivarInterface<SeedType>> bivar;
@@ -119,6 +128,8 @@ template <typename SeedType> struct BivarRemesh {
     in_out_map vector_in_out_map;
 
     void build_in_out_maps();
+
+    std::shared_ptr<spdlog::logger> logger;
 };
 
 

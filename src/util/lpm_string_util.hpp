@@ -45,6 +45,15 @@ inline std::string dt_str(const T val, const int width = 5) {
   return ss.str();
 }
 
+template <typename T>
+inline std::string float_str(const T val, const int width = 5) {
+  static_assert(std::is_floating_point<T>::value,
+                "floating point type required.");
+  std::ostringstream ss;
+  ss << std::setprecision(width) << val;
+  return ss.str();
+}
+
 std::string rstrip(std::string str, const std::string& chars_to_strip=" \t\f\v\n\r");
 
 std::string lstrip(std::string str, const std::string& chars_to_strip=" \t\f\v\n\r");

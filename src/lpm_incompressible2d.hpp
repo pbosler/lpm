@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
+#include "lpm_logger.hpp"
 #include "mesh/lpm_bivar_remesh.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 
@@ -56,6 +57,11 @@ class Incompressible2D {
     template <typename VorticityType>
     void init_vorticity(const VorticityType& vorticity);
 
+    template <typename VorticityType>
+    void init_vorticity(const VorticityType& vorticity,
+      const Index vert_start_idx, const Index vert_end_idx,
+      const Index face_start_idx, const Index face_end_idx);
+
     template <typename TracerType>
     void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
@@ -72,6 +78,8 @@ class Incompressible2D {
     std::string info_string(const int tab_level=0) const;
 
   private:
+
+    std::shared_ptr<spdlog::logger> logger;
 };
 
 #ifdef LPM_USE_VTK

@@ -22,6 +22,35 @@ They do not change an existing True in that same entry.
 */
 typedef Kokkos::View<bool*> flag_view;
 
+/** Flag to make sure that adjacent faces differ by at most 1 refinement level.
+
+*/
+// TODO: as written, this likely won't work on device
+template <typename MeshSeedType>
+struct NeighborsFlag {
+  flag_view flags;
+  const PolyMesh2d<MeshSeedType>& mesh;
+
+  NeighborsFlag(flag_view f, const PolyMesh2d<MeshSeedType>& mesh) :
+    flags(f), mesh(mesh) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    Index adj_faces[MeshSeedType::nfaceverts * LPM_MAX_AMR_LIMIT];
+    Int n_adj;
+    mesh.ccw_adjacent_faces(adj_faces, n_adj, i);
+    const Int m_lev = mesh.faces.level(i);
+    bool refine_i = false;
+    for (int j=0; j<n_adj; ++j) {
+      if (mesh.faces.level(adj_faces[j]) > m_lev + 1) {
+        refine_i = true;
+        break;
+      }
+    }
+    flags(i) = (flags(i) or refine_i);
+  }
+};
+
 template <typename MeshSeedType>
 struct FlowMapVariationFlag {
   typedef typename MeshSeedType::geo::crd_view_type crd_view_type;
@@ -35,16 +64,21 @@ struct FlowMapVariationFlag {
   Real tol;
   static constexpr Int nverts = MeshSeedType::faceKind::nverts;
 
+  KOKKOS_INLINE_FUNCTION
+  FlowMapVariationFlag(const FlowMapVariationFlag& other) = default;
+
   FlowMapVariationFlag(
       flag_view f, const PolyMesh2d<MeshSeedType>& mesh,
       const Real rtol)
       : flags(f),
-        vertex_lag_crds(mesh.vertices.lag_crds.crds),
+        vertex_lag_crds(mesh.vertices.lag_crds.view),
         face_vertex_view(mesh.faces.verts),
         facemask(mesh.faces.mask),
         nfaces(mesh.n_faces_host()),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) {
+          LPM_ASSERT(rtol > 0);
+        }
 
   std::string description() const {
     return "FlowMapVariationFlag";
@@ -124,6 +158,9 @@ struct ScalarMaxFlag {
   Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarMaxFlag(const ScalarMaxFlag& other) = default;
+
   /** Constructor.
 
     @param [in/out] f flag_view
@@ -136,7 +173,7 @@ struct ScalarMaxFlag {
     const mask_view_type m, const Index n, const Real rtol) :
     flags(f), face_vals(fv), facemask(m), nfaces(n),
     relative_tol(rtol),
-    tol(rtol) {}
+    tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   /** Reset tolerance to absolute (not relative) values.  Should be
     called before using this functor to flag panels.
@@ -176,6 +213,8 @@ struct ScalarIntegralFlag {
   Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarIntegralFlag(const ScalarIntegralFlag& other) = default;
 
   ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
                      const scalar_view_type a, const mask_view_type m,
@@ -183,7 +222,7 @@ struct ScalarIntegralFlag {
                      const Real rtol)
       : flags(f), face_vals(fv), area(a), facemask(m), nfaces(n),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;
@@ -221,6 +260,9 @@ struct ScalarVariationFlag {
   Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarVariationFlag(const ScalarVariationFlag& other) = default;
+
   ScalarVariationFlag(flag_view f, const scalar_view_type fv,
                       const scalar_view_type vv,
                       const Kokkos::View<Index**> verts, const mask_view_type m,
@@ -233,7 +275,7 @@ struct ScalarVariationFlag {
         facemask(m),
         nfaces(n),
         relative_tol(rtol),
-        tol(rtol) {}
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;

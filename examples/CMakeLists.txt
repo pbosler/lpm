@@ -115,6 +115,17 @@ add_test(NAME bve_solid_body_rotation
 add_test(NAME sphere_transport
  COMMAND sphere_transport -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
 
+add_test(NAME colliding_dipoles_direct_unif
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -rm 1 -of 20)
+
+add_test(NAME colliding_dipoles_indirect_unif
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -rm 1 -of 20 -rs "indirect")
+
+add_test(NAME colliding_dipoles_indirect_amr
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -amr 2 -c 0.1 -rm 1 -of 20 -rs "indirect")
+
+add_test(NAME colliding_dipoles_direct_amr
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -amr 2 -c 0.1 -rm 1 -of 20)
 
 else()
   message("VTK not found. Skipping examples:

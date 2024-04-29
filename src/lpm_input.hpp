@@ -17,6 +17,7 @@ struct Option {
   std::string long_flag;
   std::string description;
   std::variant<Int, Real, bool, std::string> value;
+  std::set<std::string> allowable_values;
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
     const std::string& desc,
@@ -34,12 +35,20 @@ struct Option {
     const std::string& desc,
     const std::string& default_value);
 
+  Option(const std::string& name, const std::string& sf, const std::string& lf,
+    const std::string& desc,
+    const std::string& default_value,
+    const std::set<std::string>& allowable_values);
+
   std::string info_string(const int tab_level=0) const;
 
   template <typename T>
   void set_value(const T& val) {
     value.emplace<T>(val);
+    validate();
   }
+
+  void validate() const;
 
   Int get_int() const;
   Real get_real() const;

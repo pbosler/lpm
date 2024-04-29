@@ -412,9 +412,9 @@ class Faces {
   */
   Real surface_area_host() const;
 
-  inline Real appx_mesh_size() const {
-    return std::sqrt(surface_area_host() / _hn_leaves());
-  }
+  Real appx_mesh_size() const;
+
+  Real appx_min_mesh_size() const;
 
   Coords<Geo> phys_crds;
 
