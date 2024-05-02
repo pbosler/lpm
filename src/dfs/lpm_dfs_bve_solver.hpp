@@ -34,9 +34,13 @@ class DFSRK2 {
     rel_vort_grid(sph.rel_vort_grid.view),
     xyz_particles1("xyz_particles_stage1", sph.gathered_mesh->n()),
     xyz_particles2("xyz_particles_stage2", sph.gathered_mesh->n()),
+    xyz_particles3("xyz_particles_stage1", sph.gathered_mesh->n()),
+    xyz_particles4("xyz_particles_stage2", sph.gathered_mesh->n()),
     xyz_particles_work("xyz_particles_work", sph.gathered_mesh->n()),
     rel_vort_particles1("rel_vort_particles_stage1", sph.gathered_mesh->n()),
     rel_vort_particles2("rel_vort_particels_stage2", sph.gathered_mesh->n()),
+    rel_vort_particles3("rel_vort_particles_stage1", sph.gathered_mesh->n()),
+    rel_vort_particles4("rel_vort_particels_stage2", sph.gathered_mesh->n()),
     rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
     vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
     sphere(sph),
@@ -44,16 +48,21 @@ class DFSRK2 {
     {}
 
   void advance_timestep() ;
+  void advance_rk4_timestep();
 
   protected:
 
 
     crd_view xyz_particles1;
     crd_view xyz_particles2;
+    crd_view xyz_particles3;  
+    crd_view xyz_particles4;
     crd_view xyz_particles_work;
 
     scalar_view_type rel_vort_particles1;
     scalar_view_type rel_vort_particles2;
+    scalar_view_type rel_vort_particles3;
+    scalar_view_type rel_vort_particles4;
     scalar_view_type rel_vort_particles_work;
 
     vec_view vel_particles;

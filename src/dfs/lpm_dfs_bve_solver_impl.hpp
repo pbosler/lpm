@@ -59,6 +59,85 @@ void DFSRK2<SeedType>::advance_timestep()  {
   ++t_idx;
 }
 
+// The RK4 timestepping
+template<typename SeedType>
+void DFSRK2<SeedType>::advance_rk4_timestep() {
+
+  // rk1 stage 1: vorticity
+  Kokkos::parallel_for("rk4 stage1: vorticity", rel_vort_particles.extent(0),
+    BVEVorticityTendency(rel_vort_particles1, velocity_particles, dt, Omega));
+  // rk stage 1: positions
+  KokkosBlas::axpby(dt, velocity_particles, 0, xyz_particles1);
+
+  // input for stage 2
+  KokkosBlas::update(1, rel_vort_particles, 0.5, rel_vort_particles1, 0, rel_vort_particles_work);
+  KokkosBlas::update(1, xyz_particles, 0.5, xyz_particles1, 0, xyz_particles_work);
+
+  // rk stage 2: update vorticity on dfs grid
+  interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
+    xyz_grid, rel_vort_particles_work);
+  // rk stage 2: solve for velocity at particles
+  dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
+  // rk stage 2: vorticity
+  Kokkos::parallel_for("rk4 stage2: vorticity", rel_vort_particles.extent(0),
+    BVEVorticityTendency(rel_vort_particles2, vel_particles, dt, Omega));
+  // rk stage 2: positions
+  KokkosBlas::axpby(dt, vel_particles, 0, xyz_particles2);
+
+  // Input stage 3
+  KokkosBlas::update(1, rel_vort_particles, 0.5, rel_vort_particles2, 0, rel_vort_particles_work);
+  KokkosBlas::update(1, xyz_particles, 0.5, xyz_particles2, 0, xyz_particles_work);
+
+  // rk stage 3: update vorticity on dfs grid
+  interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
+    xyz_grid, rel_vort_particles_work);
+  // rk stage 3: solve for velocity at particles
+  dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
+  // rk stage 3: vorticity
+  Kokkos::parallel_for("rk4 stage2: vorticity", rel_vort_particles.extent(0),
+    BVEVorticityTendency(rel_vort_particles3, vel_particles, dt, Omega));
+  // rk stage 3: positions
+  KokkosBlas::axpby(dt, vel_particles, 0, xyz_particles3);
+
+  // Input stage 4
+  KokkosBlas::update(1, rel_vort_particles, 1, rel_vort_particles3, 0, rel_vort_particles_work);
+  KokkosBlas::update(1, xyz_particles, 1, xyz_particles3, 0, xyz_particles_work);
+
+  // rk stage 3: update vorticity on dfs grid
+  interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
+    xyz_grid, rel_vort_particles_work);
+  // rk stage 3: solve for velocity at particles
+  dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
+  // rk stage 3: vorticity
+  Kokkos::parallel_for("rk4 stage2: vorticity", rel_vort_particles.extent(0),
+    BVEVorticityTendency(rel_vort_particles4, vel_particles, dt, Omega));
+  // rk stage 3: positions
+  KokkosBlas::axpby(dt, vel_particles, 0, xyz_particles4);
+
+  // Rk update: updating the vorticity and particle position
+  Kokkos::parallel_for(rel_vort_particles.extent(0), [=](Int k){
+    rel_vort_particles(k) += (rel_vort_particles1(k) +
+      2*(rel_vort_particles2(k) + rel_vort_particles3(k)) + rel_vort_particles4(k))/6.0;
+
+    for(int i=0; i<3; i++)
+    {
+      xyz_particles(k,i) += (xyz_particles1(k,i) + 2*(xyz_particles2(k,i) + xyz_particles3(k,i))
+        + xyz_particles4(k,i))/6.0;
+    }
+  });
+
+  // update velocity to the particles
+  interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles,
+    xyz_grid, rel_vort_particles);
+
+  dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
+
+  sphere.rel_vort_grid.view = rel_vort_grid;
+
+  ++t_idx;
+
+}
+
 } // namespace DFS
 } // namespace Lpm
 

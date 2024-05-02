@@ -135,8 +135,10 @@ class DFSBVE {
 
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
+    template <typename SolverType>
+    void advance_rk4_timestep(SolverType& solver);
 
-#ifdef LPM_USE_VTK
+#ifdef LPM_USE_VTK 
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
 
   inline Index vtk_grid_size() {return grid.vtk_size(); }
