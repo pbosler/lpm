@@ -82,6 +82,7 @@ int main (int argc, char* argv[]) {
 
     const int nsteps = input.get_option("nsteps").get_int();
     const Real dt = input.get_option("tfinal").get_real() / nsteps;
+
     int frame_counter = 0;
     const int write_frequency = input.get_option("output_write_frequency").get_int();
     logger.info(input.info_string());
@@ -101,6 +102,8 @@ int main (int argc, char* argv[]) {
 
     auto sphere = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
     sphere->g = gravity;
+    const Real cr = constants::PI/6 * dt / sphere->mesh.appx_mesh_size();
+    logger.info("Courant number for this problem is appx. {}", cr);
 
     // set problem initial conditions
     topography_type topo;
