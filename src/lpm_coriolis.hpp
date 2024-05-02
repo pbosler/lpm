@@ -152,6 +152,9 @@ struct CoriolisBetaPlane {
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real dfdt(const PtType& uv) const {return beta * uv[1];}
+
+  KOKKOS_INLINE_FUNCTION
+  Real dfdy() const {return beta;}
 };
 
 
@@ -197,6 +200,9 @@ struct CoriolisSphere {
   */
   KOKKOS_INLINE_FUNCTION
   Real dfdt(const Real& w) const {return 2*Omega*w;}
+
+  KOKKOS_INLINE_FUNCTION
+  Real dfdy() const {return 2*Omega;}
 
   /** Evaluate Coriolis parameter time derivative for a given velocity
 
