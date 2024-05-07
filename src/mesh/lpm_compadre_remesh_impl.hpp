@@ -136,7 +136,7 @@ CompadreRemesh<SeedType>::CompadreRemesh(PolyMesh2d<SeedType>& new_mesh,
 }
 
 template <typename SeedType>
-void CompadreRemesh<SeedType>::uniform_direct_remesh() {
+void CompadreRemesh<SeedType>::interpolate_lag_crds() {
   Compadre::Evaluator scalar_eval(scalar_gmls.get());
 
   const auto lag_x_src = old_gather->lag_x;
@@ -160,6 +160,13 @@ void CompadreRemesh<SeedType>::uniform_direct_remesh() {
       lag_crds_dst(i,1) = lag_y_dst(i);
       lag_crds_dst(i,2) = lag_z_dst(i);
     });
+}
+
+template <typename SeedType>
+void CompadreRemesh<SeedType>::uniform_direct_remesh() {
+  interpolate_lag_crds();
+
+  Compadre::Evaluator scalar_eval(scalar_gmls.get());
 
   for (const auto& scalar_field : old_gather->scalar_fields) {
     const auto src_data = scalar_field.second;
@@ -190,14 +197,7 @@ template <typename SeedType> template <typename VorticityFunctor>
 void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisType& coriolis) {
 
-  Compadre::Evaluator vector_eval(vector_gmls.get());
-  const auto lag_src = old_gather->lag_crds;
-
-  new_gather->lag_crds =
-    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
-      lag_src, Compadre::VectorPointEvaluation,
-      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
-        Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  interpolate_lag_crds();
 
   auto lag_crds = new_gather->lag_crds;
   auto phys_crds = new_gather->phys_crds;
@@ -212,6 +212,17 @@ void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& v
       rel_vort(i) = omega - coriolis.f(xi);
     });
 
+  Compadre::Evaluator vector_eval(vector_gmls.get());
+  for (const auto& vector_field : old_gather->vector_fields) {
+    const auto src_data = vector_field.second;
+    new_gather->vector_fields.at(vector_field.first) =
+    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
+      src_data,
+      Compadre::VectorPointEvaluation,
+      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
+      Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  }
+
   new_scatter->scatter_lag_crds();
   new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);
@@ -223,14 +234,7 @@ template <typename SeedType> template <typename VorticityFunctor, typename Trace
 void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisType& coriolis, const Tracer1& tracer1) {
 
-  Compadre::Evaluator vector_eval(vector_gmls.get());
-  const auto lag_src = old_gather->lag_crds;
-
-  new_gather->lag_crds =
-    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
-      lag_src, Compadre::VectorPointEvaluation,
-      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
-        Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  interpolate_lag_crds();
 
   auto lag_crds = new_gather->lag_crds;
   auto phys_crds = new_gather->phys_crds;
@@ -247,6 +251,17 @@ void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& v
       tracer1_view(i) = tracer1(ai);
     });
 
+  Compadre::Evaluator vector_eval(vector_gmls.get());
+  for (const auto& vector_field : old_gather->vector_fields) {
+    const auto src_data = vector_field.second;
+    new_gather->vector_fields.at(vector_field.first) =
+    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
+      src_data,
+      Compadre::VectorPointEvaluation,
+      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
+      Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  }
+
   new_scatter->scatter_lag_crds();
   new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,
     new_vert_vectors, new_face_vectors);
@@ -258,14 +273,7 @@ template <typename SeedType> template <typename VorticityFunctor, typename Trace
 void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisType& coriolis, const Tracer1& tracer1, const Tracer2& tracer2) {
 
-  Compadre::Evaluator vector_eval(vector_gmls.get());
-  const auto lag_src = old_gather->lag_crds;
-
-  new_gather->lag_crds =
-    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
-      lag_src, Compadre::VectorPointEvaluation,
-      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
-        Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  interpolate_lag_crds();
 
   auto lag_crds = new_gather->lag_crds;
   auto phys_crds = new_gather->phys_crds;
@@ -283,6 +291,17 @@ void CompadreRemesh<SeedType>::uniform_indirect_remesh(const VorticityFunctor& v
       tracer1_view(i) = tracer1(ai);
       tracer2_view(i) = tracer2(ai);
     });
+
+  Compadre::Evaluator vector_eval(vector_gmls.get());
+  for (const auto& vector_field : old_gather->vector_fields) {
+    const auto src_data = vector_field.second;
+    new_gather->vector_fields.at(vector_field.first) =
+    vector_eval.applyAlphasToDataAllComponentsAllTargetSites<Real**,DevMemory>(
+      src_data,
+      Compadre::VectorPointEvaluation,
+      (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
+      Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample));
+  }
 
   new_scatter->scatter_lag_crds();
   new_scatter->scatter_fields(new_vert_scalars, new_face_scalars,

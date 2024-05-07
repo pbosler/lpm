@@ -138,9 +138,6 @@ int main (int argc, char* argv[]) {
     time stepping
     */
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-      sphere->advance_timestep(*solver);
-      logger.debug("t = {}", sphere->t);
-
       if ( (t_idx+1)%remesh_interval == 0 ) {
         logger.debug("remesh {} triggered by remesh interval");
 
@@ -164,7 +161,8 @@ int main (int argc, char* argv[]) {
         solver.reset(new Incompressible2DRK2<seed_type>(dt, *sphere, solver->t_idx));
       }
 
-
+      sphere->advance_timestep(*solver);
+      logger.debug("t = {}", sphere->t);
 
     #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {

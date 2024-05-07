@@ -89,6 +89,8 @@ struct CompadreRemesh {
     std::vector<Compadre::TargetOperation> scalar_gmls_ops;
     std::vector<Compadre::TargetOperation> vector_gmls_ops;
 
+    void interpolate_lag_crds();
+
     std::shared_ptr<spdlog::logger> logger;
 };
 
