@@ -66,11 +66,12 @@ namespace SpherePoisson {
     {
         Int nrows = mat.extent(0);
         Int ncols = mat.extent(1);
+        Complex val;
+        Complex valb;
 
+        val = (str=="sin") ? Complex(0,0.5) :Complex(0.5, 0.0);
+        valb = (str=="sin") ? -Complex(0,0.5) : Complex(0.5, 0.0);
          Kokkos::parallel_for("copyU",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
-      
-            Complex val = (str=="sin") ? Complex(0,0.5) :Complex(0.5, 0.0);
-            Complex valb = (str=="sin") ? -Complex(0,0.5) : Complex(0.5, 0.0);
             if(j == 0)
             {
                 res(i,j) = valb * mat(i,j);
@@ -159,8 +160,6 @@ namespace SpherePoisson {
            multi_cos(W, lhs_a);
            divide_sin(lhs_a, lhs);
             
-            
-
             // Compute component u
              multi_trig(lhs, tmp, "cos");
              multi_trig(vort, U, "sin");  //  multi_trig(vort, U, "sin")

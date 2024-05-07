@@ -9,6 +9,7 @@
 namespace Lpm {
 namespace DFS {
 
+// DFSRK2 class methods
 template <typename SeedType>
 void DFSRK2<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
@@ -59,9 +60,21 @@ void DFSRK2<SeedType>::advance_timestep()  {
   ++t_idx;
 }
 
-// The RK4 timestepping
+// DFSRK4 class methods
+
+template <typename SeedType>
+void DFSRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
+  const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
+
+  Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
+  rel_vort_grid = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
+    rel_vort_mesh, Compadre::ScalarPointEvaluation, Compadre::PointSample);
+}
+
+
 template<typename SeedType>
-void DFSRK2<SeedType>::advance_rk4_timestep() {
+void DFSRK4<SeedType>::advance_timestep() {
 
   // rk1 stage 1: vorticity
   Kokkos::parallel_for("rk4 stage1: vorticity", rel_vort_particles.extent(0),
@@ -94,7 +107,7 @@ void DFSRK2<SeedType>::advance_rk4_timestep() {
   // rk stage 3: solve for velocity at particles
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
   // rk stage 3: vorticity
-  Kokkos::parallel_for("rk4 stage2: vorticity", rel_vort_particles.extent(0),
+  Kokkos::parallel_for("rk4 stage3: vorticity", rel_vort_particles.extent(0),
     BVEVorticityTendency(rel_vort_particles3, vel_particles, dt, Omega));
   // rk stage 3: positions
   KokkosBlas::axpby(dt, vel_particles, 0, xyz_particles3);
@@ -109,7 +122,7 @@ void DFSRK2<SeedType>::advance_rk4_timestep() {
   // rk stage 3: solve for velocity at particles
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
   // rk stage 3: vorticity
-  Kokkos::parallel_for("rk4 stage2: vorticity", rel_vort_particles.extent(0),
+  Kokkos::parallel_for("rk4 stage4: vorticity", rel_vort_particles.extent(0),
     BVEVorticityTendency(rel_vort_particles4, vel_particles, dt, Omega));
   // rk stage 3: positions
   KokkosBlas::axpby(dt, vel_particles, 0, xyz_particles4);
@@ -137,6 +150,7 @@ void DFSRK2<SeedType>::advance_rk4_timestep() {
   ++t_idx;
 
 }
+
 
 } // namespace DFS
 } // namespace Lpm

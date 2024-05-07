@@ -278,25 +278,6 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
     grid_crds.get_host_crd_view(), gmls_params);
   t = solver.t_idx * solver.dt;
 }
-// 
-template <typename SeedType> template <typename SolverType>
-void DFSBVE<SeedType>::advance_rk4_timestep(SolverType& solver) {
-  solver.advance_rk4_timestep();
-  scatter_mesh->scatter_fields(passive_scalar_fields, active_scalar_fields,
-    passive_vector_fields, active_vector_fields);
-  scatter_mesh->scatter_phys_crds();
-  gathered_mesh->update_host();
-#ifndef NDEBUG
-  constexpr bool verbose_output = true;
-#else
-  constexpr bool verbose_output = false;
-#endif
-  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
-    grid_crds.get_host_crd_view(), gmls_params);
-  t = solver.t_idx * solver.dt;
-}
-//
-
 #ifdef LPM_USE_VTK
 template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const DFSBVE<SeedType>& dfs_bve) {

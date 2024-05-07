@@ -21,6 +21,7 @@ namespace Lpm {
 namespace DFS {
 
 template <typename SeedType> class DFSRK2; // fwd decl
+template <typename SeedType> class DFSRK4;
 
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
 
@@ -35,6 +36,7 @@ class DFSBVE {
   typedef SphereGeometry::crd_view_type crd_view;
   typedef SphereGeometry::vec_view_type vec_view;
   friend class DFSRK2<SeedType>;
+  friend class DFSRK4<SeedType>;
 
   public:
     /// Relative vorticity at passive particles
@@ -135,8 +137,6 @@ class DFSBVE {
 
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
-    template <typename SolverType>
-    void advance_rk4_timestep(SolverType& solver);
 
 #ifdef LPM_USE_VTK 
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
