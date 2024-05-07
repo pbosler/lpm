@@ -5,13 +5,11 @@
 #include "lpm_coriolis.hpp"
 #include "lpm_geometry.hpp"
 #include "fortran/lpm_bivar_interface.hpp"
-#include "fortran/lpm_bivar_interface_impl.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
-#include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_refinement.hpp"
 #include "mesh/lpm_refinement_flags.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
-#include "mesh/lpm_scatter_mesh_data_impl.hpp"
+
 
 #include <map>
 

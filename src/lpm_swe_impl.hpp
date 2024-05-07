@@ -80,9 +80,9 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& params, const Coriolis& c
 template <typename SeedType>
 void SWE<SeedType>::set_kernel_parameters(const Real vel_eps, const Real pse_eps) {
   LPM_ASSERT(vel_eps >= 0);
-  LPM_ASSERT(pse_eps > 0);
+//   LPM_ASSERT(pse_eps > 0);
   this->eps = vel_eps;
-  this->pse_eps = pse_eps;
+//   this->pse_eps = pse_eps;
 }
 
 template <typename SeedType>
@@ -408,6 +408,12 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
   return ss.str();
 }
 
+template <typename SeedType>
+void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {
+  tracer_passive.emplace(name, ScalarField<VertexField>(name, this->rel_vort_passive.view.extent(0)));
+  tracer_active.emplace(name, ScalarField<FaceField>(name, this->rel_vort_active.view.extent(0)));
+}
+
 #ifdef LPM_USE_VTK
   template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe) {
@@ -433,6 +439,10 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
   vtk.add_scalar_cell_data(swe.bottom_active.view);
   vtk.add_vector_cell_data(swe.velocity_active.view);
   vtk.add_scalar_cell_data(swe.mass_active.view);
+  for (const auto& tracer : swe.tracer_passive) {
+    vtk.add_scalar_point_data(tracer.second.view, tracer.first);
+    vtk.add_scalar_cell_data(swe.tracer_active.at(tracer.first).view, tracer.first);
+  }
   return vtk;
   }
 #endif

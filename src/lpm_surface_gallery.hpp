@@ -108,14 +108,15 @@ struct UniformDepthSurface {
 struct SphereTestCase2InitialSurface {
   static constexpr Real h0 = 10;
   static constexpr Real g = 1.0;
+  static constexpr Real Omega = 2*constants::PI;
   static constexpr Real u0 = 2*constants::PI / 12;
-  static constexpr Real term2 = 2*constants::PI * u0 + 0.5*u0*u0;
+
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
   Real operator() (const CV xyz) const {
-    const Real result = h0 - (term2 *  square(xyz[2]))/g;
-    LPM_KERNEL_ASSERT(result > 0);
+    const Real cos_theta_sq = 1-square(xyz[2]);
+    const Real result = h0 + Omega * u0 * cos_theta_sq / g;
     return result;
   }
 };

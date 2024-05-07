@@ -409,7 +409,7 @@ struct LatitudeTracer {
   KOKKOS_INLINE_FUNCTION
   LatitudeTracer() = default;
 
-  inline std::string name() const { return "LatitudeTracer"; }
+  inline std::string name() const { return "initial_latitude"; }
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xyz) const {
@@ -431,7 +431,7 @@ struct FtleTracer {
   KOKKOS_INLINE_FUNCTION
   FtleTracer() = default;
 
-  inline std::string name() const {return "FtleTracer";}
+  inline std::string name() const {return "ftle";}
 
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION

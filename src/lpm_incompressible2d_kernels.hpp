@@ -9,17 +9,29 @@
 
 namespace Lpm {
 
+/** @brief Type containing the Green's function and Biot-Savart
+  kernels for 2d incompressible flow.
+
+  The generic template defines spherical kernels.
+*/
 template <typename Geo>
 struct Incompressible2DKernels {
   using value_type = Kokkos::Tuple<Real, Geo::ndim + 1>;
   static constexpr Int nvals = Geo::ndim + 1;
 
 
-  /**
+  /** Function computes the direct sum contributions of src_y on tgt_x.
+      Results are a packed 4-tuple:
+
       result[0] = biot-savart, x-component
       result[1] = biot-savart, y-component
       result[2] = biot-savart, z-component
       result[3] = greens fn
+
+      @param [in] tgt_x target point coordinates
+      @param [in] src_y source point coordinates
+      @param [in] eps kernel smoothing parameter
+      @return packed 4-tuple
   */
   template <typename XType, typename YType>
   KOKKOS_INLINE_FUNCTION static value_type
@@ -35,15 +47,28 @@ struct Incompressible2DKernels {
   }
 };
 
+
+/** @brief Type containing the Green's function and Biot-Savart
+  kernels for 2d incompressible flow.
+
+  This specialized template defines planar kernels.
+*/
 template <>
 struct Incompressible2DKernels<PlaneGeometry> {
   using value_type = Kokkos::Tuple<Real, PlaneGeometry::ndim+1>;
   static constexpr Int nvals = PlaneGeometry::ndim + 1;
 
-  /**
+  /** Function computes the direct sum contributions of src_y on tgt_x.
+      Results are a packed 3-tuple:
+
       result[0] = biot-savart, x-component
       result[1] = biot-savart, y-component
       result[2] = greens fn
+
+      @param [in] tgt_x target point coordinates
+      @param [in] src_y source point coordinates
+      @param [in] eps kernel smoothing parameter
+      @return packed 4-tuple
   */
   template <typename XType, typename YType>
   KOKKOS_INLINE_FUNCTION static value_type
@@ -60,21 +85,25 @@ struct Incompressible2DKernels<PlaneGeometry> {
 };
 
 
+/** @brief Kokkos reducer concept for 2d incompressible flow
+  (both planar and spherical).
 
+  Each call to this functor computes the contribution of src_y onto tgt_x.
+*/
 template <typename Geo>
 struct Incompressible2DReducer {
   using crd_view = typename Geo::crd_view_type;
   using kernel_type = Incompressible2DKernels<Geo>;
   using value_type = typename kernel_type::value_type;
 
-  crd_view tgt_x;
-  Index i;
-  crd_view src_y;
-  scalar_view_type src_zeta;
-  scalar_view_type src_area;
-  mask_view_type src_mask;
-  Real eps;
-  bool collocated_src_tgt;
+  crd_view tgt_x; /// target point coordinates
+  Index i; /// target point index inside target views
+  crd_view src_y; /// source point coordinates
+  scalar_view_type src_zeta; /// source point relative vorticity
+  scalar_view_type src_area; /// source point area weights
+  mask_view_type src_mask; /// source point mask (to exclude divided panels)
+  Real eps; /// kernel smoothing parameter
+  bool collocated_src_tgt; /// if true, the i = j contribution will be skipped
 
   KOKKOS_INLINE_FUNCTION
   Incompressible2DReducer(const crd_view tx, const Index i,
@@ -107,6 +136,13 @@ struct Incompressible2DReducer {
   }
 };
 
+
+/** @brief Direct sum functor for 2d incompressible flow on passive particles
+  (both planar and spherical).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
+*/
 template <typename Geo>
 struct Incompressible2DPassiveSums {
   using crd_view = typename Geo::crd_view_type;
@@ -160,6 +196,12 @@ struct Incompressible2DPassiveSums {
   }
 };
 
+/** @brief Direct sum functor for 2d incompressible flow on active particles
+  (both planar and spherical).
+
+  Dispatches one thread team per target point.  Each thread team
+  performs a direct sum reduction.
+*/
 template <typename Geo>
 struct Incompressible2DActiveSums {
   using crd_view = typename Geo::crd_view_type;
@@ -211,6 +253,15 @@ struct Incompressible2DActiveSums {
   }
 };
 
+/** @brief  RHS tendencies for 2d incompressible flow
+  at active particles  (both planar and spherical problems)
+
+  If U is the state vector, and the SWE are written as a dynamical
+  system, dU/dt = F(U), this functor computes the RHS F, given U.
+
+  This functor will be called from a Kokkos::parallel_for, with a range
+  policy over all active particles.
+*/
 template <typename Geo>
 struct Incompressible2DTendencies {
   using crd_view = typename Geo::crd_view_type;
@@ -219,9 +270,9 @@ struct Incompressible2DTendencies {
     std::is_same<Geo, PlaneGeometry>::value, CoriolisBetaPlane,
       CoriolisSphere>::type;
 
-  scalar_view_type dzeta;
-  vec_view u;
-  Coriolis coriolis;
+  scalar_view_type dzeta; /// [out] vorticity derivative
+  vec_view u; /// [in] velocity
+  Coriolis coriolis; /// [in] Coriolis evaluations
 
   Incompressible2DTendencies(scalar_view_type dzeta,
     const vec_view u,

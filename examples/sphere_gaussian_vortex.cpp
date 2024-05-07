@@ -5,13 +5,15 @@
 #include "lpm_field_impl.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_incompressible2d.hpp"
-#include "lpm_incompressible2d_rk2.hpp"
 #include "lpm_incompressible2d_impl.hpp"
+#include "lpm_incompressible2d_rk2.hpp"
 #include "lpm_incompressible2d_rk2_impl.hpp"
 #include "lpm_input.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_vorticity_gallery.hpp"
 #include "lpm_tracer_gallery.hpp"
+#include "mesh/lpm_compadre_remesh.hpp"
+#include "mesh/lpm_compadre_remesh_impl.hpp"
 #include "util/lpm_string_util.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -57,6 +59,15 @@ int main (int argc, char* argv[]) {
 
       user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("gauss_vort"));
       input.add_option(output_file_root_option);
+
+      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
+      input.add_option(remesh_interval_option);
+
+      user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
+      input.add_option(remesh_strategy_option);
+
+      user::Option remesh_interpolation_order("remesh_interpolation_order", "-ro", "--remesh-order", "polynomial order for gmls-based remesh interpolation", 4);
+      input.add_option(remesh_interpolation_order);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -89,8 +100,8 @@ int main (int argc, char* argv[]) {
 
     Ftle ftle;
     Lat0 lat0;
-    sphere->init_tracer(ftle, "ftle");
-    sphere->init_tracer(lat0, "initial_latitude");
+    sphere->init_tracer(ftle);
+    sphere->init_tracer(lat0);
 
     const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
     const Real cr = vel_range.second * dt / sphere->mesh.appx_mesh_size();
@@ -101,13 +112,18 @@ int main (int argc, char* argv[]) {
         logger.warn("Courant number {} is likely too high.", cr);
       }
     }
+    const int remesh_interval = input.get_option("remesh_interval").get_int();
+    const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
     auto solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *sphere);
+    constexpr bool amr = false;
+    gmls::Params gmls_params(input.get_option("remesh_interpolation_order").get_int());
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str =
       std::to_string(input.get_option("tree_depth").get_int()) + dt_str(dt);
+    const std::string remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
     const std::string vtk_file_root = input.get_option("output_file_root").get_str()
-      + "_" + seed_type::id_string() + resolution_str + "_";
+      + "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + "_";
     {
       sphere->update_host();
       auto vtk = vtk_mesh_interface(*sphere);
@@ -122,6 +138,29 @@ int main (int argc, char* argv[]) {
     time stepping
     */
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
+      if ( (t_idx+1)%remesh_interval == 0 ) {
+        logger.debug("remesh {} triggered by remesh interval");
+
+        auto new_sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
+           coriolis, input.get_option("kernel_smoothing_parameter").get_real());
+        new_sphere->t = sphere->t;
+        new_sphere->allocate_tracer(ftle);
+        new_sphere->allocate_tracer(lat0);
+
+        auto remesh = compadre_remesh(*new_sphere, *sphere, gmls_params);
+        if (remesh_strategy == "direct") {
+          remesh.uniform_direct_remesh();
+          logger.info(new_sphere->velocity_passive.info_string());
+          logger.info(new_sphere->velocity_active.info_string());
+        }
+        else {
+          remesh.uniform_indirect_remesh(gauss_vort, coriolis, lat0, ftle);
+        }
+
+        sphere = std::move(new_sphere);
+        solver.reset(new Incompressible2DRK2<seed_type>(dt, *sphere, solver->t_idx));
+      }
+
       sphere->advance_timestep(*solver);
       logger.debug("t = {}", sphere->t);
 

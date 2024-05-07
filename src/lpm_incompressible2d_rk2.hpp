@@ -6,6 +6,11 @@
 
 namespace Lpm {
 
+/** @brief 2nd order Runge-Kutta for 2d incompressible flow
+  (both planar and spherical).
+
+  Implements the Butcher tableau associated with Huen's method.
+*/
 template <typename SeedType>
 class Incompressible2DRK2 {
   public:
@@ -13,19 +18,20 @@ class Incompressible2DRK2 {
   using crd_view = typename SeedType::geo::crd_view_type;
   using vec_view = typename SeedType::geo::vec_view_type;
 
-  Real dt;
-  Incompressible2D<SeedType>& ic2d;
+  Real dt; /// time step size
+  Incompressible2D<SeedType>& ic2d;  /// particles, mesh, and fields
 
-  Int t_idx;
+  Int t_idx; /// time step index
 
-  Index n_passive;
-  Index n_active;
+  Index n_passive; /// number of passive particles
+  Index n_active; /// number of active particles
 
 
   Real eps; /// velocity kernel smoothing parameter
 
   std::string info_string(const int tab_level=0) const;
 
+  /// advance time from t to t + dt.
   void advance_timestep_impl();
 
   Incompressible2DRK2(const Real dt, Incompressible2D<SeedType>& ic2d);

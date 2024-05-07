@@ -87,14 +87,14 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
     nverts,
     SWEVorticityDivergenceHeightTendencies<geo>(
       passive_rel_vort1, passive_div1, passive_depth1,
-      swe.mesh.vertices.phys_crds.view,
+      swe.mesh.vertices.phys_crds.view, swe.velocity_passive.view,
       swe.rel_vort_passive.view, swe.div_passive.view, swe.depth_passive.view,
       swe.double_dot_passive.view, swe.surf_lap_passive.view, swe.coriolis, swe.g, dt));
 
   Kokkos::parallel_for("RK2-1 face tendencies",
     nfaces,
     SWEVorticityDivergenceAreaTendencies<geo>(active_rel_vort1,
-      active_div1, active_area1, swe.mesh.faces.phys_crds.view,
+      active_div1, active_area1, swe.mesh.faces.phys_crds.view, swe.velocity_active.view,
       swe.rel_vort_active.view, swe.div_active.view, swe.mesh.faces.area,
       swe.double_dot_active.view, swe.surf_lap_active.view, swe.coriolis, swe.g, dt));
 
@@ -152,7 +152,7 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
     nverts,
     SWEVorticityDivergenceHeightTendencies<geo>(
       passive_rel_vort2, passive_div2, passive_depth2,
-      passive_xwork,
+      passive_xwork, swe.velocity_passive.view,
       passive_rel_vortwork, passive_divwork, passive_depthwork,
       swe.double_dot_passive.view, swe.surf_lap_passive.view, swe.coriolis, swe.g, dt));
 
@@ -160,7 +160,8 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
       nfaces,
       SWEVorticityDivergenceAreaTendencies<geo>(
         active_rel_vort2, active_div2, active_area2,
-        active_xwork, active_rel_vortwork, active_divwork, active_areawork,
+        active_xwork, swe.velocity_active.view,
+        active_rel_vortwork, active_divwork, active_areawork,
         swe.double_dot_active.view, swe.surf_lap_active.view, swe.coriolis, swe.g, dt));
 
     KokkosBlas::update(0.5, passive_x1, 0.5, passive_x2, 1, swe.mesh.vertices.phys_crds.view);
