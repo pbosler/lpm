@@ -17,6 +17,9 @@ set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
 
 CreateUnitTest(geometry_test lpm_geometry_tests.cpp)
 
+CreateUnitTest(tuple_test lpm_tuple_tests.cpp
+  THREADS 1 ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
+
 CreateUnitTest(mpi_comm_test lpm_comm_tests.cpp
   MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
   MPI_EXTRA_ARGS "--oversubscribe")

@@ -249,9 +249,6 @@ int main (int argc, char* argv[]) {
     int remesh_counter = 0;
 
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-      plane->advance_timestep(*solver);
-      logger.debug("t = {}", plane->t);
-
       if ((t_idx+1)%remesh_interval == 0) {
         logger.debug("remesh {} triggered by remesh interval", ++remesh_counter);
 
@@ -302,6 +299,9 @@ int main (int argc, char* argv[]) {
         solver = std::move(new_solver);
 
       }
+
+    plane->advance_timestep(*solver);
+    logger.debug("t = {}", plane->t);
 
 #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {

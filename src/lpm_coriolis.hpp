@@ -123,13 +123,6 @@ struct CoriolisBetaPlane {
   KOKKOS_INLINE_FUNCTION
   CoriolisBetaPlane(const CoriolisBetaPlane& other) = default;
 
-  /** Evaluate Coriolis parameter
-
-    @param [in] y y coordinate
-  */
-  KOKKOS_INLINE_FUNCTION
-  Real f(const Real y) const {return f0 + beta*y;}
-
   /** Evaluate Coriolis parameter at a given position
 
     @param [in] xy position
@@ -138,12 +131,6 @@ struct CoriolisBetaPlane {
   KOKKOS_INLINE_FUNCTION
   Real f(const PtType& xy) const {return f0 + beta*xy[1];}
 
-  /** Evaluate Coriolis parameter time derivative
-
-    @param [in] v y-component of velocity
-  */
-  KOKKOS_INLINE_FUNCTION
-  Real dfdt(const Real v) const {return beta * v;}
 
   /** Evaluate Coriolis parameter time derivative for a  given velocity
 
@@ -153,8 +140,11 @@ struct CoriolisBetaPlane {
   KOKKOS_INLINE_FUNCTION
   Real dfdt(const PtType& uv) const {return beta * uv[1];}
 
+  template <typename XType, typename UType>
   KOKKOS_INLINE_FUNCTION
-  Real dfdy() const {return beta;}
+  Real grad_f_cross_u(const XType& x, const UType& u) const {
+    return -beta * u[1];
+  }
 };
 
 
@@ -178,13 +168,6 @@ struct CoriolisSphere {
   KOKKOS_INLINE_FUNCTION
   CoriolisSphere(const CoriolisSphere& other) = default;
 
-  /** Evaluate Coriolis parameter
-
-    @param [in] z z coordinate
-  */
-  KOKKOS_INLINE_FUNCTION
-  Real f (const Real z) const {return 2*Omega*z;}
-
   /** Evaluate Coriolis parameter at a given position
 
     @param [in] xyz position
@@ -193,24 +176,21 @@ struct CoriolisSphere {
   KOKKOS_INLINE_FUNCTION
   Real f (const PtType& xyz) const {return 2*Omega*xyz[2];}
 
-
-  /** Evaluate Coriolis parameter time derivative
-
-    @param [in] w z-component of velocity
+  /** Evaluate Coriolis parameter material derivative
   */
+  template <typename UType>
   KOKKOS_INLINE_FUNCTION
-  Real dfdt(const Real& w) const {return 2*Omega*w;}
-
-  KOKKOS_INLINE_FUNCTION
-  Real dfdy() const {return 2*Omega;}
+  Real dfdt(const UType& u) const {return 2*Omega*u[2];}
 
   /** Evaluate Coriolis parameter time derivative for a given velocity
 
     @param [in] uvw velocity
   */
-  template <typename PtType>
+  template <typename XType, typename UType>
   KOKKOS_INLINE_FUNCTION
-  Real dfdt (const PtType& uvw) const {return 2*Omega*uvw[2];}
+  Real grad_f_cross_u(const XType& x, const UType& u) const {
+    return -2*Omega * (- u[0]*x[1] + u[1]*x[0]);
+  }
 };
 
 

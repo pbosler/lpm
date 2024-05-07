@@ -6,7 +6,9 @@
 #include "lpm_field.hpp"
 #include "lpm_logger.hpp"
 #include "mesh/lpm_bivar_remesh.hpp"
+#include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "mesh/lpm_remesh.hpp"
 
 #include <map>
 
@@ -65,6 +67,9 @@ class Incompressible2D {
     template <typename TracerType>
     void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
+    template <typename TracerType>
+    void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
+
     void init_direct_sums();
 
     template <typename VelocityType>
@@ -77,6 +82,8 @@ class Incompressible2D {
 
     std::string info_string(const int tab_level=0) const;
 
+    RemeshMaps remesh_maps() const;
+
   private:
 
     std::shared_ptr<spdlog::logger> logger;
@@ -87,8 +94,14 @@ class Incompressible2D {
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const Incompressible2D<SeedType>& ic2d);
 #endif
 
+
+
 template <typename SeedType>
 BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d, const Incompressible2D<SeedType>& old_ic2d);
+
+template <typename SeedType>
+CompadreRemesh<SeedType> compadre_remesh(Incompressible2D<SeedType>& new_ic2d, const
+  Incompressible2D<SeedType>& old_ic2d, const gmls::Params& gmls_params);
 
 } // namespace Lpm
 

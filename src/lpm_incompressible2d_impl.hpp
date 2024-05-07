@@ -9,6 +9,7 @@
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "mesh/lpm_bivar_remesh_impl.hpp"
+#include "mesh/lpm_compadre_remesh_impl.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 
@@ -138,6 +139,18 @@ void Incompressible2D<SeedType>::init_tracer(const TracerType& tracer, const std
         tracer_view(i) = tracer(mcrd);
       });
   }
+}
+
+template <typename SeedType> template <typename TracerType>
+void Incompressible2D<SeedType>::allocate_tracer(const TracerType& tracer, const std::string& tname) {
+static_assert(std::is_same<typename SeedType::geo,
+      typename TracerType::geo>::value, "Geometry types must match.");
+
+  const std::string name = (tname.empty() ? tracer.name() : tname);
+  tracer_passive.emplace(name,
+    ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name,
+    ScalarField<FaceField>(name, velocity_active.view.extent(0)));
 }
 
 template <typename SeedType>
@@ -289,6 +302,71 @@ BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d,
                            active_vectors_old);
 
   return bivar;
+}
+
+template <typename SeedType>
+CompadreRemesh<SeedType> compadre_remesh(Incompressible2D<SeedType>& new_ic2d,
+  const Incompressible2D<SeedType>& old_ic2d, const gmls::Params& gmls_params) {
+
+  using passive_scalar_field_map = std::map<std::string, ScalarField<VertexField>>;
+  using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
+  using passive_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, VertexField>>;
+  using active_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, FaceField>>;
+
+  passive_scalar_field_map passive_scalars_old;
+  passive_scalars_old.emplace("relative_vorticity", old_ic2d.rel_vort_passive);
+  passive_scalars_old.emplace("absolute_vorticity", old_ic2d.abs_vort_passive);
+  passive_scalars_old.emplace("stream_function", old_ic2d.stream_fn_passive);
+  for (const auto& t : old_ic2d.tracer_passive) {
+    passive_scalars_old.emplace(t.first, t.second);
+  }
+
+  passive_scalar_field_map passive_scalars_new;
+  passive_scalars_new.emplace("relative_vorticity", new_ic2d.rel_vort_passive);
+  passive_scalars_new.emplace("absolute_vorticity", new_ic2d.abs_vort_passive);
+  passive_scalars_new.emplace("stream_function", new_ic2d.stream_fn_passive);
+  for (const auto& t : new_ic2d.tracer_passive) {
+    passive_scalars_new.emplace(t.first, t.second);
+  }
+
+  active_scalar_field_map active_scalars_old;
+  active_scalars_old.emplace("relative_vorticity", old_ic2d.rel_vort_active);
+  active_scalars_old.emplace("absolute_vorticity", old_ic2d.abs_vort_active);
+  active_scalars_old.emplace("stream_function", old_ic2d.stream_fn_active);
+  for (const auto& t : old_ic2d.tracer_active) {
+    active_scalars_old.emplace(t.first, t.second);
+  }
+  active_scalar_field_map active_scalars_new;
+  active_scalars_new.emplace("relative_vorticity", new_ic2d.rel_vort_active);
+  active_scalars_new.emplace("absolute_vorticity", new_ic2d.abs_vort_active);
+  active_scalars_new.emplace("stream_function", new_ic2d.stream_fn_active);
+  for (const auto& t : new_ic2d.tracer_active) {
+    active_scalars_new.emplace(t.first, t.second);
+  }
+
+  passive_vector_field_map passive_vectors_old;
+  passive_vectors_old.emplace("velocity", old_ic2d.velocity_passive);
+
+  active_vector_field_map active_vectors_old;
+  active_vectors_old.emplace("velocity", old_ic2d.velocity_active);
+
+  passive_vector_field_map passive_vectors_new;
+  passive_vectors_new.emplace("velocity", new_ic2d.velocity_passive);
+
+  active_vector_field_map active_vectors_new;
+  active_vectors_new.emplace("velocity", new_ic2d.velocity_active);
+
+  return CompadreRemesh<SeedType>(new_ic2d.mesh,
+    passive_scalars_new,
+    active_scalars_new,
+    passive_vectors_new,
+    active_vectors_new,
+    old_ic2d.mesh,
+    passive_scalars_old,
+    active_scalars_old,
+    passive_vectors_old,
+    active_vectors_old,
+    gmls_params);
 }
 
 } // namespace Lpm

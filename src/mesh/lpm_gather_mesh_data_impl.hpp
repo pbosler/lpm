@@ -169,10 +169,10 @@ void GatherMeshData<SeedType>::update_host() const {
       Kokkos::deep_copy(h_z, z);
       Kokkos::deep_copy(h_lag_z, lag_z);
     }
-  } else {
-    Kokkos::deep_copy(h_phys_crds, phys_crds);
-    Kokkos::deep_copy(h_lag_crds, lag_crds);
   }
+  Kokkos::deep_copy(h_phys_crds, phys_crds);
+  Kokkos::deep_copy(h_lag_crds, lag_crds);
+
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(h_scalar_fields.at(sf.first), sf.second);
   }
@@ -192,10 +192,9 @@ void GatherMeshData<SeedType>::update_device() const {
       Kokkos::deep_copy(z, h_z);
       Kokkos::deep_copy(lag_z, h_lag_z);
     }
-  } else {
-    Kokkos::deep_copy(phys_crds, h_phys_crds);
-    Kokkos::deep_copy(lag_crds, h_lag_crds);
   }
+  Kokkos::deep_copy(phys_crds, h_phys_crds);
+  Kokkos::deep_copy(lag_crds, h_lag_crds);
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(sf.second, h_scalar_fields.at(sf.first));
   }

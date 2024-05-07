@@ -2,6 +2,7 @@
 #define LPM_SWE_KERNELS_HPP
 
 #include "LpmConfig.h"
+#include "lpm_assert.hpp"
 #include "lpm_coriolis.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_pse.hpp"
@@ -85,7 +86,7 @@ ksigma_sphere(UType &u, const XType &x, const YType &y, const Real div_y,
               const Real area_y, const Real eps = 0) {
   const Real denom =
       4 * constants::PI * (1 - SphereGeometry::dot(x, y) + square(eps));
-  const Real strength = div_y * area_y / denom;
+  const Real strength = -div_y * area_y / denom;
   Real uloc[3];
   Real pmat[3];
   for (Short j = 0; j < 3; ++j) {
@@ -158,7 +159,7 @@ Real double_dot(const Compressed3by3& mat) {
     for (Int j=i; j<3; ++i) {
       const Int ij_idx = 3*i + j;
       const Int ji_idx = 3*j + i;
-      result += (i==j ? 1 : 2) * mat[ij_idx] * mat[ji_idx];
+      result += /*(i==j ? 1 : 2) * */ mat[ij_idx] * mat[ji_idx];
     }
   }
   return result;
@@ -338,13 +339,14 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   Kokkos::Tuple<Real,12> result;
   // compute the velocity contribution from vorticity interaction
   // between target particle x and source particle y
-  Real vel[3];
-  kzeta_sphere( vel, tgt_x, src_y, src_zeta, src_area, eps);
+  Real velz[3];
+  kzeta_sphere( velz, tgt_x, src_y, src_zeta, src_area, eps);
   // sum in the velocity contribution from dilatation interaction
   // between target particle x and source particle y
-  ksigma_sphere(vel, tgt_x, src_y, src_sigma,src_area, eps);
+  Real vels[3];
+  ksigma_sphere(vels, tgt_x, src_y, src_sigma,src_area, eps);
   for (int k=0; k<3; ++k) {
-    result[k] = vel[k];
+    result[k] = velz[k] + vels[k];
   }
   // compute the solenoidal velocity gradient contributions
   Real gkz[9];
@@ -352,8 +354,8 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   // compute the irrotational velocity gradient contributions
   Real gks[9];
   grad_ksigma(gks, tgt_x, src_y, eps);
-  const Real rot_str = src_zeta * src_area;
-  const Real pot_str = src_sigma * src_area;
+  const Real rot_str = -src_zeta * src_area;
+  const Real pot_str = -src_sigma * src_area;
   for (int k=0; k<9; ++k) {
     result[3+k] += gkz[k]*rot_str + gks[k]*pot_str;
   }
@@ -608,15 +610,13 @@ struct SphereSweDirectSumReducer {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!collocated_src_tgt or i != j) {
-      if (!src_mask(j)) {
-        const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
-        const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
-        const value_type local_result =
-          sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
-            src_area(j), eps);
-        r += local_result;
-      }
+    if (!collocated_src_tgt or (i != j and !src_mask(j)) ) {
+      const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
+      const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
+      const value_type local_result =
+        sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
+          src_area(j), eps);
+      r += local_result;
     }
   }
 };
@@ -859,7 +859,7 @@ struct SphereFaceSums {
     const Index i = thread_team.league_rank();
 
     Kokkos::Tuple<Real,12> sums;
-    const bool collocated = !(eps>0);
+    const bool collocated = FloatingPoint<Real>::zero(eps);
     Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
       SphereSweDirectSumReducer(face_xy, i, face_xy, collocated, face_zeta,
         face_sigma, face_area, face_mask, eps), sums);
@@ -935,8 +935,8 @@ struct SWEVorticityDivergenceHeightTendencies {
     const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
     const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
     const Real f = coriolis.f(xi);
-    dzeta(i) = (-coriolis.dfdt(ui) + (zeta(i) + f) * sigma(i))*dt;
-    dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i))*dt;
+    dzeta(i) = (-coriolis.dfdt(ui) - (zeta(i) + f) * sigma(i))*dt;
+    dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi,ui) - ddot(i) - g*laps(i))*dt;
     dh(i) = (-sigma(i) * h(i))*dt;
   }
 };
@@ -999,8 +999,8 @@ struct SWEVorticityDivergenceAreaTendencies {
     const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
     const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
     const Real f = coriolis.f(xi);
-    dzeta(i) = (-coriolis.dfdt(ui) + (zeta(i) + f) * sigma(i)) * dt;
-    dsigma(i) = (f*zeta(i) - ddot(i) - g*laps(i)) * dt;
+    dzeta(i) = (-coriolis.dfdt(ui) - (zeta(i) + f) * sigma(i)) * dt;
+    dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi, ui) - ddot(i) - g*laps(i)) * dt;
     darea(i) = (sigma(i) * area(i)) * dt;
   }
 };
