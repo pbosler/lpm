@@ -8,7 +8,6 @@
 #include "mesh/lpm_bivar_remesh.hpp"
 #include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#include "mesh/lpm_remesh.hpp"
 
 #include <map>
 
