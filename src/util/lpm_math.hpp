@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
 #include "lpm_floating_point.hpp"
+#include "lpm_tuple.hpp"
 #ifdef LPM_USE_BOOST
 #include "boost/math/special_functions/bessel.hpp"
 #include "boost/math/special_functions/legendre.hpp"
@@ -171,6 +172,14 @@ void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
   rmat[6] =  siny;
   rmat[7] =  cosy * sinx;
   rmat[8] =  cosx * cosy;
+}
+
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
+  Kokkos::Tuple<Real,9> result;
+  north_pole_rotation_matrix(result, xyz);
+  return result;
 }
 
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
