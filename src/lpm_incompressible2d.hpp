@@ -81,8 +81,6 @@ class Incompressible2D {
 
     std::string info_string(const int tab_level=0) const;
 
-    RemeshMaps remesh_maps() const;
-
   private:
 
     std::shared_ptr<spdlog::logger> logger;
