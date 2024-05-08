@@ -55,6 +55,7 @@ if (LPM_ENABLE_DFS)
 		dfs/dfs_vort2velocity.cpp
  		dfs/dfs_surface_grad.cpp
  		dfs/lpm_dfs_grid.cpp
+    dfs/dfs_swe_vort2velocity_to_ddproduct.cpp
  	)
 endif()
 
@@ -158,6 +159,7 @@ if (LPM_ENABLE_DFS)
 	      dfs/dfs_interpolation.hpp
 	      dfs/dfs_vort2velocity.hpp
 	      dfs/dfs_surface_grad.hpp
+        dfs/dfs_swe_vort2velocity_to_ddproduct.hpp
 	      )
 endif()
 

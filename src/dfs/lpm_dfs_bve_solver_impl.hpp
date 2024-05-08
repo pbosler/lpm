@@ -130,12 +130,12 @@ void DFSRK4<SeedType>::advance_timestep() {
   // Rk update: updating the vorticity and particle position
   Kokkos::parallel_for(rel_vort_particles.extent(0), [=](Int k){
     rel_vort_particles(k) += (rel_vort_particles1(k) +
-      2*(rel_vort_particles2(k) + rel_vort_particles3(k)) + rel_vort_particles4(k))/6.0;
+      2*(rel_vort_particles2(k) + rel_vort_particles3(k)) + rel_vort_particles4(k))/(6.0);
 
     for(int i=0; i<3; i++)
     {
       xyz_particles(k,i) += (xyz_particles1(k,i) + 2*(xyz_particles2(k,i) + xyz_particles3(k,i))
-        + xyz_particles4(k,i))/6.0;
+        + xyz_particles4(k,i))/(6.0);
     }
   });
 

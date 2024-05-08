@@ -62,15 +62,15 @@ namespace SpherePoisson {
      }
 
      // multiply cos(lambda) / sin(lambda)
-     void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, std::string str)
+     void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, Int trigsign)
     {
         Int nrows = mat.extent(0);
         Int ncols = mat.extent(1);
         Complex val;
         Complex valb;
 
-        val = (str=="sin") ? Complex(0,0.5) :Complex(0.5, 0.0);
-        valb = (str=="sin") ? -Complex(0,0.5) : Complex(0.5, 0.0);
+        val = (trigsign==Sin) ? Complex(0,0.5) :Complex(0.5, 0.0);
+        valb = (trigsign==Sin) ? -Complex(0,0.5) : Complex(0.5, 0.0);
          Kokkos::parallel_for("copyU",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
             if(j == 0)
             {
@@ -161,14 +161,14 @@ namespace SpherePoisson {
            divide_sin(lhs_a, lhs);
             
             // Compute component u
-             multi_trig(lhs, tmp, "cos");
-             multi_trig(vort, U, "sin");  //  multi_trig(vort, U, "sin")
+             multi_trig(lhs, tmp, 1);    // multi_trig(vort, U, Cos)
+             multi_trig(vort, U, 0);  //  multi_trig(vort, U, Sin)
     
             // u = -lsh_a - u
             KokkosBlas::axpby(alpha, tmp, beta, U);    
             // Compute v
-            multi_trig(lhs, lhs_a, "sin");
-            multi_trig(vort, V, "cos");
+            multi_trig(lhs, lhs_a, 0); // multi_trig(vort, U, Sin)
+            multi_trig(vort, V, 1);    // multi_trig(vort, U, Cos)
             beta = 1.0;
             KokkosBlas::axpby(alpha, lhs_a, beta, V);   
   
