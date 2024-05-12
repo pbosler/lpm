@@ -38,7 +38,7 @@ typename Geo::crd_view_type Faces<FaceKind, Geo>::leaf_crd_view() const {
 
 template <typename FaceKind, typename Geo>
 void Faces<FaceKind, Geo>::leaf_field_vals(
-    const scalar_view_type vals, const ScalarField<FaceField>& field) const {
+    const scalar_view_type& vals, const ScalarField<FaceField>& field) const {
   LPM_ASSERT(vals.extent(0) >= n_leaves_host());
   const auto l_idx = leaf_idx;
   Kokkos::parallel_for(
@@ -52,14 +52,14 @@ void Faces<FaceKind, Geo>::leaf_field_vals(
 template <typename FaceKind, typename Geo>
 scalar_view_type Faces<FaceKind, Geo>::leaf_field_vals(
     const ScalarField<FaceField>& field) const {
-  scalar_view_type result("leaf_field_vals", n_leaves_host());
+  scalar_view_type result(field.name, n_leaves_host());
   leaf_field_vals(result, field);
   return result;
 }
 
 template <typename FaceKind, typename Geo>
 void Faces<FaceKind, Geo>::leaf_field_vals(
-    const typename Geo::vec_view_type vals,
+    const typename Geo::vec_view_type& vals,
     const VectorField<Geo, FaceField>& field) const {
   LPM_ASSERT(vals.extent(0) >= n_leaves_host());
   const auto l_idx = leaf_idx;

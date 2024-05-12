@@ -9,6 +9,51 @@
 
 namespace Lpm {
 
+template <typename ViewType>
+struct ScatterFaceLeafData {
+  ViewType mesh_face_values; /// output
+  ViewType leaf_face_values; /// input
+  mask_view_type face_mask; /// input
+  index_view_type face_leaf_view; /// input
+
+  ScatterFaceLeafData(ViewType fv, const ViewType lv,
+    const mask_view_type fm, const index_view_type fl) :
+    mesh_face_values(fv),
+    leaf_face_values(lv),
+    face_mask(fm),
+    face_leaf_view(fl) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    if (!face_mask(i)) {
+      for (int j=0; j<mesh_face_values.extent(1); ++j) {
+        mesh_face_values(i,j) = leaf_face_values(face_leaf_view(i), j);
+      }
+    }
+  }
+};
+
+template <>
+struct ScatterFaceLeafData<scalar_view_type> {
+  scalar_view_type mesh_face_values;
+  scalar_view_type leaf_face_values;
+  mask_view_type face_mask;
+  index_view_type face_leaf_view;
+
+  ScatterFaceLeafData(scalar_view_type fv, const scalar_view_type lv,
+    const mask_view_type fm, const index_view_type fl) :
+    mesh_face_values(fv),
+    leaf_face_values(lv),
+    face_mask(fm),
+    face_leaf_view(fl) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    mesh_face_values(i) = (face_mask(i) ? 0 : leaf_face_values(face_leaf_view(i)));
+  }
+};
+
+
 /// Scatters gathered output back to a PolyMesh2d.
 template <typename SeedType>
 struct ScatterMeshData {

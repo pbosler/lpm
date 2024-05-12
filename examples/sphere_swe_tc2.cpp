@@ -38,7 +38,7 @@ int main (int argc, char* argv[]) {
 //   using seed_type = IcosTriSphereSeed;
 
   // sphere test case 2 problem setup
-  using topography_type  = ZeroBottom;
+  using topography_type  = ZeroFunctor;
   using init_sfc_type = SphereTestCase2InitialSurface;
   using coriolis_type = CoriolisSphere;
   using vorticity_type = SphereTestCase2Vorticity;

@@ -29,6 +29,8 @@ struct PlanarParabolicBasin {
   KOKKOS_INLINE_FUNCTION Real laplacian(const CV xy) const {
     return 4 * D0 / square(L);
   }
+
+  std::string name() const {return "PlanarParabolicBasin";}
 };
 
 
@@ -56,6 +58,8 @@ struct PlanarGaussianMountain {
       (b*PlaneGeometry::norm2(xy) - 1) *
       exp(-b * PlaneGeometry::norm2(xy)) ;
   }
+
+  std::string name() const {return "PlanarGaussianMountain";}
 };
 
 /** @brief Returns the height (above a reference z_0 = 0) of bottom topography
@@ -79,11 +83,13 @@ struct PlanarGaussianSurfacePerturbation {
   KOKKOS_INLINE_FUNCTION Real operator() (const CV xy) const {
     return H0 + ptb_height * exp(-(ptb_bx * square(xy(0) - ptb_x0) + ptb_by * square(xy(1) - ptb_y0)));
   }
+
+  std::string name() const {return "PlanarGaussianSurfacePerturbation";}
 };
 
 /** Topography functor for a flat bottom
 */
-struct ZeroBottom {
+struct ZeroFunctor {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
   Real operator() (const CV x) const {return 0;}
@@ -91,6 +97,8 @@ struct ZeroBottom {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
   Real laplacian(const CV x) const {return 0;}
+
+  std::string name() const {return "ZeroFunctor";}
 };
 
 /** Surface functor for uniform depth
@@ -119,6 +127,8 @@ struct SphereTestCase2InitialSurface {
     const Real result = h0 + Omega * u0 * cos_theta_sq / g;
     return result;
   }
+
+  std::string name() const {return "SphereTestCase2InitialSurface";}
 };
 
 struct SphereTestCase5Bottom {
@@ -137,6 +147,8 @@ struct SphereTestCase5Bottom {
     const Real r = (r_mtn2 < ll_dist_sq ? r_mtn : sqrt(ll_dist_sq));
     return h_mtn * (1 - r / r_mtn);
   }
+
+  std::string name() const {return "SphereTestCase5Bottom";}
 };
 
 }  // namespace Lpm

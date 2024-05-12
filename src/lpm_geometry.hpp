@@ -111,6 +111,17 @@ struct PlaneGeometry {
     scale(1.0 / n, v);
   }
 
+  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
+  KOKKOS_INLINE_FUNCTION
+  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+    set_zero(v);
+    for (int i=0; i<n; ++i) {
+      for (int j=0; j<2; ++j) {
+        v[j] += vview(poly[i], j);
+      }
+    }
+  }
+
   template <typename V>
   KOKKOS_INLINE_FUNCTION static void negate(V& v) {
     scale(-1, v);
@@ -526,6 +537,26 @@ struct SphereGeometry {
     }
     scale(1.0 / n, v);
     normalize(v);
+  }
+
+  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
+  KOKKOS_INLINE_FUNCTION
+  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+    set_zero(v);
+    Real v_avg[3];
+    set_zero(v_avg);
+    for (int i=0; i<n; ++i) {
+      for (int j=0; j<3; ++j) {
+        v_avg[j] += vview(poly[i], j);
+      }
+    }
+    Real prow[3];
+    for (int i=0; i<3; ++i) {
+      proj_row(prow, x, i);
+      for (int j=0; j<3; ++j) {
+        v[i] += prow[j]*v_avg[j];
+      }
+    }
   }
 
   /** \brief Computes the spherical midpoint between two vectors on the sphere

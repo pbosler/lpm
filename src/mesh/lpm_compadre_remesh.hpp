@@ -70,6 +70,22 @@ struct CompadreRemesh {
   void uniform_indirect_remesh(const VorticityFunctor& vorticity,
     const CoriolisType& coriolis, const Tracer1& tracer1, const Tracer2& tracer2);
 
+  template <typename FlagType>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType& flag);
+
+  template <typename FlagType, typename VorticityFunctor>
+  void adaptive_indirect_remesh(Refinement<SeedType>& refiner, const FlagType& flag,
+    const VorticityFunctor& vorticity, const CoriolisType& coriolis);
+
+  template <typename FlagType, typename VorticityFunctor, typename Tracer1>
+  void adaptive_indirect_remesh(Refinement<SeedType>& refiner, const FlagType& flag,
+    const VorticityFunctor& vorticity, const CoriolisType& coriolis, const Tracer1& tracer1);
+
+  template <typename FlagType, typename VorticityFunctor, typename Tracer1, typename Tracer2>
+  void adaptive_indirect_remesh(Refinement<SeedType>& refiner, const FlagType& flag,
+    const VorticityFunctor& vorticity, const CoriolisType& coriolis,
+    const Tracer1& tracer1, const Tracer2& tracer2);
+
   private:
     Compadre::ReconstructionSpace scalar_reconstruction_space;
     Compadre::ReconstructionSpace vector_reconstruction_space;

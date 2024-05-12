@@ -11,9 +11,7 @@
 #include "lpm_incompressible2d_rk2.hpp"
 #include "lpm_incompressible2d_rk2_impl.hpp"
 #include "mesh/lpm_bivar_remesh.hpp"
-#include "mesh/lpm_bivar_remesh_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#include "mesh/lpm_polymesh2d_impl.hpp"
 #include "mesh/lpm_refinement.hpp"
 #include "mesh/lpm_refinement_flags.hpp"
 #include "lpm_vorticity_gallery.hpp"
@@ -187,11 +185,8 @@ int main (int argc, char* argv[]) {
           i, refiner.count[1]);
 
         plane->mesh.divide_flagged_faces(refiner.flags, logger);
-//         plane->init_vorticity(vorticity, vert_start_idx, vert_end_idx,
-//           face_start_idx, face_end_idx);
-        plane->init_vorticity(vorticity);
-
         plane->update_device();
+        plane->init_vorticity(vorticity);
 
         vert_start_idx = vert_end_idx;
         face_start_idx = face_end_idx;

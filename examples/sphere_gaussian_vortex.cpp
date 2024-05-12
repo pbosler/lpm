@@ -51,6 +51,12 @@ int main (int argc, char* argv[]) {
       user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
       input.add_option(amr_refinement_limit_option);
 
+      user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
+      input.add_option(max_circulation_option);
+
+      user::Option amr_both_option("amr_both", "-amr", "--amr-both", "both amr buffer and limit values", LPM_NULL_IDX);
+      input.add_option(amr_both_option);
+
       user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
       input.add_option(output_write_frequency_option);
 
@@ -85,17 +91,66 @@ int main (int argc, char* argv[]) {
     logger.info("dt = {}", dt);
 
     /**
+      AMR
+    */
+    Real max_circ_tol = input.get_option("max_circulation_tol").get_real();
+    Int amr_buffer = input.get_option("amr_buffer").get_int();
+    Int amr_limit = input.get_option("amr_limit").get_int();
+    if (input.get_option("amr_both").get_int() > 0) {
+      amr_buffer = input.get_option("amr_both").get_int();
+      amr_limit = input.get_option("amr_both").get_int();
+    }
+    const bool amr = (amr_buffer > 0 and amr_limit > 0);
+
+    /**
     Build the particle/panel mesh
     */
     constexpr Real sphere_radius = 1;
-    PolyMeshParameters<seed_type> mesh_params(input.get_option("tree_depth").get_int(),
-      sphere_radius, input.get_option("amr_buffer").get_int());
+    PolyMeshParameters<seed_type> mesh_params(
+        input.get_option("tree_depth").get_int(),
+        sphere_radius,
+        amr_buffer,
+        amr_limit);
 
     Coriolis coriolis;
     Vorticity gauss_vort;
     auto sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
       coriolis, input.get_option("kernel_smoothing_parameter").get_real());
     sphere->init_vorticity(gauss_vort);
+
+    if (amr) {
+      Refinement<seed_type> refiner(sphere->mesh);
+      ScalarIntegralFlag max_circulation_flag(refiner.flags,
+        sphere->rel_vort_active.view,
+        sphere->mesh.faces.area,
+        sphere->mesh.faces.mask,
+        sphere->mesh.n_faces_host(),
+        max_circ_tol);
+
+        max_circulation_flag.set_tol_from_relative_value();
+        max_circ_tol = max_circulation_flag.tol;
+
+        logger.info("amr is enabled with limit {}, max_circ_tol = {}",
+          amr_limit, max_circ_tol);
+
+        Index face_start_idx = 0;
+        for (int i=0; i<amr_limit; ++i) {
+          const Index face_end_idx = sphere->mesh.n_faces_host();
+          refiner.iterate(face_start_idx, face_end_idx, max_circulation_flag);
+
+          logger.info("amr iteration {}: initial circulation refinement count = {}",
+            i, refiner.count[0]);
+
+          sphere->mesh.divide_flagged_faces(refiner.flags, logger);
+          sphere->update_device();
+          sphere->init_vorticity(gauss_vort);
+
+          face_start_idx = face_end_idx;
+        }
+    }
+    else {
+      logger.info("amr is not enabled; using uniform meshes.");
+    }
     sphere->init_direct_sums();
 
     Ftle ftle;
@@ -115,15 +170,22 @@ int main (int argc, char* argv[]) {
     const int remesh_interval = input.get_option("remesh_interval").get_int();
     const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
     auto solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *sphere);
-    constexpr bool amr = false;
     gmls::Params gmls_params(input.get_option("remesh_interpolation_order").get_int());
 
 #ifdef LPM_USE_VTK
+    std::string amr_str = "_";
+    if (amr) {
+      amr_str = "amr" + std::to_string(amr_limit) + "_";
+      if (max_circ_tol < 1) {
+        amr_str += "gamma_tol" + float_str(max_circ_tol);
+      }
+      amr_str += "_";
+    }
     const std::string resolution_str =
       std::to_string(input.get_option("tree_depth").get_int()) + dt_str(dt);
     const std::string remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
     const std::string vtk_file_root = input.get_option("output_file_root").get_str()
-      + "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + "_";
+      + "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + amr_str;
     {
       sphere->update_host();
       auto vtk = vtk_mesh_interface(*sphere);
@@ -137,9 +199,10 @@ int main (int argc, char* argv[]) {
     /**
     time stepping
     */
+    int rm_counter = 0;
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
       if ( (t_idx+1)%remesh_interval == 0 ) {
-        logger.debug("remesh {} triggered by remesh interval");
+        logger.debug("remesh {} triggered by remesh interval", ++rm_counter);
 
         auto new_sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
            coriolis, input.get_option("kernel_smoothing_parameter").get_real());
@@ -148,13 +211,29 @@ int main (int argc, char* argv[]) {
         new_sphere->allocate_tracer(lat0);
 
         auto remesh = compadre_remesh(*new_sphere, *sphere, gmls_params);
-        if (remesh_strategy == "direct") {
-          remesh.uniform_direct_remesh();
-          logger.info(new_sphere->velocity_passive.info_string());
-          logger.info(new_sphere->velocity_active.info_string());
+        if (amr) {
+          Refinement<seed_type> refiner(new_sphere->mesh);
+            ScalarIntegralFlag max_circulation_flag(refiner.flags,
+              new_sphere->rel_vort_active.view,
+              new_sphere->mesh.faces.area,
+              new_sphere->mesh.faces.mask,
+              new_sphere->mesh.n_faces_host(),
+              max_circ_tol);
+          if (remesh_strategy == "direct") {
+            remesh.adaptive_direct_remesh(refiner, max_circulation_flag);
+          }
+          else {
+            remesh.adaptive_indirect_remesh(refiner, max_circulation_flag,
+              gauss_vort, coriolis, lat0, ftle);
+          }
         }
         else {
-          remesh.uniform_indirect_remesh(gauss_vort, coriolis, lat0, ftle);
+          if (remesh_strategy == "direct") {
+            remesh.uniform_direct_remesh();
+          }
+          else {
+            remesh.uniform_indirect_remesh(gauss_vort, coriolis, lat0, ftle);
+          }
         }
 
         sphere = std::move(new_sphere);

@@ -244,12 +244,12 @@ class Faces {
   */
   typename Geo::crd_view_type leaf_crd_view() const;
 
-  void leaf_field_vals(const scalar_view_type vals,
+  void leaf_field_vals(const scalar_view_type& vals,
                        const ScalarField<FaceField>& field) const;
 
   scalar_view_type leaf_field_vals(const ScalarField<FaceField>& field) const;
 
-  void leaf_field_vals(const typename Geo::vec_view_type vals,
+  void leaf_field_vals(const typename Geo::vec_view_type& vals,
                        const VectorField<Geo, FaceField>& field) const;
 
   typename Geo::vec_view_type leaf_field_vals(

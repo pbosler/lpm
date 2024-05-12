@@ -3,6 +3,7 @@
 
 #include "lpm_field.hpp"
 #include "util/lpm_string_util.hpp"
+#include <cmath>
 #include <sstream>
 
 namespace Lpm {
@@ -46,6 +47,39 @@ std::string ScalarField<FL>::info_string(const int tab_level) const {
   ss << tabstr << "range: [" << r.first << ", " << r.second << "]\n";
   return ss.str();
 };
+
+template <FieldLocation FL>
+Index ScalarField<FL>::nan_count(const Index n) const {
+  auto vals = view;
+  Index nan_count = 0;
+  Kokkos::parallel_reduce("scalar field has_nan", n,
+    KOKKOS_LAMBDA (const Index i, Index& ct) {
+      ct += (std::isfinite(vals(i)) ? 0 : 1);
+    }, nan_count);
+  return nan_count;
+}
+
+template <FieldLocation FL>
+bool ScalarField<FL>::has_nan(const Index n) const {
+  return (nan_count(n) > 0);
+}
+
+template <typename Geo, FieldLocation FL>
+Index VectorField<Geo, FL>::nan_count(const Index n) const {
+  auto vals = view;
+  Index nan_count = 0;
+  auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {n, Geo::ndim});
+  Kokkos::parallel_reduce(policy,
+    KOKKOS_LAMBDA (const Index i, const Int j, Index& ct) {
+      ct += (std::isfinite(vals(i,j)) ? 0 : 1);
+    }, nan_count);
+  return nan_count;
+}
+
+template <typename Geo, FieldLocation FL>
+bool VectorField<Geo,FL>::has_nan(const Index n) const {
+  return (nan_count(n) > 0);
+}
 
 template <typename Geo, FieldLocation FL>
 std::string VectorField<Geo, FL>::info_string(const int tab_level) const {

@@ -346,7 +346,7 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   Real vels[3];
   ksigma_sphere(vels, tgt_x, src_y, src_sigma,src_area, eps);
   for (int k=0; k<3; ++k) {
-    result[k] = velz[k] + vels[k];
+    result[k] = velz[k] ;// + vels[k];
   }
   // compute the solenoidal velocity gradient contributions
   Real gkz[9];
