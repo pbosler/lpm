@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
 #include "lpm_floating_point.hpp"
+#include "lpm_tuple.hpp"
 #ifdef LPM_USE_BOOST
 #include "boost/math/special_functions/bessel.hpp"
 #include "boost/math/special_functions/legendre.hpp"
@@ -173,6 +174,32 @@ void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
   rmat[8] =  cosx * cosy;
 }
 
+template <typename Compressed3by3, typename PtType>
+KOKKOS_INLINE_FUNCTION
+void spherical_tangent_projection_matrix(Compressed3by3& mat, const PtType& x) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      mat[3*i+j] = -x[i]*x[j] + (i==j ? 1 : 0);
+    }
+  }
+}
+
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> spherical_tangent_projection_matrix(const PtType& x) {
+  Kokkos::Tuple<Real,9> result;
+  spherical_tangent_projection_matrix(result, x);
+  return result;
+}
+
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
+  Kokkos::Tuple<Real,9> result;
+  north_pole_rotation_matrix(result, xyz);
+  return result;
+}
+
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
 KOKKOS_INLINE_FUNCTION
 void apply_3by3(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
@@ -195,6 +222,29 @@ void apply_3by3_transpose(PtType& xyzp, const Compressed3by3& mat, const ConstPt
   }
 }
 
+template <typename MatType, typename ConstMatType1, typename ConstMatType2>
+KOKKOS_INLINE_FUNCTION
+void matmul_3by3(MatType& c, const ConstMatType1& a, const ConstMatType2& b) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      const int c_idx = 3*i + j;
+      c[c_idx] = 0;
+      for (int k=0; k<3; ++k) {
+          c[c_idx] += a[3*i+k] * b[3*k+j];
+      }
+    }
+  }
+}
+
+template <typename Compressed3by3, typename PtType1, typename PtType2>
+KOKKOS_INLINE_FUNCTION
+void outer_product_r3(Compressed3by3& oprod, const PtType1& x, const PtType2& y) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      oprod[3*i + j] = x[i] * y[j];
+    }
+  }
+}
 
 /** Return the Bessel function B_0(x) for any real number x.
 
