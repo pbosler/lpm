@@ -2,6 +2,8 @@
 #include "util/lpm_math.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "lpm_comm.hpp"
+#include "lpm_constants.hpp"
+#include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
 #include <catch2/catch_test_macros.hpp>
 #include <typeinfo>
@@ -16,7 +18,7 @@ TEST_CASE("lpm_math", "") {
 
   Logger<> logger("math_test_log", Log::level::info, comm);
   logger.info("atan4(0,0) = {}, expected: 0", atan4(0,0));
-  REQUIRE(FloatingPoint<Real>::zero(atan4(0,0)));
+  CHECK(FloatingPoint<Real>::zero(atan4(0,0)));
 
   const Real a = 1;
   const Real b = -3;
@@ -24,24 +26,113 @@ TEST_CASE("lpm_math", "") {
   const Real d = 4;
   const Real det = two_by_two_determinant(a, b, c, d);
   logger.info("2x2 determinant = {}; expected: 10", det);
-  REQUIRE(Lpm::FloatingPoint<Real>::equiv(det, 10));
+  CHECK(Lpm::FloatingPoint<Real>::equiv(det, 10));
 
   Real r1, r2;
   quadratic_roots(r1, r2, a, b, c);
   logger.info("quadratic root 1 = {}; expected: 2", r1);
   logger.info("quadratic root 2 = {}; expected: 1", r2);
-  REQUIRE( FloatingPoint<Real>::equiv(r1, 2));
-  REQUIRE( FloatingPoint<Real>::equiv(r2, 1));
+  CHECK( FloatingPoint<Real>::equiv(r1, 2));
+  CHECK( FloatingPoint<Real>::equiv(r2, 1));
+
+  constexpr int nlon = 180;
+  constexpr int nlat = 91;
+  constexpr Real dlambda = 2*constants::PI / nlon;
+  Real np[3];
+  Real ones_sph[3];
+  for (int i=0; i<3; ++i) {
+    ones_sph[i] = 1/sqrt(3.0);
+  }
+
+  Real xyz[3];
+  Kokkos::Tuple<Real,9> proj_mat;
+  Kokkos::Tuple<Real,9> np_mat;
+  constexpr Real fp_tol = 1e-15;
+
+  if (fp_tol > FloatingPoint<Real>::zero_tol) {
+    logger.warn("Using floating point tolerance of {}, rather than the default value {}; this fp_tol is {}x larger.",
+      fp_tol, FloatingPoint<Real>::zero_tol, fp_tol / FloatingPoint<Real>::zero_tol);
+  }
+
+  for (int i=0; i<nlat; ++i) {
+    const Real lat = -0.5*constants::PI + i*dlambda;
+    xyz[2] = sin(lat);
+    for (int j=0; j<nlon; ++j) {
+      const Real lon = j*dlambda;
+      xyz[0] = cos(lat)*cos(lon);
+      xyz[1] = cos(lat)*sin(lon);
+
+      proj_mat = spherical_tangent_projection_matrix(xyz);
+      Real proj_ones[3];
+      apply_3by3(proj_ones, proj_mat, ones_sph);
+
+      if (!FloatingPoint<Real>::zero(SphereGeometry::dot(proj_ones, xyz), fp_tol)){
+        logger.error("tangent projection error at (lon, lat) = ({}, {}), xyz = ({}, {}, {})", lon, lat,
+          xyz[0], xyz[1], xyz[2]);
+      }
+      CHECK( FloatingPoint<Real>::zero(SphereGeometry::dot(proj_ones, xyz), fp_tol) );
+
+      np_mat = north_pole_rotation_matrix(xyz);
+      Real np[3];
+      apply_3by3(np, np_mat, xyz);
+
+      if (!FloatingPoint<Real>::zero(np[0], fp_tol) or
+        (!FloatingPoint<Real>::zero(np[0], fp_tol) or !FloatingPoint<Real>::equiv(np[2], 1, fp_tol))) {
+        logger.error("north pole rotation failed for i = {}, j = {}: np = ({}, {}, {})",
+          i, j, np[0], np[1], np[2]);
+      }
+
+      CHECK(FloatingPoint<Real>::zero(np[0], fp_tol));
+      CHECK(FloatingPoint<Real>::zero(np[1], fp_tol));
+      CHECK(FloatingPoint<Real>::equiv(np[2], 1, fp_tol));
+
+      Real xyz_check[3];
+      apply_3by3_transpose(xyz_check, np_mat, np);
+
+      if (!FloatingPoint<Real>::equiv(xyz[0], xyz_check[0], fp_tol) or
+        (!FloatingPoint<Real>::equiv(xyz[1], xyz_check[1], fp_tol) or
+         !FloatingPoint<Real>::equiv(xyz[2], xyz_check[2], fp_tol)) ) {
+
+        logger.error("rotation inversion failed for i = {}, j = {}: xyz = ({}, {}, {}), xyz_check = ({}, {}, {})",
+          i, j, xyz[0], xyz[1], xyz[2], xyz_check[0], xyz_check[1], xyz_check[2]);
+      }
+
+      CHECK(FloatingPoint<Real>::equiv(xyz[0], xyz_check[0], fp_tol));
+      CHECK(FloatingPoint<Real>::equiv(xyz[1], xyz_check[1], fp_tol));
+      CHECK(FloatingPoint<Real>::equiv(xyz[2], xyz_check[2], fp_tol));
+    }
+
+      Kokkos::Tuple<Real,9> a;
+      Kokkos::Tuple<Real,9> b;
+      Kokkos::Tuple<Real,9> c;
+      const Kokkos::Tuple<Real,9> c_exact = {150,153,156,420,432,444,690,711,732};
+      for (int i=0; i<3; ++i) {
+        for (int j=0; j<3; ++j) {
+          a[3*i + j] = 3*i + j;
+          b[3*i + j] = 30*i+j;
+        }
+      }
+      matmul_3by3(c, a, b);
+      std::ostringstream ss;
+      ss << " a = " << a << "\n"
+         << " b = " << b << "\n"
+         << " c_exact = " << c_exact << "\n"
+         << " c       = " << c;
+      logger.info(ss.str());
+      for (int i=0; i<9; ++i) {
+        CHECK(FloatingPoint<Real>::equiv(c[i], c_exact[i]));
+      }
+  }
 
 #ifdef LPM_USE_BOOST
   logger.info("Checking that BesselJ0 is even");
-  REQUIRE( FloatingPoint<Real>::equiv(cyl_bessel_j(0, 0.5), cyl_bessel_j(0, -0.5)));
+  CHECK( FloatingPoint<Real>::equiv(cyl_bessel_j(0, 0.5), cyl_bessel_j(0, -0.5)));
   logger.info("Checking that BesselJ1 is odd");
-  REQUIRE( FloatingPoint<Real>::equiv(cyl_bessel_j(1, 0.5), -cyl_bessel_j(1, -0.5)));
+  CHECK( FloatingPoint<Real>::equiv(cyl_bessel_j(1, 0.5), -cyl_bessel_j(1, -0.5)));
 
   logger.info("Checking that LegendreP(l,1) = 1 for l in {0,1,2,3,4}");
   for (int l=0; l<5; ++l) {
-    REQUIRE( FloatingPoint<Real>::equiv(legendre_p(l, 1), 1));
+    CHECK( FloatingPoint<Real>::equiv(legendre_p(l, 1), 1));
   }
 #endif
 }

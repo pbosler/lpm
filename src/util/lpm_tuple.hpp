@@ -6,6 +6,7 @@
 // #include "Kokkos_Array.hpp"
 #include <cfloat>
 #include <limits>
+#include <initializer_list>
 
 #include "spdlog/fmt/ostr.h"
 #include "util/lpm_floating_point.hpp"
@@ -60,6 +61,15 @@ struct Tuple : public Array<T, ndim> {
   Tuple(const View<T*>& v) : Array<T, ndim>() {
     for (int i = 0; i < ndim; ++i) {
       this->m_internal_implementation_private_member_data[i] = v[i];
+    }
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION
+  Tuple(std::initializer_list<T> init_list) : Array<T,ndim>() {
+    LPM_KERNEL_ASSERT(init_list.size() == ndim);
+    int i=0;
+    for (const T entry : init_list) {
+      this->m_internal_implementation_private_member_data[i++] = entry;
     }
   }
 
