@@ -1,10 +1,12 @@
-#include "dfs_vort2velocity.hpp"
+#include "dfs_swe_vort2velocity_to_ddproduct.hpp"
 
-namespace SpherePoisson {
-     void dfs_vort_2_velocity(view_r3pts<Real> X, view_1d<Real> vort,view_r3pts<Real> U_X)
-     {
-
-        // Step 1: solve for the streafunction in Fourier space
+namespace SpherePoisson
+{
+    // compute velocity on the particles
+     void dfs_vort2velocity_swe(view_r3pts<Real> xyz_particles, view_1d<Real> vort, view_r3pts<Real>U_X,
+    view_3d<Complex> Ucoeffs)
+    {
+         // Step 1: solve for the streafunction in Fourier space
        
         /* Laplacian operator in Fourier space
          It is split up into even and odd modes to 
@@ -60,13 +62,14 @@ namespace SpherePoisson {
             transform the particles cartesian coordinates to 
             spherical coordinates
         */
-        Int N = X.extent(0);        // N = Number of particles
+        Int N = xyz_particles.extent(0);        // N = Number of particles
         view_1d<Real> co_lat("colat", N);    
         view_1d<Real> lon("lon", N);
 
         Kokkos::parallel_for(N, KOKKOS_LAMBDA(Int i){
-            co_lat(i) = atan2(sqrt(X(i,0)*X(i,0) + X(i,1)*X(i,1)), X(i,2));
-            lon(i) = atan2(X(i,1), X(i, 0));
+            co_lat(i) = atan2(sqrt(xyz_particles(i,0)*xyz_particles(i,0) + xyz_particles(i,1)*xyz_particles(i,1)),
+            xyz_particles(i,2));
+            lon(i) = atan2(xyz_particles(i,1), xyz_particles(i, 0));
 
         });
 
@@ -75,8 +78,33 @@ namespace SpherePoisson {
         */
        dfs_interp(U, V, W, co_lat, lon, U_X);
 
-     }
+       /*
+       Copying the velocity components into one array
+       */
+      Kokkos::parallel_for("copyU",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {dnrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
+        Ucoeffs(i, j, 0) = U(i, j);
+        Ucoeffs(i, j, 1) = V(i, j);
+        Ucoeffs(i, j, 2) = W(i, j);
+    });
+ }
 
+ // Computes the double dot product of the velocity on the particles
+ void velocity_coeffs_to_ddproduct(view_r3pts<Real> xyz_particles, 
+   view_3d<Complex> Ucoeffs, view_1d<Real> ddproduct_particles)
+   {
+        Int dnrows = Ucoeffs.extent(0);
+        Int ncols = Ucoeffs.extent(1);
+        view_2d<Complex> U("component_u", dnrows, ncols);
+        view_2d<Complex> V("component_v", dnrows, ncols);
+        view_2d<Complex> W("component_w", dnrows, ncols);
+
+        Kokkos::parallel_for("copyU",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {dnrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
+            U(i, j) = Ucoeffs(i, j, 0);
+            V(i, j) = Ucoeffs(i, j, 1);
+            W(i, j) = Ucoeffs(i, j, 2);
+        });
+
+        compute_ddot_X(U, V, W, xyz_particles, ddproduct_particles);
     
-
+   }
 }

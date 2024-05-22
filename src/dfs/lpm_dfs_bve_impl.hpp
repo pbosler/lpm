@@ -278,7 +278,6 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
     grid_crds.get_host_crd_view(), gmls_params);
   t = solver.t_idx * solver.dt;
 }
-
 #ifdef LPM_USE_VTK
 template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const DFSBVE<SeedType>& dfs_bve) {

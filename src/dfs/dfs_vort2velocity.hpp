@@ -9,7 +9,6 @@
 #include "dfs_velocity.hpp"
 #include "dfs_doubling.hpp"
 #include "dfs_interpolation.hpp"
-#include <string>
 
 
 namespace SpherePoisson {

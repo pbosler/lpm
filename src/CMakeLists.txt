@@ -60,6 +60,7 @@ if (LPM_ENABLE_DFS)
 		dfs/dfs_vort2velocity.cpp
  		dfs/dfs_surface_grad.cpp
  		dfs/lpm_dfs_grid.cpp
+    dfs/dfs_swe_vort2velocity_to_ddproduct.cpp
  	)
 endif()
 
@@ -98,8 +99,8 @@ if (LPM_USE_FFTW3)
   target_link_libraries(lpm PUBLIC ${FFTW_LIBRARIES})
 endif()
 if (LPM_USE_FINUFFT)
-  target_link_libraries(lpm PUBLIC finufft_static)
-  add_link_options(-fsanitize=address)
+  target_link_libraries(lpm PUBLIC finufft)
+ 
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
@@ -163,6 +164,7 @@ if (LPM_ENABLE_DFS)
 	      dfs/dfs_interpolation.hpp
 	      dfs/dfs_vort2velocity.hpp
 	      dfs/dfs_surface_grad.hpp
+        dfs/dfs_swe_vort2velocity_to_ddproduct.hpp
 	      )
 endif()
 

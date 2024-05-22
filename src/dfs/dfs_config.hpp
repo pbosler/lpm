@@ -15,6 +15,8 @@ template <typename T>
 using view_2d = Lpm::view_2d<T>;
 template <typename T>
 using view_r3pts = Lpm::view_r3pts<T>;
+template <typename T> 
+using view_3d = Lpm::view_3d<T>;
 
 } // namespace SpherePoisson
 
