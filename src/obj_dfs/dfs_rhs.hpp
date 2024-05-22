@@ -25,7 +25,7 @@ class DFS_RHS{
     public:
         // constructor
         DFS_RHS(const Int nrow_, const Int ncols_);
-        // Default desstructor
+        // Default destructor
         ~DFS_RHS(){}
 
         // public methods
