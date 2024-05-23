@@ -164,6 +164,9 @@ void SWERK2<SeedType,TopoType>::advance_timestep_impl() {
         active_rel_vortwork, active_divwork, active_areawork,
         swe.double_dot_active.view, swe.surf_lap_active.view, swe.coriolis, swe.g, dt));
 
+    KokkosBlas::scal(passive_x2, dt, swe.velocity_passive.view);
+    KokkosBlas::scal(active_x2, dt, swe.velocity_active.view);
+
     KokkosBlas::update(0.5, passive_x1, 0.5, passive_x2, 1, swe.mesh.vertices.phys_crds.view);
     KokkosBlas::update(0.5, passive_rel_vort1, 0.5, passive_rel_vort2, 1, swe.rel_vort_passive.view);
     KokkosBlas::update(0.5, passive_div1, 0.5, passive_div2, 1, swe.div_passive.view);

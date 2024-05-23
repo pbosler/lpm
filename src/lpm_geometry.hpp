@@ -550,13 +550,11 @@ struct SphereGeometry {
         v_avg[j] += vview(poly[i], j);
       }
     }
-    Real prow[3];
     for (int i=0; i<3; ++i) {
-      proj_row(prow, x, i);
-      for (int j=0; j<3; ++j) {
-        v[i] += prow[j]*v_avg[j];
-      }
+      v_avg[i] /= n;
     }
+    const Kokkos::Tuple<Real,9> proj_mat = spherical_tangent_projection_matrix(x);
+    apply_3by3(v, proj_mat, v_avg);
   }
 
   /** \brief Computes the spherical midpoint between two vectors on the sphere

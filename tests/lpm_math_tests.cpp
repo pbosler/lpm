@@ -101,27 +101,27 @@ TEST_CASE("lpm_math", "") {
       CHECK(FloatingPoint<Real>::equiv(xyz[1], xyz_check[1], fp_tol));
       CHECK(FloatingPoint<Real>::equiv(xyz[2], xyz_check[2], fp_tol));
     }
+  } // lon-lat loop
 
-      Kokkos::Tuple<Real,9> a;
-      Kokkos::Tuple<Real,9> b;
-      Kokkos::Tuple<Real,9> c;
-      const Kokkos::Tuple<Real,9> c_exact = {150,153,156,420,432,444,690,711,732};
-      for (int i=0; i<3; ++i) {
-        for (int j=0; j<3; ++j) {
-          a[3*i + j] = 3*i + j;
-          b[3*i + j] = 30*i+j;
-        }
-      }
-      matmul_3by3(c, a, b);
-      std::ostringstream ss;
-      ss << " a = " << a << "\n"
-         << " b = " << b << "\n"
-         << " c_exact = " << c_exact << "\n"
-         << " c       = " << c;
-      logger.info(ss.str());
-      for (int i=0; i<9; ++i) {
-        CHECK(FloatingPoint<Real>::equiv(c[i], c_exact[i]));
-      }
+  Kokkos::Tuple<Real,9> matrix_a;
+  Kokkos::Tuple<Real,9> matrix_b;
+  Kokkos::Tuple<Real,9> matrix_c;
+  const Kokkos::Tuple<Real,9> matrix_c_exact = {150,153,156,420,432,444,690,711,732};
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      matrix_a[3*i + j] = 3*i + j;
+      matrix_b[3*i + j] = 30*i+j;
+    }
+  }
+  matmul_3by3(matrix_c, matrix_a, matrix_b);
+  std::ostringstream ss;
+  ss << " matrix_a = " << matrix_a << "\n"
+     << " matrix_b = " << matrix_b << "\n"
+     << " matrix_c_exact = " << matrix_c_exact << "\n"
+     << " matrix_c       = " << matrix_c;
+  logger.info(ss.str());
+  for (int i=0; i<9; ++i) {
+    CHECK(FloatingPoint<Real>::equiv(matrix_c[i], matrix_c_exact[i]));
   }
 
 #ifdef LPM_USE_BOOST

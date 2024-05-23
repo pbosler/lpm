@@ -66,6 +66,18 @@ target_include_directories(sphere_gaussian_vortex PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
+add_executable(sphere_rh54 sphere_rh54.cpp)
+target_link_libraries(sphere_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_rh54 PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
+
 add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
 target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
 target_include_directories(sphere_swe_test_case2 PUBLIC

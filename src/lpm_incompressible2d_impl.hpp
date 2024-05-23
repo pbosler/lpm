@@ -154,6 +154,12 @@ static_assert(std::is_same<typename SeedType::geo,
 }
 
 template <typename SeedType>
+void Incompressible2D<SeedType>::allocate_tracer(const std::string& name) {
+  tracer_passive.emplace(name, ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name, ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+}
+
+template <typename SeedType>
 void Incompressible2D<SeedType>::init_direct_sums() {
   Kokkos::TeamPolicy<> passive_policy(mesh.n_vertices_host(), Kokkos::AUTO());
   Kokkos::TeamPolicy<> active_policy(mesh.n_faces_host(), Kokkos::AUTO());

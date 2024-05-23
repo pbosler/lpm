@@ -69,6 +69,8 @@ class Incompressible2D {
     template <typename TracerType>
     void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
+    void allocate_tracer(const std::string& name);
+
     void init_direct_sums();
 
     template <typename VelocityType>

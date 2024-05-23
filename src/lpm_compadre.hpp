@@ -61,9 +61,22 @@ struct Neighborhoods {
 
   Neighborhoods() = default;
 
+  /** Constructor.  Target points may be different than source points.
+
+    General case, used, for example, interpolating from scattered data.
+
+    @param [in] host_src_crds Coordinates of source data, on host
+    @param [in] host_tgt_crds Coordinates of target points, on host
+  */
   Neighborhoods(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params);
 
+  /** Constructor.  Collocated source and target points.
+
+    Used when the target requires an operation (e.g., differentiation) on the source data.
+
+    @param [in] host_colloc_src_tgt_crds source and target points, on host
+  */
   Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
                 const Params& params);
 

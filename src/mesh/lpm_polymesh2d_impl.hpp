@@ -89,6 +89,14 @@ void PolyMesh2d<SeedType>::get_leaf_face_crds(VT leaf_crds) const {
 }
 
 template <typename SeedType>
+template <typename VT>
+void PolyMesh2d<SeedType>::get_leaf_face_crds(VT leaf_crds,
+    const typename SeedType::geo::crd_view_type face_crds) {
+    faces.leaf_crd_view(leaf_crds, face_crds);
+}
+
+
+template <typename SeedType>
 typename SeedType::geo::crd_view_type PolyMesh2d<SeedType>::get_leaf_face_crds()
     const {
   typename SeedType::geo::crd_view_type result("face_leaf_crds",

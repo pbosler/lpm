@@ -246,6 +246,14 @@ void outer_product_r3(Compressed3by3& oprod, const PtType1& x, const PtType2& y)
   }
 }
 
+template <int ndim>
+KOKKOS_INLINE_FUNCTION
+void scal(Kokkos::Tuple<Real,ndim>& tuple, const Real a) {
+  for (int i=0; i<ndim; ++i) {
+    tuple[i] *= a;
+  }
+}
+
 /** Return the Bessel function B_0(x) for any real number x.
 
  The polynomial approximation by

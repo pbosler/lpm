@@ -227,6 +227,10 @@ class PolyMesh2d {
   template <typename VT>
   void get_leaf_face_crds(VT leaf_crds) const;
 
+  template <typename VT>
+  void get_leaf_face_crds(VT leaf_crds,
+    const typename SeedType::geo::crd_view_type face_crds);
+
   typename SeedType::geo::crd_view_type get_leaf_face_crds() const;
 
   /** @brief Number of initialized vertices

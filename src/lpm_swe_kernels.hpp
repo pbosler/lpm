@@ -110,37 +110,79 @@ template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_kzeta(Compressed3by3 &gkz, const XType &x,
                                        const YType &y, const Real eps = 0) {
   const Real epssq = square(eps);
+  const Real one_p_epssq = 1 + epssq;
   const Real denom =
       1.0 / (4 * constants::PI * square(1 - SphereGeometry::dot(x, y) + epssq));
+//
+//   gkz[0] = ((1 + epssq) * x[0] - y[0]) *
+//            (x[1] * y[2] - x[2] * y[1]); // grad kzeta matrix 1,1
+//   gkz[1] = (1 + epssq) * (-(1 - square(x[1])) * y[2] - x[1] * x[2] * y[1]) +
+//            x[0] * y[0] * y[2] +
+//            x[2] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,2
+//   gkz[2] = (1 + epssq) * ((1 - square(x[2])) * y[1] + x[1] * x[2] * y[2]) -
+//            x[0] * y[0] * y[1] -
+//            x[1] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,3
+//   gkz[3] = (1 + epssq) * ((1 - square(x[0])) * y[2] + x[0] * x[2] * y[0]) -
+//            x[1] * y[1] * y[2] -
+//            x[2] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
+//   gkz[4] = ((1 + epssq) * x[1] - y[1]) *
+//            (x[2] * y[0] - x[0] * y[2]); // grad kzeta matrix 2,2
+//   gkz[5] = (1 + epssq) * (-(1 - square(x[2])) * y[0] - x[0] * x[2] * y[2]) +
+//            x[1] * y[1] * y[0] +
+//            x[0] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,3
+//   gkz[6] = (1 + epssq) * (-(1 - square(x[0])) * y[1] - x[0] * x[1] * y[0]) +
+//            x[2] * y[2] * y[1] +
+//            x[1] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,1
+//   gkz[7] = (1 + epssq) * ((1 - square(x[1])) * y[0] + x[0] * x[1] * y[1]) -
+//            x[2] * y[2] * y[0] -
+//            x[0] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,2
+//   gkz[8] = ((1 + epssq) * x[2] - y[2]) *
+//            (x[0] * y[1] - x[1] * y[0]); // grad kzeta matrix 3,3
+//   gkz[0] = - (x[2]*y[1] - x[1]*y[2])*(x[0]*one_p_epssq - y[0]);
+//   gkz[1] = - x[2]*(square(y[0]) + square(y[2]))
+//            + x[0]*x[2]*y[0]*one_p_epssq
+//            - square(x[0])*y[2]*one_p_epssq
+//            + y[2]*(one_p_epssq - x[1]*y[1]);
+//   gkz[2] = x[1]*(square(y[0]) + square(y[1]))
+//            - y[1]*(one_p_epssq - x[2]*y[2])
+//            - x[0]*x[1]*y[0]*one_p_epssq
+//            + square(x[0])*y[1]*one_p_epssq;
+//   gkz[3] = x[2]*(square(y[1]) + square(y[2]))
+//            - y[2]*(one_p_epssq - x[0]*y[0])
+//            - x[1]*x[2]*y[1]*one_p_epssq
+//            + square(x[1])*y[2]*one_p_epssq;
+//   gkz[4] = (x[2]*y[0] - x[0]*y[2])*(x[1]*one_p_epssq - y[1]);
+//   gkz[5] = y[0]*one_p_epssq - x[0]*square(y[0])
+//            - x[2]*y[0]*y[2]
+//            - square(x[1])*y[0]*one_p_epssq
+//            + x[0]*y[1]*(x[1]*one_p_epssq - y[1]);
+//   gkz[6] = y[1]*one_p_epssq - x[0]*y[0]*y[1] - x[1]*square(y[1])
+//            -square(x[2])*y[1]*one_p_epssq
+//            +x[1]*y[2]*(x[2]*one_p_epssq - y[2]);
+//   gkz[7] = x[0]*square(y[0]) + x[0]*y[2]*(y[2]-x[2]*one_p_epssq)
+//           -y[0]*(one_p_epssq - x[1]*y[1] - square(x[2])*one_p_epssq);
+//   gkz[8] = -(x[1]*y[0]-x[0]*y[1])*(x[2]*one_p_epssq - y[2]);
 
-  gkz[0] = ((1 + epssq) * x[0] - y[0]) *
-           (x[1] * y[2] - x[2] * y[1]); // grad kzeta matrix 1,1
-  gkz[1] = (1 + epssq) * (-(1 - square(x[1])) * y[2] - x[1] * x[2] * y[1]) +
-           x[0] * y[0] * y[2] +
-           x[2] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,2
-  gkz[2] = (1 + epssq) * ((1 - square(x[2])) * y[1] + x[1] * x[2] * y[2]) -
-           x[0] * y[0] * y[1] -
-           x[1] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,3
-  gkz[3] = (1 + epssq) * ((1 - square(x[0])) * y[2] + x[0] * x[2] * y[0]) -
-           x[1] * y[1] * y[2] -
-           x[2] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
-  gkz[4] = ((1 + epssq) * x[1] - y[1]) *
-           (x[2] * y[0] - x[0] * y[2]); // grad kzeta matrix 2,2
-  gkz[5] = (1 + epssq) * (-(1 - square(x[2])) * y[0] - x[0] * x[2] * y[2]) +
-           x[1] * y[1] * y[0] +
-           x[0] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,3
-  gkz[6] = (1 + epssq) * (-(1 - square(x[0])) * y[1] - x[0] * x[1] * y[0]) +
-           x[2] * y[2] * y[1] +
-           x[1] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,1
-  gkz[7] = (1 + epssq) * ((1 - square(x[1])) * y[0] + x[0] * x[1] * y[1]) -
-           x[2] * y[2] * y[0] -
-           x[0] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,2
-  gkz[8] = ((1 + epssq) * x[2] - y[2]) *
-           (x[0] * y[1] - x[1] * y[0]); // grad kzeta matrix 3,3
+  gkz[0] = (x[2]*y[1]-x[1]*y[2])*(one_p_epssq*x[0] - y[0]);
+  gkz[1] = -x[2]*(square(y[1]) + square(y[2])) + x[1]*x[2]*y[1]*one_p_epssq
+           -square(x[1])*y[2]*one_p_epssq + y[2]*(one_p_epssq - x[0]*y[0]);
+  gkz[2] = x[1]*square(y[1]) + x[1]*y[2]*(y[2]-x[2]*one_p_epssq) +
+           y[1]*(-one_p_epssq+ x[0]*y[0]+square(x[2])*one_p_epssq);
+  gkz[3] = x[2]*(square(y[0]) + square(y[2])) + y[2]*(x[1]*y[1]-one_p_epssq) -
+           x[0]*x[2]*y[0]*one_p_epssq + square(x[0])*y[2]*one_p_epssq;
+  gkz[4] = -(x[2]*y[0]-x[0]*y[2])*(x[1]*one_p_epssq -y[1]);
+  gkz[5] = y[0]*one_p_epssq - x[0]*square(y[0]) - x[1]*y[0]*y[1] -
+           square(x[2])*y[0]*one_p_epssq + x[0]*y[2]*(x[2]*one_p_epssq - y[2]);
+  gkz[6] = -x[1]*(square(y[0]) + square(y[1])) + x[0]*x[1]*y[0]*one_p_epssq -
+           square(x[0])*y[1]*one_p_epssq + y[1]*(one_p_epssq - x[2]*y[2]);
+  gkz[7] = x[0]*square(y[0]) + x[0]*y[1]*(y[1]-x[1]*one_p_epssq) +
+           y[0]*(x[2]*y[2] - one_p_epssq + square(x[1])*one_p_epssq);
+  gkz[8] = (x[1]*y[0] - x[0]*y[1])*(x[2]*one_p_epssq - y[2]);
 
   for (Short j = 0; j < 9; ++j) {
     gkz[j] *= denom;
   }
+
 }
 
 
@@ -606,18 +648,58 @@ struct SphereSweDirectSumReducer {
     src_sigma(ss),
     src_area(sa),
     src_mask(m),
-    eps(eps) {}
+    eps(eps) {
+      if (!colloc and FloatingPoint<Real>::zero(eps)) {
+        LPM_ASSERT_MSG( &tx != &sy, "non-collocated points must come from different views.");
+      }
+    }
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!collocated_src_tgt or (i != j and !src_mask(j)) ) {
+    if (!src_mask(j)) {
       const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
-      const value_type local_result =
-        sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
-          src_area(j), eps);
-      r += local_result;
+#ifndef NDEBUG
+      if (!collocated_src_tgt and FloatingPoint<Real>::zero(eps)) {
+        if (FloatingPoint<Real>::zero(1 - SphereGeometry::dot(xcrd, ycrd))) {
+          auto logger = lpm_logger();
+          logger->error("collocated points found at (i,j) = ({}, {}), ", i, j);
+
+        }
+      }
+#endif
+      if (!collocated_src_tgt or (i != j)) {
+        const value_type local_result =
+          sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
+            src_area(j), eps);
+        r += local_result;
+      }
     }
+  }
+};
+
+template <typename Geo>
+struct GradFCrossU {
+  using crd_view = typename Geo::crd_view_type;
+  using vec_view = typename Geo::vec_view_type;
+  using Coriolis = typename std::conditional<
+      std::is_same<Geo, PlaneGeometry>::value,
+      CoriolisBetaPlane, CoriolisSphere>::type;
+
+  scalar_view_type grad_f_cross_u;
+  crd_view x;
+  vec_view u;
+  Coriolis coriolis;
+
+  GradFCrossU(scalar_view_type gfcu, const crd_view x, const vec_view u,
+    const Coriolis& coriolis) :
+    grad_f_cross_u(gfcu), x(x), u(u), coriolis(coriolis) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
+    grad_f_cross_u(i) = coriolis.grad_f_cross_u(xi, ui);
   }
 };
 
@@ -675,7 +757,7 @@ struct PlanarSWEVertexSums {
     // perform packed reduction, dispatching 1 thread team per target
     Kokkos::Tuple<Real,7> sums;
     constexpr bool collocated = false;
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       PlanarSwePseDirectSumReducer(vert_x, vert_s, i, face_y, collocated,
         face_zeta, face_sigma, face_area, face_mask, face_s,
         eps, pse_eps), sums);
@@ -712,10 +794,10 @@ struct SphereVertexSums {
   Index nfaces;
   bool do_velocity;
 
-  SphereVertexSums(vec_view& vu, scalar_view_type& vdd,
-    const crd_view& vx, const crd_view& fy,
-    const scalar_view_type& fz, const scalar_view_type& fs,
-    const scalar_view_type& fa, const mask_view_type& fm,
+  SphereVertexSums(vec_view vu, scalar_view_type vdd,
+    const crd_view vx, const crd_view fy,
+    const scalar_view_type fz, const scalar_view_type fs,
+    const scalar_view_type fa, const mask_view_type fm,
     const Real eps, const Index nf, const bool do_velocity) :
     vert_u(vu),
     vert_ddot(vdd),
@@ -735,7 +817,7 @@ struct SphereVertexSums {
 
     Kokkos::Tuple<Real, 12> sums;
     constexpr bool collocated = false;
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       SphereSweDirectSumReducer(vert_x, i, face_y, collocated, face_zeta,
         face_sigma, face_area, face_mask, eps), sums);
 
@@ -802,7 +884,7 @@ struct PlanarSWEFaceSums {
     // perform packed reduction, 1 thread team per target
     Kokkos::Tuple<Real,7> sums;
     const bool collocated = !(eps > 0);
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       PlanarSwePseDirectSumReducer(face_xy, face_s, i, face_xy, collocated,
         face_zeta, face_sigma, face_area, face_mask, face_s,
         eps, pse_eps), sums);
@@ -860,7 +942,7 @@ struct SphereFaceSums {
 
     Kokkos::Tuple<Real,12> sums;
     const bool collocated = FloatingPoint<Real>::zero(eps);
-    Kokkos::parallel_reduce(Kokkos::TeamThreadRange(thread_team, nfaces),
+    Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       SphereSweDirectSumReducer(face_xy, i, face_xy, collocated, face_zeta,
         face_sigma, face_area, face_mask, eps), sums);
     if (do_velocity) {
@@ -1058,15 +1140,15 @@ struct SetDepthAndSurfaceFromMassAndArea {
   mask_view_type mask; /// [in] mask to exclude divided panels
   TopoType topo; /// [in] bottom topography functor
 
-  SetDepthAndSurfaceFromMassAndArea(scalar_view_type& h,
-                    scalar_view_type& s,
-                    scalar_view_type& b,
+  SetDepthAndSurfaceFromMassAndArea(scalar_view_type h,
+                    scalar_view_type s,
+                    scalar_view_type b,
                     const crd_view x,
                     const scalar_view_type m,
                     const scalar_view_type area,
                     const mask_view_type mask,
                     const TopoType topo) :
-        h(h), s(s), b(b), x(x), m(m), area(area), mask(mask) {}
+        h(h), s(s), b(b), x(x), m(m), area(area), mask(mask), topo(topo) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {

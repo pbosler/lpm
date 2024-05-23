@@ -84,6 +84,16 @@ struct Tuple : public Array<T, ndim> {
     return this->m_internal_implementation_private_member_data[i];
   }
 
+  KOKKOS_INLINE_FUNCTION
+  Tuple operator+ (const Tuple<T,ndim>& o) const {
+    Tuple<T,ndim> result;
+    for (int i=0; i<ndim; ++i) {
+      result[i] =
+        this->m_internal_implementation_private_member_data[i] + o[i];
+    }
+    return result;
+  }
+
   KOKKOS_FORCEINLINE_FUNCTION
   Tuple operator+=(const Tuple<T, ndim>& o) {
     for (int i = 0; i < ndim; ++i)
@@ -137,6 +147,7 @@ struct reduction_identity<Tuple<Lpm::Real, ndim>> {
     return Tuple<Lpm::Real, ndim>(DBL_MAX);
   }
 };
+
 
 template <typename T, int ndim>
 KOKKOS_INLINE_FUNCTION

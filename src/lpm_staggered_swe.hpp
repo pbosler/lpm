@@ -31,15 +31,19 @@ class StaggeredSWE {
     ScalarField<FaceField> divergence;
     ScalarField<FaceField> mass;
     ScalarField<FaceField> double_dot_avg;
+    ScalarField<FaceField> grad_f_cross_u_avg;
     ScalarField<FaceField> depth;
     ScalarField<FaceField> bottom_height;
     ScalarField<FaceField> surface_height;
     ScalarField<FaceField> surface_laplacian;
+    VectorField<geo, FaceField> velocity_avg;
     std::map<std::string, ScalarField<FaceField>> tracers;
 
     // vertex fields
     VectorField<geo, VertexField> velocity;
     ScalarField<VertexField> double_dot;
+    ScalarField<VertexField> grad_f_cross_u;
+    std::map<std::string, ScalarField<VertexField>> diags;
 
     /// Lagrangian particle/panel mesh
     PolyMesh2d<SeedType> mesh;
@@ -72,12 +76,15 @@ class StaggeredSWE {
     void update_device();
 
     void allocate_scalar_tracer(const std::string& name);
+    void allocate_scalar_diag(const std::string& name);
 
     std::string info_string(const int tab_level=0, const bool verbose=false) const;
 
+    void gmls_surface_laplacian(const crd_view& face_x, const gmls::Params& gmls_params);
+
   private: // functions
 
-    void init_surface_laplacian(const gmls::Params& gmls_params);
+    void gmls_surface_laplacian(const gmls::Params& gmls_params);
 
     /** @brief initializes fields that must be computed, i.e.,
       velocity (optionally)
