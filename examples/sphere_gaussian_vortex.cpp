@@ -96,6 +96,14 @@ int main (int argc, char* argv[]) {
     auto sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
       coriolis, input.get_option("kernel_smoothing_parameter").get_real());
     sphere->init_vorticity(gauss_vort);
+    const Real total_vorticity = sphere->total_vorticity();
+    gauss_vort.set_gauss_const(total_vorticity, sphere->mesh.n_faces_host());
+    sphere->init_vorticity(gauss_vort);
+    const Real total_vorticity_check = sphere->total_vorticity();
+    constexpr Real gauss_zero_tol = 1e-15;
+    if (!FloatingPoint<Real>::zero(total_vorticity_check, gauss_zero_tol) ) {
+      logger.error("total vorticity is not zero: {}", total_vorticity_check);
+    }
     sphere->init_direct_sums();
 
     Ftle ftle;
