@@ -89,9 +89,20 @@ target_include_directories(sphere_swe_test_case2 PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
-add_executable(sphere_staggered_swe_tc2 sphere_staggered_swe_tc2.cpp)
-target_link_libraries(sphere_staggered_swe_tc2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_staggered_swe_tc2 PUBLIC
+#add_executable(sphere_staggered_swe_tc2 sphere_staggered_swe_tc2.cpp)
+#target_link_libraries(sphere_staggered_swe_tc2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(sphere_staggered_swe_tc2 PUBLIC
+# ${LPM_INCLUDE_DIRS}
+# ${Trilinos_INCLUDE_DIRS}
+# ${Trilinos_TPL_INCLUDE_DIRS}
+# ${VTK_INCLUDE_DIRS}
+# ${CMAKE_CURRENT_SOURCE_DIR}
+# ${lpmtest_INCLUDE_DIRS}
+#)
+
+add_executable(plane_swe_gaussians plane_swe_gaussian_tests.cpp)
+target_link_libraries(plane_swe_gaussians PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(plane_swe_gaussians PUBLIC
  ${LPM_INCLUDE_DIRS}
  ${Trilinos_INCLUDE_DIRS}
  ${Trilinos_TPL_INCLUDE_DIRS}

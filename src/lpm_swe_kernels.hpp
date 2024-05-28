@@ -110,79 +110,37 @@ template <typename Compressed3by3, typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION void grad_kzeta(Compressed3by3 &gkz, const XType &x,
                                        const YType &y, const Real eps = 0) {
   const Real epssq = square(eps);
-  const Real one_p_epssq = 1 + epssq;
   const Real denom =
       1.0 / (4 * constants::PI * square(1 - SphereGeometry::dot(x, y) + epssq));
-//
-//   gkz[0] = ((1 + epssq) * x[0] - y[0]) *
-//            (x[1] * y[2] - x[2] * y[1]); // grad kzeta matrix 1,1
-//   gkz[1] = (1 + epssq) * (-(1 - square(x[1])) * y[2] - x[1] * x[2] * y[1]) +
-//            x[0] * y[0] * y[2] +
-//            x[2] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,2
-//   gkz[2] = (1 + epssq) * ((1 - square(x[2])) * y[1] + x[1] * x[2] * y[2]) -
-//            x[0] * y[0] * y[1] -
-//            x[1] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,3
-//   gkz[3] = (1 + epssq) * ((1 - square(x[0])) * y[2] + x[0] * x[2] * y[0]) -
-//            x[1] * y[1] * y[2] -
-//            x[2] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
-//   gkz[4] = ((1 + epssq) * x[1] - y[1]) *
-//            (x[2] * y[0] - x[0] * y[2]); // grad kzeta matrix 2,2
-//   gkz[5] = (1 + epssq) * (-(1 - square(x[2])) * y[0] - x[0] * x[2] * y[2]) +
-//            x[1] * y[1] * y[0] +
-//            x[0] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,3
-//   gkz[6] = (1 + epssq) * (-(1 - square(x[0])) * y[1] - x[0] * x[1] * y[0]) +
-//            x[2] * y[2] * y[1] +
-//            x[1] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,1
-//   gkz[7] = (1 + epssq) * ((1 - square(x[1])) * y[0] + x[0] * x[1] * y[1]) -
-//            x[2] * y[2] * y[0] -
-//            x[0] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,2
-//   gkz[8] = ((1 + epssq) * x[2] - y[2]) *
-//            (x[0] * y[1] - x[1] * y[0]); // grad kzeta matrix 3,3
-//   gkz[0] = - (x[2]*y[1] - x[1]*y[2])*(x[0]*one_p_epssq - y[0]);
-//   gkz[1] = - x[2]*(square(y[0]) + square(y[2]))
-//            + x[0]*x[2]*y[0]*one_p_epssq
-//            - square(x[0])*y[2]*one_p_epssq
-//            + y[2]*(one_p_epssq - x[1]*y[1]);
-//   gkz[2] = x[1]*(square(y[0]) + square(y[1]))
-//            - y[1]*(one_p_epssq - x[2]*y[2])
-//            - x[0]*x[1]*y[0]*one_p_epssq
-//            + square(x[0])*y[1]*one_p_epssq;
-//   gkz[3] = x[2]*(square(y[1]) + square(y[2]))
-//            - y[2]*(one_p_epssq - x[0]*y[0])
-//            - x[1]*x[2]*y[1]*one_p_epssq
-//            + square(x[1])*y[2]*one_p_epssq;
-//   gkz[4] = (x[2]*y[0] - x[0]*y[2])*(x[1]*one_p_epssq - y[1]);
-//   gkz[5] = y[0]*one_p_epssq - x[0]*square(y[0])
-//            - x[2]*y[0]*y[2]
-//            - square(x[1])*y[0]*one_p_epssq
-//            + x[0]*y[1]*(x[1]*one_p_epssq - y[1]);
-//   gkz[6] = y[1]*one_p_epssq - x[0]*y[0]*y[1] - x[1]*square(y[1])
-//            -square(x[2])*y[1]*one_p_epssq
-//            +x[1]*y[2]*(x[2]*one_p_epssq - y[2]);
-//   gkz[7] = x[0]*square(y[0]) + x[0]*y[2]*(y[2]-x[2]*one_p_epssq)
-//           -y[0]*(one_p_epssq - x[1]*y[1] - square(x[2])*one_p_epssq);
-//   gkz[8] = -(x[1]*y[0]-x[0]*y[1])*(x[2]*one_p_epssq - y[2]);
 
-  gkz[0] = (x[2]*y[1]-x[1]*y[2])*(one_p_epssq*x[0] - y[0]);
-  gkz[1] = -x[2]*(square(y[1]) + square(y[2])) + x[1]*x[2]*y[1]*one_p_epssq
-           -square(x[1])*y[2]*one_p_epssq + y[2]*(one_p_epssq - x[0]*y[0]);
-  gkz[2] = x[1]*square(y[1]) + x[1]*y[2]*(y[2]-x[2]*one_p_epssq) +
-           y[1]*(-one_p_epssq+ x[0]*y[0]+square(x[2])*one_p_epssq);
-  gkz[3] = x[2]*(square(y[0]) + square(y[2])) + y[2]*(x[1]*y[1]-one_p_epssq) -
-           x[0]*x[2]*y[0]*one_p_epssq + square(x[0])*y[2]*one_p_epssq;
-  gkz[4] = -(x[2]*y[0]-x[0]*y[2])*(x[1]*one_p_epssq -y[1]);
-  gkz[5] = y[0]*one_p_epssq - x[0]*square(y[0]) - x[1]*y[0]*y[1] -
-           square(x[2])*y[0]*one_p_epssq + x[0]*y[2]*(x[2]*one_p_epssq - y[2]);
-  gkz[6] = -x[1]*(square(y[0]) + square(y[1])) + x[0]*x[1]*y[0]*one_p_epssq -
-           square(x[0])*y[1]*one_p_epssq + y[1]*(one_p_epssq - x[2]*y[2]);
-  gkz[7] = x[0]*square(y[0]) + x[0]*y[1]*(y[1]-x[1]*one_p_epssq) +
-           y[0]*(x[2]*y[2] - one_p_epssq + square(x[1])*one_p_epssq);
-  gkz[8] = (x[1]*y[0] - x[0]*y[1])*(x[2]*one_p_epssq - y[2]);
+  gkz[0] = ((1 + epssq) * x[0] - y[0]) *
+           (x[1] * y[2] - x[2] * y[1]); // grad kzeta matrix 1,1
+  gkz[1] = (1 + epssq) * (-(1 - square(x[1])) * y[2] - x[1] * x[2] * y[1]) +
+           x[0] * y[0] * y[2] +
+           x[2] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,2
+  gkz[2] = (1 + epssq) * ((1 - square(x[2])) * y[1] + x[1] * x[2] * y[2]) -
+           x[0] * y[0] * y[1] -
+           x[1] * (square(y[1]) + square(y[2])); // grad kzeta matrix 1,3
+  gkz[3] = (1 + epssq) * ((1 - square(x[0])) * y[2] + x[0] * x[2] * y[0]) -
+           x[1] * y[1] * y[2] -
+           x[2] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,1
+  gkz[4] = ((1 + epssq) * x[1] - y[1]) *
+           (x[2] * y[0] - x[0] * y[2]); // grad kzeta matrix 2,2
+  gkz[5] = (1 + epssq) * (-(1 - square(x[2])) * y[0] - x[0] * x[2] * y[2]) +
+           x[1] * y[1] * y[0] +
+           x[0] * (square(y[0]) + square(y[2])); // grad kzeta matrix 2,3
+  gkz[6] = (1 + epssq) * (-(1 - square(x[0])) * y[1] - x[0] * x[1] * y[0]) +
+           x[2] * y[2] * y[1] +
+           x[1] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,1
+  gkz[7] = (1 + epssq) * ((1 - square(x[1])) * y[0] + x[0] * x[1] * y[1]) -
+           x[2] * y[2] * y[0] -
+           x[0] * (square(y[0]) + square(y[1])); // grad kzeta matrix 3,2
+  gkz[8] = ((1 + epssq) * x[2] - y[2]) *
+           (x[0] * y[1] - x[1] * y[0]); // grad kzeta matrix 3,3
 
   for (Short j = 0; j < 9; ++j) {
     gkz[j] *= denom;
   }
-
 }
 
 
@@ -388,7 +346,7 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   Real vels[3];
   ksigma_sphere(vels, tgt_x, src_y, src_sigma,src_area, eps);
   for (int k=0; k<3; ++k) {
-    result[k] = velz[k] ;// + vels[k];
+    result[k] = velz[k] + vels[k];
   }
   // compute the solenoidal velocity gradient contributions
   Real gkz[9];
@@ -411,7 +369,7 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   Each call to this function computes 1 pairwise interaction, the
   contributions of source particle y to target particle x.
 
-  Results are packed into a 7-tuple:
+  Results are packed into a 9-tuple:
   index 0: u
   index 1: v
   index 2: du/dx
@@ -419,6 +377,8 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
   index 4: dv/dx
   index 5: dv/dy
   index 6: laplacian(sfc) from PSE
+  index 7: stream function
+  index 8: potential function
 
   @param [in] tgt_x target point coordinates
   @param [in] src_y source point coordinates
@@ -433,7 +393,7 @@ Kokkos::Tuple<Real,12> sphere_swe_velocity_sums(const XType& tgt_x,
 */
 template <typename XType, typename YType>
 KOKKOS_INLINE_FUNCTION
-Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
+Kokkos::Tuple<Real, 9> planar_swe_sums_rhs_pse(
   const XType& tgt_x, /// coordinates of target point
   const YType& src_y, /// coordinates of source point
   const Real& src_zeta, /// source vorticity
@@ -445,30 +405,37 @@ Kokkos::Tuple<Real, 7> planar_swe_sums_rhs_pse(
   const Real& pse_eps /// PSE kernel width parameter
 ){
   using pse_type = pse::BivariateOrder8<PlaneGeometry>;
-  Kokkos::Tuple<Real, 7> result;
+  using value_type = Kokkos::Tuple<Real,9>;
+  value_type result;
 
-  const Real Rvec[2] = {-(tgt_x[1] - src_y[1]), tgt_x[0] - src_y[0]};
-  const Real Svec[2] = {  tgt_x[0] - src_y[0] , tgt_x[1] - src_y[1]};
-  const Real denom = PlaneGeometry::norm2(Svec) + square(eps);
+  const Real x_minus_y[2] = {tgt_x[0] - src_y[0], tgt_x[1] - src_y[1]};
+  const Real epssq = square(eps);
+  const Real rsq = PlaneGeometry::norm2(x_minus_y);
+  const Real denom  = 2*constants::PI * (rsq + epssq);
+  const Real denom2 = constants::PI * square(rsq +  epssq);
   const Real rot_str = src_zeta * src_area;
   const Real pot_str = src_sigma * src_area;
-  constexpr Real oo2pi = 1.0 / (2*constants::PI);
+  const Real greens = -log(rsq + epssq) / (4 * constants::PI);
+  const Real x_mix_y = x_minus_y[0] * x_minus_y[1];
+
   // u
-  result[0] = oo2pi * (Rvec[0]*rot_str + Svec[0]*pot_str) / denom;
+  result[0] = (-x_minus_y[1]*rot_str + x_minus_y[0]*pot_str) / denom;
   // v
-  result[1] = oo2pi * (Rvec[1]*rot_str + Svec[1]*pot_str) / denom;
+  result[1] = ( x_minus_y[0]*rot_str + x_minus_y[1]*pot_str) / denom;
   // du/dx
-  result[2] = oo2pi * ( pot_str / denom - (2*Svec[0]/square(denom)) * (Rvec[0]*rot_str + Svec[0]*pot_str));
+  result[2] = ( (-x_mix_y * rot_str) + square(x_minus_y[0]) * pot_str) / denom2 - pot_str / denom;
   // du/dy
-  result[3] = oo2pi * (-rot_str / denom - (2*Svec[1]/square(denom)) * (Rvec[0]*rot_str + Svec[0]*pot_str));
+  result[3] = (-square(x_minus_y[1]) * rot_str + x_mix_y * pot_str) / denom2 + rot_str / denom;
   // dv/dx
-  result[4] = oo2pi * ( rot_str / denom - (2*Svec[0]/square(denom)) * (Rvec[1]*rot_str + Svec[1]*pot_str));
+  result[4] = ( square(x_minus_y[0]) * rot_str + x_mix_y * pot_str) / denom2 - rot_str / denom;
   // dv/dy
-  result[5] = oo2pi * ( pot_str / denom - (2*Svec[1]/square(denom)) * (Rvec[1]*rot_str + Svec[1]*pot_str));
+  result[5] = ( x_mix_y * rot_str + square(x_minus_y[1]) * pot_str) / denom2 - pot_str / denom;
   // lap(s)
   const Real pse_input = pse_type::kernel_input(tgt_x, src_y, pse_eps);
   const Real pse_val = pse_type::laplacian(pse_input);
   result[6] = (src_s - tgt_s) * src_area * pse_val / square(pse_eps);
+  result[7] = greens * rot_str;
+  result[8] = greens * pot_str;
 
   return result;
 }
@@ -560,7 +527,7 @@ Kokkos::Tuple<Real,13> sphere_swe_sums_rhs_pse(
 */
 struct PlanarSwePseDirectSumReducer {
   using crd_view = PlaneGeometry::crd_view_type;
-  using value_type = Kokkos::Tuple<Real,7>;
+  using value_type = Kokkos::Tuple<Real,9>;
   crd_view tgt_x; // [in] coordinates of target points
   scalar_view_type tgt_sfc; // [in] surface height of target points
   Index i; // [in] index of target point in target views
@@ -604,8 +571,8 @@ struct PlanarSwePseDirectSumReducer {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!collocated_src_tgt or i != j) {
-      if (!src_mask(j)) {
+    if (!src_mask(j)) {
+      if (!collocated_src_tgt or i != j) {
         const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
         const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
         const value_type local_result =
@@ -648,58 +615,18 @@ struct SphereSweDirectSumReducer {
     src_sigma(ss),
     src_area(sa),
     src_mask(m),
-    eps(eps) {
-      if (!colloc and FloatingPoint<Real>::zero(eps)) {
-        LPM_ASSERT_MSG( &tx != &sy, "non-collocated points must come from different views.");
-      }
-    }
+    eps(eps) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!src_mask(j)) {
+    if (!collocated_src_tgt or (i != j and !src_mask(j)) ) {
       const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
-#ifndef NDEBUG
-      if (!collocated_src_tgt and FloatingPoint<Real>::zero(eps)) {
-        if (FloatingPoint<Real>::zero(1 - SphereGeometry::dot(xcrd, ycrd))) {
-          auto logger = lpm_logger();
-          logger->error("collocated points found at (i,j) = ({}, {}), ", i, j);
-
-        }
-      }
-#endif
-      if (!collocated_src_tgt or (i != j)) {
-        const value_type local_result =
-          sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
-            src_area(j), eps);
-        r += local_result;
-      }
+      const value_type local_result =
+        sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
+          src_area(j), eps);
+      r += local_result;
     }
-  }
-};
-
-template <typename Geo>
-struct GradFCrossU {
-  using crd_view = typename Geo::crd_view_type;
-  using vec_view = typename Geo::vec_view_type;
-  using Coriolis = typename std::conditional<
-      std::is_same<Geo, PlaneGeometry>::value,
-      CoriolisBetaPlane, CoriolisSphere>::type;
-
-  scalar_view_type grad_f_cross_u;
-  crd_view x;
-  vec_view u;
-  Coriolis coriolis;
-
-  GradFCrossU(scalar_view_type gfcu, const crd_view x, const vec_view u,
-    const Coriolis& coriolis) :
-    grad_f_cross_u(gfcu), x(x), u(u), coriolis(coriolis) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator() (const Index i) const {
-    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
-    const auto ui = Kokkos::subview(u, i, Kokkos::ALL);
-    grad_f_cross_u(i) = coriolis.grad_f_cross_u(xi, ui);
   }
 };
 
@@ -715,6 +642,8 @@ struct PlanarSWEVertexSums {
   vec_view vert_u; /// [out] velocity at vertices
   scalar_view_type vert_ddot; /// [out] double dot product at vertices
   scalar_view_type vert_laps; /// [out] surface Laplacian at vertices
+  scalar_view_type vert_psi; /// [out] stream function at vertices
+  scalar_view_type vert_phi; /// [out] potential function at vertices
   crd_view vert_x; /// [in] vertex coordinates (targets)
   scalar_view_type vert_s;; /// [in] surface height at vertices
   crd_view face_y; /// [in] face coordinates (sources)
@@ -729,6 +658,7 @@ struct PlanarSWEVertexSums {
   bool do_velocity; /// [in] if true, overwrite velocity
 
   PlanarSWEVertexSums(vec_view& vu, scalar_view_type& vdd, scalar_view_type& vls,
+    scalar_view_type& vpsi, scalar_view_type& vphi,
     const crd_view vx, const scalar_view_type vsfc, const crd_view fy,
     const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask,
@@ -737,6 +667,8 @@ struct PlanarSWEVertexSums {
     vert_u(vu),
     vert_ddot(vdd),
     vert_laps(vls),
+    vert_psi(vpsi),
+    vert_phi(vphi),
     vert_x(vx),
     vert_s(vsfc),
     face_y(fy),
@@ -755,7 +687,7 @@ struct PlanarSWEVertexSums {
     const Index i = thread_team.league_rank();
 
     // perform packed reduction, dispatching 1 thread team per target
-    Kokkos::Tuple<Real,7> sums;
+    Kokkos::Tuple<Real,9> sums;
     constexpr bool collocated = false;
     Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       PlanarSwePseDirectSumReducer(vert_x, vert_s, i, face_y, collocated,
@@ -769,6 +701,8 @@ struct PlanarSWEVertexSums {
     }
     vert_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
     vert_laps(i) = sums[6];
+    vert_psi(i) = sums[7];
+    vert_phi(i) = sums[8];
   }
 };
 
@@ -794,10 +728,10 @@ struct SphereVertexSums {
   Index nfaces;
   bool do_velocity;
 
-  SphereVertexSums(vec_view vu, scalar_view_type vdd,
-    const crd_view vx, const crd_view fy,
-    const scalar_view_type fz, const scalar_view_type fs,
-    const scalar_view_type fa, const mask_view_type fm,
+  SphereVertexSums(vec_view& vu, scalar_view_type& vdd,
+    const crd_view& vx, const crd_view& fy,
+    const scalar_view_type& fz, const scalar_view_type& fs,
+    const scalar_view_type& fa, const mask_view_type& fm,
     const Real eps, const Index nf, const bool do_velocity) :
     vert_u(vu),
     vert_ddot(vdd),
@@ -847,6 +781,8 @@ struct PlanarSWEFaceSums {
   vec_view face_u; /// [out] velocity at faces (targets)
   scalar_view_type face_ddot; /// [out] double dot product at faces
   scalar_view_type face_laps; /// [out] surface Laplacian at faces
+  scalar_view_type face_psi; /// [out] stream function at faces
+  scalar_view_type face_phi; /// [out] potential function at faces
   crd_view face_xy; /// [in] coordinates of faces (sources and targets)
   scalar_view_type face_zeta; /// [in] vorticity at faces
   scalar_view_type face_sigma; /// [in] divergence at faces
@@ -859,6 +795,7 @@ struct PlanarSWEFaceSums {
   bool do_velocity; /// [in] if true, overwrite velocity
 
   PlanarSWEFaceSums(vec_view& fu, scalar_view_type& fdd, scalar_view_type& fls,
+    scalar_view_type& fpsi, scalar_view_type& fphi,
     const crd_view fxy, const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask, const scalar_view_type fsfc,
     const Real eps, const Real pse_eps, const Index nfaces,
@@ -866,6 +803,8 @@ struct PlanarSWEFaceSums {
     face_u(fu),
     face_ddot(fdd),
     face_laps(fls),
+    face_psi(fpsi),
+    face_phi(fphi),
     face_xy(fxy),
     face_zeta(fzeta),
     face_sigma(fsig),
@@ -882,7 +821,7 @@ struct PlanarSWEFaceSums {
     const Index i = thread_team.league_rank();
 
     // perform packed reduction, 1 thread team per target
-    Kokkos::Tuple<Real,7> sums;
+    Kokkos::Tuple<Real,9> sums;
     const bool collocated = !(eps > 0);
     Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, nfaces),
       PlanarSwePseDirectSumReducer(face_xy, face_s, i, face_xy, collocated,
@@ -896,6 +835,8 @@ struct PlanarSWEFaceSums {
     }
     face_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
     face_laps(i) = sums[6];
+    face_psi(i) = sums[7];
+    face_phi(i) = sums[8];
   }
 };
 
@@ -1140,15 +1081,15 @@ struct SetDepthAndSurfaceFromMassAndArea {
   mask_view_type mask; /// [in] mask to exclude divided panels
   TopoType topo; /// [in] bottom topography functor
 
-  SetDepthAndSurfaceFromMassAndArea(scalar_view_type h,
-                    scalar_view_type s,
-                    scalar_view_type b,
+  SetDepthAndSurfaceFromMassAndArea(scalar_view_type& h,
+                    scalar_view_type& s,
+                    scalar_view_type& b,
                     const crd_view x,
                     const scalar_view_type m,
                     const scalar_view_type area,
                     const mask_view_type mask,
                     const TopoType topo) :
-        h(h), s(s), b(b), x(x), m(m), area(area), mask(mask), topo(topo) {}
+        h(h), s(s), b(b), x(x), m(m), area(area), mask(mask) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {

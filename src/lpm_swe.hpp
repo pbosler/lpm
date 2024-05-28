@@ -49,6 +49,12 @@ class SWE {
     /// double dot product
     ScalarField<VertexField> double_dot_passive;
     ScalarField<FaceField> double_dot_active;
+    /// stream function
+    ScalarField<VertexField> stream_fn_passive;
+    ScalarField<FaceField> stream_fn_active;
+    /// potential function
+    ScalarField<VertexField> potential_passive;
+    ScalarField<FaceField> potential_active;
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
