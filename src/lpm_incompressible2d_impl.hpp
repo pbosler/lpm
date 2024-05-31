@@ -74,6 +74,19 @@ void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity) 
     0, mesh.n_faces_host());
 }
 
+template <typename SeedType>
+Real Incompressible2D<SeedType>::total_vorticity() const {
+  Real total_vort;
+  const auto zeta_view = rel_vort_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += (mask_view(i) ? 0 : zeta_view(i)*area_view(i));
+    }, total_vort);
+  return total_vort;
+}
+
 template <typename SeedType> template <typename VorticityType>
 void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity,
   const Index vert_start_idx, const Index vert_end_idx,

@@ -83,6 +83,8 @@ class Incompressible2D {
 
     std::string info_string(const int tab_level=0) const;
 
+    Real total_vorticity() const;
+
   private:
 
     std::shared_ptr<spdlog::logger> logger;
