@@ -79,9 +79,9 @@ int main (int argc, char* argv[]) {
       input.get_option("beta-coriolis").get_real());
 
     auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
-    plane->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
-      pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
-
+    const Real vel_eps = input.get_option("kernel_smoothing_parameter").get_real();
+    const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
+    plane->set_kernel_parameters(vel_eps, pse_eps);
 
     // set problem initial conditions
     topography_type topo;
@@ -179,8 +179,9 @@ int main (int argc, char* argv[]) {
 
 #ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
+    const std::string eps_str = "eps" + float_str(vel_eps);
     const std::string vtk_file_root = input.get_option("output_file_root").get_str()
-      + "_" + seed_type::id_string() + resolution_str + "_";
+      + "_" + seed_type::id_string() + resolution_str + eps_str + "_";
     {
       plane->update_host();
       auto vtk = vtk_mesh_interface(*plane);
