@@ -88,10 +88,10 @@ struct PlanarGaussianTestVelocity {
   scalar_view_type double_dot;
   crd_view x;
 
-  Real zeta_strength;
+  Real zeta0;
   Real zeta_b;
   Kokkos::Tuple<Real,2> zeta_ctr;
-  Real sigma_strength;
+  Real sigma0;
   Real sigma_b;
   Kokkos::Tuple<Real,2> sigma_ctr;
 
@@ -102,43 +102,57 @@ struct PlanarGaussianTestVelocity {
     u(u),
     double_dot(dd),
     x(x),
-    zeta_strength(vorticity.strength),
+    zeta0(vorticity.strength),
     zeta_b(vorticity.shape_parameter),
     zeta_ctr(vorticity.xy_ctr),
-    sigma_strength(divergence.strength),
+    sigma0(divergence.strength),
     sigma_b(divergence.shape_parameter),
     sigma_ctr(divergence.xy_ctr) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
-    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
-    const Real zeta_dist_sq = square(PlaneGeometry::distance(xi, zeta_ctr));
-    const Real sigma_dist_sq = square(PlaneGeometry::distance(xi, sigma_ctr));
+    const auto x_i = Kokkos::subview(x, i, Kokkos::ALL);
+    const Real zeta_dist_sq = square(PlaneGeometry::distance(x_i, zeta_ctr));
+    const Real sigma_dist_sq = square(PlaneGeometry::distance(x_i, sigma_ctr));
     const Real zeta_exp = exp(-zeta_b * zeta_dist_sq);
     const Real sigma_exp = exp(-sigma_b * sigma_dist_sq);
 
-    u(i,0) = -2*zeta_strength * zeta_b * (xi(1) - zeta_ctr[1]) * zeta_exp +
-              2*sigma_strength * sigma_b * (xi(0) - sigma_ctr[0]) * sigma_exp;
-    u(i,1) =  2*zeta_strength * zeta_b * (xi(0) - zeta_ctr[0]) * zeta_exp +
-              2*sigma_strength * sigma_b * (xi(1) - sigma_ctr[1]) * sigma_exp;
+    const Real x_zeta[2] = {x_i(0) - zeta_ctr[0], x_i(1) - zeta_ctr[1]};
+    const Real x_sigma[2] = {x_i(0) - sigma_ctr[0], x_i(1) - sigma_ctr[1]};
 
-    double_dot(i) =
-      square( 4 * zeta_strength * square(zeta_b) *
-        (xi(0) - zeta_ctr[0]) * (xi(1) - zeta_ctr[1]) * zeta_exp +
-        2 * sigma_strength * sigma_b *
-        (1 - 2*sigma_b * square(xi(0) - sigma_ctr[0])) * sigma_exp ) +
-      square( 4 * zeta_strength * square(zeta_b) *
-        (xi(0) - zeta_ctr[0]) * (xi(1) - zeta_ctr[1]) * zeta_exp -
-        2 * sigma_strength * sigma_b *
-        (1 - 2*sigma_b * square(xi(1) - sigma_ctr[1])) * sigma_exp ) +
-      (4 * zeta_strength * zeta_b *
-        (1 - 2*zeta_b * square(xi(0) - zeta_ctr[0])) * zeta_exp -
-        8 * sigma_strength * square(sigma_b) *
-        (xi(0) - sigma_ctr[0]) * (xi(1) - sigma_ctr[1]) * sigma_exp ) *
-      (-2 * zeta_strength * zeta_b *
-        (1 - 2*zeta_b * square(xi(1) - zeta_ctr[1])) * zeta_exp -
-        4 * sigma_strength * square(sigma_b) *
-        (xi(0) - sigma_ctr[0]) * (xi(1) - sigma_ctr[1]) * sigma_exp );
+    u(i,0) = -2*zeta0 * zeta_b * x_zeta[1] * zeta_exp +
+              2*sigma0 * sigma_b * x_sigma[0] * sigma_exp;
+    u(i,1) =  2*zeta0 * zeta_b * x_zeta[0] * zeta_exp +
+              2*sigma0 * sigma_b * x_sigma[1] * sigma_exp;
+
+    const Real du1dx1 =  4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
+      2*sigma0*sigma_b * (1 - 2 * sigma_b * square(x_sigma[0])) * sigma_exp;
+    const Real du1dx2 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp -
+      2*zeta0 * zeta_b * (1 - 2 * zeta_b  * square(x_zeta[1]) ) * zeta_exp;
+    const Real du2dx1 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp +
+      2*zeta0 * zeta_b * (1 - 2 * zeta_b  * square(x_zeta[0]) ) * zeta_exp;
+    const Real du2dx2 = -4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
+      2*sigma0*sigma_b * (1 - 2 * sigma_b * square(x_sigma[1])) * sigma_exp;
+
+    double_dot(i) = square(du1dx1) + 2 * du1dx2 * du2dx1 + square(du2dx2);
+
+//     double_dot(i) =
+//       square( 4 * zeta0 * square(zeta_b) *
+//         (x_i(0) - zeta_ctr[0]) * (x_i(1) - zeta_ctr[1]) * zeta_exp +
+//         2 * sigma0 * sigma_b *
+//         (1 - 2*sigma_b * square(x_i(0) - sigma_ctr[0])) * sigma_exp ) +
+//       square( 4 * zeta0 * square(zeta_b) *
+//         (x_i(0) - zeta_ctr[0]) * (x_i(1) - zeta_ctr[1]) * zeta_exp -
+//         2 * sigma0 * sigma_b *
+//         (1 - 2*sigma_b * square(x_i(1) - sigma_ctr[1])) * sigma_exp ) +
+//       (4 * zeta0 * zeta_b *
+//         (1 - 2*zeta_b * square(x_i(0) - zeta_ctr[0])) * zeta_exp -
+//         8 * sigma0 * square(sigma_b) *
+//         (x_i(0) - sigma_ctr[0]) * (x_i(1) - sigma_ctr[1]) * sigma_exp ) *
+//       (-2 * zeta0 * zeta_b *
+//         (1 - 2*zeta_b * square(x_i(1) - zeta_ctr[1])) * zeta_exp -
+//         4 * sigma0 * square(sigma_b) *
+//         (x_i(0) - sigma_ctr[0]) * (x_i(1) - sigma_ctr[1]) * sigma_exp );
 
   }
 };

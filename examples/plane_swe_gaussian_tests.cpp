@@ -80,7 +80,7 @@ int main (int argc, char* argv[]) {
 
     auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
     const Real vel_eps = input.get_option("kernel_smoothing_parameter").get_real();
-    const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
+    const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
     plane->set_kernel_parameters(vel_eps, pse_eps);
 
     // set problem initial conditions
