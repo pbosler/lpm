@@ -200,6 +200,14 @@ Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
   return result;
 }
 
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
+  Kokkos::Tuple<Real,9> result;
+  north_pole_rotation_matrix(result, xyz);
+  return result;
+}
+
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
 KOKKOS_INLINE_FUNCTION
 void apply_3by3(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
