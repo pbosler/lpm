@@ -22,6 +22,10 @@ class SWERK4 {
     scalar_view_type passive_surface;
     vec_view passive_vel;
     scalar_view_type passive_ddot;
+    scalar_view_type passive_du1dx1;
+    scalar_view_type passive_du1dx2;
+    scalar_view_type passive_du2dx1;
+    scalar_view_type passive_du2dx2;
     scalar_view_type passive_laps;
     scalar_view_type passive_psi;
     scalar_view_type passive_phi;
@@ -37,6 +41,10 @@ class SWERK4 {
     scalar_view_type active_mass;
     mask_view_type active_mask;
     scalar_view_type active_ddot;
+    scalar_view_type active_du1dx1;
+    scalar_view_type active_du1dx2;
+    scalar_view_type active_du2dx1;
+    scalar_view_type active_du2dx2;
     scalar_view_type active_laps;
     scalar_view_type active_psi;
     scalar_view_type active_phi;

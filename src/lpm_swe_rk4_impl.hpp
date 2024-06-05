@@ -147,6 +147,10 @@ void SWERK4<SeedType, TopoType>::set_fixed_views() {
   passive_surface = swe.surf_passive.view;
   passive_vel = swe.velocity_passive.view;
   passive_ddot = swe.double_dot_passive.view;
+  passive_du1dx1 = swe.du1dx1_passive.view;
+  passive_du1dx2 = swe.du1dx2_passive.view;
+  passive_du2dx1 = swe.du2dx1_passive.view;
+  passive_du2dx2 = swe.du2dx2_passive.view;
   passive_laps = swe.surf_lap_passive.view;
   passive_bottom = swe.bottom_passive.view;
   passive_psi = swe.stream_fn_passive.view;
@@ -159,6 +163,10 @@ void SWERK4<SeedType, TopoType>::set_fixed_views() {
   active_surface = swe.surf_active.view;
   active_vel = swe.velocity_active.view;
   active_ddot = swe.double_dot_active.view;
+  active_du1dx1 = swe.du1dx1_active.view;
+  active_du1dx2 = swe.du1dx2_active.view;
+  active_du2dx1 = swe.du2dx1_active.view;
+  active_du2dx2 = swe.du2dx2_active.view;
   active_laps = swe.surf_lap_active.view;
   active_psi = swe.stream_fn_active.view;
   active_phi = swe.potential_active.view;
@@ -261,14 +269,24 @@ void SWERK4<SeedType, TopoType>::advance_timestep(crd_view& vx,
   /// compute velocity, double dot, and surface laplacian
   Kokkos::parallel_for("RK4-2 direct sum, passive",
     *passive_policy,
-    PlanarSWEVertexSums(passive_vel, passive_ddot, passive_laps,
+    PlanarSWEVertexSums(passive_vel, passive_ddot,
+      passive_du1dx1,
+      passive_du1dx2,
+      passive_du2dx1,
+      passive_du2dx2,
+      passive_laps,
       passive_psi, passive_phi,
       passive_xwork, passive_surface, active_xwork, active_rel_vortwork,
       active_divwork, active_areawork, active_mask, active_surface,
       eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-2 direct sum, active",
     *active_policy,
-    PlanarSWEFaceSums(active_vel, active_ddot, active_laps, active_psi, active_phi,
+    PlanarSWEFaceSums(active_vel, active_ddot,
+      active_du1dx1,
+      active_du1dx2,
+      active_du2dx1,
+      active_du2dx2,
+      active_laps, active_psi, active_phi,
       active_xwork, active_rel_vortwork, active_divwork, active_areawork,
       active_mask, active_surface, eps, pse_eps, nfaces, do_velocity));
   /// compute vorticity, divergence, and height tendencies
@@ -308,13 +326,23 @@ void SWERK4<SeedType, TopoType>::advance_timestep(crd_view& vx,
       active_xwork, active_mass, active_areawork, active_mask, topo));
   Kokkos::parallel_for("RK4-3 direct sum, passive",
     *passive_policy,
-    PlanarSWEVertexSums(passive_vel, passive_ddot, passive_laps, passive_psi, passive_phi,
+    PlanarSWEVertexSums(passive_vel, passive_ddot,
+      passive_du1dx1,
+      passive_du1dx2,
+      passive_du2dx1,
+      passive_du2dx2,
+      passive_laps, passive_psi, passive_phi,
       passive_xwork, passive_surface, active_xwork, active_rel_vortwork,
       active_divwork, active_areawork, active_mask, active_surface,
       eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-3 direct sum, active",
     *active_policy,
-    PlanarSWEFaceSums(active_vel, active_ddot, active_laps, active_psi, active_phi,
+    PlanarSWEFaceSums(active_vel, active_ddot,
+      active_du1dx1,
+      active_du1dx2,
+      active_du2dx1,
+      active_du2dx2,
+      active_laps, active_psi, active_phi,
       active_xwork, active_rel_vortwork, active_divwork, active_areawork,
       active_mask, active_surface, eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-3 passive tendencies",
@@ -353,13 +381,23 @@ void SWERK4<SeedType, TopoType>::advance_timestep(crd_view& vx,
       active_xwork, active_mass, active_areawork, active_mask, topo));
   Kokkos::parallel_for("RK4-4 direct sum, passive",
     *passive_policy,
-    PlanarSWEVertexSums(passive_vel, passive_ddot, passive_laps, passive_psi, passive_phi,
+    PlanarSWEVertexSums(passive_vel, passive_ddot,
+      passive_du1dx1,
+      passive_du1dx2,
+      passive_du2dx1,
+      passive_du2dx2,
+      passive_laps, passive_psi, passive_phi,
       passive_xwork, passive_surface, active_xwork, active_rel_vortwork,
       active_divwork, active_areawork, active_mask, active_surface,
       eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-4 direct sum, active",
     *active_policy,
-    PlanarSWEFaceSums(active_vel, active_ddot, active_laps, active_psi, active_phi,
+    PlanarSWEFaceSums(active_vel, active_ddot,
+      active_du1dx1,
+      active_du1dx2,
+      active_du2dx1,
+      active_du2dx2,
+      active_laps, active_psi, active_phi,
       active_xwork, active_rel_vortwork, active_divwork, active_areawork,
       active_mask, active_surface, eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-4 passive tendencies",
@@ -398,13 +436,23 @@ void SWERK4<SeedType, TopoType>::advance_timestep(crd_view& vx,
       active_x, active_mass, active_area, active_mask, topo));
   Kokkos::parallel_for("RK4-final direct sum, passive",
     *passive_policy,
-    PlanarSWEVertexSums(passive_vel, passive_ddot, passive_laps, passive_psi, passive_phi,
+    PlanarSWEVertexSums(passive_vel, passive_ddot,
+      passive_du1dx1,
+      passive_du1dx2,
+      passive_du2dx1,
+      passive_du2dx2,
+      passive_laps, passive_psi, passive_phi,
       passive_x, passive_surface, active_x, active_rel_vort,
       active_divergence, active_area, active_mask, active_surface,
       eps, pse_eps, nfaces, do_velocity));
   Kokkos::parallel_for("RK4-final direct sum, active",
     *active_policy,
-    PlanarSWEFaceSums(active_vel, active_ddot, active_laps, active_psi, active_phi,
+    PlanarSWEFaceSums(active_vel, active_ddot,
+      active_du1dx1,
+      active_du1dx2,
+      active_du2dx1,
+      active_du2dx2,
+      active_laps, active_psi, active_phi,
       active_x, active_rel_vort, active_divergence, active_area,
       active_mask, active_surface, eps, pse_eps, nfaces, do_velocity));
 

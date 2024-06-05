@@ -75,6 +75,14 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& params, const Coriolis& c
   velocity_active("velocity", params.nmaxfaces),
   double_dot_passive("double_dot", params.nmaxverts),
   double_dot_active("double_dot", params.nmaxfaces),
+  du1dx1_passive("du1dx1", params.nmaxverts),
+  du1dx1_active("du1dx1", params.nmaxfaces),
+  du1dx2_passive("du1dx2", params.nmaxverts),
+  du1dx2_active("du1dx2", params.nmaxfaces),
+  du2dx1_passive("du2dx1", params.nmaxverts),
+  du2dx1_active("du2dx1", params.nmaxfaces),
+  du2dx2_passive("du2dx2", params.nmaxverts),
+  du2dx2_active("du2dx2", params.nmaxfaces),
   mass_active("mass", params.nmaxfaces),
   mesh(params),
   g(1),
@@ -115,6 +123,14 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real O
   velocity_active("velocity", mesh_params.nmaxfaces),
   double_dot_passive("double_dot", mesh_params.nmaxverts),
   double_dot_active("double_dot", mesh_params.nmaxfaces),
+  du1dx1_passive("du1dx1", mesh_params.nmaxverts),
+  du1dx1_active("du1dx1", mesh_params.nmaxfaces),
+  du1dx2_passive("du1dx2", mesh_params.nmaxverts),
+  du1dx2_active("du1dx2", mesh_params.nmaxfaces),
+  du2dx1_passive("du2dx1", mesh_params.nmaxverts),
+  du2dx1_active("du2dx1", mesh_params.nmaxfaces),
+  du2dx2_passive("du2dx2", mesh_params.nmaxverts),
+  du2dx2_active("du2dx2", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   g(1),
@@ -147,6 +163,14 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f
   velocity_active("velocity", mesh_params.nmaxfaces),
   double_dot_passive("double_dot", mesh_params.nmaxverts),
   double_dot_active("double_dot", mesh_params.nmaxfaces),
+  du1dx1_passive("du1dx1", mesh_params.nmaxverts),
+  du1dx1_active("du1dx1", mesh_params.nmaxfaces),
+  du1dx2_passive("du1dx2", mesh_params.nmaxverts),
+  du1dx2_active("du1dx2", mesh_params.nmaxfaces),
+  du2dx1_passive("du2dx1", mesh_params.nmaxverts),
+  du2dx1_active("du2dx1", mesh_params.nmaxfaces),
+  du2dx2_passive("du2dx2", mesh_params.nmaxverts),
+  du2dx2_active("du2dx2", mesh_params.nmaxfaces),
   mass_active("mass", mesh_params.nmaxfaces),
   mesh(mesh_params),
   g(1),
@@ -180,6 +204,14 @@ void SWE<SeedType>::update_host() {
   stream_fn_active.update_host();
   potential_passive.update_host();
   potential_active.update_host();
+  du1dx1_passive.update_host();
+  du1dx1_active.update_host();
+  du1dx2_passive.update_host();
+  du1dx2_active.update_host();
+  du2dx1_passive.update_host();
+  du2dx1_active.update_host();
+  du2dx2_passive.update_host();
+  du2dx2_active.update_host();
   mass_active.update_host();
   mesh.update_host();
 }
@@ -208,6 +240,14 @@ void SWE<SeedType>::update_device() {
   velocity_active.update_device();
   double_dot_passive.update_device();
   double_dot_active.update_device();
+  du1dx1_passive.update_device();
+  du1dx1_active.update_device();
+  du1dx2_passive.update_device();
+  du1dx2_active.update_device();
+  du2dx1_passive.update_device();
+  du2dx1_active.update_device();
+  du2dx2_passive.update_device();
+  du2dx2_active.update_device();
   mass_active.update_device();
   mesh.update_device();
 }
@@ -359,6 +399,10 @@ void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
       vertex_policy,
       PlanarSWEVertexSums(velocity_passive.view,
         double_dot_passive.view,
+        du1dx1_passive.view,
+        du1dx2_passive.view,
+        du2dx1_passive.view,
+        du2dx2_passive.view,
         surf_lap_passive.view,
         stream_fn_passive.view,
         potential_passive.view,
@@ -379,6 +423,10 @@ void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
       face_policy,
       PlanarSWEFaceSums(velocity_active.view,
         double_dot_active.view,
+        du1dx1_active.view,
+        du1dx2_active.view,
+        du2dx1_active.view,
+        du2dx2_active.view,
         surf_lap_active.view,
         stream_fn_active.view,
         potential_active.view,
@@ -474,6 +522,10 @@ void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {
   vtk.add_scalar_point_data(swe.surf_lap_passive.view);
   vtk.add_scalar_point_data(swe.depth_passive.view);
   vtk.add_scalar_point_data(swe.double_dot_passive.view);
+  vtk.add_scalar_point_data(swe.du1dx1_passive.view);
+  vtk.add_scalar_point_data(swe.du1dx2_passive.view);
+  vtk.add_scalar_point_data(swe.du2dx1_passive.view);
+  vtk.add_scalar_point_data(swe.du2dx2_passive.view);
   vtk.add_scalar_point_data(swe.bottom_passive.view);
   vtk.add_scalar_point_data(swe.stream_fn_passive.view);
   vtk.add_scalar_point_data(swe.potential_passive.view);
@@ -485,6 +537,10 @@ void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {
   vtk.add_scalar_cell_data(swe.depth_active.view);
   vtk.add_scalar_cell_data(swe.surf_lap_active.view);
   vtk.add_scalar_cell_data(swe.double_dot_active.view);
+  vtk.add_scalar_cell_data(swe.du1dx1_active.view);
+  vtk.add_scalar_cell_data(swe.du1dx2_active.view);
+  vtk.add_scalar_cell_data(swe.du2dx1_active.view);
+  vtk.add_scalar_cell_data(swe.du2dx2_active.view);
   vtk.add_scalar_cell_data(swe.bottom_active.view);
   vtk.add_vector_cell_data(swe.velocity_active.view);
   vtk.add_scalar_cell_data(swe.mass_active.view);

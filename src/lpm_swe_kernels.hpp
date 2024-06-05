@@ -8,6 +8,8 @@
 #include "lpm_pse.hpp"
 #include "util/lpm_math.hpp"
 
+#undef DDTRANSPOSE
+
 namespace Lpm {
 
 /** @brief Evaluates the Biot-Savart kernel in the plane.
@@ -422,14 +424,17 @@ Kokkos::Tuple<Real, 9> planar_swe_sums_rhs_pse(
   result[0] = (-x_minus_y[1]*rot_str + x_minus_y[0]*pot_str) / denom;
   // v
   result[1] = ( x_minus_y[0]*rot_str + x_minus_y[1]*pot_str) / denom;
+
   // du/dx
-  result[2] = ( (-x_mix_y * rot_str) + square(x_minus_y[0]) * pot_str) / denom2 - pot_str / denom;
+  result[2] = ( x_mix_y * rot_str - square(x_minus_y[0]) * pot_str) / denom2 + pot_str / denom;
   // du/dy
-  result[3] = (-square(x_minus_y[1]) * rot_str + x_mix_y * pot_str) / denom2 + rot_str / denom;
+  result[3] = ( square(x_minus_y[1]) * rot_str - x_mix_y * pot_str) / denom2 - rot_str / denom;
   // dv/dx
-  result[4] = ( square(x_minus_y[0]) * rot_str + x_mix_y * pot_str) / denom2 - rot_str / denom;
+  result[4] = (-square(x_minus_y[0]) * rot_str - x_mix_y * pot_str) / denom2 + rot_str / denom;
   // dv/dy
-  result[5] = ( x_mix_y * rot_str + square(x_minus_y[1]) * pot_str) / denom2 - pot_str / denom;
+  result[5] = (-x_mix_y * rot_str - square(x_minus_y[1]) * pot_str) / denom2 + pot_str / denom;
+
+
   // lap(s)
   const Real pse_input = pse_type::kernel_input(tgt_x, src_y, pse_eps);
   const Real pse_val = pse_type::laplacian(pse_input);
@@ -571,16 +576,14 @@ struct PlanarSwePseDirectSumReducer {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!src_mask(j)) {
-      if (!collocated_src_tgt or i != j) {
-        const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
-        const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
-        const value_type local_result =
-          planar_swe_sums_rhs_pse(xcrd, ycrd, src_zeta(j), src_sigma(j),
-            src_area(j), src_sfc(j), tgt_sfc(i), eps, pse_eps);
-
-        r += local_result;
-      }
+    const bool compute_ij = (!src_mask(j) and (!collocated_src_tgt or i != j));
+    if (compute_ij) {
+      const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
+      const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
+      const value_type local_result =
+        planar_swe_sums_rhs_pse(xcrd, ycrd, src_zeta(j), src_sigma(j),
+          src_area(j), src_sfc(j), tgt_sfc(i), eps, pse_eps);
+      r += local_result;
     }
   }
 };
@@ -641,6 +644,10 @@ struct PlanarSWEVertexSums {
 
   vec_view vert_u; /// [out] velocity at vertices
   scalar_view_type vert_ddot; /// [out] double dot product at vertices
+  scalar_view_type vert_du1dx1; /// [out]
+  scalar_view_type vert_du1dx2; /// [out]
+  scalar_view_type vert_du2dx1; /// [out]
+  scalar_view_type vert_du2dx2; /// [out]
   scalar_view_type vert_laps; /// [out] surface Laplacian at vertices
   scalar_view_type vert_psi; /// [out] stream function at vertices
   scalar_view_type vert_phi; /// [out] potential function at vertices
@@ -657,7 +664,12 @@ struct PlanarSWEVertexSums {
   Index nfaces; /// [in] total number of faces (including divided faces)
   bool do_velocity; /// [in] if true, overwrite velocity
 
-  PlanarSWEVertexSums(vec_view& vu, scalar_view_type& vdd, scalar_view_type& vls,
+  PlanarSWEVertexSums(vec_view& vu, scalar_view_type& vdd,
+    scalar_view_type du1dx1,
+    scalar_view_type du1dx2,
+    scalar_view_type du2dx1,
+    scalar_view_type du2dx2,
+    scalar_view_type& vls,
     scalar_view_type& vpsi, scalar_view_type& vphi,
     const crd_view vx, const scalar_view_type vsfc, const crd_view fy,
     const scalar_view_type fzeta, const scalar_view_type fsig,
@@ -666,6 +678,10 @@ struct PlanarSWEVertexSums {
     const Index nfaces, const bool do_velocity = true) :
     vert_u(vu),
     vert_ddot(vdd),
+    vert_du1dx1(du1dx1),
+    vert_du1dx2(du1dx2),
+    vert_du2dx1(du2dx1),
+    vert_du2dx2(du2dx2),
     vert_laps(vls),
     vert_psi(vpsi),
     vert_phi(vphi),
@@ -699,7 +715,20 @@ struct PlanarSWEVertexSums {
       vert_u(i,0) = sums[0];
       vert_u(i,1) = sums[1];
     }
+
+//
+#ifdef DDTRANSPOSE
+    vert_ddot(i) = 0;
+    for (int jj=2; jj<6; ++jj) {
+      vert_ddot(i) += square(sums[jj]);
+    }
+#else
     vert_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
+#endif
+    vert_du1dx1(i) = sums[2];
+    vert_du1dx2(i) = sums[3];
+    vert_du2dx1(i) = sums[4];
+    vert_du2dx2(i) = sums[5];
     vert_laps(i) = sums[6];
     vert_psi(i) = sums[7];
     vert_phi(i) = sums[8];
@@ -780,6 +809,10 @@ struct PlanarSWEFaceSums {
 
   vec_view face_u; /// [out] velocity at faces (targets)
   scalar_view_type face_ddot; /// [out] double dot product at faces
+  scalar_view_type face_du1dx1; /// [out]
+  scalar_view_type face_du1dx2; /// [out]
+  scalar_view_type face_du2dx1; /// [out]
+  scalar_view_type face_du2dx2; /// [out]
   scalar_view_type face_laps; /// [out] surface Laplacian at faces
   scalar_view_type face_psi; /// [out] stream function at faces
   scalar_view_type face_phi; /// [out] potential function at faces
@@ -794,7 +827,12 @@ struct PlanarSWEFaceSums {
   Index nfaces; /// [in] total number of faces (including divided faces)
   bool do_velocity; /// [in] if true, overwrite velocity
 
-  PlanarSWEFaceSums(vec_view& fu, scalar_view_type& fdd, scalar_view_type& fls,
+  PlanarSWEFaceSums(vec_view& fu, scalar_view_type& fdd,
+    scalar_view_type du1dx1,
+    scalar_view_type du1dx2,
+    scalar_view_type du2dx1,
+    scalar_view_type du2dx2,
+    scalar_view_type& fls,
     scalar_view_type& fpsi, scalar_view_type& fphi,
     const crd_view fxy, const scalar_view_type fzeta, const scalar_view_type fsig,
     const scalar_view_type farea, const mask_view_type fmask, const scalar_view_type fsfc,
@@ -802,6 +840,10 @@ struct PlanarSWEFaceSums {
     const bool do_velocity = true) :
     face_u(fu),
     face_ddot(fdd),
+    face_du1dx1(du1dx1),
+    face_du1dx2(du1dx2),
+    face_du2dx1(du2dx1),
+    face_du2dx2(du2dx2),
     face_laps(fls),
     face_psi(fpsi),
     face_phi(fphi),
@@ -833,7 +875,18 @@ struct PlanarSWEFaceSums {
       face_u(i,0) = sums[0];
       face_u(i,1) = sums[1];
     }
+#ifdef DDTRANSPOSE
+    face_ddot(i) = 0;
+    for (int jj=2; jj<6; ++jj) {
+      face_ddot(i) += square(sums[jj]);
+    }
+#else
     face_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
+#endif
+    face_du1dx1(i) = sums[2];
+    face_du1dx2(i) = sums[3];
+    face_du2dx1(i) = sums[4];
+    face_du2dx2(i) = sums[5];
     face_laps(i) = sums[6];
     face_psi(i) = sums[7];
     face_phi(i) = sums[8];

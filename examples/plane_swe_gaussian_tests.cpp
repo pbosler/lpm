@@ -30,7 +30,7 @@ Kokkos::Tuple<Real,2> velocity_exact(const PtType& x);
 int main (int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
-  Logger<> logger("plane_gravity_wave", Log::level::debug, comm);
+  Logger<> logger("plane_gaussian_tests", Log::level::debug, comm);
 
   // compile-time settings
   // mesh seed
@@ -79,7 +79,8 @@ int main (int argc, char* argv[]) {
       input.get_option("beta-coriolis").get_real());
 
     auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
-    const Real vel_eps = input.get_option("kernel_smoothing_parameter").get_real();
+    const Real eps_multiplier = input.get_option("mesh_size_multiplier").get_real();
+    const Real vel_eps = plane->mesh.appx_mesh_size() * eps_multiplier;
     const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
     plane->set_kernel_parameters(vel_eps, pse_eps);
 
@@ -279,7 +280,7 @@ void input_init(user::Input& input) {
   user::Option sigmab_option("sigmab", "-sigmab", "--init-sigma-b", "initial divergence shape parameter", 2.0);
   input.add_option(sigmab_option);
 
-  user::Option mesh_radius_option("mesh_radius", "-r", "--radius", "mesh radius", 6.0);
+  user::Option mesh_radius_option("mesh_radius", "-r", "--radius", "mesh radius", 10.0);
   input.add_option(mesh_radius_option);
 
   user::Option amr_refinement_buffer_option("amr_buffer", "-ab", "--amr-buffer", "amr memory buffer", 0);
@@ -294,7 +295,7 @@ void input_init(user::Input& input) {
   user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
   input.add_option(output_write_frequency_option);
 
-  user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
+  user::Option kernel_smoothing_parameter_option("mesh_size_multiplier", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter mesh size multiplier", 0.0);
   input.add_option(kernel_smoothing_parameter_option);
 
   user::Option pse_power_option("pse_kernel_width_power", "-pse", "--pse-kernel-width-power", "pse kernel width power",
