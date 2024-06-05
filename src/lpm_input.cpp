@@ -56,9 +56,10 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
 std::string Option::info_string(const int tab_level) const {
   std::string tab_str = indent_string(tab_level);
   std::ostringstream ss;
-  ss << tab_str << "Option: " << name << " (" << description << ")\n";
-  tab_str += "\t";
-  ss << tab_str << short_flag << ", " << long_flag << "\n";
+  const std::string separator = "  ";
+  ss << tab_str << "Option: " << name << " (" << description << ")";
+  ss << separator;
+  ss << "[" << short_flag << ", " << long_flag << "]" << separator;
   if (std::holds_alternative<Int>(value)) {
     ss << tab_str << "value (Int) = " << this->get_int();
   }
