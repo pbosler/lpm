@@ -64,21 +64,21 @@ class Coords {
 
     @see MeshSeed::setMaxAllocations()
   */
-  explicit Coords(const Index nmax)
-      : view("coords_view", nmax), _nmax(nmax), n("n") {
-    _hostview = ko::create_mirror_view(view);
-    _nh = ko::create_mirror_view(n);
-    _nh() = 0;
-  };
+  explicit Coords(const Index nmax);
 
-  explicit Coords(const ko::View<Real**> cv)
-      : view(cv), _nmax(cv.extent(0)), n("n") {
-    _hostview = ko::create_mirror_view(view);
-    _nh = ko::create_mirror_view(n);
-    _nh() = cv.extent(0);
-    ko::deep_copy(n, _nh);
-    ko::deep_copy(_hostview, view);
-  }
+  /** @brief Constructor.
+
+    Builds a new Coords wrapper around an existing view.
+
+    @param cv [in] Existing view of coordinate vectors
+  */
+  explicit Coords(const ko::View<Real**> cv);
+
+  /** @brief Constructor.
+
+    Builds a new Coords object with its own views, using deep copy.
+  */
+  Coords(const Coords<Geo>& other);
 
   /**
     Copy data from host to device.

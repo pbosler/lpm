@@ -14,6 +14,7 @@
 #include "lpm_tracer_gallery.hpp"
 #include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_compadre_remesh_impl.hpp"
+#include "mesh/lpm_ftle.hpp"
 #include "util/lpm_string_util.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -28,7 +29,6 @@ int main (int argc, char* argv[]) {
   using seed_type = CubedSphereSeed;
   using Coriolis = CoriolisSphere;
   using Vorticity = GaussianVortexSphere;
-  using Ftle = FtleTracer<SphereGeometry>;
   using Lat0 = LatitudeTracer;
   using Solver = Incompressible2DRK2<seed_type>;
 
@@ -36,10 +36,10 @@ int main (int argc, char* argv[]) {
   {
     user::Input input("bve_gauss_vort");
     {
-      user::Option tfinal_option("tfinal", "-tf", "--time-final", "time final", 0.5);
+      user::Option tfinal_option("tfinal", "-tf", "--time-final", "time final", 0.025);
       input.add_option(tfinal_option);
 
-      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of time steps", 5);
+      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of time steps", 1);
       input.add_option(nsteps_option);
 
       user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree initial uniform depth", 4);
@@ -74,6 +74,12 @@ int main (int argc, char* argv[]) {
 
       user::Option remesh_interpolation_order("remesh_interpolation_order", "-ro", "--remesh-order", "polynomial order for gmls-based remesh interpolation", 4);
       input.add_option(remesh_interpolation_order);
+
+      user::Option remesh_trigger_option("remesh_trigger", "-rt", "--remesh-trigger", "trigger for a remeshing : ftle or an interval", std::string("interval"), std::set<std::string>({"interval", "ftle"}));
+      input.add_option(remesh_trigger_option);
+
+      user::Option ftle_tolerance_option("ftle_tol", "-ftle", "--ftle-tol", "max value for ftle before remesh", 2.0);
+      input.add_option(ftle_tolerance_option);
     }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
@@ -117,6 +123,8 @@ int main (int argc, char* argv[]) {
     auto sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
       coriolis, input.get_option("kernel_smoothing_parameter").get_real());
     sphere->init_vorticity(gauss_vort);
+    auto ftle = std::make_unique<ScalarField<FaceField>>("ftle", mesh_params.nmaxfaces);
+    const Real ftle_tol = input.get_option("ftle_tol").get_real();
 
     if (amr) {
       Refinement<seed_type> refiner(sphere->mesh);
@@ -147,16 +155,26 @@ int main (int argc, char* argv[]) {
 
           face_start_idx = face_end_idx;
         }
+      Kokkos::deep_copy(sphere->ref_crds_passive.view, sphere->mesh.vertices.lag_crds.view);
+      Kokkos::deep_copy(sphere->ref_crds_active.view, sphere->mesh.faces.lag_crds.view);
     }
     else {
       logger.info("amr is not enabled; using uniform meshes.");
     }
     sphere->init_direct_sums();
 
-    Ftle ftle;
+
     Lat0 lat0;
-    sphere->init_tracer(ftle);
     sphere->init_tracer(lat0);
+    Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+      ComputeFTLE<seed_type>(ftle->view,
+        sphere->mesh.vertices.phys_crds.view,
+        sphere->mesh.vertices.lag_crds.view,
+        sphere->mesh.faces.phys_crds.view,
+        sphere->mesh.faces.lag_crds.view,
+        sphere->mesh.faces.verts,
+        sphere->mesh.faces.mask,
+        sphere->t));
 
     const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
     const Real cr = vel_range.second * dt / sphere->mesh.appx_mesh_size();
@@ -171,6 +189,7 @@ int main (int argc, char* argv[]) {
     const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
     auto solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *sphere);
     gmls::Params gmls_params(input.get_option("remesh_interpolation_order").get_int());
+    const bool use_ftle = (input.get_option("remesh_trigger").get_str() == "ftle");
 
 #ifdef LPM_USE_VTK
     std::string amr_str = "_";
@@ -183,12 +202,19 @@ int main (int argc, char* argv[]) {
     }
     const std::string resolution_str =
       std::to_string(input.get_option("tree_depth").get_int()) + dt_str(dt);
-    const std::string remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
+    std::string remesh_str;
+    if (use_ftle) {
+      remesh_str = "ftle" + float_str(ftle_tol,3);
+    }
+    else {
+     remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
+    }
     const std::string vtk_file_root = input.get_option("output_file_root").get_str()
       + "_" + seed_type::id_string() + resolution_str + "_" + remesh_str + amr_str;
     {
       sphere->update_host();
       auto vtk = vtk_mesh_interface(*sphere);
+      vtk.add_scalar_cell_data(ftle->view);
       auto ctr_str = zero_fill_str(frame_counter);
       const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
       logger.info("writing output at t = {} to file {}", sphere->t, vtk_fname);
@@ -200,15 +226,26 @@ int main (int argc, char* argv[]) {
     time stepping
     */
     int rm_counter = 0;
+    Real tref = 0;
+    Real max_ftle = 0;
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-      if ( (t_idx+1)%remesh_interval == 0 ) {
-        logger.debug("remesh {} triggered by remesh interval", ++rm_counter);
+      const bool ftle_trigger = (use_ftle and max_ftle > ftle_tol);
+      const bool interval_trigger = ((t_idx+1)%remesh_interval == 0);
+      const bool do_remesh = (ftle_trigger or interval_trigger);
+      if ( do_remesh ) {
+        ++rm_counter;
+        if (interval_trigger) {
+          logger.debug("remesh {} triggered by remesh interval", rm_counter);
+        }
+        else {
+          logger.info("remesh {} triggered by ftle", rm_counter);
+        }
 
         auto new_sphere = std::make_unique<Incompressible2D<seed_type>>(mesh_params,
            coriolis, input.get_option("kernel_smoothing_parameter").get_real());
         new_sphere->t = sphere->t;
-        new_sphere->allocate_tracer(ftle);
         new_sphere->allocate_tracer(lat0);
+        auto new_ftle = std::make_unique<ScalarField<FaceField>>("ftle", mesh_params.nmaxfaces);
 
         auto remesh = compadre_remesh(*new_sphere, *sphere, gmls_params);
         if (amr) {
@@ -224,7 +261,7 @@ int main (int argc, char* argv[]) {
           }
           else {
             remesh.adaptive_indirect_remesh(refiner, max_circulation_flag,
-              gauss_vort, coriolis, lat0, ftle);
+              gauss_vort, coriolis, lat0);
           }
         }
         else {
@@ -232,21 +269,35 @@ int main (int argc, char* argv[]) {
             remesh.uniform_direct_remesh();
           }
           else {
-            remesh.uniform_indirect_remesh(gauss_vort, coriolis, lat0, ftle);
+            remesh.uniform_indirect_remesh(gauss_vort, coriolis, lat0);
           }
         }
+        tref = sphere->t;
 
         sphere = std::move(new_sphere);
+        sphere->t_ref = tref;
+        ftle = std::move(new_ftle);
         solver.reset(new Incompressible2DRK2<seed_type>(dt, *sphere, solver->t_idx));
       }
 
       sphere->advance_timestep(*solver);
-      logger.debug("t = {}", sphere->t);
+      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+          ComputeFTLE<seed_type>(ftle->view,
+            sphere->mesh.vertices.phys_crds.view,
+            sphere->ref_crds_passive.view,
+            sphere->mesh.faces.phys_crds.view,
+            sphere->ref_crds_active.view,
+            sphere->mesh.faces.verts,
+            sphere->mesh.faces.mask,
+            sphere->t - sphere->t_ref));
+      max_ftle = get_max_ftle(ftle->view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
+      logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
     #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {
         sphere->update_host();
         auto vtk = vtk_mesh_interface(*sphere);
+        vtk.add_scalar_cell_data(ftle->view);
         auto ctr_str = zero_fill_str(++frame_counter);
         const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
         logger.info("writing output at t = {} to file: {}", sphere->t, vtk_fname);

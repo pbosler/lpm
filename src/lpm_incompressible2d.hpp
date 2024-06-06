@@ -21,6 +21,10 @@ class Incompressible2D {
       std::is_same<geo, PlaneGeometry>::value,
       CoriolisBetaPlane, CoriolisSphere>::type;
 
+    /// reference coordinates, for FTLE computations
+    Coords<geo> ref_crds_passive;
+    Coords<geo> ref_crds_active;
+
     /// relative vorticity
     ScalarField<VertexField> rel_vort_passive;
     ScalarField<FaceField> rel_vort_active;
@@ -45,6 +49,7 @@ class Incompressible2D {
 
     /// time
     Real t;
+    Real t_ref;
     /// velocity kernel smoothing parameter
     Real eps;
 

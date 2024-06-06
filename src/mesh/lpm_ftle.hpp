@@ -3,7 +3,9 @@
 
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
+#include "util/lpm_floating_point.hpp"
 #include "util/lpm_math.hpp"
 
 namespace Lpm {
@@ -22,48 +24,197 @@ struct ComputeFTLE {
 
   scalar_view_type ftle; /// output
   crd_view phys_crds_verts; /// input
-  crd_view phys_crds_faces; /// input
   crd_view ref_crds_verts; /// input
+  crd_view phys_crds_faces; /// input
   crd_view ref_crds_faces; /// input
   face_vertex_view face_verts; /// input
+  mask_view_type face_mask; /// input
+  Real t; // input
 
-  ComputeFTLE(scalar_view_type& ftle, const crd_view pcv, const crd_view pcf,
-    const crd_view rcv, const crd_view rcf,
-    const Kokkos::View<Index*[face_kind::nverts] fv) :
+  ComputeFTLE(scalar_view_type ftle,
+    const crd_view phys_crds_verts,
+    const crd_view ref_crds_verts,
+    const crd_view phys_crds_faces,
+    const crd_view ref_crds_faces,
+    const face_vertex_view face_verts,
+    const mask_view_type face_mask,
+    const Real& time_since_ref ) :
     ftle(ftle),
-    phys_crds_verts(pcv),
-    phys_crds_faces(pcf),
-    ref_crds_verts(rcv),
-    ref_crds_faces(rfc),
-    face_verts(fv) {}
+    phys_crds_verts(phys_crds_verts),
+    ref_crds_verts(ref_crds_verts),
+    phys_crds_faces(phys_crds_faces),
+    ref_crds_faces(ref_crds_faces),
+    face_verts(face_verts),
+    face_mask(face_mask),
+    t(time_since_ref) {}
 
     KOKKOS_INLINE_FUNCTION
-    void operator (const Index face_idx) const {
-      const auto fai = Kokkos::subview(ref_crds_faces, face_idx, Kokkos::ALL);
-      const auto fxi = Kokkos::subview(phys_crds_faces, face_idx, Kokkos::ALL);
-      SphereGeometry::normalize(fxi);
-      Kokkos::Tuple<Real,9> rot_mat_ref = north_pole_rotation_matrix(fai);
-      Kokkos::Tuple<Real,9> rot_mat_phys = north_pole_rotation_matrix(fxi);
-
-      Real vert_phys[face_kind::nverts][geo::ndim];
-      Real vert_ref[face_kind::nverts][geo::ndim];
-      for (int i=0; i<face_kind::nverts; ++i) {
-        const Index vert_idx = face_verts(face_idx, i);
-        for (int j=0; j<geo::ndim; ++j) {
-          vert_phys[i][j] = phys_crds_verts(vert_idx, j);
-          vert_ref[i][j] = ref_crds_verts(vert_idx, j);
-        }
-      }
-
+    void operator() (const Index face_idx) const {
       /*
-
-        The rest of the computation goes here...
-
+      *   Spherical FTLE
       */
-      ftle(face_idx) = result;
-    }
+      if (!face_mask(face_idx)) { // skip faces that have been divided
 
+        // get coordinates of face center in reference space and physical space
+        const auto fai = Kokkos::subview(ref_crds_faces, face_idx, Kokkos::ALL);
+        const auto fxi = Kokkos::subview(phys_crds_faces, face_idx, Kokkos::ALL);
+        // normalize physical space which may contain time discretization error
+        // (reference space will always lie exactly on the sphere)
+        SphereGeometry::normalize(fxi);
+
+        // build the rotation matrix for both face vectors
+        Kokkos::Tuple<Real,9> rot_mat_ref = north_pole_rotation_matrix(fai);
+        Kokkos::Tuple<Real,9> rot_mat_phys = north_pole_rotation_matrix(fxi);
+#ifndef NDEBUG
+        Real npole_phys[3];
+        Real npole_ref[3];
+        constexpr Real fp_tol = 1e-14;
+        apply_3by3(npole_ref, rot_mat_ref, fai);
+        apply_3by3(npole_phys, rot_mat_phys, fxi);
+
+        for (int i=0; i<3; ++i) {
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_phys[0], fp_tol) );
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_phys[1], fp_tol) );
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::equiv(npole_phys[2], 1, fp_tol) );
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_ref[0], fp_tol) );
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_ref[1], fp_tol) );
+          LPM_KERNEL_ASSERT( FloatingPoint<Real>::equiv(npole_ref[2], 1, fp_tol) );
+        }
+#endif
+        // collect the face's vertex coordinates
+        Real vert_phys[face_kind::nverts][geo::ndim];
+        Real vert_ref[face_kind::nverts][geo::ndim];
+        Index vert_idxs[face_kind::nverts];
+        for (int i=0; i<face_kind::nverts; ++i) {
+          const Index vert_idx = face_verts(face_idx, i);
+          vert_idxs[i] = vert_idx;
+          for (int j=0; j<geo::ndim; ++j) {
+            vert_phys[i][j] = phys_crds_verts(vert_idx, j);
+            vert_ref[i][j] = ref_crds_verts(vert_idx, j);
+          }
+        }
+
+        // apply the rotation matrices
+        Real face_phys_tangent_crds[3] = {0,0,1};
+        Real face_ref_tangent_crds[3] = {0,0,1};
+        Real vert_phys_tangent_crds[face_kind::nverts][geo::ndim];
+        Real vert_ref_tangent_crds[face_kind::nverts][geo::ndim];
+        for (int i=0; i<face_kind::nverts; ++i) {
+          apply_3by3(vert_ref_tangent_crds[i], rot_mat_ref, vert_ref[i]);
+          apply_3by3(vert_phys_tangent_crds[i], rot_mat_phys, vert_phys[i]);
+        }
+
+        // shift (arbitrary choice)
+        // so that vertex 1's coordinates define the origin
+        for (int i=0; i<2; ++i) {
+          face_phys_tangent_crds[i] -= vert_phys_tangent_crds[1][i];
+          face_ref_tangent_crds[i] -= vert_ref_tangent_crds[1][i];
+        }
+        for (int i=0; i<4; ++i) {
+          for (int j=0; j<2; ++j) {
+            vert_phys_tangent_crds[i][j] -= vert_phys_tangent_crds[1][j];
+            vert_ref_tangent_crds[i][j] -= vert_ref_tangent_crds[1][j];
+          }
+        }
+        const Real edge1_ref[2] = {
+           vert_ref_tangent_crds[2][0] - vert_ref_tangent_crds[1][0],
+           vert_ref_tangent_crds[2][1] - vert_ref_tangent_crds[1][1]};
+        const Real edge1_phys[2] = {
+           vert_phys_tangent_crds[2][0] - vert_phys_tangent_crds[1][0],
+           vert_phys_tangent_crds[2][1] - vert_phys_tangent_crds[1][1]};
+        const Real dx0 = PlaneGeometry::mag(edge1_ref);
+        // define the local "x" direction by reference edge 1, which points from
+        // vertex 1 to vertex 2
+        Real xdir_ref[2];
+        // normalize
+        Real xref_r=0;
+        for (int i=0; i<2; ++i) {
+          xdir_ref[i] = edge1_ref[i];
+          xref_r += square(xdir_ref[i]);
+        }
+        xref_r = sqrt(xref_r);
+        for (int i=0; i<2; ++i) {
+          xdir_ref[i] /= xref_r;
+        }
+
+        // local "y" is then points approximately to vertex 0
+        // along the reverse direction of reference edge 0;
+        // it needs to be orthogonalized
+        const Real edge0_rev_ref[2] = {vert_ref_tangent_crds[0][0], vert_ref_tangent_crds[0][1]};
+        const Real edge0_rev_phys[2]= {vert_phys_tangent_crds[0][0], vert_phys_tangent_crds[0][1]};
+        Real ydir_ref[2];
+        // orthogonalize
+        Real dot_xy_ref = 0;
+        for (int i=0; i<2; ++i) {
+          dot_xy_ref += xdir_ref[i]*edge0_rev_ref[i];
+        }
+        for (int i=0; i<2; ++i) {
+          ydir_ref[i] = edge0_rev_ref[i] - dot_xy_ref * xdir_ref[i];
+        }
+        const Real dy0 = PlaneGeometry::mag(ydir_ref);
+        // normalize
+        Real yref_r = 0;
+        for (int i=0; i<2; ++i) {
+          yref_r += square(ydir_ref[i]);
+        }
+        yref_r = sqrt(yref_r);
+        for (int i=0; i<2; ++i) {
+          ydir_ref[i] /= yref_r;
+        }
+        LPM_KERNEL_ASSERT(
+          FloatingPoint<Real>::zero(PlaneGeometry::dot(xdir_ref, ydir_ref), fp_tol) );
+
+        Real flow_map_gradient[4];
+        flow_map_gradient[0] = PlaneGeometry::dot(edge1_phys, xdir_ref) / dx0;
+        flow_map_gradient[1] = PlaneGeometry::dot(edge0_rev_phys, xdir_ref) / dx0;
+        flow_map_gradient[2] = PlaneGeometry::dot(edge1_phys, ydir_ref) / dy0;
+        flow_map_gradient[3] = PlaneGeometry::dot(edge0_rev_phys, ydir_ref) /dy0;
+        Real cg_tensor[4];
+
+        for (int i=0; i<2; ++i) {
+          for (int j=0; j<2; ++j) {
+            const int ij_idx = 2*i + j;
+            const int ji_idx = 2*j + i;
+            cg_tensor[ij_idx] = flow_map_gradient[ij_idx]*flow_map_gradient[ji_idx];
+          }
+        }
+        const Real half_trace = 0.5*(cg_tensor[0] + cg_tensor[3]);
+        const Real half_trace_sq = square(half_trace);
+        const Real det = cg_tensor[0]*cg_tensor[3] - cg_tensor[1]*cg_tensor[2];
+        Real sqrt_arg = half_trace_sq - det;
+
+        LPM_KERNEL_ASSERT( (FloatingPoint<Real>::zero(sqrt_arg, fp_tol) or sqrt_arg > 0 ));
+
+        // guard against -\epsilon floating point
+        if (FloatingPoint<Real>::zero(sqrt_arg, fp_tol)) sqrt_arg = 0;
+        const Real bterm = sqrt(sqrt_arg);
+        const Real lambda1 = half_trace + bterm;
+        const Real lambda2 = half_trace - bterm;
+
+#ifndef NDEBUG
+        if (!FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol)) {
+          spdlog::warn("ftle error: abs(lambda1 * lambda2 - 1)= {} (should be 0)",
+            abs(lambda1*lambda2-1));
+        }
+#endif
+//         LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol));
+
+        // TODO: divide by time here?
+        ftle(face_idx) = log(lambda1);// * FloatingPoint<Real>::safe_denominator(2*t);
+      }
+    }
 };
+
+inline Real get_max_ftle(const scalar_view_type ftle, const mask_view_type mask, const Index& nfaces) {
+  Real result;
+  Kokkos::parallel_reduce(nfaces,
+    KOKKOS_LAMBDA (const Index i, Real& m) {
+      if (!mask(i)) {
+        m = (m > ftle(i) ? m : ftle(i));
+      }
+    }, Kokkos::Max<Real>(result));
+  return result;
+}
 
 
 

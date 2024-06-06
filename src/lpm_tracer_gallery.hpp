@@ -435,7 +435,7 @@ struct FtleTracer {
 
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
-  Real operator() (const PtType& x) const {return 1;}
+  Real operator() (const PtType& x) const {return 0;}
 };
 
 struct SphereXYZTrigTracer {

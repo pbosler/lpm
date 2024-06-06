@@ -43,8 +43,8 @@ struct PlaneGeometry {
     v[1] *= a;
   }
 
-  template <typename CV>
-  KOKKOS_INLINE_FUNCTION static Real dot(const CV a, const CV b) {
+  template <typename CV1, typename CV2>
+  KOKKOS_INLINE_FUNCTION static Real dot(const CV1 a, const CV2 b) {
     return a[0] * b[0] + a[1] * b[1];
   }
 
