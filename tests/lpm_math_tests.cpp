@@ -124,6 +124,17 @@ TEST_CASE("lpm_math", "") {
     CHECK(FloatingPoint<Real>::equiv(matrix_c[i], matrix_c_exact[i]));
   }
 
+  Real mat1[4] = {3,1,0,-2};
+  Real eye2[4] = {1,0,0,1};
+  Kokkos::Tuple<Real,2> mat1_evals = two_by_two_real_eigenvalues(mat1);
+  Kokkos::Tuple<Real,2> eye2_evals = two_by_two_real_eigenvalues(eye2);
+  CHECK( FloatingPoint<Real>::equiv(mat1_evals[0], 3) );
+  CHECK( FloatingPoint<Real>::equiv(mat1_evals[1], -2) );
+  logger.info("mat1 eigenvalue 1: {} (expected 3)", mat1_evals[0]);
+  logger.info("mat2 eigenvalue 2: {} (expected -2)", mat1_evals[1]);
+  CHECK( FloatingPoint<Real>::equiv(eye2_evals[0], 1) );
+  CHECK( FloatingPoint<Real>::equiv(eye2_evals[1], 1) );
+
 #ifdef LPM_USE_BOOST
   logger.info("Checking that BesselJ0 is even");
   CHECK( FloatingPoint<Real>::equiv(cyl_bessel_j(0, 0.5), cyl_bessel_j(0, -0.5)));

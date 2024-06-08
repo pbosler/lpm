@@ -76,13 +76,13 @@ struct GaussianVortexSphere {
                  sin(init_lat)}) {  }
 
   KOKKOS_INLINE_FUNCTION
-  void set_gauss_const(const Real vorticity_sum, const Index n) {
+  void set_gauss_const(const Real vorticity_sum) {
     gauss_const = vorticity_sum / (4 * constants::PI );
   }
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    const Real distsq = 2*(1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2]);
+    const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];
     const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
            gauss_const;
     return zeta;
@@ -91,7 +91,7 @@ struct GaussianVortexSphere {
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION
   Real operator() (const PtType& xyz) const {
-    const Real distsq = 2*(1.0 - xyz[0] * xyz_ctr[0] - xyz[1] * xyz_ctr[1] - xyz[2] * xyz_ctr[2]);
+    const Real distsq = 1.0 - xyz[0] * xyz_ctr[0] - xyz[1] * xyz_ctr[1] - xyz[2] * xyz_ctr[2];
     const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
            gauss_const;
     return zeta;
@@ -117,6 +117,11 @@ struct RossbyHaurwitz54 {
   Real operator()(const Real& x, const Real& y) const { return 0; }
 
   std::string name() const { return "RossbyHaurwitz54"; }
+
+  KOKKOS_INLINE_FUNCTION
+  void set_stationary_wave_speed(const Real& Omega=2*constants::PI) {
+    u0 = Omega / 14;
+  }
 
   KOKKOS_INLINE_FUNCTION
   Real legendreP54(const Real z) const { return z * square(square(z) - 1); }

@@ -25,6 +25,7 @@ Incompressible2D<SeedType>::Incompressible2D(const PolyMeshParameters<SeedType>&
   stream_fn_active("stream_function", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  ftle("FTLE", mesh_params.nmaxfaces),
   ref_crds_passive(mesh_params.nmaxverts),
   ref_crds_active(mesh_params.nmaxfaces),
   mesh(mesh_params),
@@ -50,6 +51,7 @@ void Incompressible2D<SeedType>::update_host() {
   velocity_active.update_host();
   ref_crds_passive.update_host();
   ref_crds_active.update_host();
+  ftle.update_host();
   for (const auto& tracer : tracer_passive) {
     tracer.second.update_host();
     tracer_active.at(tracer.first).update_host();
@@ -69,6 +71,7 @@ void Incompressible2D<SeedType>::update_device() {
   velocity_active.update_device();
   ref_crds_passive.update_device();
   ref_crds_active.update_device();
+  ftle.update_device();
   for (const auto& tracer : tracer_passive) {
     tracer.second.update_device();
     tracer_active.at(tracer.first).update_device();
@@ -93,6 +96,35 @@ Real Incompressible2D<SeedType>::total_vorticity() const {
       sum += (mask_view(i) ? 0 : zeta_view(i)*area_view(i));
     }, total_vort);
   return total_vort;
+}
+
+template <typename SeedType>
+Real Incompressible2D<SeedType>::total_enstrophy() const {
+  Real total_ens;
+  const auto zeta_view = rel_vort_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += (mask_view(i) ? 0 : square(zeta_view(i))*area_view(i));
+    }, total_ens);
+  return 0.5 * total_ens;
+}
+
+template <typename SeedType>
+Real Incompressible2D<SeedType>::total_kinetic_energy() const {
+  Real total_ke;
+  const auto velocity_view = velocity_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      if (!mask_view(i)) {
+        const auto ui = Kokkos::subview(velocity_view, i, Kokkos::ALL);
+        sum += geo::norm2(ui) * area_view(i);
+      }
+    }, total_ke);
+  return 0.5 * total_ke;
 }
 
 template <typename SeedType> template <typename VorticityType>
@@ -259,6 +291,7 @@ std::string Incompressible2D<SeedType>::info_string(const int tab_level) const {
     vtk.add_scalar_cell_data(ic2d.stream_fn_active.view);
     vtk.add_vector_cell_data(ic2d.velocity_active.view);
     vtk.add_vector_cell_data(ic2d.ref_crds_active.view);
+    vtk.add_scalar_cell_data(ic2d.ftle.view);
     for (const auto& tracer : ic2d.tracer_passive) {
       vtk.add_scalar_point_data(tracer.second.view, tracer.first);
       vtk.add_scalar_cell_data(ic2d.tracer_active.at(tracer.first).view, tracer.first);

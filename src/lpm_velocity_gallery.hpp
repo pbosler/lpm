@@ -7,6 +7,7 @@
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
+#include "lpm_vorticity_gallery.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
@@ -255,6 +256,11 @@ struct RossbyWave54Velocity {
   KOKKOS_INLINE_FUNCTION
   RossbyWave54Velocity(const Real u0 = 0, const Real amp=1) :
     background_rotation(u0), rh54_amplitude(amp) {}
+
+  KOKKOS_INLINE_FUNCTION
+  RossbyWave54Velocity(const RossbyHaurwitz54& rh54_vorticity) :
+    background_rotation(rh54_vorticity.u0),
+    rh54_amplitude(rh54_vorticity.rh54_amplitude) {}
 
   KOKKOS_INLINE_FUNCTION
   RossbyWave54Velocity(const RossbyWave54Velocity& other) = default;

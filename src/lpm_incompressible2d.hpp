@@ -37,6 +37,10 @@ class Incompressible2D {
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
+
+    // FTLE
+    ScalarField<FaceField> ftle;
+
     /// passive tracers at passive particles
     std::map<std::string, ScalarField<VertexField>> tracer_passive;
     /// passive tracers at active particles
@@ -89,6 +93,10 @@ class Incompressible2D {
     std::string info_string(const int tab_level=0) const;
 
     Real total_vorticity() const;
+
+    Real total_kinetic_energy() const;
+
+    Real total_enstrophy() const;
 
   private:
 

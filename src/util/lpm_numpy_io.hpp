@@ -10,7 +10,7 @@ namespace Lpm {
 void numpy_import(std::ostream& os) { os << "import numpy as np\n"; }
 
 template <typename HVT>
-void write_vector_numpy(std::ostream& os, const std::string name, const HVT v) {
+inline void write_vector_numpy(std::ostream& os, const std::string& name, const HVT& v) {
   static_assert(Kokkos::SpaceAccessibility<typename HVT::execution_space,
                                            Kokkos::HostSpace>::accessible,
                 "HostSpace required for i/o.");
@@ -22,8 +22,19 @@ void write_vector_numpy(std::ostream& os, const std::string name, const HVT v) {
   os << v(last_idx) << "])\n";
 }
 
+template <>
+inline void write_vector_numpy<std::vector<Real>>(std::ostream& os,
+  const std::string& name, const std::vector<Real>& v) {
+  const auto last_idx = v.size()-1;
+  os << name << " = np.array([";
+  for (Index i=0; i<last_idx; ++i) {
+    os << v[i] << ",";
+  }
+  os << v[last_idx] << "])\n";
+}
+
 template <typename HVT>
-void write_array_numpy(std::ostream& os, const std::string name, const HVT a) {
+inline void write_array_numpy(std::ostream& os, const std::string name, const HVT a) {
   static_assert(Kokkos::SpaceAccessibility<typename HVT::execution_space,
                                            Kokkos::HostSpace>::accessible,
                 "HostSpace required for i/o.");

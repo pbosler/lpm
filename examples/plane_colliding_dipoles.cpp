@@ -11,6 +11,7 @@
 #include "lpm_incompressible2d_rk2.hpp"
 #include "lpm_incompressible2d_rk2_impl.hpp"
 #include "mesh/lpm_bivar_remesh.hpp"
+#include "mesh/lpm_ftle.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_refinement.hpp"
 #include "mesh/lpm_refinement_flags.hpp"
@@ -24,16 +25,15 @@
 
 using namespace Lpm;
 
+void input_init(user::Input& input);
+
 int main (int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
   Logger<> logger("colliding_dipoles", Log::level::debug, comm);
 
   // compile-time settings
-  // mesh seed
   using seed_type = QuadRectSeed;
-//   using seed_type = TriHexSeed;
-
   // plane gravity wave problem setup
   using vorticity_type = CollidingDipolePairPlane;
   using coriolis_type = CoriolisBetaPlane;
@@ -41,63 +41,8 @@ int main (int argc, char* argv[]) {
 
   Kokkos::initialize(argc, argv);
   { // Kokkos scope
-    user::Input input("plane_gravity_wave");
-    {
-      // define user parameters
-      user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final", 0.5);
-      input.add_option(tfinal_option);
-
-      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps", 5);
-      input.add_option(nsteps_option);
-
-      user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 4);
-
-      input.add_option(tree_depth_option);
-      user::Option f_coriolis_option("f-coriolis", "-f", "--f-coriolis", "f coriolis", 0.0);
-      input.add_option(f_coriolis_option);
-
-      user::Option beta_coriolis_option("beta-coriolis", "-b", "--beta-coriolis", "beta coriolis", 0.0);
-      input.add_option(beta_coriolis_option);
-
-      user::Option mesh_radius_option("mesh_radius", "-r", "--radius", "mesh radius", 6.0);
-      input.add_option(mesh_radius_option);
-
-      user::Option amr_refinement_buffer_option("amr_buffer", "-ab", "--amr-buffer", "amr memory buffer", 0);
-      input.add_option(amr_refinement_buffer_option);
-
-      user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
-      input.add_option(amr_refinement_limit_option);
-
-      user::Option amr_both_option("amr_both", "-amr", "--amr-both", "both amr buffer and limit values", LPM_NULL_IDX);
-      input.add_option(amr_both_option);
-
-      user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
-      input.add_option(max_circulation_option);
-
-      user::Option vorticity_variation_option("vorticity_variation_tol", "-z", "--zeta-variation", "amr max relative vorticity variation tolerance", std::numeric_limits<Real>::max());
-      input.add_option(vorticity_variation_option);
-
-      user::Option flow_map_variation_option("flow_map_variation_tol", "-fv", "--flow-map-variation", "amr max flow map variation tolerance", std::numeric_limits<Real>::max());
-      input.add_option(flow_map_variation_option);
-
-      user::Option output_file_directory_option("output_file_directory", "-odir", "--output-dir", "output file directory", std::string("."));
-      input.add_option(output_file_directory_option);
-
-      user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("colliding_dipoles"));
-      input.add_option(output_file_root_option);
-
-      user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
-      input.add_option(output_write_frequency_option);
-
-      user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
-      input.add_option(kernel_smoothing_parameter_option);
-
-      user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
-      input.add_option(remesh_interval_option);
-
-      user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
-      input.add_option(remesh_strategy_option);
-    }
+    user::Input input("colliding_dipoles");
+    input_init(input);
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
       std::cout << input.usage();
@@ -243,9 +188,26 @@ int main (int argc, char* argv[]) {
     logger.info(solver->info_string());
     int remesh_counter = 0;
 
+    /*
+    * FTLE
+    */
+    const bool use_ftle = (input.get_option("remesh_trigger").get_str() == "ftle");
+    const Real ftle_tol = input.get_option("ftle_tol").get_real();
+    Real max_ftle = 0;
+    Real tref = 0;
+
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-      if ((t_idx+1)%remesh_interval == 0) {
-        logger.debug("remesh {} triggered by remesh interval", ++remesh_counter);
+      const bool ftle_trigger = (use_ftle and max_ftle > ftle_tol);
+      const bool interval_trigger = ((t_idx+1)%remesh_interval == 0);
+      const bool do_remesh = (ftle_trigger or interval_trigger);
+      if  (do_remesh) {
+        ++remesh_counter;
+        if (interval_trigger) {
+          logger.debug("remesh {} triggered by remesh interval", remesh_counter);
+        }
+        else {
+          logger.info("remesh {} triggered by ftle_tol {}", remesh_counter, ftle_tol);
+        }
 
         auto new_plane = std::make_unique<Incompressible2D<seed_type>>(mesh_params, coriolis, epsilon);
         auto remesh = bivar_remesh(*new_plane, *plane);
@@ -287,7 +249,7 @@ int main (int argc, char* argv[]) {
             remesh.uniform_indirect_remesh(vorticity, coriolis);
           }
         }
-
+        tref = plane->t;
         plane = std::move(new_plane);
         plane->update_device();
         auto new_solver = std::make_unique<Incompressible2DRK2<seed_type>>(dt, *plane, solver->t_idx);
@@ -297,6 +259,16 @@ int main (int argc, char* argv[]) {
 
     plane->advance_timestep(*solver);
     logger.debug("t = {}", plane->t);
+    Kokkos::parallel_for(plane->mesh.n_faces_host(),
+      ComputeFTLE<seed_type>(plane->ftle.view,
+        plane->mesh.vertices.phys_crds.view,
+        plane->ref_crds_passive.view,
+        plane->mesh.faces.phys_crds.view,
+        plane->ref_crds_active.view,
+        plane->mesh.faces.verts,
+        plane->mesh.faces.mask,
+        plane->t - tref));
+    max_ftle = get_max_ftle(plane->ftle.view, plane->mesh.faces.mask, plane->mesh.n_faces_host());
 
 #ifdef LPM_USE_VTK
       if ((t_idx+1)%write_frequency == 0) {
@@ -315,4 +287,67 @@ int main (int argc, char* argv[]) {
   } // kokkos scope
   Kokkos::finalize();
   MPI_Finalize();
+}
+
+void input_init(user::Input& input) {
+ // define user parameters
+  user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final", 0.5);
+  input.add_option(tfinal_option);
+
+  user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps", 5);
+  input.add_option(nsteps_option);
+
+  user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 4);
+
+  input.add_option(tree_depth_option);
+  user::Option f_coriolis_option("f-coriolis", "-f", "--f-coriolis", "f coriolis", 0.0);
+  input.add_option(f_coriolis_option);
+
+  user::Option beta_coriolis_option("beta-coriolis", "-b", "--beta-coriolis", "beta coriolis", 0.0);
+  input.add_option(beta_coriolis_option);
+
+  user::Option mesh_radius_option("mesh_radius", "-r", "--radius", "mesh radius", 6.0);
+  input.add_option(mesh_radius_option);
+
+  user::Option amr_refinement_buffer_option("amr_buffer", "-ab", "--amr-buffer", "amr memory buffer", 0);
+  input.add_option(amr_refinement_buffer_option);
+
+  user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
+  input.add_option(amr_refinement_limit_option);
+
+  user::Option amr_both_option("amr_both", "-amr", "--amr-both", "both amr buffer and limit values", LPM_NULL_IDX);
+  input.add_option(amr_both_option);
+
+  user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
+  input.add_option(max_circulation_option);
+
+  user::Option vorticity_variation_option("vorticity_variation_tol", "-z", "--zeta-variation", "amr max relative vorticity variation tolerance", std::numeric_limits<Real>::max());
+  input.add_option(vorticity_variation_option);
+
+  user::Option flow_map_variation_option("flow_map_variation_tol", "-fv", "--flow-map-variation", "amr max flow map variation tolerance", std::numeric_limits<Real>::max());
+  input.add_option(flow_map_variation_option);
+
+  user::Option output_file_directory_option("output_file_directory", "-odir", "--output-dir", "output file directory", std::string("."));
+  input.add_option(output_file_directory_option);
+
+  user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("colliding_dipoles"));
+  input.add_option(output_file_root_option);
+
+  user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
+  input.add_option(output_write_frequency_option);
+
+  user::Option kernel_smoothing_parameter_option("kernel_smoothing_parameter", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter", 0.0);
+  input.add_option(kernel_smoothing_parameter_option);
+
+  user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
+  input.add_option(remesh_interval_option);
+
+  user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
+  input.add_option(remesh_strategy_option);
+
+  user::Option remesh_trigger_option("remesh_trigger", "-rt", "--remesh-trigger", "trigger for a remeshing : ftle or an interval", std::string("interval"), std::set<std::string>({"interval", "ftle"}));
+  input.add_option(remesh_trigger_option);
+
+  user::Option ftle_tolerance_option("ftle_tol", "-ftle", "--ftle-tol", "max value for ftle before remesh", 2.0);
+  input.add_option(ftle_tolerance_option);
 }

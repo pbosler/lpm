@@ -80,6 +80,8 @@ CreateUnitTest(test_stub lpm_test_stub.cpp)
 
 CreateUnitTest(input_test lpm_input_test.cpp)
 
+CreateUnitTest(output_test lpm_io_tests.cpp)
+
 CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp
   THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
