@@ -98,7 +98,7 @@ void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity,
   auto absvort_view = abs_vort_passive.view;
   auto cor = coriolis;
   Kokkos::parallel_for("Incompressible2D::init_vorticity, passive",
-    Kokkos::RangePolicy(vert_start_idx, vert_end_idx),
+    Kokkos::RangePolicy<>(vert_start_idx, vert_end_idx),
     KOKKOS_LAMBDA (const Index i) {
       const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
       const Real zeta = vorticity(mcrd);
@@ -110,7 +110,7 @@ void Incompressible2D<SeedType>::init_vorticity(const VorticityType& vorticity,
   relvort_view = rel_vort_active.view;
   absvort_view = abs_vort_active.view;
   Kokkos::parallel_for("Incompressible2D::init_vorticity, active",
-    Kokkos::RangePolicy(face_start_idx, face_end_idx),
+    Kokkos::RangePolicy<>(face_start_idx, face_end_idx),
     KOKKOS_LAMBDA (const Index i) {
       const auto mcrd = Kokkos::subview(crds, i, Kokkos::ALL);
       const Real zeta = vorticity(mcrd);
