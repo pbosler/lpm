@@ -32,6 +32,7 @@ set(LPM_SOURCES
                 lpm_input.cpp
                 lpm_lat_lon_pts.cpp
                 lpm_logger.cpp
+                fortran/lpm_bivar_interface.cpp
                 mesh/lpm_bivar_remesh.cpp
                 mesh/lpm_compadre_remesh.cpp
                 mesh/lpm_edges.cpp

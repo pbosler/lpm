@@ -54,8 +54,8 @@ inline Real courant_number(const Real dt, const Real dlam) {
 typedef CubedSphereSeed seed_type;
 // typedef IcosTriSphereSeed seed_type;
 typedef LauritzenEtAlDeformationalFlow velocity_type;
-typedef SphericalGaussianHills tracer_type;
-// typedef RossbyHaurwitz54 tracer_type;
+// typedef SphericalGaussianHills tracer_type;
+typedef RossbyHaurwitz54 tracer_type;
 
 /** @brief Collect all input values into a single struct; like a fortran
   namelist.

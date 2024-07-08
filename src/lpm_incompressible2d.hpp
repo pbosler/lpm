@@ -21,6 +21,10 @@ class Incompressible2D {
       std::is_same<geo, PlaneGeometry>::value,
       CoriolisBetaPlane, CoriolisSphere>::type;
 
+    /// reference coordinates, for FTLE computations
+    Coords<geo> ref_crds_passive;
+    Coords<geo> ref_crds_active;
+
     /// relative vorticity
     ScalarField<VertexField> rel_vort_passive;
     ScalarField<FaceField> rel_vort_active;
@@ -33,6 +37,10 @@ class Incompressible2D {
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
+
+    // FTLE
+    ScalarField<FaceField> ftle;
+
     /// passive tracers at passive particles
     std::map<std::string, ScalarField<VertexField>> tracer_passive;
     /// passive tracers at active particles
@@ -45,6 +53,7 @@ class Incompressible2D {
 
     /// time
     Real t;
+    Real t_ref;
     /// velocity kernel smoothing parameter
     Real eps;
 
@@ -69,6 +78,8 @@ class Incompressible2D {
     template <typename TracerType>
     void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
+    void allocate_tracer(const std::string& name);
+
     void init_direct_sums();
 
     template <typename VelocityType>
@@ -82,6 +93,10 @@ class Incompressible2D {
     std::string info_string(const int tab_level=0) const;
 
     Real total_vorticity() const;
+
+    Real total_kinetic_energy() const;
+
+    Real total_enstrophy() const;
 
   private:
 

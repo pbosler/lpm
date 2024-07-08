@@ -25,11 +25,16 @@ Incompressible2D<SeedType>::Incompressible2D(const PolyMeshParameters<SeedType>&
   stream_fn_active("stream_function", mesh_params.nmaxfaces),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
+  ftle("FTLE", mesh_params.nmaxfaces),
+  ref_crds_passive(mesh_params.nmaxverts),
+  ref_crds_active(mesh_params.nmaxfaces),
   mesh(mesh_params),
   coriolis(coriolis),
   t(0),
   eps(velocity_eps)
 {
+  Kokkos::deep_copy(ref_crds_passive.view, mesh.vertices.phys_crds.view);
+  Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
   logger = lpm_logger();
 }
 
@@ -44,6 +49,9 @@ void Incompressible2D<SeedType>::update_host() {
   stream_fn_active.update_host();
   velocity_passive.update_host();
   velocity_active.update_host();
+  ref_crds_passive.update_host();
+  ref_crds_active.update_host();
+  ftle.update_host();
   for (const auto& tracer : tracer_passive) {
     tracer.second.update_host();
     tracer_active.at(tracer.first).update_host();
@@ -61,6 +69,9 @@ void Incompressible2D<SeedType>::update_device() {
   stream_fn_active.update_device();
   velocity_passive.update_device();
   velocity_active.update_device();
+  ref_crds_passive.update_device();
+  ref_crds_active.update_device();
+  ftle.update_device();
   for (const auto& tracer : tracer_passive) {
     tracer.second.update_device();
     tracer_active.at(tracer.first).update_device();
@@ -85,6 +96,35 @@ Real Incompressible2D<SeedType>::total_vorticity() const {
       sum += (mask_view(i) ? 0 : zeta_view(i)*area_view(i));
     }, total_vort);
   return total_vort;
+}
+
+template <typename SeedType>
+Real Incompressible2D<SeedType>::total_enstrophy() const {
+  Real total_ens;
+  const auto zeta_view = rel_vort_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += (mask_view(i) ? 0 : square(zeta_view(i))*area_view(i));
+    }, total_ens);
+  return 0.5 * total_ens;
+}
+
+template <typename SeedType>
+Real Incompressible2D<SeedType>::total_kinetic_energy() const {
+  Real total_ke;
+  const auto velocity_view = velocity_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      if (!mask_view(i)) {
+        const auto ui = Kokkos::subview(velocity_view, i, Kokkos::ALL);
+        sum += geo::norm2(ui) * area_view(i);
+      }
+    }, total_ke);
+  return 0.5 * total_ke;
 }
 
 template <typename SeedType> template <typename VorticityType>
@@ -132,8 +172,8 @@ void Incompressible2D<SeedType>::init_tracer(const TracerType& tracer, const std
 
   if constexpr (std::is_same<TracerType,
     FtleTracer<typename SeedType::geo>>::value) {
-    Kokkos::deep_copy(tracer_passive.at(name).view, 1);
-    Kokkos::deep_copy(tracer_active.at(name).view, 1);
+    Kokkos::deep_copy(tracer_passive.at(name).view, 0);
+    Kokkos::deep_copy(tracer_active.at(name).view, 0);
   }
   else {
     auto tracer_view = tracer_passive.at(name).view;
@@ -164,6 +204,12 @@ static_assert(std::is_same<typename SeedType::geo,
     ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
   tracer_active.emplace(name,
     ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+}
+
+template <typename SeedType>
+void Incompressible2D<SeedType>::allocate_tracer(const std::string& name) {
+  tracer_passive.emplace(name, ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name, ScalarField<FaceField>(name, velocity_active.view.extent(0)));
 }
 
 template <typename SeedType>
@@ -240,9 +286,12 @@ std::string Incompressible2D<SeedType>::info_string(const int tab_level) const {
     vtk.add_scalar_point_data(ic2d.rel_vort_passive.view);
     vtk.add_scalar_point_data(ic2d.stream_fn_passive.view);
     vtk.add_vector_point_data(ic2d.velocity_passive.view);
+    vtk.add_vector_point_data(ic2d.ref_crds_passive.view);
     vtk.add_scalar_cell_data(ic2d.rel_vort_active.view);
     vtk.add_scalar_cell_data(ic2d.stream_fn_active.view);
     vtk.add_vector_cell_data(ic2d.velocity_active.view);
+    vtk.add_vector_cell_data(ic2d.ref_crds_active.view);
+    vtk.add_scalar_cell_data(ic2d.ftle.view);
     for (const auto& tracer : ic2d.tracer_passive) {
       vtk.add_scalar_point_data(tracer.second.view, tracer.first);
       vtk.add_scalar_cell_data(ic2d.tracer_active.at(tracer.first).view, tracer.first);
@@ -259,6 +308,10 @@ BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d,
   using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
   using passive_vector_field_map = std::map<std::string, VectorField<PlaneGeometry, VertexField>>;
   using active_vector_field_map = std::map<std::string, VectorField<PlaneGeometry, FaceField>>;
+
+  Kokkos::deep_copy(new_ic2d.ref_crds_passive.view, new_ic2d.mesh.vertices.phys_crds.view);
+  Kokkos::deep_copy(new_ic2d.ref_crds_active.view, new_ic2d.mesh.faces.phys_crds.view);
+  new_ic2d.t_ref = old_ic2d.t;
 
   passive_scalar_field_map passive_scalars_old;
   passive_scalars_old.emplace("relative_vorticity", old_ic2d.rel_vort_passive);
@@ -325,6 +378,10 @@ CompadreRemesh<SeedType> compadre_remesh(Incompressible2D<SeedType>& new_ic2d,
   using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
   using passive_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, VertexField>>;
   using active_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, FaceField>>;
+
+  Kokkos::deep_copy(new_ic2d.ref_crds_passive.view, new_ic2d.mesh.vertices.phys_crds.view);
+  Kokkos::deep_copy(new_ic2d.ref_crds_active.view, new_ic2d.mesh.faces.phys_crds.view);
+  new_ic2d.t_ref = old_ic2d.t;
 
   passive_scalar_field_map passive_scalars_old;
   passive_scalars_old.emplace("relative_vorticity", old_ic2d.rel_vort_passive);

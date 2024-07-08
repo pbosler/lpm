@@ -239,17 +239,23 @@ class Faces {
   */
   void leaf_crd_view(const typename Geo::crd_view_type leaf_crds) const;
 
+  /** Populate a view of coordinates that only includes leaf faces.
+
+    View must have been allocated already.
+  */
+  void leaf_crd_view(typename Geo::crd_view_type leaf_crds, const typename Geo::crd_view_type face_crds) const;
+
   /** Allocate and populate a view of coordinates that only includes
     leaf faces.
   */
   typename Geo::crd_view_type leaf_crd_view() const;
 
-  void leaf_field_vals(const scalar_view_type vals,
+  void leaf_field_vals(const scalar_view_type& vals,
                        const ScalarField<FaceField>& field) const;
 
   scalar_view_type leaf_field_vals(const ScalarField<FaceField>& field) const;
 
-  void leaf_field_vals(const typename Geo::vec_view_type vals,
+  void leaf_field_vals(const typename Geo::vec_view_type& vals,
                        const VectorField<Geo, FaceField>& field) const;
 
   typename Geo::vec_view_type leaf_field_vals(

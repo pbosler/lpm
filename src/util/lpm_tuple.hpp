@@ -6,6 +6,7 @@
 // #include "Kokkos_Array.hpp"
 #include <cfloat>
 #include <limits>
+#include <initializer_list>
 
 #include "spdlog/fmt/ostr.h"
 #include "util/lpm_floating_point.hpp"
@@ -63,6 +64,15 @@ struct Tuple : public Array<T, ndim> {
     }
   }
 
+  KOKKOS_FORCEINLINE_FUNCTION
+  Tuple(std::initializer_list<T> init_list) : Array<T,ndim>() {
+    LPM_KERNEL_ASSERT(init_list.size() == ndim);
+    int i=0;
+    for (const T entry : init_list) {
+      this->m_internal_implementation_private_member_data[i++] = entry;
+    }
+  }
+
   KOKKOS_INLINE_FUNCTION
   volatile T& operator[](const int& i) volatile {
     return this->m_internal_implementation_private_member_data[i];
@@ -72,6 +82,16 @@ struct Tuple : public Array<T, ndim> {
   volatile typename std::add_const<T>::type& operator[](const int& i) const
       volatile {
     return this->m_internal_implementation_private_member_data[i];
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Tuple operator+ (const Tuple<T,ndim>& o) const {
+    Tuple<T,ndim> result;
+    for (int i=0; i<ndim; ++i) {
+      result[i] =
+        this->m_internal_implementation_private_member_data[i] + o[i];
+    }
+    return result;
   }
 
   KOKKOS_FORCEINLINE_FUNCTION
@@ -127,6 +147,7 @@ struct reduction_identity<Tuple<Lpm::Real, ndim>> {
     return Tuple<Lpm::Real, ndim>(DBL_MAX);
   }
 };
+
 
 template <typename T, int ndim>
 KOKKOS_INLINE_FUNCTION

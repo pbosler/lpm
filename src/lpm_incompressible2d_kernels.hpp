@@ -186,7 +186,7 @@ struct Incompressible2DPassiveSums {
     value_type sums;
     constexpr bool collocated = false;
     Kokkos::parallel_reduce(
-      Kokkos::TeamThreadRange(thread_team, n_active),
+      Kokkos::TeamVectorRange(thread_team, n_active),
       Incompressible2DReducer<Geo>(passive_x, i, active_y, active_rel_vort,
         active_area, active_mask, eps, collocated), sums);
     for (int k=0; k<Geo::ndim; ++k) {
@@ -243,7 +243,7 @@ struct Incompressible2DActiveSums {
     value_type sums;
     const bool collocated = FloatingPoint<Real>::zero(eps);
     Kokkos::parallel_reduce(
-      Kokkos::TeamThreadRange(thread_team, n_active),
+      Kokkos::TeamVectorRange(thread_team, n_active),
       Incompressible2DReducer<Geo>(active_xy, i, active_xy, active_rel_vort,
         active_area, active_mask, eps, collocated), sums);
     for (int k=0; k<Geo::ndim; ++k) {

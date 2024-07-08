@@ -3,7 +3,9 @@
 
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
-#include "lpm_floating_point.hpp"
+#include "lpm_logger.hpp"
+#include "util/lpm_floating_point.hpp"
+#include "util/lpm_tuple.hpp"
 #ifdef LPM_USE_BOOST
 #include "boost/math/special_functions/bessel.hpp"
 #include "boost/math/special_functions/legendre.hpp"
@@ -45,33 +47,59 @@ using std::min;
 #endif
 using std::abs;
 
+/// square a scalar
+template <typename T = Real>
+KOKKOS_INLINE_FUNCTION T square(const T& x) {
+  static_assert(std::is_arithmetic<T>::value,
+                "square: arithmetic type required.");
+  return x * x;
+}
+
+
+/// cube a scalar
+template <typename T = Real>
+KOKKOS_INLINE_FUNCTION T cube(const T& x) {
+  static_assert(std::is_arithmetic<T>::value,
+                "cube: arithmetic type required.");
+  return x * x * x;
+}
+
 /// Inverse tangent with quadrant information, but with output range in [0,
 /// 2*pi) instead of [-pi, pi)
 KOKKOS_INLINE_FUNCTION
 Real atan4(const Real y, const Real x) {
   Real result = 0.0;
-  if (x == 0.0) {
-    if (y > 0.0)
+  if ( FloatingPoint<Real>::zero(x)) {
+    if (y > 0.0) {
       result = 0.5 * constants::PI;
-    else if (y < 0.0)
+    }
+    else if (y < 0.0) {
       result = 1.5 * constants::PI;
-    else if (y == 0.0)
+    }
+    else {
       result = 0.0;
-  } else if (y == 0) {
-    if (x > 0.0)
+    }
+  } else if (FloatingPoint<Real>::zero(y)) {
+    if (x > 0.0) {
       result = 0.0;
-    else if (x < 0.0)
+    }
+    else if (x < 0.0) {
       result = constants::PI;
+    }
   } else {
     Real theta = std::atan2(std::abs(y), std::abs(x));
-    if (x > 0.0 && y > 0.0)
+    if (x > 0.0 && y > 0.0) {
       result = theta;
-    else if (x < 0.0 && y > 0.0)
+    }
+    else if (x < 0.0 && y > 0.0) {
       result = constants::PI - theta;
-    else if (x < 0.0 && y < 0.0)
+    }
+    else if (x < 0.0 && y < 0.0) {
       result = constants::PI + theta;
-    else if (x > 0.0 && y < 0.0)
+    }
+    else if (x > 0.0 && y < 0.0) {
       result = 2.0 * constants::PI - theta;
+    }
   }
   return result;
 }
@@ -83,6 +111,33 @@ KOKKOS_INLINE_FUNCTION T two_by_two_determinant(const T a, const T b, const T c,
   static_assert(std::is_arithmetic<T>::value,
                 "two_by_two_determinant: arithmetic type required.");
   return a * d - b * c;
+}
+
+/** @brief Computes the eigenvalues of a 2x2 matrix, if those
+  eigenvalues are real (not complex).
+*/
+template <typename Tensor2Type>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,2> two_by_two_real_eigenvalues(const Tensor2Type& mat) {
+  constexpr Real fp_tol = 2e-14;
+  const Real det = two_by_two_determinant(mat[0], mat[1], mat[2], mat[3]);
+  const Real half_trace = 0.5*(mat[0] + mat[3]);
+  Real sqrt_arg = square(half_trace) - det;
+#ifndef NDEBUG
+  if (!(FloatingPoint<Real>::zero(sqrt_arg, fp_tol) or sqrt_arg > 0 )) {
+    spdlog::warn("negative discrimant ({}) found in 2x2 eigenvalues", sqrt_arg);
+  }
+#endif
+//   LPM_KERNEL_ASSERT( (FloatingPoint<Real>::zero(sqrt_arg, fp_tol) or sqrt_arg > 0 ));
+  if (FloatingPoint<Real>::zero(sqrt_arg)) {
+    // guard against "negative epsilon"
+    sqrt_arg = 0;
+  }
+  const Real bterm = sqrt(sqrt_arg);
+  Kokkos::Tuple<Real,2> result;
+  result[0] = half_trace + bterm;
+  result[1] = half_trace - bterm;
+  return result;
 }
 
 /// Quadratic formula
@@ -106,13 +161,7 @@ KOKKOS_INLINE_FUNCTION void quadratic_roots(T& r1, T& r2, const T a, const T b,
   }
 }
 
-/// square a scalar
-template <typename T = Real>
-KOKKOS_INLINE_FUNCTION T square(const T& x) {
-  static_assert(std::is_arithmetic<T>::value,
-                "square: arithmetic type required.");
-  return x * x;
-}
+
 
 /** safely divide by a real number
 
@@ -145,13 +194,6 @@ KOKKOS_INLINE_FUNCTION T sign(const T& a, const T& b) {
   return a * sign(b);
 }
 
-/// cube a scalar
-template <typename T = Real>
-KOKKOS_INLINE_FUNCTION T cube(const T& x) {
-  static_assert(std::is_arithmetic<T>::value,
-                "cube: arithmetic type required.");
-  return x * x * x;
-}
 
 /// rotation matrix to move an arbitrary point on the sphere to the north pole
 template <typename Compressed3by3, typename PtType>
@@ -171,6 +213,32 @@ void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
   rmat[6] =  siny;
   rmat[7] =  cosy * sinx;
   rmat[8] =  cosx * cosy;
+}
+
+template <typename Compressed3by3, typename PtType>
+KOKKOS_INLINE_FUNCTION
+void spherical_tangent_projection_matrix(Compressed3by3& mat, const PtType& x) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      mat[3*i+j] = -x[i]*x[j] + (i==j ? 1 : 0);
+    }
+  }
+}
+
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> spherical_tangent_projection_matrix(const PtType& x) {
+  Kokkos::Tuple<Real,9> result;
+  spherical_tangent_projection_matrix(result, x);
+  return result;
+}
+
+template <typename PtType>
+KOKKOS_INLINE_FUNCTION
+Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
+  Kokkos::Tuple<Real,9> result;
+  north_pole_rotation_matrix(result, xyz);
+  return result;
 }
 
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
@@ -195,6 +263,37 @@ void apply_3by3_transpose(PtType& xyzp, const Compressed3by3& mat, const ConstPt
   }
 }
 
+template <typename MatType, typename ConstMatType1, typename ConstMatType2>
+KOKKOS_INLINE_FUNCTION
+void matmul_3by3(MatType& c, const ConstMatType1& a, const ConstMatType2& b) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      const int c_idx = 3*i + j;
+      c[c_idx] = 0;
+      for (int k=0; k<3; ++k) {
+          c[c_idx] += a[3*i+k] * b[3*k+j];
+      }
+    }
+  }
+}
+
+template <typename Compressed3by3, typename PtType1, typename PtType2>
+KOKKOS_INLINE_FUNCTION
+void outer_product_r3(Compressed3by3& oprod, const PtType1& x, const PtType2& y) {
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      oprod[3*i + j] = x[i] * y[j];
+    }
+  }
+}
+
+template <int ndim>
+KOKKOS_INLINE_FUNCTION
+void scal(Kokkos::Tuple<Real,ndim>& tuple, const Real a) {
+  for (int i=0; i<ndim; ++i) {
+    tuple[i] *= a;
+  }
+}
 
 /** Return the Bessel function B_0(x) for any real number x.
 
