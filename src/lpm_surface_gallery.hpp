@@ -2,6 +2,7 @@
 #define LPM_SURFACE_GALLERY_HPP
 
 #include "LpmConfig.h"
+#include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 
 namespace Lpm {
@@ -28,6 +29,8 @@ struct PlanarParabolicBasin {
   KOKKOS_INLINE_FUNCTION Real laplacian(const CV xy) const {
     return 4 * D0 / square(L);
   }
+
+  std::string name() const {return "PlanarParabolicBasin";}
 };
 
 
@@ -55,6 +58,8 @@ struct PlanarGaussianMountain {
       (b*PlaneGeometry::norm2(xy) - 1) *
       exp(-b * PlaneGeometry::norm2(xy)) ;
   }
+
+  std::string name() const {return "PlanarGaussianMountain";}
 };
 
 /** @brief Returns the height (above a reference z_0 = 0) of bottom topography
@@ -78,16 +83,72 @@ struct PlanarGaussianSurfacePerturbation {
   KOKKOS_INLINE_FUNCTION Real operator() (const CV xy) const {
     return H0 + ptb_height * exp(-(ptb_bx * square(xy(0) - ptb_x0) + ptb_by * square(xy(1) - ptb_y0)));
   }
+
+  std::string name() const {return "PlanarGaussianSurfacePerturbation";}
 };
 
-struct ZeroBottom {
+/** Topography functor for a flat bottom
+*/
+struct ZeroFunctor {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real operator() (const CV x) {return 0;}
+  Real operator() (const CV x) const {return 0;}
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION
-  Real laplacian(const CV x) {return 0;}
+  Real laplacian(const CV x) const {return 0;}
+
+  std::string name() const {return "ZeroFunctor";}
+};
+
+/** Surface functor for uniform depth
+*/
+struct UniformDepthSurface {
+  Real H0;
+
+  KOKKOS_INLINE_FUNCTION
+  explicit UniformDepthSurface(const Real h0=1) : H0(h0) {}
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Real operator() (const CV x) const {return H0;}
+};
+
+struct SphereTestCase2InitialSurface {
+  static constexpr Real h0 = 10;
+  static constexpr Real g = 1.0;
+  static constexpr Real Omega = 2*constants::PI;
+  static constexpr Real u0 = 2*constants::PI / 12;
+
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    const Real cos_theta_sq = 1-square(xyz[2]);
+    const Real result = h0 + Omega * u0 * cos_theta_sq / g;
+    return result;
+  }
+
+  std::string name() const {return "SphereTestCase2InitialSurface";}
+};
+
+struct SphereTestCase5Bottom {
+  static constexpr Real h_mtn = 1E-4;
+  static constexpr Real r_mtn = constants::PI/9;
+  static constexpr Real r_mtn2 = r_mtn*r_mtn;
+  static constexpr Real lambda_ctr = 1.5*constants::PI;
+  static constexpr Real theta_ctr = constants::PI/6;
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV xyz) const {
+    const Real lambda = SphereGeometry::longitude(xyz);
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real ll_dist_sq = square(lambda - lambda_ctr) + square(theta - theta_ctr);
+    const Real r = (r_mtn2 < ll_dist_sq ? r_mtn : sqrt(ll_dist_sq));
+    return h_mtn * (1 - r / r_mtn);
+  }
+
+  std::string name() const {return "SphereTestCase5Bottom";}
 };
 
 }  // namespace Lpm

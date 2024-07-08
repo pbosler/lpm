@@ -169,10 +169,10 @@ void GatherMeshData<SeedType>::update_host() const {
       Kokkos::deep_copy(h_z, z);
       Kokkos::deep_copy(h_lag_z, lag_z);
     }
-  } else {
-    Kokkos::deep_copy(h_phys_crds, phys_crds);
-    Kokkos::deep_copy(h_lag_crds, lag_crds);
   }
+  Kokkos::deep_copy(h_phys_crds, phys_crds);
+  Kokkos::deep_copy(h_lag_crds, lag_crds);
+
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(h_scalar_fields.at(sf.first), sf.second);
   }
@@ -192,10 +192,9 @@ void GatherMeshData<SeedType>::update_device() const {
       Kokkos::deep_copy(z, h_z);
       Kokkos::deep_copy(lag_z, h_lag_z);
     }
-  } else {
-    Kokkos::deep_copy(phys_crds, h_phys_crds);
-    Kokkos::deep_copy(lag_crds, h_lag_crds);
   }
+  Kokkos::deep_copy(phys_crds, h_phys_crds);
+  Kokkos::deep_copy(lag_crds, h_lag_crds);
   for (const auto& sf : scalar_fields) {
     Kokkos::deep_copy(sf.second, h_scalar_fields.at(sf.first));
   }
@@ -227,6 +226,30 @@ void GatherMeshData<SeedType>::gather_coordinates() {
         if (!face_mask(i)) {
           phys_crds(vert_offset + face_leaf_idx(i), j) = mesh_face_xyz(i, j);
           lag_crds(vert_offset + face_leaf_idx(i), j) = mesh_face_lag_xyz(i, j);
+        }
+      });
+}
+
+template <typename SeedType>
+void GatherMeshData<SeedType>::gather_coordinates(
+  typename SeedType::geo::crd_view_type passive_x,
+  typename SeedType::geo::crd_view_type active_x) {
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> vert_policy(
+    {0, 0}, {mesh.n_vertices_host(), SeedType::geo::ndim});
+  Kokkos::parallel_for(vert_policy,
+    KOKKOS_LAMBDA (const Index i, const int j) {
+      phys_crds(i,j) = passive_x(i,j);
+    });
+
+  const auto vert_offset = mesh.n_vertices_host();
+  const auto face_mask = mesh.faces.mask;
+  const auto face_leaf_idx = mesh.faces.leaf_idx;
+  const Kokkos::MDRangePolicy<Kokkos::Rank<2>> face_policy(
+      {0, 0}, {mesh.n_faces_host(), SeedType::geo::ndim});
+  Kokkos::parallel_for(
+      face_policy, KOKKOS_LAMBDA(const Index i, const Int j) {
+        if (!face_mask(i)) {
+          phys_crds(vert_offset + face_leaf_idx(i), j) = active_x(i, j);
         }
       });
 }
@@ -280,6 +303,25 @@ void GatherMeshData<SeedType>::gather_scalar_fields(
         GatherScalarFaceData(scalar_fields.at(sf.first),
                              face_fields.at(sf.first).view, mesh.faces.leaf_idx,
                              mesh.faces.mask, mesh.n_vertices_host()));
+  }
+}
+
+template <typename SeedType>
+void GatherMeshData<SeedType>::gather_scalar_fields(
+  const std::map<std::string, scalar_view_type>& passive_fields,
+  const std::map<std::string, scalar_view_type>& active_fields) {
+
+  for (const auto& sf : passive_fields) {
+    auto vert_vals = Kokkos::subview(scalar_fields.at(sf.first),
+      std::make_pair(0, mesh.n_vertices_host()));
+
+    Kokkos::deep_copy(vert_vals, Kokkos::subview(sf.second,
+      std::make_pair(0, mesh.n_vertices_host())));
+
+    Kokkos::parallel_for(mesh.n_faces_host(),
+      GatherScalarFaceData(scalar_fields.at(sf.first),
+        active_fields.at(sf.first), mesh.faces.leaf_idx,
+        mesh.faces.mask, mesh.n_vertices_host()));
   }
 }
 

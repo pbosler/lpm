@@ -32,6 +32,7 @@ struct TotalVorticity {
 struct SolidBodyRotation {
   typedef SphereGeometry geo;
   static constexpr Real OMEGA = 2 * constants::PI;
+  static constexpr bool IsVorticity = true;
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
@@ -58,6 +59,7 @@ struct SolidBodyRotation {
 
 struct GaussianVortexSphere {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real gauss_const;
   Real vortex_strength;
   Real shape_parameter;
@@ -74,13 +76,22 @@ struct GaussianVortexSphere {
                  sin(init_lat)}) {  }
 
   KOKKOS_INLINE_FUNCTION
-  void set_gauss_const(const Real vorticity_sum, const Index n) {
-    gauss_const = vorticity_sum / (4 * constants::PI); 
+  void set_gauss_const(const Real vorticity_sum) {
+    gauss_const = vorticity_sum / (4 * constants::PI );
   }
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    const Real distsq = 2*(1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2]);
+    const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];
+    const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
+           gauss_const;
+    return zeta;
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& xyz) const {
+    const Real distsq = 1.0 - xyz[0] * xyz_ctr[0] - xyz[1] * xyz_ctr[1] - xyz[2] * xyz_ctr[2];
     const Real zeta = vortex_strength * exp(-square(shape_parameter) * distsq) -
            gauss_const;
     return zeta;
@@ -93,6 +104,7 @@ struct GaussianVortexSphere {
 
 struct RossbyHaurwitz54 {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real u0;
   Real rh54_amplitude;
 
@@ -105,6 +117,11 @@ struct RossbyHaurwitz54 {
   Real operator()(const Real& x, const Real& y) const { return 0; }
 
   std::string name() const { return "RossbyHaurwitz54"; }
+
+  KOKKOS_INLINE_FUNCTION
+  void set_stationary_wave_speed(const Real& Omega=2*constants::PI) {
+    u0 = Omega / 14;
+  }
 
   KOKKOS_INLINE_FUNCTION
   Real legendreP54(const Real z) const { return z * square(square(z) - 1); }
@@ -128,8 +145,18 @@ struct RossbyHaurwitz54 {
   }
 };
 
-#ifdef LPM_USE_BOOST
-inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
+/** Returns the vorticity of a compactly supported Lamb dipole.
+
+  @param [in] x x-coordinate where vorticity will be evaluated
+  @param [in] y y-coordinate where vorticity will be evaluated
+  @param [in] xctr x-coordinate of dipole center
+  @param [in] yctr y-coordinate of dipole center
+  @param [in] dipole_radius radius of support (vorticity is zero outside of this radius)
+  @param [in] dipole_strength strength of dipole
+  @return vorticity
+*/
+KOKKOS_INLINE_FUNCTION
+Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
                                   const Real yctr, const Real dipole_radius,
                                   const Real dipole_strength) {
   static constexpr Real LAMB_K0 = 3.8317;
@@ -138,15 +165,16 @@ inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
   if ((r < dipole_radius) and !FloatingPoint<Real>::zero(r)) {
     const Real k = LAMB_K0 / dipole_radius;
     const Real sintheta = y / r;
-    const Real denom = cyl_bessel_j(0, LAMB_K0);
+    const Real denom = bessel_j0(LAMB_K0);
     result =
-        -2 * dipole_strength * k * cyl_bessel_j(1, k * r) * sintheta / denom;
+        -2 * dipole_strength * k * bessel_j1(k * r) * sintheta / denom;
   }
   return result;
 }
 
 struct CollidingDipolePairPlane {
   typedef PlaneGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real dipole_strengthA;
   Real dipole_radiusA;
   Kokkos::Tuple<Real, 2> xyz_ctrA;
@@ -154,28 +182,67 @@ struct CollidingDipolePairPlane {
   Real dipole_radiusB;
   Kokkos::Tuple<Real, 2> xyz_ctrB;
 
+  KOKKOS_INLINE_FUNCTION
   CollidingDipolePairPlane()
-      : dipole_strengthA(1.0),
-        dipole_radiusA(1.0),
-        xyz_ctrA({-2,0}),
+      : dipole_strengthA(1),
+        dipole_radiusA(1),
+        xyz_ctrA({-1.5,0}),
         dipole_strengthB(-1),
-        dipole_radiusB(2),
-        xyz_ctrB({ 2,0}) {}
+        dipole_radiusB(1),
+        xyz_ctrB({ 1.5,0}) {}
 
-  inline Real operator()(const Real& x, const Real& y, const Real& z) const {
+  KOKKOS_INLINE_FUNCTION
+  CollidingDipolePairPlane(const Real strA, const Real rA, const Kokkos::Tuple<Real,2> ctrA,
+    const Real strB, const Real rB, const Kokkos::Tuple<Real,2> ctrB) :
+    dipole_strengthA(strA),
+    dipole_radiusA(rA),
+    xyz_ctrA(ctrA),
+    dipole_strengthB(strB),
+    dipole_radiusB(rB),
+    xyz_ctrB(ctrB) {}
+
+  inline Real operator() (const Real& x, const Real& y, const Real& z) const {
     return 0;
   }
 
-  inline Real operator()(const Real& x, const Real& y) const {
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y) const {
     return lamb_dipole_vorticity(x, y, xyz_ctrA[0], xyz_ctrA[1], dipole_radiusA,
                                  dipole_strengthA) +
            lamb_dipole_vorticity(x, y, xyz_ctrB[0], xyz_ctrB[1], dipole_radiusB,
                                  dipole_strengthB);
   }
 
+  template <typename CV> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV& xy) const {
+    return lamb_dipole_vorticity(xy[0], xy[1], xyz_ctrA[0], xyz_ctrA[1], dipole_radiusA,
+              dipole_strengthA) +
+           lamb_dipole_vorticity(xy[0], xy[1], xyz_ctrB[0], xyz_ctrB[1], dipole_radiusB,
+              dipole_strengthB);
+  }
+
+
   std::string name() const { return "PlanarCollidingDipoles"; }
 };
-#endif
+
+/** Relative vorticity from shallow water test case 2 in
+  Williamson et al., 1992.
+*/
+struct SphereTestCase2Vorticity {
+  static constexpr Real sphere_radius = 1.0;
+  static constexpr Real u0 = 2*constants::PI / 12;
+  static constexpr bool IsVorticity = true;
+
+  KOKKOS_INLINE_FUNCTION
+  SphereTestCase2Vorticity() = default;
+
+  template <typename CV> KOKKOS_INLINE_FUNCTION
+  Real operator() (const CV& xyz) const {
+    return 2*u0*xyz[2];
+  }
+
+  std::string name() const {return "SphereTestCase2Vorticity";}
+};
 
 }  // namespace Lpm
 #endif

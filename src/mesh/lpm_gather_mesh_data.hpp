@@ -91,12 +91,19 @@ class GatherMeshData final {
       const std::map<std::string, ScalarField<VertexField>>& vert_fields,
       const std::map<std::string, ScalarField<FaceField>>& face_fields);
 
+  void gather_scalar_fields(
+      const std::map<std::string, scalar_view_type>& passive_views,
+      const std::map<std::string, scalar_view_type>& active_views);
+
   void gather_vector_fields(
       const std::map<std::string, VectorField<typename SeedType::geo,
                                               VertexField>>& vert_fields,
       const std::map<std::string,
                      VectorField<typename SeedType::geo, FaceField>>&
           face_fields);
+
+  void gather_coordinates(typename SeedType::geo::crd_view_type passive_x,
+                          typename SeedType::geo::crd_view_type active_x);
 
  private:
   void gather_coordinates();

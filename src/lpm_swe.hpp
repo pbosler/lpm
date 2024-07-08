@@ -49,6 +49,21 @@ class SWE {
     /// double dot product
     ScalarField<VertexField> double_dot_passive;
     ScalarField<FaceField> double_dot_active;
+    /// velocity derivatives
+    ScalarField<VertexField> du1dx1_passive;
+    ScalarField<FaceField> du1dx1_active;
+    ScalarField<VertexField> du1dx2_passive;
+    ScalarField<FaceField> du1dx2_active;
+    ScalarField<VertexField> du2dx1_passive;
+    ScalarField<FaceField> du2dx1_active;
+    ScalarField<VertexField> du2dx2_passive;
+    ScalarField<FaceField> du2dx2_active;
+    /// stream function
+    ScalarField<VertexField> stream_fn_passive;
+    ScalarField<FaceField> stream_fn_active;
+    /// potential function
+    ScalarField<VertexField> potential_passive;
+    ScalarField<FaceField> potential_active;
     /// velocity
     VectorField<geo,VertexField> velocity_passive;
     VectorField<geo, FaceField> velocity_active;
@@ -56,9 +71,12 @@ class SWE {
     ScalarField<FaceField> mass_active;
     /// Lagrangian particle/panel mesh
     PolyMesh2d<SeedType> mesh;
-
+    /// Coriolis parameter and derivatives
     Coriolis coriolis;
-
+    /// passive tracers at passive particles
+    std::map<std::string, ScalarField<VertexField>> tracer_passive;
+    /// passive tracers at active particles
+    std::map<std::string, ScalarField<FaceField>> tracer_active;
     /// gravity
     Real g;
     /// time
@@ -79,6 +97,8 @@ class SWE {
 
     void update_host();
     void update_device();
+
+    void allocate_scalar_tracer(const std::string& name);
 
     /**  @brief Sets bottom topography values on all particles.
 

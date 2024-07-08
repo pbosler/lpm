@@ -168,7 +168,7 @@ int main (int argc, char* argv[]) {
 
     std::ostringstream ss;
     ss << input.case_name << "_" << seed_type::id_string() << input.init_depth
-       << "_dt" << float_str(input.dt);
+       << "_dt" << dt_str(input.dt);
     const std::string basefname = ss.str();
 
 #ifdef LPM_USE_VTK

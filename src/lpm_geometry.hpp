@@ -43,8 +43,8 @@ struct PlaneGeometry {
     v[1] *= a;
   }
 
-  template <typename CV>
-  KOKKOS_INLINE_FUNCTION static Real dot(const CV a, const CV b) {
+  template <typename CV1, typename CV2>
+  KOKKOS_INLINE_FUNCTION static Real dot(const CV1 a, const CV2 b) {
     return a[0] * b[0] + a[1] * b[1];
   }
 
@@ -109,6 +109,17 @@ struct PlaneGeometry {
       v[1] += pts(poly[i], 1);
     }
     scale(1.0 / n, v);
+  }
+
+  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
+  KOKKOS_INLINE_FUNCTION
+  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+    set_zero(v);
+    for (int i=0; i<n; ++i) {
+      for (int j=0; j<2; ++j) {
+        v[j] += vview(poly[i], j);
+      }
+    }
   }
 
   template <typename V>
@@ -360,7 +371,7 @@ struct SphereGeometry {
     \return \f$c = a \times b \f$
   */
   template <typename V, typename CV, typename CV2>
-  KOKKOS_INLINE_FUNCTION static void cross(V c, const CV a, const CV2 b) {
+  KOKKOS_INLINE_FUNCTION static void cross(V& c, const CV& a, const CV2& b) {
     c[0] = a[1] * b[2] - a[2] * b[1];
     c[1] = a[2] * b[0] - a[0] * b[2];
     c[2] = a[0] * b[1] - a[1] * b[0];
@@ -450,9 +461,9 @@ struct SphereGeometry {
   template <typename CV, typename CV2>
   KOKKOS_INLINE_FUNCTION static Real distance(const CV a, const CV2 b) {
     Real cp[3];
-    cross<Real*, CV>(cp, a, b);
+    cross(cp, a, b);
     const Real dp = dot(a, b);
-    return std::atan2(mag<Real*>(cp), dp);
+    return std::atan2(mag(cp), dp);
   }
 
   /**\brief  Computes the squared Euclidean distance between two points on the
@@ -526,6 +537,24 @@ struct SphereGeometry {
     }
     scale(1.0 / n, v);
     normalize(v);
+  }
+
+  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
+  KOKKOS_INLINE_FUNCTION
+  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+    set_zero(v);
+    Real v_avg[3];
+    set_zero(v_avg);
+    for (int i=0; i<n; ++i) {
+      for (int j=0; j<3; ++j) {
+        v_avg[j] += vview(poly[i], j);
+      }
+    }
+    for (int i=0; i<3; ++i) {
+      v_avg[i] /= n;
+    }
+    const Kokkos::Tuple<Real,9> proj_mat = spherical_tangent_projection_matrix(x);
+    apply_3by3(v, proj_mat, v_avg);
   }
 
   /** \brief Computes the spherical midpoint between two vectors on the sphere

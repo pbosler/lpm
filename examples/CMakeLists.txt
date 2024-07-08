@@ -33,17 +33,6 @@ target_include_directories(sphere_transport PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
-add_executable(sphere_convergence_tests sphere_convergence_tests.cpp)
-target_link_libraries(sphere_convergence_tests PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_convergence_tests PUBLIC
- ${LPM_INCLUDE_DIRS}
- ${Trilinos_INCLUDE_DIRS}
- ${Trilinos_TPL_INCLUDE_DIRS}
- ${VTK_INCLUDE_DIRS}
- ${CMAKE_CURRENT_SOURCE_DIR}
- ${lpmtest_INCLUDE_DIRS}
-)
-
 add_executable(plane_gravity_wave plane_gravity_wave.cpp)
 target_link_libraries(plane_gravity_wave PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
 target_include_directories(plane_gravity_wave PUBLIC
@@ -55,10 +44,77 @@ target_include_directories(plane_gravity_wave PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
+add_executable(colliding_dipoles plane_colliding_dipoles.cpp)
+target_link_libraries(colliding_dipoles PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(colliding_dipoles PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
+add_executable(sphere_gaussian_vortex sphere_gaussian_vortex.cpp)
+target_link_libraries(sphere_gaussian_vortex PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_gaussian_vortex PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
+add_executable(sphere_rh54 sphere_rh54.cpp)
+target_link_libraries(sphere_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_rh54 PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
+
+add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
+target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(sphere_swe_test_case2 PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
+#add_executable(sphere_staggered_swe_tc2 sphere_staggered_swe_tc2.cpp)
+#target_link_libraries(sphere_staggered_swe_tc2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(sphere_staggered_swe_tc2 PUBLIC
+# ${LPM_INCLUDE_DIRS}
+# ${Trilinos_INCLUDE_DIRS}
+# ${Trilinos_TPL_INCLUDE_DIRS}
+# ${VTK_INCLUDE_DIRS}
+# ${CMAKE_CURRENT_SOURCE_DIR}
+# ${lpmtest_INCLUDE_DIRS}
+#)
+
+add_executable(plane_swe_gaussians plane_swe_gaussian_tests.cpp)
+target_link_libraries(plane_swe_gaussians PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(plane_swe_gaussians PUBLIC
+ ${LPM_INCLUDE_DIRS}
+ ${Trilinos_INCLUDE_DIRS}
+ ${Trilinos_TPL_INCLUDE_DIRS}
+ ${VTK_INCLUDE_DIRS}
+ ${CMAKE_CURRENT_SOURCE_DIR}
+ ${lpmtest_INCLUDE_DIRS}
+)
+
 if (LPM_ENABLE_NETCDF)
 add_executable(sphere_from_data sphere_from_data.cpp)
 target_link_libraries(sphere_from_data PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_convergence_tests PUBLIC
+target_include_directories(sphere_from_data PUBLIC
  ${LPM_INCLUDE_DIRS}
  ${Trilinos_INCLUDE_DIRS}
  ${Trilinos_TPL_INCLUDE_DIRS}
@@ -93,6 +149,17 @@ add_test(NAME bve_solid_body_rotation
 add_test(NAME sphere_transport
  COMMAND sphere_transport -d 3 -dt 0.01 -tf 0.03 -of -1 -rf -1 -amr 1 -amr_max 1)
 
+add_test(NAME colliding_dipoles_direct_unif
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -rm 1 -of 20)
+
+add_test(NAME colliding_dipoles_indirect_unif
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -rm 1 -of 20 -rs "indirect")
+
+add_test(NAME colliding_dipoles_indirect_amr
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -amr 2 -c 0.1 -rm 1 -of 20 -rs "indirect")
+
+add_test(NAME colliding_dipoles_direct_amr
+  COMMAND colliding_dipoles -d 3 -n 2 -tf 0.2 -amr 2 -c 0.1 -rm 1 -of 20)
 
 else()
   message("VTK not found. Skipping examples:

@@ -9,6 +9,36 @@
 namespace Lpm {
 
 template <typename Geo>
+Coords<Geo>::Coords(const Coords<Geo>& other) :
+  view("coords_view", other.view.extent(0)),
+  _nmax(other.view.extent(0)),
+  n("n")
+{
+  Kokkos::deep_copy(view, other.view);
+  Kokkos::deep_copy(n, other.n);
+  _nh = Kokkos::create_mirror_view(n);
+  update_host();
+}
+
+template <typename Geo>
+Coords<Geo>::Coords(const Index nmax)
+    : view("coords_view", nmax), _nmax(nmax), n("n") {
+  _hostview = ko::create_mirror_view(view);
+  _nh = ko::create_mirror_view(n);
+  _nh() = 0;
+}
+
+template <typename Geo>
+Coords<Geo>::Coords(const ko::View<Real**> cv)
+      : view(cv), _nmax(cv.extent(0)), n("n") {
+    _hostview = ko::create_mirror_view(view);
+    _nh = ko::create_mirror_view(n);
+    _nh() = cv.extent(0);
+    ko::deep_copy(n, _nh);
+    ko::deep_copy(_hostview, view);
+  }
+
+template <typename Geo>
 std::string Coords<Geo>::info_string(const std::string& label,
                                      const short& tab_level,
                                      const bool& dump_all) const {

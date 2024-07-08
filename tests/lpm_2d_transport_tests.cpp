@@ -94,7 +94,7 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
         #ifdef LPM_USE_VTK
         int frame_counter = 0;
         std::stringstream ss;
-        ss << "transport_2d_" << SeedType::id_string() << tree_lev << "_dt_conv_" << float_str(dt);
+        ss << "transport_2d_" << SeedType::id_string() << tree_lev << "_dt_conv_" << dt_str(dt);
         const auto base_filename = ss.str();
         ss.str("");
         {
@@ -151,7 +151,7 @@ template <typename VelocityType, typename SeedType> struct TimeConvergenceTest {
 };
 
 
-TEST_CASE("planar meshes", "") {
+TEST_CASE("planar meshes", "[conv]") {
 
   const int tree_lev = 5;
   const int amr_limit = 0;

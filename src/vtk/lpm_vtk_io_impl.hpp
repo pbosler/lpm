@@ -23,8 +23,8 @@ VtkPolymeshInterface<SeedType>::VtkPolymeshInterface(
   polydata_->SetPoints(pts);
   polydata_->SetPolys(polys);
   polydata_->GetCellData()->AddArray(cell_area);
-  this->add_vector_point_data(pm.vertices.lag_crds._hostview,"lag_crds");
-  this->add_vector_cell_data(pm.faces.lag_crds._hostview,"lag_crds");
+  this->add_vector_point_data(pm.vertices.lag_crds.view,"lag_crds");
+  this->add_vector_cell_data(pm.faces.lag_crds.view,"lag_crds");
 }
 
 template <typename SeedType>
@@ -40,6 +40,8 @@ VtkPolymeshInterface<SeedType>::VtkPolymeshInterface(
   polydata_->SetPoints(pts);
   polydata_->SetPolys(polys);
   polydata_->GetCellData()->AddArray(cell_area);
+  this->add_vector_point_data(pm.vertices.lag_crds.view,"lag_crds");
+  this->add_vector_cell_data(pm.faces.lag_crds.view,"lag_crds");
 }
 
 template <typename SeedType>
@@ -63,11 +65,22 @@ vtkSmartPointer<vtkPoints> VtkPolymeshInterface<SeedType>::make_points(
   auto result = vtkSmartPointer<vtkPoints>::New();
   const auto vert_crd_view = mesh_.vertices.phys_crds._hostview;
   Real crds[SeedType::geo::ndim];
-  for (Index i = 0; i < mesh_.n_vertices_host(); ++i) {
-    for (Short j = 0; j < SeedType::geo::ndim; ++j) {
-      crds[j] = vert_crd_view(i, j);
+  if constexpr (std::is_same<typename SeedType::geo, PlaneGeometry>::value) {
+    for (Index i = 0; i < mesh_.n_vertices_host(); ++i) {
+      for (Short j = 0; j < SeedType::geo::ndim; ++j) {
+        crds[j] = vert_crd_view(i, j);
+      }
+      result->InsertNextPoint(crds[0], crds[1], height_field(i));
     }
-    result->InsertNextPoint(crds[0], crds[1], height_field(i));
+  }
+  else {
+    if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+      for (Index i=0; i<mesh_.n_vertices_host(); ++i) {
+        for (Short j=0; j<SeedType::geo::ndim; ++j) {
+          crds[j] = (1 + height_field(i)) * vert_crd_view(i,j);
+        }
+      }
+    }
   }
   return result;
 }
@@ -112,6 +125,7 @@ vtkSmartPointer<vtkDoubleArray> VtkPolymeshInterface<SeedType>::make_cell_area()
       result->InsertTuple1(ctr++, mesh_.faces.area_host(i));
     }
   }
+  LPM_ASSERT(ctr == mesh_.faces.n_leaves_host());
   return result;
 }
 
@@ -165,9 +179,9 @@ void VtkPolymeshInterface<SeedType>::add_vector_point_data(
   //   }
   auto point_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   point_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
-  point_vectors->SetNumberOfComponents(v.extent(1));
   point_vectors->SetNumberOfTuples(mesh_.n_vertices_host());
-  if (SeedType::geo::ndim == 3) {
+  point_vectors->SetNumberOfComponents(v.extent(1));
+  if constexpr (SeedType::geo::ndim == 3) {
     for (Index i = 0; i < mesh_.n_vertices_host(); ++i) {
       point_vectors->InsertTuple3(i, h_vectors(i, 0), h_vectors(i, 1),
                                   h_vectors(i, 2));
@@ -196,12 +210,13 @@ void VtkPolymeshInterface<SeedType>::add_scalar_cell_data(
   cells_scalar->SetName((name.empty() ? s.label().c_str() : name.c_str()));
   cells_scalar->SetNumberOfComponents(1);
   cells_scalar->SetNumberOfTuples(mesh_.faces.n_leaves_host());
-  Int ctr = 0;
+  Index ctr = 0;
   for (Index i = 0; i < mesh_.n_faces_host(); ++i) {
     if (!mesh_.faces.has_kids_host(i)) {
       cells_scalar->InsertTuple1(ctr++, h_scalars(i));
     }
   }
+  LPM_ASSERT(ctr == mesh_.faces.n_leaves_host());
   polydata_->GetCellData()->AddArray(cells_scalar);
 }
 
@@ -219,10 +234,10 @@ void VtkPolymeshInterface<SeedType>::add_vector_cell_data(
   //   }
   auto cell_vectors = vtkSmartPointer<vtkDoubleArray>::New();
   cell_vectors->SetName((name.empty() ? v.label().c_str() : name.c_str()));
-  cell_vectors->SetNumberOfComponents(v.extent(1));
   cell_vectors->SetNumberOfTuples(mesh_.faces.n_leaves_host());
-  Int ctr = 0;
-  if (SeedType::geo::ndim == 3) {
+  cell_vectors->SetNumberOfComponents(v.extent(1));
+  Index ctr = 0;
+  if constexpr (SeedType::geo::ndim == 3) {
     for (Index i = 0; i < mesh_.n_faces_host(); ++i) {
       if (!mesh_.faces.has_kids_host(i)) {
         cell_vectors->InsertTuple3(ctr++, h_vectors(i, 0), h_vectors(i, 1),
@@ -236,6 +251,7 @@ void VtkPolymeshInterface<SeedType>::add_vector_cell_data(
       }
     }
   }
+  LPM_ASSERT(ctr == mesh_.faces.n_leaves_host());
   polydata_->GetCellData()->AddArray(cell_vectors);
 }
 

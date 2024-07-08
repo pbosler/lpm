@@ -16,7 +16,7 @@ static constexpr Real RAD2DEG = 180.0 / PI;
 static constexpr Real GRAVITY = 9.80616;
 
 /// Mean sea level radius of the Earth (meters)
-static constexpr Real EARTH_RADIUS_METERS = 6371220.0;
+static constexpr Real EARTH_RADIUS_METERS = 6.37122E6;
 
 /// One sidereal day, in units of seconds (s)
 static constexpr Real SIDEREAL_DAY_SEC = 24.0 * 3600.0;

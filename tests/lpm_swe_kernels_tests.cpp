@@ -45,7 +45,7 @@ TEST_CASE("kernel values", "") {
   Real ksigma0[3];
   Real ksigma1[3];
   const Real kzeta_exact[3] = { 0.11761244724273439212, -0.30509169352258549181, 0.32004709265607662522};
-  const Real ksigma_exact[3] = {0.32583437560369497620, -0.16407250414068629817, -0.27614478771192878158};
+  const Real ksigma_exact[3] = {-0.32583437560369497620, 0.16407250414068629817, 0.27614478771192878158};
   for (int i=0; i<3; ++i) {
     kzeta0[i] = 0;
     kzeta1[i] = 0;
@@ -85,16 +85,28 @@ TEST_CASE("kernel values", "") {
   REQUIRE( FloatingPoint<Real>::zero(ks0_dot_x));
   REQUIRE( FloatingPoint<Real>::zero(ks1_dot_x));
 
-  const Real grad_kzeta_exact[9] = {0.40473666151212280247, -0.53131662597042255196,  0.21608551568911567310, -0.83791439363248985370, 0.82834755502308796106, 0.016331615064627251330, 0.43214450841002140895, 0.29017950208810278985, -1.2330842165352107635};
+//   const Real grad_kzeta_exact[9] = {0.40473666151212280247, -0.53131662597042255196,  0.21608551568911567310, -0.83791439363248985370, 0.82834755502308796106, 0.016331615064627251330, 0.43214450841002140895, 0.29017950208810278985, -1.2330842165352107635};
+  const Real grad_kzeta_exact[9] = {-0.40473666151212280247,
+          0.53131662597042255196, -0.21608551568911567310,
+          0.83791439363248985370, -0.82834755502308796106,
+         -0.016331615064627251330, -0.43214450841002140895,
+         -0.29017950208810278985, 1.2330842165352107635};
 
   Real gkz0[9];
   Real gkz1[9];
   grad_kzeta(gkz0, x, y, eps0);
   grad_kzeta(gkz1, x, y, eps1);
+  logger.info("grad_kzeta values (singular):");
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
       logger.info("gradkzeta0[{}] = {}, rel. err. = {}", idx, gkz0[idx], (gkz0[idx] - grad_kzeta_exact[idx])/grad_kzeta_exact[idx]);
+    }
+  }
+  logger.info("grad_kzeta values (regularized):");
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      const int idx = 3*i+j;
       logger.info("gradkzeta1[{}] = {}, rel. err. = {}", idx, gkz1[idx], (gkz1[idx] - grad_kzeta_exact[idx])/grad_kzeta_exact[idx]);
     }
   }
@@ -105,10 +117,17 @@ TEST_CASE("kernel values", "") {
   Real gks1[9];
   grad_ksigma(gks0, x, y, eps0);
   grad_ksigma(gks1, x, y, eps1);
+  logger.info("grad_ksigma values (singular):");
   for (int i=0; i<3; ++i) {
     for (int j=0; j<3; ++j) {
       const int idx = 3*i+j;
       logger.info("gradksigma0[{}] = {}, rel. err. = {}", idx, gks0[idx], (gks0[idx] - grad_ksigma_exact[idx])/grad_ksigma_exact[idx]);
+    }
+  }
+  logger.info("grad_ksigma values (regularized):");
+  for (int i=0; i<3; ++i) {
+    for (int j=0; j<3; ++j) {
+      const int idx = 3*i+j;
       logger.info("gradksigma1[{}] = {}, rel. err. = {}", idx, gks1[idx], (gks1[idx] - grad_ksigma_exact[idx])/grad_ksigma_exact[idx]);    }
   }
 

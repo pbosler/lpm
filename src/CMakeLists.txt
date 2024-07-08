@@ -27,15 +27,21 @@ set(LPM_SOURCES
                 lpm_compadre.cpp
                 lpm_error.cpp
                 lpm_field.cpp
+                lpm_incompressible2d.cpp
+                lpm_incompressible2d_rk2.cpp
                 lpm_input.cpp
                 lpm_lat_lon_pts.cpp
-                mesh/lpm_mesh_seed.cpp
-                mesh/lpm_vertices.cpp
+                lpm_logger.cpp
+                fortran/lpm_bivar_interface.cpp
+                mesh/lpm_bivar_remesh.cpp
+                mesh/lpm_compadre_remesh.cpp
                 mesh/lpm_edges.cpp
                 mesh/lpm_faces.cpp
-                mesh/lpm_polymesh2d.cpp
                 mesh/lpm_gather_mesh_data.cpp
+                mesh/lpm_mesh_seed.cpp
+                mesh/lpm_polymesh2d.cpp
                 mesh/lpm_scatter_mesh_data.cpp
+                mesh/lpm_vertices.cpp
                 tree/lpm_box3d.cpp
                 tree/lpm_cpu_tree.cpp
                 util/lpm_string_util.cpp

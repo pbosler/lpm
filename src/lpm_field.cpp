@@ -26,5 +26,13 @@ std::string field_loc_string(const FieldLocation& floc) {
   return result;
 }
 
+// ETI
+template struct ScalarField<VertexField>;
+template struct ScalarField<FaceField>;
+template struct VectorField<PlaneGeometry,VertexField>;
+template struct VectorField<SphereGeometry,VertexField>;
+template struct VectorField<PlaneGeometry,FaceField>;
+template struct VectorField<SphereGeometry,FaceField>;
+
 
 }  // namespace Lpm
