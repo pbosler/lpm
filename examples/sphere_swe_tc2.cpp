@@ -178,7 +178,9 @@ template <typename SeedType>
 void tc2_setup_tracers(SWE<SeedType>& swe) {
   swe.allocate_scalar_tracer("coriolis_grad_cross_u");
   swe.allocate_scalar_tracer("f_zeta");
+  swe.allocate_scalar_tracer("dd_exact");
   swe.allocate_scalar_tracer("div_rhs");
+  swe.allocate_scalar_tracer("div_rhs_exact");
   swe.allocate_scalar_tracer("slap_exact");
   swe.allocate_scalar_tracer("f_zeta_exact");
   swe.allocate_scalar_tracer("grad_f_cross_u_exact");
@@ -203,24 +205,32 @@ void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis) {
   auto slap_view = swe.surf_lap_passive.view;
   auto s_exact_view = swe.tracer_passive.at("s_exact").view;
   auto ddot_view = swe.double_dot_passive.view;
+  auto ddot_exact_view = swe.tracer_passive.at("dd_exact").view;
+  auto rhs_exact_view = swe.tracer_passive.at("div_rhs_exact").view;
   Kokkos::parallel_for(swe.mesh.n_vertices_host(),
     KOKKOS_LAMBDA (const Index i) {
       const auto xi = Kokkos::subview(vc_view, i, Kokkos::ALL);
       const auto ui = Kokkos::subview(vv_view, i, Kokkos::ALL);
       const Real cos_lat_sq = 1-square(xi[2]);
       const Real sin_lat_sq = square(xi[2]);
+      
+      const Real vel_exact[3] = {-u0 * xi(1), u0*xi(0), 0};
 
       cgu_view(i) = coriolis.grad_f_cross_u(xi, ui);
       cgu_exact_view(i) = -2*Omega*u0*cos_lat_sq;
 
+      ddot_exact_view(i) = -2*square(u0)*square(xi(2));
+
       fz_view(i) = zeta_view(i) * coriolis.f(xi);
       f_zeta_exact_view(i) = 4*Omega*u0*sin_lat_sq;
 
-      s_exact_view(i) = h0 + Omega * u0 * cos_lat_sq / g;
+      s_exact_view(i) = h0 + (0.5*square(u0) + Omega * u0) * cos_lat_sq / g;
 
-      slap_exact_view(i) = 2*Omega*u0/g * (2*sin_lat_sq - cos_lat_sq);
+      slap_exact_view(i) = (square(u0) + 2*Omega*u0)*(2*sin_lat_sq - cos_lat_sq)/g;
 
-      rhs_view(i) = fz_view(i) + cgu_view(i) - ddot_view(i) - slap_view(i);
+      rhs_view(i) = fz_view(i) + cgu_view(i) - ddot_view(i) - slap_view(i) - SphereGeometry::norm2(ui);
+      
+      rhs_exact_view(i) = f_zeta_exact_view(i) + cgu_exact_view(i) - ddot_exact_view(i) - slap_exact_view(i) - SphereGeometry::norm2(vel_exact);
     });
 
   fz_view = swe.tracer_active.at("f_zeta").view;
@@ -235,6 +245,8 @@ void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis) {
   slap_view = swe.surf_lap_active.view;
   s_exact_view = swe.tracer_active.at("s_exact").view;
   ddot_view = swe.double_dot_active.view;
+  ddot_exact_view = swe.tracer_active.at("dd_exact").view;
+  rhs_exact_view = swe.tracer_active.at("div_rhs_exact").view;
 
   Kokkos::parallel_for(swe.mesh.n_faces_host(),
     KOKKOS_LAMBDA (const Index i) {
@@ -245,15 +257,20 @@ void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis) {
 
       cgu_view(i) = coriolis.grad_f_cross_u(xi, ui);
       cgu_exact_view(i) = -2*Omega*u0*cos_lat_sq;
+      const Real vel_exact[3] = {-u0 * xi(1), u0*xi(0), 0};
 
       fz_view(i) = zeta_view(i) * coriolis.f(xi);
       f_zeta_exact_view(i) = 4*Omega*u0*sin_lat_sq;
 
-      slap_exact_view(i) = 2*Omega*u0/g * (2*sin_lat_sq - cos_lat_sq);
+      slap_exact_view(i) = ( square(u0) + 2*Omega*u0 ) * (2*sin_lat_sq - cos_lat_sq) / g ;
 
-      s_exact_view(i) = h0 + Omega * u0 * cos_lat_sq / g;
+      ddot_exact_view(i) = -2*square(u0)*square(xi(2));
+      
+      s_exact_view(i) = h0 + (0.5*square(u0) + Omega * u0) * cos_lat_sq / g;
 
-      rhs_view(i) = fz_view(i) + cgu_view(i) - ddot_view(i) - slap_view(i);
+      rhs_view(i) = fz_view(i) + cgu_view(i) - ddot_view(i) - slap_view(i) - SphereGeometry::norm2(ui);
+      
+      rhs_exact_view(i) = f_zeta_exact_view(i) + cgu_exact_view(i) - ddot_exact_view(i) - slap_exact_view(i) - SphereGeometry::norm2(vel_exact);
     });
 
 }
