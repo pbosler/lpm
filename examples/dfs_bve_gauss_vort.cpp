@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     Kokkos::parallel_reduce("set Gauss constant", sphere.mesh.n_faces_host(),
       TotalVorticity(sphere.rel_vort_active.view, sphere.mesh.faces.area),
       total_vorticity);
-    vorticity_fn.set_gauss_const(total_vorticity, sphere.mesh.faces.n_leaves_host());
+    vorticity_fn.set_gauss_const(total_vorticity);
     logger.info("total_vorticity = {}; gauss_const = {}", total_vorticity, vorticity_fn.gauss_const);
     sphere.init_vorticity(vorticity_fn);
       logger.info("rel vort active info: {}", sphere.rel_vort_active.info_string());
