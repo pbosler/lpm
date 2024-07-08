@@ -8,8 +8,6 @@
 #include "lpm_pse.hpp"
 #include "util/lpm_math.hpp"
 
-#undef DDTRANSPOSE
-
 namespace Lpm {
 
 /** @brief Evaluates the Biot-Savart kernel in the plane.
@@ -622,13 +620,15 @@ struct SphereSweDirectSumReducer {
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, value_type& r) const {
-    if (!collocated_src_tgt or (i != j and !src_mask(j)) ) {
-      const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
-      const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
-      const value_type local_result =
-        sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
-          src_area(j), eps);
-      r += local_result;
+    if (!src_mask(j)) {
+      if (!collocated_src_tgt or i != j ) {
+        const auto xcrd = Kokkos::subview(tgt_x, i, Kokkos::ALL);
+        const auto ycrd = Kokkos::subview(src_y, j, Kokkos::ALL);
+        const value_type local_result =
+          sphere_swe_velocity_sums(xcrd, ycrd, src_zeta(j), src_sigma(j),
+            src_area(j), eps);
+        r += local_result;
+      }
     }
   }
 };
@@ -717,14 +717,7 @@ struct PlanarSWEVertexSums {
     }
 
 //
-#ifdef DDTRANSPOSE
-    vert_ddot(i) = 0;
-    for (int jj=2; jj<6; ++jj) {
-      vert_ddot(i) += square(sums[jj]);
-    }
-#else
     vert_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
-#endif
     vert_du1dx1(i) = sums[2];
     vert_du1dx2(i) = sums[3];
     vert_du2dx1(i) = sums[4];
@@ -875,14 +868,8 @@ struct PlanarSWEFaceSums {
       face_u(i,0) = sums[0];
       face_u(i,1) = sums[1];
     }
-#ifdef DDTRANSPOSE
-    face_ddot(i) = 0;
-    for (int jj=2; jj<6; ++jj) {
-      face_ddot(i) += square(sums[jj]);
-    }
-#else
+
     face_ddot(i) = square(sums[2]) + 2*sums[3]*sums[4] + square(sums[5]);
-#endif
     face_du1dx1(i) = sums[2];
     face_du1dx2(i) = sums[3];
     face_du2dx1(i) = sums[4];
