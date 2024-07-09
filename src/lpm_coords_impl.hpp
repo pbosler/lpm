@@ -10,19 +10,28 @@ namespace Lpm {
 
 template <typename Geo>
 Coords<Geo>::Coords(const Coords<Geo>& other) :
-  view("coords_view", other.view.extent(0)),
+  view(other.view.label(), other.view.extent(0)),
   _nmax(other.view.extent(0)),
   n("n")
 {
   Kokkos::deep_copy(view, other.view);
   Kokkos::deep_copy(n, other.n);
   _nh = Kokkos::create_mirror_view(n);
+  _hostview = ko::create_mirror_view(view);
   update_host();
 }
 
 template <typename Geo>
 Coords<Geo>::Coords(const Index nmax)
     : view("coords_view", nmax), _nmax(nmax), n("n") {
+  _hostview = ko::create_mirror_view(view);
+  _nh = ko::create_mirror_view(n);
+  _nh() = 0;
+}
+
+template <typename Geo>
+Coords<Geo>::Coords(const Index nmax, const std::string& label)
+    : view(label, nmax), _nmax(nmax), n("n") {
   _hostview = ko::create_mirror_view(view);
   _nh = ko::create_mirror_view(n);
   _nh() = 0;

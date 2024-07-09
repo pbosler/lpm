@@ -88,8 +88,8 @@ class Faces {
         mask("mask", nmax),
         level("level", nmax),
         leaf_idx("leaf_idx", nmax),
-        phys_crds(nmax),
-        lag_crds(nmax) {
+        phys_crds(nmax, "face_phys_crds"),
+        lag_crds(nmax, "face_lag_crds") {
     _hostverts = ko::create_mirror_view(verts);
     _hostedges = ko::create_mirror_view(edges);
     _host_crd_inds = ko::create_mirror_view(crd_inds);
@@ -104,7 +104,7 @@ class Faces {
     _hlevel = ko::create_mirror_view(level);
   }
 
-  Faces(const Index nmax, Coords<Geo>& pcrds, Coords<Geo>& lcrds)
+  explicit Faces(const Index nmax, Coords<Geo>& pcrds, Coords<Geo>& lcrds)
       : verts("faceverts", nmax),
         edges("faceedges", nmax),
         crd_inds("crd_inds", nmax),
@@ -165,6 +165,10 @@ class Faces {
   }
 
   /** @brief Copies data from device to Host
+    
+      Here, we only copy data that could change on device.  
+      All other data can only be changed on host, so there is no reason to update it.
+  
    */
   void update_host() const {
     ko::deep_copy(_hostarea, area);

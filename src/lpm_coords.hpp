@@ -60,11 +60,19 @@ class Coords {
 
   /** @brief Constructor.
 
-    @param nmax Maximum number of faces to allocate space.
+    @param nmax Maximum number of coordinates to allocate space.
 
     @see MeshSeed::setMaxAllocations()
   */
   explicit Coords(const Index nmax);
+  
+  /** @brief constructor with view label.
+  
+    @param nmax Maximum number of coordinates
+    @param label view label (helpful with debugging)
+  */
+  explicit Coords(const Index nmax, const std::string& label);
+    
 
   /** @brief Constructor.
 
@@ -78,7 +86,7 @@ class Coords {
 
     Builds a new Coords object with its own views, using deep copy.
   */
-  Coords(const Coords<Geo>& other);
+  explicit Coords(const Coords<Geo>& other);
 
   /**
     Copy data from host to device.
