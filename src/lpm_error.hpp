@@ -109,14 +109,23 @@ struct ErrNorms {
         l2(std::sqrt(err.l2num / err.l2denom)),
         linf(err.linfnum / err.linfdenom) {}
 
+  /**
+    constructor; will compute and reduce error
+  */
   template <typename V1, typename V2, typename V3>
   ErrNorms(const V1 err, const V2 appx, const V3 exact,
            const scalar_view_type wt);
 
+  /**
+    constructor; will compute and reduce error
+  */
   template <typename V1, typename V2, typename V3>
   ErrNorms(const V1 err, const V2 appx, const V3 exact,
            const scalar_view_type wt, const mask_view_type mask);
 
+  /**
+    constructor; for precomputed error; will perform reductions
+  */
   template <typename V1, typename V2>
   ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt);
 };

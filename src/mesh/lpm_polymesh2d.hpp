@@ -39,7 +39,8 @@ struct PolyMeshParameters {
   Index nmaxfaces;  /// max number of faces to allocated in memory
   Int init_depth;   /// initial depth of mesh quadtree
   Real radius;      /// radius of initial mesh in physical space
-  Int amr_limit;    /// if > 0, the allocated memory includes space for adaptive
+  Int amr_limit;    /// maximum number of times a panel may be refined beyond its initial depth
+  Int amr_buffer;    /// if > 0, the allocated memory includes space for adaptive
                     /// refinement
   MeshSeed<SeedType> seed;  /// instance of the MeshSeed that initializes the
                             /// particles and panels
@@ -56,7 +57,8 @@ struct PolyMeshParameters {
         nmaxfaces(nmf),
         init_depth(0),
         radius(1),
-        amr_limit(0) {}
+        amr_limit(0),
+        amr_buffer(0) {}
 
   /** @brief Primary constructor.
 
@@ -65,9 +67,9 @@ struct PolyMeshParameters {
     @param [in] amr Memory allocations will yield enough space for each face to be divided (depth + amr) times;
       hence, any amr computation requires amr > 0.
   */
-  PolyMeshParameters(const Int depth, const Real r = 1, const Int amr = 0)
-      : init_depth(depth), amr_limit(amr), seed(r) {
-    seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr);
+  PolyMeshParameters(const Int depth, const Real r = 1, const Int amr_buff = 0, const Int amr_lim = 0)
+      : init_depth(depth), amr_buffer(amr_buff), amr_limit(amr_lim), seed(r) {
+    seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr_buff);
   }
 };
 
@@ -117,7 +119,7 @@ class PolyMesh2d {
   /// initial radius of mesh
   Real radius;
 
-  PolyMeshParameters<SeedType> params_;
+  PolyMeshParameters<SeedType> params;
   /*
 
       Member functions
@@ -138,11 +140,11 @@ class PolyMesh2d {
         edges(nmaxedges),
         faces(nmaxfaces),
         radius(1),
-        params_(nmaxverts, nmaxedges, nmaxfaces) {
-    params_.nmaxverts = nmaxverts;
-    params_.nmaxedges = nmaxedges;
-    params_.nmaxfaces = nmaxfaces;
-    params_.radius = radius;
+        params(nmaxverts, nmaxedges, nmaxfaces) {
+    params.nmaxverts = nmaxverts;
+    params.nmaxedges = nmaxedges;
+    params.nmaxfaces = nmaxfaces;
+    params.radius = radius;
   }
 
   /** @brief Constructor.  Allocates memory, does not initialize values.
@@ -154,7 +156,7 @@ class PolyMesh2d {
         edges(params.nmaxedges),
         faces(params.nmaxfaces),
         radius(params.radius),
-        params_(params) {
+        params(params) {
     tree_init(params.init_depth, params.seed);
   }
 
@@ -224,6 +226,10 @@ class PolyMesh2d {
 
   template <typename VT>
   void get_leaf_face_crds(VT leaf_crds) const;
+
+  template <typename VT>
+  void get_leaf_face_crds(VT leaf_crds,
+    const typename SeedType::geo::crd_view_type face_crds);
 
   typename SeedType::geo::crd_view_type get_leaf_face_crds() const;
 
@@ -858,6 +864,8 @@ class PolyMesh2d {
    * discretization in space (not adaptively refined meshes).
    */
   inline Real appx_mesh_size() const { return faces.appx_mesh_size(); }
+
+  inline Real appx_min_mesh_size() const {return faces.appx_min_mesh_size();}
 
   /** @brief Writes basic info about a PolyMesh2d instance to a string.
 

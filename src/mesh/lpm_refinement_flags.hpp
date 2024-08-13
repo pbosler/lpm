@@ -5,6 +5,9 @@
 
 namespace Lpm {
 
+template <typename FlagType>
+std::string flag_info_string(const FlagType& f); // fwd decl
+
 /** All refinement flag functors toggle a flag view entry to True
 if their condition is met.
 
@@ -19,6 +22,35 @@ They do not change an existing True in that same entry.
 */
 typedef Kokkos::View<bool*> flag_view;
 
+/** Flag to make sure that adjacent faces differ by at most 1 refinement level.
+
+*/
+// TODO: as written, this likely won't work on device
+template <typename MeshSeedType>
+struct NeighborsFlag {
+  flag_view flags;
+  const PolyMesh2d<MeshSeedType>& mesh;
+
+  NeighborsFlag(flag_view f, const PolyMesh2d<MeshSeedType>& mesh) :
+    flags(f), mesh(mesh) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    Index adj_faces[MeshSeedType::nfaceverts * LPM_MAX_AMR_LIMIT];
+    Int n_adj;
+    mesh.ccw_adjacent_faces(adj_faces, n_adj, i);
+    const Int m_lev = mesh.faces.level(i);
+    bool refine_i = false;
+    for (int j=0; j<n_adj; ++j) {
+      if (mesh.faces.level(adj_faces[j]) > m_lev + 1) {
+        refine_i = true;
+        break;
+      }
+    }
+    flags(i) = (flags(i) or refine_i);
+  }
+};
+
 template <typename MeshSeedType>
 struct FlowMapVariationFlag {
   typedef typename MeshSeedType::geo::crd_view_type crd_view_type;
@@ -27,17 +59,62 @@ struct FlowMapVariationFlag {
   crd_view_type vertex_lag_crds;
   Kokkos::View<Index**> face_vertex_view;
   mask_view_type facemask;
+  Index nfaces;
+  Real relative_tol;
   Real tol;
   static constexpr Int nverts = MeshSeedType::faceKind::nverts;
 
+  KOKKOS_INLINE_FUNCTION
+  FlowMapVariationFlag(const FlowMapVariationFlag& other) = default;
+
   FlowMapVariationFlag(
-      flag_view f, const std::shared_ptr<const PolyMesh2d<MeshSeedType>> mesh,
-      const Real tol_)
+      flag_view f, const PolyMesh2d<MeshSeedType>& mesh,
+      const Real rtol)
       : flags(f),
-        vertex_lag_crds(mesh->vertices.lag_crds.crds),
-        face_vertex_view(mesh->faces.verts),
-        facemask(mesh->faces.mask),
-        tol(tol_) {}
+        vertex_lag_crds(mesh.vertices.lag_crds.view),
+        face_vertex_view(mesh.faces.verts),
+        facemask(mesh.faces.mask),
+        nfaces(mesh.n_faces_host()),
+        relative_tol(rtol),
+        tol(rtol) {
+          LPM_ASSERT(rtol > 0);
+        }
+
+  std::string description() const {
+    return "FlowMapVariationFlag";
+  }
+
+  void set_tol_from_relative_value() {
+    Real max_var;
+    const auto fverts = face_vertex_view;
+    const auto vlag_crds = vertex_lag_crds;
+    const auto mask = facemask;
+    Kokkos::parallel_reduce(nfaces,
+      KOKKOS_LAMBDA (const Index i, Real& m) {
+        if (!mask(i)) {
+          Real min_lag_crds[MeshSeedType::geo::ndim];
+          Real max_lag_crds[MeshSeedType::geo::ndim];
+          for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
+            min_lag_crds[j] = vlag_crds(fverts(i, 0), j);
+            max_lag_crds[j] = vlag_crds(fverts(i, 0), j);
+          }
+          for (int j = 1; j < nverts; ++j) {
+            const auto x0 = Kokkos::subview(vlag_crds, fverts(i, j),
+                                            Kokkos::ALL);
+            for (int k = 0; k < MeshSeedType::geo::ndim; ++k) {
+              if (x0[k] < min_lag_crds[k]) min_lag_crds[k] = x0[k];
+              if (x0[k] > max_lag_crds[k]) max_lag_crds[k] = x0[k];
+            }
+          }
+          Real dsum = 0;
+          for (int j = 0; j < MeshSeedType::geo::ndim; ++j) {
+            dsum += max_lag_crds[j] - min_lag_crds[j];
+          }
+          m = (dsum > m ? dsum : m);
+        }
+      }, Kokkos::Max<Real>(max_var));
+    tol = relative_tol * max_var;
+  }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
@@ -66,18 +143,52 @@ struct FlowMapVariationFlag {
       flags(i) = (flags(i) or (dsum > tol));
     }
   }
+
+  std::string info_string() const {return flag_info_string(*this);}
 };
 
+/** Functor that will flag all faces whose scalar field's absolute value
+  exceeds a tolerance.
+*/
 struct ScalarMaxFlag {
   flag_view flags;
   scalar_view_type face_vals;
   mask_view_type facemask;
   Index nfaces;
+  Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarMaxFlag(const ScalarMaxFlag& other) = default;
+
+  /** Constructor.
+
+    @param [in/out] f flag_view
+    @param [in] fv scalar field values at faces
+    @param [in] m face mask to exclude divided faces
+    @param [in] n number of faces
+    @param [in] tol relative tolerance in (0,1)
+  */
   ScalarMaxFlag(flag_view f, const scalar_view_type fv,
-    const mask_view_type m, const Index n, const Real eps) :
-    flags(f), face_vals(fv), facemask(m), nfaces(n), tol(eps) {}
+    const mask_view_type m, const Index n, const Real rtol) :
+    flags(f), face_vals(fv), facemask(m), nfaces(n),
+    relative_tol(rtol),
+    tol(rtol) { LPM_ASSERT(rtol > 0); }
+
+  /** Reset tolerance to absolute (not relative) values.  Should be
+    called before using this functor to flag panels.
+
+    sets tol = relative_tol * max_{faces} abs(field_values)
+  */
+  void set_tol_from_relative_value() {
+    Real max_abs;
+    const auto fvals = face_vals;
+    Kokkos::parallel_reduce(nfaces,
+      KOKKOS_LAMBDA (const Index i, Real& m) {
+        m = (m > abs(fvals(i)) ? m : abs(fvals(i)));
+      }, Kokkos::Max<Real>(max_abs));
+    tol = relative_tol * max_abs;
+  }
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index i) const {
@@ -85,6 +196,12 @@ struct ScalarMaxFlag {
       flags(i) = ( flags(i) or ( abs(face_vals(i)) > tol ) );
     }
   }
+
+  std::string description() const {
+    return "ScalarMaxFlag";
+  }
+
+  std::string info_string() const {return flag_info_string(*this);}
 };
 
 struct ScalarIntegralFlag {
@@ -93,32 +210,30 @@ struct ScalarIntegralFlag {
   scalar_view_type area;
   mask_view_type facemask;
   Index nfaces;
+  Real relative_tol;
   Real tol;
 
+  KOKKOS_INLINE_FUNCTION
+  ScalarIntegralFlag(const ScalarIntegralFlag& other) = default;
 
   ScalarIntegralFlag(flag_view f, const scalar_view_type fv,
                      const scalar_view_type a, const mask_view_type m,
                      const Index n,
-                     const Real eps)
-      : flags(f), face_vals(fv), area(a), facemask(m), nfaces(n), tol(eps) {}
-
-  struct MaxAbsValTag {};
+                     const Real rtol)
+      : flags(f), face_vals(fv), area(a), facemask(m), nfaces(n),
+        relative_tol(rtol),
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;
-    Kokkos::parallel_reduce(Kokkos::RangePolicy<MaxAbsValTag>(0, nfaces),
-    *this, Kokkos::Max<Real>(max_abs));
-    tol *= max_abs;
-  }
-
-  /// Kernel for parallel reduce.
-  /// Returns the maximum absolute value of the flag-associated quantity.
-  KOKKOS_INLINE_FUNCTION
-  void operator () (MaxAbsValTag, const Index i, Real& m) const {
-    if (!facemask(i)) {
-      const Real val = abs(face_vals(i)) * area(i);
-      m = (val > m ? val : m);
-    }
+    const auto fvals = face_vals;
+    const auto ar = area;
+    Kokkos::parallel_reduce(nfaces,
+      KOKKOS_LAMBDA (const Index i, Real& m) {
+        const Real val = abs(fvals(i))*ar(i);
+        m = (val > m ? val : m);
+      }, Kokkos::Max<Real>(max_abs));
+    tol = relative_tol * max_abs;
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -127,6 +242,12 @@ struct ScalarIntegralFlag {
       flags(i) = (flags(i) or (abs(face_vals(i)) * area(i) > tol));
     }
   }
+
+  std::string description() const {
+    return "ScalarIntegralFlag";
+  }
+
+  std::string info_string() const {return flag_info_string(*this);}
 };
 
 struct ScalarVariationFlag {
@@ -136,45 +257,48 @@ struct ScalarVariationFlag {
   Kokkos::View<Index**> face_vertex_view;
   mask_view_type facemask;
   Index nfaces;
+  Real relative_tol;
   Real tol;
+
+  KOKKOS_INLINE_FUNCTION
+  ScalarVariationFlag(const ScalarVariationFlag& other) = default;
 
   ScalarVariationFlag(flag_view f, const scalar_view_type fv,
                       const scalar_view_type vv,
                       const Kokkos::View<Index**> verts, const mask_view_type m,
                       const Index n,
-                      const Real eps)
+                      const Real rtol)
       : flags(f),
         face_vals(fv),
         vert_vals(vv),
         face_vertex_view(verts),
         facemask(m),
         nfaces(n),
-        tol(eps) {}
-
-  struct MaxAbsValTag {};
+        relative_tol(rtol),
+        tol(rtol) { LPM_ASSERT(rtol > 0); }
 
   void set_tol_from_relative_value() {
     Real max_abs;
-    Kokkos::parallel_reduce(Kokkos::RangePolicy<MaxAbsValTag>(0, nfaces),
-    *this, Kokkos::Max<Real>(max_abs));
-    tol *= max_abs;
-  }
-
-  /// Kernel for parallel reduce.
-  /// Returns the maximum absolute value of the flag-associated quantity.
-  KOKKOS_INLINE_FUNCTION
-  void operator() (MaxAbsValTag, const Index i, Real& m) const {
-    if (!facemask(i)) {
-      Real minval = face_vals(i);
-      Real maxval = face_vals(i);
-      for (int j=0; j<face_vertex_view.extent(1); ++j) {
-        const auto v_idx = face_vertex_view(i,j);
-        if (vert_vals(v_idx) < minval) minval = vert_vals(v_idx);
-        if (vert_vals(v_idx) > maxval) maxval = vert_vals(v_idx);
-      }
-      Real dval = maxval - minval;
-      m = (dval > m ? dval : m);
-    }
+    const auto fvals = face_vals;
+    const auto vvals = vert_vals;
+    const auto fverts = face_vertex_view;
+    const auto nverts = face_vertex_view.extent(1);
+    const auto mask = facemask;
+    Kokkos::parallel_reduce(nfaces,
+      KOKKOS_LAMBDA (const Index i, Real& m) {
+        if (!mask(i)) {
+          Real minval = fvals(i);
+          Real maxval = fvals(i);
+          for (int j=0; j<nverts; ++j) {
+            const auto v_idx = fverts(i,j);
+            if (vvals(v_idx) < minval ) minval = vvals(v_idx);
+            if (vvals(v_idx) > maxval ) maxval = vvals(v_idx);
+          }
+          const Real dval = maxval - minval;
+          m = (dval > m ? dval : m);
+        }
+      }, Kokkos::Max<Real>(max_abs));
+    tol = relative_tol * max_abs;
   }
 
   KOKKOS_INLINE_FUNCTION
@@ -190,7 +314,20 @@ struct ScalarVariationFlag {
       flags(i) = (flags(i) or (maxval - minval > tol));
     }
   }
+
+  std::string description() const {
+    return "ScalarVariationFlag";
+  }
+
+  std::string info_string() const {return flag_info_string(*this);}
 };
+
+template <typename FlagType>
+std::string flag_info_string(const FlagType& f) {
+  std::ostringstream ss;
+  ss << f.description() << ": relative_tol = " << f.relative_tol << ", tol = " << f.tol << "\n";
+  return ss.str();
+}
 
 }  // namespace Lpm
 

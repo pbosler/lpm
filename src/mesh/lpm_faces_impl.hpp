@@ -30,6 +30,22 @@ void Faces<FaceKind, Geo>::leaf_crd_view(
 }
 
 template <typename FaceKind, typename Geo>
+void Faces<FaceKind, Geo>::leaf_crd_view(typename Geo::crd_view_type leaf_crds, const typename Geo::crd_view_type face_crds) const {
+  LPM_REQUIRE(leaf_crds.extent(0) >= n_leaves_host());
+
+  const auto l_idx = leaf_idx;
+  Kokkos::parallel_for(
+    "Faces::leaf_crd_view", _nh(),
+    KOKKOS_LAMBDA (const Index i) {
+      if (!has_kids(i)) {
+        for (int j=0; j<Geo::ndim; ++j) {
+          leaf_crds(l_idx(i), j) = face_crds(i,j);
+        }
+      }
+    });
+}
+
+template <typename FaceKind, typename Geo>
 typename Geo::crd_view_type Faces<FaceKind, Geo>::leaf_crd_view() const {
   typename Geo::crd_view_type result("leaf_crds", n_leaves_host());
   leaf_crd_view(result);
@@ -38,7 +54,7 @@ typename Geo::crd_view_type Faces<FaceKind, Geo>::leaf_crd_view() const {
 
 template <typename FaceKind, typename Geo>
 void Faces<FaceKind, Geo>::leaf_field_vals(
-    const scalar_view_type vals, const ScalarField<FaceField>& field) const {
+    const scalar_view_type& vals, const ScalarField<FaceField>& field) const {
   LPM_ASSERT(vals.extent(0) >= n_leaves_host());
   const auto l_idx = leaf_idx;
   Kokkos::parallel_for(
@@ -52,14 +68,14 @@ void Faces<FaceKind, Geo>::leaf_field_vals(
 template <typename FaceKind, typename Geo>
 scalar_view_type Faces<FaceKind, Geo>::leaf_field_vals(
     const ScalarField<FaceField>& field) const {
-  scalar_view_type result("leaf_field_vals", n_leaves_host());
+  scalar_view_type result(field.name, n_leaves_host());
   leaf_field_vals(result, field);
   return result;
 }
 
 template <typename FaceKind, typename Geo>
 void Faces<FaceKind, Geo>::leaf_field_vals(
-    const typename Geo::vec_view_type vals,
+    const typename Geo::vec_view_type& vals,
     const VectorField<Geo, FaceField>& field) const {
   LPM_ASSERT(vals.extent(0) >= n_leaves_host());
   const auto l_idx = leaf_idx;
@@ -195,6 +211,35 @@ Real Faces<FaceKind, Geo>::surface_area_host() const {
 }
 
 template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::appx_mesh_size() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& s) {
+      if (!m(i)) {
+        s += ar(i);
+      }
+    }, result);
+  result /= _hn_leaves();
+  return sqrt(result);
+}
+
+template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::appx_min_mesh_size() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& a) {
+      if (!m(i)) {
+        a = (ar(i) < a ? ar(i) : a);
+      }
+    }, Kokkos::Min<Real>(result));
+  return sqrt(result);
+}
+
+template <typename FaceKind, typename Geo>
 std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
                                               const int& tab_level,
                                               const bool& dump_all) const {
@@ -202,8 +247,9 @@ std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
   const auto idnt = indent_string(tab_level);
   const auto bigidnt = indent_string(tab_level + 1);
   oss << idnt << "Faces " << label << " info: nh = (" << _nh()
-      << ") of nmax = " << _nmax << " in memory; " << _hn_leaves() << " leaves."
-      << std::endl;
+      << ") of nmax = " << _nmax << " in memory; " << _hn_leaves() << " leaves.\n"
+      << " appx avg mesh size = " << appx_mesh_size() << "\n"
+      << " appx min mesh size = " << appx_min_mesh_size() << "\n";
 
   if (dump_all) {
     for (Index i = 0; i < _nmax; ++i) {
@@ -320,6 +366,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
   }
   LPM_ASSERT(verts.nh() == verts.phys_crds.nh());
 
+#ifndef NDEBUG
   // debug: check vertex connectivity
   for (int i = 0; i < 4; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -327,6 +374,7 @@ void FaceDivider<Geo, TriFace>::divide(const Index faceInd,
                       "TriFace::divide error: vertex connectivity");
     }
   }
+#endif
 
   /// create new interior edges
   const Index edge_ins_pt = edges.nh();

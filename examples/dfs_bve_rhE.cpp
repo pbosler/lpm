@@ -142,8 +142,13 @@ int main(int argc, char* argv[]) {
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
     //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
+<<<<<<< HEAD
     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
    // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+=======
+    //DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
+    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+>>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_rRl" + seed_type::id_string() + "_nlon" +
@@ -167,7 +172,11 @@ int main(int argc, char* argv[]) {
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx) {
     //  auto mystart = high_resolution_clock::now();
+<<<<<<< HEAD
       sphere.advance_timestep(rk4_solver);
+=======
+      sphere.advance_timestep(rk3_solver);
+>>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
       //auto myfinal = high_resolution_clock::now();
      // auto duration = duration_cast<microseconds>(myfinal - mystart);
      // logger.info("Exec time = {}", duration.count());

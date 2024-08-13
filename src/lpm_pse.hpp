@@ -55,8 +55,9 @@ struct BivariateOrder8 : public PSEKernel<Geo> {
 template <typename PSEKind>
 struct DeltaReducer {
   typedef Real value_type;
-  typedef typename PSEKind::geo::crd_view_type crd_view;
+  using geo = typename PSEKind::geo;
   static constexpr Int ndim = PSEKind::ndim;
+  using crd_view = typename geo::crd_view_type;
   Index tgt_idx;
   crd_view tgtx;
   crd_view srcx;
@@ -80,17 +81,26 @@ struct DeltaReducer {
   void operator()(const Index j, Real& val) const {
     const auto mtgt = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
     const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
-    const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
-    val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) /
-           (ndim == 2 ? square(epsilon) : cube(epsilon));
+    if constexpr (std::is_same<geo, SphereGeometry>::value) {
+      if (geo::dot(mtgt, msrc) > 0) {
+        const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+        val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
+      }
+    }
+    else {
+      const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+      val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
+  //            (ndim == 2 ? square(epsilon) : cube(epsilon));
+    }
   }
 };
 
 template <typename PSEKind>
 struct LaplacianReducer {
   typedef Real value_type;
-  typedef typename PSEKind::geo::crd_view_type crd_view;
   static constexpr Int ndim = PSEKind::ndim;
+  using geo = typename PSEKind::geo;
+  using crd_view = typename geo::crd_view_type;
   Index tgt_idx;
   crd_view tgtx;
   crd_view srcx;
@@ -119,25 +129,36 @@ struct LaplacianReducer {
     const auto mtgt = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
     const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
     const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
-    const auto kern =
-        PSEKind::laplacian(rscaled) / (ndim == 2 ? eps_sq : cube(epsilon));
-    val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
+    if constexpr (std::is_same<geo, SphereGeometry>::value) {
+      if (geo::dot(mtgt, msrc) > 0) {
+        const auto kern =
+          PSEKind::laplacian(rscaled) / eps_sq; //(ndim == 2 ? eps_sq : cube(epsilon));
+          val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
+      }
+    }
+    else {
+      const auto kern =
+          PSEKind::laplacian(rscaled) / eps_sq; //(ndim == 2 ? eps_sq : cube(epsilon));
+      val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
+    }
   }
 };
 
 template <typename PSEKind>
 struct ScalarInterpolation {
   scalar_view_type finterp;
-  typename PSEKind::geo::crd_view_type tgtx;
-  typename PSEKind::geo::crd_view_type srcx;
+  using geo = typename PSEKind::geo;
+  using crd_view = typename geo::crd_view_type;
+  crd_view tgtx;
+  crd_view srcx;
   scalar_view_type src_data;
   scalar_view_type src_area;
   Real epsilon;
   Index nsrc;
 
   ScalarInterpolation(scalar_view_type fout,
-                      typename PSEKind::geo::crd_view_type tx,
-                      typename PSEKind::geo::crd_view_type sx,
+                      crd_view tx,
+                      crd_view sx,
                       scalar_view_type srcf, scalar_view_type srca, Real eps,
                       Index ns)
       : finterp(fout),
@@ -161,9 +182,11 @@ struct ScalarInterpolation {
 
 template <typename PSEKind>
 struct ScalarLaplacian {
+  using geo = typename PSEKind::geo;
+  using crd_view = typename geo::crd_view_type;
   scalar_view_type flaplacian;
-  typename PSEKind::geo::crd_view_type tgtx;
-  typename PSEKind::geo::crd_view_type srcx;
+  crd_view tgtx;
+  crd_view srcx;
   scalar_view_type tgtf;
   scalar_view_type srcf;
   scalar_view_type src_area;
@@ -171,8 +194,8 @@ struct ScalarLaplacian {
   Index nsrc;
 
   ScalarLaplacian(scalar_view_type flap,
-                  typename PSEKind::geo::crd_view_type tx,
-                  typename PSEKind::geo::crd_view_type sx, scalar_view_type tf,
+                  crd_view tx,
+                  crd_view sx, scalar_view_type tf,
                   scalar_view_type sf, scalar_view_type sa, Real eps, Index ns)
       : flaplacian(flap),
         tgtx(tx),

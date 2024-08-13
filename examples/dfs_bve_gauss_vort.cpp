@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     Kokkos::parallel_reduce("set Gauss constant", sphere.mesh.n_faces_host(),
       TotalVorticity(sphere.rel_vort_active.view, sphere.mesh.faces.area),
       total_vorticity);
-    vorticity_fn.set_gauss_const(total_vorticity, sphere.mesh.faces.n_leaves_host());
+    vorticity_fn.set_gauss_const(total_vorticity);
     logger.info("total_vorticity = {}; gauss_const = {}", total_vorticity, vorticity_fn.gauss_const);
     sphere.init_vorticity(vorticity_fn);
       logger.info("rel vort active info: {}", sphere.rel_vort_active.info_string());
@@ -146,8 +146,14 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
+<<<<<<< HEAD
     DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
    // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+=======
+    //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
+    DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);
+
+>>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_gauss_vort_" + seed_type::id_string() + "_nlon" +
@@ -170,7 +176,7 @@ int main(int argc, char* argv[]) {
 
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx) {
-      sphere.advance_timestep(rk2_solver);
+      sphere.advance_timestep(rk4_solver);
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {

@@ -5,17 +5,20 @@ enable_testing()
 ###    THREADING    ###
 #######################
 
-if (LPM_USE_CUDA)
+if (LPM_USE_OPENMP)
+  set (DEFAULT_MAX_THREADS $ENV{OMP_NUM_THREADS})
+else()
   set (DEFAULT_MAX_THREADS 1)
-else ()
-  set (DEFAULT_MAX_THREADS 16)
 endif ()
 
-set (LPM_TEST_MAX_RANKS 4 CACHE STRING "Max number of ranks for tests")
+set (LPM_TEST_MAX_RANKS 2 CACHE STRING "Max number of ranks for tests")
 set (LPM_TEST_MAX_THREADS ${DEFAULT_MAX_THREADS} CACHE STRING "Max number of threads for tests")
 set (LPM_TEST_THREAD_INC 1  CACHE STRING "Increment for threads for tests")
 
 CreateUnitTest(geometry_test lpm_geometry_tests.cpp)
+
+CreateUnitTest(tuple_test lpm_tuple_tests.cpp
+  THREADS 1 ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
 CreateUnitTest(mpi_comm_test lpm_comm_tests.cpp
   MPI_RANKS 1 ${LPM_TEST_MAX_RANKS}
@@ -51,9 +54,11 @@ CreateUnitTest(tracer_init_test lpm_tracer_init_test.cpp)
 
 CreateUnitTest(error_unit_test lpm_error_unit_tests.cpp)
 
-CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp)
+CreateUnitTest(transport_2d_unit_test lpm_2d_transport_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
-CreateUnitTest(pse_unit_test lpm_pse_tests.cpp)
+CreateUnitTest(pse_unit_test lpm_pse_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
 CreateUnitTest(polymesh_functions lpm_polymesh2d_function_tests.cpp)
 
@@ -74,6 +79,13 @@ CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 CreateUnitTest(test_stub lpm_test_stub.cpp)
 
 CreateUnitTest(input_test lpm_input_test.cpp)
+
+CreateUnitTest(output_test lpm_io_tests.cpp)
+
+CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp
+  THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
+
+CreateUnitTest(swe_high_order_kernels lpm_high_order_swe_tests.cpp)
 
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)

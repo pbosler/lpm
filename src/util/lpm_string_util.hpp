@@ -37,11 +37,20 @@ inline std::string zero_fill_str(const T ct, const Int nfill = 4) {
 }
 
 template <typename T>
-inline std::string float_str(const T val, const int width = 5) {
+inline std::string dt_str(const T val, const int width = 5) {
   static_assert(std::is_floating_point<T>::value,
                 "floating point type required.");
   std::ostringstream ss;
   ss << "dt" << std::setprecision(width) << val;
+  return ss.str();
+}
+
+template <typename T>
+inline std::string float_str(const T val, const int width = 5) {
+  static_assert(std::is_floating_point<T>::value,
+                "floating point type required.");
+  std::ostringstream ss;
+  ss << std::setprecision(width) << val;
   return ss.str();
 }
 

@@ -12,7 +12,8 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     short_flag(sf),
     long_flag(lf),
     description(desc),
-    value{default_value} {}
+    value{default_value},
+    allowable_values() {}
 
 Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
     const double default_value) :
@@ -20,7 +21,8 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     short_flag(sf),
     long_flag(lf),
     description(desc),
-    value{default_value} {}
+    value{default_value},
+    allowable_values() {}
 
 Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
     const bool default_value) :
@@ -38,12 +40,26 @@ Option::Option(const std::string& name, const std::string& sf, const std::string
     description(desc),
     value{default_value} {}
 
+Option::Option(const std::string& name, const std::string& sf, const std::string& lf, const std::string& desc,
+    const std::string& default_value,
+    const std::set<std::string>& allowable_values) :
+    name(name),
+    short_flag(sf),
+    long_flag(lf),
+    description(desc),
+    value{default_value},
+    allowable_values(std::move(allowable_values)) {
+        LPM_REQUIRE_MSG(allowable_values.count(default_value) == 1,
+          "Option: default value must be included in allowable values");
+    }
+
 std::string Option::info_string(const int tab_level) const {
   std::string tab_str = indent_string(tab_level);
   std::ostringstream ss;
-  ss << tab_str << "Option: " << name << " (" << description << ")\n";
-  tab_str += "\t";
-  ss << tab_str << short_flag << ", " << long_flag << "\n";
+  const std::string separator = "  ";
+  ss << tab_str << "Option: " << name << " (" << description << ")";
+  ss << separator;
+  ss << "[" << short_flag << ", " << long_flag << "]" << separator;
   if (std::holds_alternative<Int>(value)) {
     ss << tab_str << "value (Int) = " << this->get_int();
   }
@@ -52,6 +68,12 @@ std::string Option::info_string(const int tab_level) const {
   }
   else if (std::holds_alternative<std::string>(value) ) {
     ss << tab_str << "value (std::string) = " << this->get_str();
+    if (!allowable_values.empty()) {
+      ss << "\n allowable_values: ";
+      for (const auto& s : allowable_values) {
+        ss << s << " ";
+      }
+    }
   }
   else if (std::holds_alternative<bool>(value) ) {
     ss << tab_str << "value (bool) = " << std::boolalpha << this->get_bool();
@@ -66,7 +88,7 @@ Int Option::get_int() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad int access. " << ex.what();
+    ss << "Option: " << description << " bad int access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -79,7 +101,7 @@ bool Option::get_bool() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option:: bad bool access. " << ex.what();
+    ss << "Option: " << description << " bad bool access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -92,7 +114,7 @@ Real Option::get_real() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad real access. " << ex.what();
+    ss << "Option: " << description << " bad real access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
@@ -105,10 +127,28 @@ std::string Option::get_str() const {
   }
   catch (const std::bad_variant_access& ex) {
     std::ostringstream ss;
-    ss << "Option: bad string access. " << ex.what();
+    ss << "Option: " << description << " bad string access. " << ex.what();
     LPM_STOP(ss.str());
   }
   return val;
+}
+
+void Option::validate() const {
+  if (std::holds_alternative<std::string>(value)) {
+    if (!allowable_values.empty()) {
+      const auto val = get_str();
+      const bool is_valid = (allowable_values.count(val) == 1);
+      if (!is_valid) {
+        std::ostringstream ss;
+        ss << "Option: " << description << " has invalid value: " << val << "\n";
+        ss << "   allowable values are: ";
+        for (const auto& s : allowable_values) {
+          ss << s << " ";
+        }
+        LPM_STOP(ss.str());
+      }
+    }
+  }
 }
 
 
@@ -170,6 +210,18 @@ std::string Input::info_string(const int tab_level, const bool verbose) const  {
 }
 
 void Input::add_option(const Option& default_opt) {
+  if (short_flags.count(default_opt.short_flag) > 0) {
+    std::ostringstream ss;
+    ss << "Input::add_option error: Option short flags must be unique ("
+       << default_opt.short_flag << ")";
+    LPM_STOP(ss.str());
+  }
+  if (long_flags.count(default_opt.long_flag) > 0) {
+    std::ostringstream ss;
+    ss << "Input::add_option error: Option long flags must be unique ("
+       << default_opt.long_flag << ")";
+    LPM_STOP(ss.str());
+  }
   short_flags.insert(default_opt.short_flag);
   long_flags.insert(default_opt.long_flag);
   options.emplace(default_opt.name, std::move(default_opt));

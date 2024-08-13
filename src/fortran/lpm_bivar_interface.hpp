@@ -47,16 +47,35 @@ struct BivarInterface final {
   BivarInterface(const GatherMeshData<SeedType>& in,
                  const typename scalar_view_type::HostMirror xo,
                  const typename scalar_view_type::HostMirror yo,
-                 const std::map<std::string, std::string>& s_in_out,
+                 const std::map<std::string, std::string>& s_in_out =
+                     std::map<std::string, std::string>(),
                  const std::map<std::string, std::string>& v_in_out =
                      std::map<std::string, std::string>());
 
   void interpolate(const sfield_map& output_scalars,
                    const vfield_map& output_vectors = vfield_map());
 
+  void interpolate(const sfield_map& output_scalars,
+                   const vfield_map& output_vectors,
+                   const Index start_idx,
+                   const Index end_idx);
+
+  void interpolate_vectors(const vfield_map& output_vectors);
+
+  void interpolate_vectors(const vfield_map& output_vectors, const Index start, const Index end);
+
   void interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds);
 
+  void interpolate_lag_crds(typename SeedType::geo::crd_view_type::HostMirror lcrds,
+    const Index start_idx, const Index end_idx);
+
   std::string info_string(const int tab_lev=0) const;
+
+  void set_md_new_source() {md = 1;}
+
+  void set_md_same_source_new_target() {md = 2;}
+
+  void set_md_same_source_same_target_new_data() {md = 3;}
 
  private:
   Kokkos::View<int*, Host> integer_work;

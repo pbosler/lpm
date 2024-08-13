@@ -1,11 +1,12 @@
 #
 # Compose : spherical geometry and shape preservation libraries
 #
+include(GNUInstallDirs)
 if (LPM_ENABLE_Compose)
   if (Compose_DIR)
     message(STATUS "looking for Compose at ${Compose_DIR}")
     set(Compose_INCLUDE_DIR ${Compose_DIR}/include)
-    set(Compose_LIBRARY_DIR ${Compose_DIR}/lib)
+    set(Compose_LIBRARY_DIR ${Compose_DIR}/${CMAKE_INSTALL_LIBDIR})
     set(Compose_LIBRARY ${Compose_LIBRARY_DIR}/libcompose.a)
     if (NOT EXISTS ${Compose_INCLUDE_DIR})
       message(FATAL_ERROR "Could not find Compose include dir at ${Compose_INCLUDE_DIR}")

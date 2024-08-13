@@ -22,7 +22,13 @@ class SWERK4 {
     scalar_view_type passive_surface;
     vec_view passive_vel;
     scalar_view_type passive_ddot;
+    scalar_view_type passive_du1dx1;
+    scalar_view_type passive_du1dx2;
+    scalar_view_type passive_du2dx1;
+    scalar_view_type passive_du2dx2;
     scalar_view_type passive_laps;
+    scalar_view_type passive_psi;
+    scalar_view_type passive_phi;
     scalar_view_type passive_bottom;
 
     crd_view active_x;
@@ -35,7 +41,13 @@ class SWERK4 {
     scalar_view_type active_mass;
     mask_view_type active_mask;
     scalar_view_type active_ddot;
+    scalar_view_type active_du1dx1;
+    scalar_view_type active_du1dx2;
+    scalar_view_type active_du2dx1;
+    scalar_view_type active_du2dx2;
     scalar_view_type active_laps;
+    scalar_view_type active_psi;
+    scalar_view_type active_phi;
     scalar_view_type active_bottom;
 
 
@@ -44,7 +56,7 @@ class SWERK4 {
     Real eps; /// velocity kernel smoothing parameter
     Real pse_eps; /// pse kernel width parameter
 
-    void advance_timestep();
+    void advance_timestep_impl();
 
     // constructor
     SWERK4(const Real timestep, SWE<SeedType>& swe_mesh, TopoType& topo);

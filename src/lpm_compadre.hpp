@@ -1,13 +1,14 @@
 #ifndef LPM_COMPADRE_HPP
 #define LPM_COMPADRE_HPP
 
-#include "Compadre_Evaluator.hpp"
-#include "Compadre_GMLS.hpp"
-#include "Compadre_Operators.hpp"
 #include "LpmConfig.h"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
+
+#include <Compadre_Evaluator.hpp>
+#include <Compadre_GMLS.hpp>
+#include <Compadre_Operators.hpp>
 
 namespace Lpm {
 namespace gmls {
@@ -60,8 +61,24 @@ struct Neighborhoods {
 
   Neighborhoods() = default;
 
+  /** Constructor.  Target points may be different than source points.
+
+    General case, used, for example, interpolating from scattered data.
+
+    @param [in] host_src_crds Coordinates of source data, on host
+    @param [in] host_tgt_crds Coordinates of target points, on host
+  */
   Neighborhoods(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params);
+
+  /** Constructor.  Collocated source and target points.
+
+    Used when the target requires an operation (e.g., differentiation) on the source data.
+
+    @param [in] host_colloc_src_tgt_crds source and target points, on host
+  */
+  Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
+                const Params& params);
 
   KOKKOS_INLINE_FUNCTION
   Real min_radius() const { return r_min; }
@@ -77,6 +94,10 @@ struct Neighborhoods {
 
   void update_neighbors(const host_crd_view host_src_crds,
                 const host_crd_view host_tgt_crds, const Params& params,
+                const bool verbose=false);
+
+  void update_neighbors(const host_crd_view host_colloc_src_tgt_crds,
+                const Params& params,
                 const bool verbose=false);
 
   struct RadiusReducer {
