@@ -128,6 +128,35 @@ struct RossbyHaurwitz54 {
   }
 };
 
+
+//
+struct RossbyHaurwitzR {
+  typedef SphereGeometry geo;
+  Real u0;
+  Real rh54_amplitude;
+  Int R;
+
+  KOKKOS_INLINE_FUNCTION
+  RossbyHaurwitzR(const Real zonal_background_velocity = 0,
+                   const Real wave_amp = 1, Int R_=6)
+      : u0(zonal_background_velocity), rh54_amplitude(wave_amp), R (R_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y) const { return 0; }
+
+  std::string name() const { return "RossbyHaurwitzR"; }
+
+  KOKKOS_INLINE_FUNCTION
+  Real legendrePR(const Real z) const { return z * pow(1-square(z), R/2); }
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y, const Real& z) const {
+    const Real lon = atan4(y, x);
+    return 2 * u0 * z + (R+1)*(R+2) * rh54_amplitude * cos(R * lon) * legendrePR(z);
+  }
+};
+//
+
 #ifdef LPM_USE_BOOST
 inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
                                   const Real yctr, const Real dipole_radius,

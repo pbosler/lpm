@@ -36,7 +36,7 @@ struct Input {
   Int init_mesh_depth; // initial depth of Lagrangian particle/panel mesh quadtree
   Int nlon; // number of longitude points in the Fourier grid
   Int output_interval; // number of time steps between each output file
-  Int gmls_order;	// gmls polynomial order
+
   std::string vtk_froot; // base filename for vtk output
 
   // write Input state to a string
@@ -117,14 +117,14 @@ int main(int argc, char* argv[]) {
     const Int nlon = input.nlon;
     const Int ntracers = 0;
     // problem types: velocity and vorticity
-    RossbyWave54Velocity velocity_fn(constants::PI/7);
-    RossbyHaurwitz54 vorticity_fn(constants::PI/7);
+    //RossbyWave54Velocity velocity_fn(constants::PI/7);
+    RossbyHaurwitzR vorticity_fn(4*constants::PI/(6*(6+3)), 1, 6);
 
     // LPM particle/panel initialization
     typedef CubedSphereSeed seed_type;
     const Int mesh_depth = input.init_mesh_depth;
     PolyMeshParameters<seed_type> mesh_params(mesh_depth);
-   const Int gmls_order = input.gmls_order; // TODO: this can be an input parameter
+    const Int gmls_order = 6; // TODO: this can be an input parameter
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
@@ -141,12 +141,12 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-  //  DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
+    //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
-//    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+   // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
 
     int output_ctr = 0;
-    const std::string fname_root = "dfs_bve_rh54" + seed_type::id_string() + "_nlon" +
+    const std::string fname_root = "dfs_bve_rRl" + seed_type::id_string() + "_nlon" +
     std::to_string(nlon) + "_dt" + std::to_string(dt);
     input.vtk_froot = fname_root;
     // output initial data
@@ -165,13 +165,12 @@ int main(int argc, char* argv[]) {
     #endif
 
     // timestepping loop
-    for (int time_idx=0; time_idx<nsteps; ++time_idx){
-  //  for (int time_idx=0; time_idx<1; ++time_idx) {
-//  auto mystart = high_resolution_clock::now();
+    for (int time_idx=0; time_idx<nsteps; ++time_idx) {
+    //  auto mystart = high_resolution_clock::now();
       sphere.advance_timestep(rk4_solver);
-  //    auto myfinal = high_resolution_clock::now();
-    //  auto duration = duration_cast<microseconds>(myfinal - mystart);
-      //logger.info("Exec time = {}", duration.count());
+      //auto myfinal = high_resolution_clock::now();
+     // auto duration = duration_cast<microseconds>(myfinal - mystart);
+     // logger.info("Exec time = {}", duration.count());
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {
@@ -201,7 +200,7 @@ int main(int argc, char* argv[]) {
 
     ErrNorms rel_vort_err(face_rel_vort_error.view, rel_vort_faces_exact, sphere.mesh.faces.area);
     logger.info("At t = {}, active panel error is:\n\t{}", sphere.t, rel_vort_err.info_string());
-
+    
   }  // Kokkos scope
   /**
     program finalize
@@ -242,10 +241,6 @@ Input::Input(int argc, char* argv[]) {
     else if (token == "-f" or token == "--output--frequency") {
       output_interval = std::stoi(argv[++i]);
     }
-    else if (token == "-gd" or token == "--gmls")
-    {
-	gmls_order = std::stoi(argv[++i]);
-    }
     else if (token == "-h" or token == "--help") {
       help_and_exit = true;
     }
@@ -278,7 +273,6 @@ std::string Input::info_string() const {
      << "\t\t" << "particle/panel data files will have a .vtp suffix;\n"
      << "\t\t" << "DFS grid data files will have a .vts suffix\n"
      << "\t" << "time step: " << dt << "\n"
-     << "\t" << "tfinal : " << tfinal << "\n"
-     <<"\t"<<"gmls order: " <<gmls_order<<"\n";
+     << "\t" << "tfinal : " << tfinal << "\n";
   return ss.str();
 }
