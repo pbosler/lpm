@@ -13,6 +13,11 @@
 
 namespace SpherePoisson{
 /*
+    compute velocity update from divergence
+*/
+void velocity_update(view_2d<Complex> phi_fun,view_2d<Complex> u_update,  view_2d<Complex> v_update, view_2d<Complex> w_update);
+
+/*
      Inputs:
      xyz_particles : N by 3 views with components (x,y,z) of on the sphere
         in cartesian coordinates;
@@ -41,8 +46,8 @@ namespace SpherePoisson{
        to be used for the fast omputation of the double dot product for the swe
        
 */
-    void dfs_vort2velocity_swe(view_r3pts<Real> xyz_particles, view_1d<Real> vort, view_r3pts<Real>U_X,
-    view_3d<Complex> Ucoeffs);
+    void dfs_vort2velocity_swe(view_r3pts<Real> xyz_particles, view_1d<Real> vort,
+     view_1d<Real> divg, view_r3pts<Real>U_X,view_3d<Complex> Ucoeffs);
 
     /*
         Inputs:

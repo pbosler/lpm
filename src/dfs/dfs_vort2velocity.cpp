@@ -65,6 +65,10 @@ namespace SpherePoisson {
         view_1d<Real> lon("lon", N);
 
         Kokkos::parallel_for(N, KOKKOS_LAMBDA(Int i){
+           /* Real magntude_i = sqrt(X(i,0)*X(i,0)+X(i,1)*X(i,1)+X(i,2)*X(i,2));
+            X(i,0) = X(i,0) / magntude_i;
+            X(i,1) = X(i,1) / magntude_i;
+            X(i,2) = X(i,2) / magntude_i; */
             co_lat(i) = atan2(sqrt(X(i,0)*X(i,0) + X(i,1)*X(i,1)), X(i,2));
             lon(i) = atan2(X(i,1), X(i, 0));
 

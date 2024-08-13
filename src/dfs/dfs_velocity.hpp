@@ -21,7 +21,8 @@ namespace SpherePoisson {
 
     // Multiply by sin/cos(lambda) in Fourier
     // i.e. Multiply  A * sin/cos(lambda)
-    void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, std::string str);
+    //void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, std::string str);
+     void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, Int trigsign);
 
     // Multiply by cos(theta) on the lefthandside
     // i.e. cos(theta) * A

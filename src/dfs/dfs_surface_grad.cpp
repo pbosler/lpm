@@ -108,20 +108,20 @@ namespace SpherePoisson
         interp_shifts(grid_type, cn);
 
         // compute du/dx (du_dx)
-        multi_trig(du_dlambda, lhs_a, "sin");
+        multi_trig(du_dlambda, lhs_a, 0);
         divide_sin(lhs_a, lhs);
 
-        multi_trig(du_dtheta, rhs, "cos");
+        multi_trig(du_dtheta, rhs, 1);
         multi_cos(rhs, tmp);
         KokkosBlas::axpby(alpha, lhs, beta, tmp);  
         coeffs2valsDbl(grid_type, cn, tmp, du_dx);
 
 
         // compute du/dy (du_dy)
-        multi_trig(du_dlambda, lhs_a, "cos");
+        multi_trig(du_dlambda, lhs_a, 1);
         div_cos(lhs_a, lhs);
 
-        multi_trig(du_dtheta, rhs, "sin");
+        multi_trig(du_dtheta, rhs, 0);
         multi_cos(rhs, tmp);
         alpha = 1.0;
         KokkosBlas::axpby(alpha, lhs, beta, tmp);  

@@ -22,7 +22,7 @@ namespace DFS {
 
 template <typename SeedType> class DFSRK2; // fwd decl
 template <typename SeedType> class DFSRK4;
-
+template <typename SeedType> class DFSRK3;
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
 
   Advection and vorticity are computed on Lagrangian particles.
@@ -37,6 +37,7 @@ class DFSBVE {
   typedef SphereGeometry::vec_view_type vec_view;
   friend class DFSRK2<SeedType>;
   friend class DFSRK4<SeedType>;
+  friend class DFSRK3<SeedType>;
 
   public:
     /// Relative vorticity at passive particles
