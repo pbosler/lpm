@@ -146,15 +146,10 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-<<<<<<< HEAD
     DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
    // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
-=======
     //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);
-
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
-
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_gauss_vort_" + seed_type::id_string() + "_nlon" +
     std::to_string(nlon) + "_dt" + std::to_string(dt);

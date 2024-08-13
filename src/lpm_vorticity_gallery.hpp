@@ -145,7 +145,6 @@ struct RossbyHaurwitz54 {
   }
 };
 
-<<<<<<< HEAD
 
 //
 struct RossbyHaurwitzR {
@@ -175,9 +174,8 @@ struct RossbyHaurwitzR {
 };
 //
 
-#ifdef LPM_USE_BOOST
-inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
-=======
+//#ifdef LPM_USE_BOOST
+//inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
 /** Returns the vorticity of a compactly supported Lamb dipole.
 
   @param [in] x x-coordinate where vorticity will be evaluated
@@ -190,7 +188,6 @@ inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
 */
 KOKKOS_INLINE_FUNCTION
 Real lamb_dipole_vorticity(const Real x, const Real y, const Real xctr,
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
                                   const Real yctr, const Real dipole_radius,
                                   const Real dipole_strength) {
   static constexpr Real LAMB_K0 = 3.8317;

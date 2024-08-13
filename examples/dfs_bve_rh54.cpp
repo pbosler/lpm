@@ -124,11 +124,7 @@ int main(int argc, char* argv[]) {
     typedef CubedSphereSeed seed_type;
     const Int mesh_depth = input.init_mesh_depth;
     PolyMeshParameters<seed_type> mesh_params(mesh_depth);
-<<<<<<< HEAD
-   const Int gmls_order = input.gmls_order; // TODO: this can be an input parameter
-=======
-    const Int gmls_order = 6; // TODO: this can be an input parameter
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
+   const Int gmls_order = input.gmls_order; 
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
@@ -145,16 +141,9 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-<<<<<<< HEAD
   //  DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
 //    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
-=======
-//    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
-    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);  // third order Runge-Kutta
-    //DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
-
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_rh54" + seed_type::id_string() + "_nlon" +
@@ -176,7 +165,6 @@ int main(int argc, char* argv[]) {
     #endif
 
     // timestepping loop
-<<<<<<< HEAD
     for (int time_idx=0; time_idx<nsteps; ++time_idx){
   //  for (int time_idx=0; time_idx<1; ++time_idx) {
 //  auto mystart = high_resolution_clock::now();
@@ -184,10 +172,6 @@ int main(int argc, char* argv[]) {
   //    auto myfinal = high_resolution_clock::now();
     //  auto duration = duration_cast<microseconds>(myfinal - mystart);
       //logger.info("Exec time = {}", duration.count());
-=======
-    for (int time_idx=0; time_idx<nsteps; ++time_idx) {
-      sphere.advance_timestep(rk3_solver);
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {

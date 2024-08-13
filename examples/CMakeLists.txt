@@ -136,15 +136,9 @@ if (LPM_ENABLE_DFS)
   target_link_libraries(dfs_bve_gauss_vort PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
   target_include_directories(dfs_bve_gauss_vort PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
 
-<<<<<<< HEAD
    add_executable(dfs_bve_rhR dfs_bve_rhE.cpp)
   target_link_libraries(dfs_bve_rhR PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
   target_include_directories(dfs_bve_rhR PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
-=======
-  #add_executable(dfs_bve_rh76 dfs_bve_rhE.cpp)
-  #target_link_libraries(dfs_bve_rh76 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-  #target_include_directories(dfs_bve_rh76 PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
->>>>>>> 831fbabf0affd8f31c41e7058e1834013a5fd8d3
 
 
 add_test(NAME dfs_bve_rh54 COMMAND dfs_bve_rh54 -d 2 -nl 10 -dt 0.05 -tf 0.05)
