@@ -21,9 +21,10 @@
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
+#include <chrono>
 
 using namespace Lpm;
-
+using namespace std::chrono;
 /** Test input.  Sets default parameter values, reads optional replacement
   values from the command line.
 */
@@ -116,8 +117,8 @@ int main(int argc, char* argv[]) {
     const Int nlon = input.nlon;
     const Int ntracers = 0;
     // problem types: velocity and vorticity
-    RossbyWave54Velocity velocity_fn(constants::PI/7);
-    RossbyHaurwitz54 vorticity_fn(constants::PI/7);
+    //RossbyWave54Velocity velocity_fn(constants::PI/7);
+    RossbyHaurwitzR vorticity_fn(4*constants::PI/(6*(6+3)), 1, 6);
 
     // LPM particle/panel initialization
     typedef CubedSphereSeed seed_type;
@@ -140,13 +141,12 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-//    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
-    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);  // third order Runge-Kutta
+    //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
     //DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
-
+    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
 
     int output_ctr = 0;
-    const std::string fname_root = "dfs_bve_rh54" + seed_type::id_string() + "_nlon" +
+    const std::string fname_root = "dfs_bve_rRl" + seed_type::id_string() + "_nlon" +
     std::to_string(nlon) + "_dt" + std::to_string(dt);
     input.vtk_froot = fname_root;
     // output initial data
@@ -166,7 +166,11 @@ int main(int argc, char* argv[]) {
 
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx) {
+    //  auto mystart = high_resolution_clock::now();
       sphere.advance_timestep(rk3_solver);
+      //auto myfinal = high_resolution_clock::now();
+     // auto duration = duration_cast<microseconds>(myfinal - mystart);
+     // logger.info("Exec time = {}", duration.count());
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {
@@ -196,7 +200,7 @@ int main(int argc, char* argv[]) {
 
     ErrNorms rel_vort_err(face_rel_vort_error.view, rel_vort_faces_exact, sphere.mesh.faces.area);
     logger.info("At t = {}, active panel error is:\n\t{}", sphere.t, rel_vort_err.info_string());
-
+    
   }  // Kokkos scope
   /**
     program finalize

@@ -21,6 +21,7 @@ namespace Lpm {
 namespace DFS {
 
 template <typename SeedType> class DFSRK2; // fwd decl
+template <typename SeedType> class DFSRK3; 
 template <typename SeedType> class DFSRK4;
 
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
@@ -36,6 +37,7 @@ class DFSBVE {
   typedef SphereGeometry::crd_view_type crd_view;
   typedef SphereGeometry::vec_view_type vec_view;
   friend class DFSRK2<SeedType>;
+  friend class DFSRK3<SeedType>;
   friend class DFSRK4<SeedType>;
 
   public:

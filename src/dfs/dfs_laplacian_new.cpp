@@ -178,9 +178,9 @@ namespace SpherePoisson {
             else if(i==m-1)
             {
                 L_matrix(i, m-3) += Mcos_sin_d1(i, m-3);
-                L_matrix(i-1, m-4) += Mcos_sin_d1(i-1, m-3);
+                L_matrix(i-1, m-4) += Mcos_sin_d1(i-1, m-4);
             }
-            else if((i > 1) && (i < m-1))
+            else if((i > 1) && (i < m-2))
             {
                 L_matrix(i, i-2) += Mcos_sin_d1(i, i-2);
                 L_matrix(i, i+2) += Mcos_sin_d1(i, i+2);

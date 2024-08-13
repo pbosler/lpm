@@ -146,7 +146,8 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
+    //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
+    DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);
 
 
     int output_ctr = 0;
@@ -170,7 +171,7 @@ int main(int argc, char* argv[]) {
 
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx) {
-      sphere.advance_timestep(rk2_solver);
+      sphere.advance_timestep(rk4_solver);
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {
