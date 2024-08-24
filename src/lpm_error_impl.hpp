@@ -7,7 +7,7 @@
 
 namespace Lpm {
 
-template <typename V1, typename V2, typename V3, int Rank>
+template <typename V1, typename V2, typename V3, int rank>
 struct ComputeErrorFtor {
   V1 err;
   V2 appx;
@@ -57,16 +57,16 @@ struct ComputeErrorFtor<V1, V2, V3, 1> {
   }
 };
 
-template <typename V1, typename V2, int Rank>
+template <typename V1, typename V2, int rank>
 struct ReduceErrorFtor {
-  static_assert(V1::Rank == 1 or V1::Rank == 2, "rank 1 or rank 2 only.");
+  static_assert(V1::rank == 1 or V1::rank == 2, "rank 1 or rank 2 only.");
   V1 err;
   V2 exact;
   scalar_view_type weight;
   Int ndim;
 
   ReduceErrorFtor(const V1 er, const V2 ex, const scalar_view_type wt)
-      : err(er), exact(ex), weight(wt), ndim(V1::Rank) {}
+      : err(er), exact(ex), weight(wt), ndim(V1::rank) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i, ENormScalar& ll) const {
@@ -109,7 +109,7 @@ struct ReduceErrorFtor<V1, V2, 1> {
 
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact) {
-  static_assert(static_cast<int>(V1::Rank) == static_cast<int>(V2::Rank) and static_cast<int>(V2::Rank) == static_cast<int>(V3::Rank),
+  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank) and static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
                 "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and
               appx.extent(0) == exact.extent(0));
@@ -117,21 +117,21 @@ void compute_error(const V1 err, const V2 appx, const V3 exact) {
               appx.extent(1) == exact.extent(1));
 
   Kokkos::parallel_for(
-      err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(err, appx, exact));
+      err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::rank>(err, appx, exact));
 }
 
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact,
                    const mask_view_type m) {
-  static_assert(static_cast<int>(V1::Rank) == static_cast<int>(V2::Rank)
-            and static_cast<int>(V2::Rank) == static_cast<int>(V3::Rank),
+  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank)
+            and static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
                 "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and
               appx.extent(0) == exact.extent(0));
   LPM_REQUIRE(err.extent(1) == appx.extent(1) and
               appx.extent(1) == exact.extent(1));
 
-  Kokkos::parallel_for(err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::Rank>(
+  Kokkos::parallel_for(err.extent(0), ComputeErrorFtor<V1, V2, V3, V1::rank>(
                                           err, appx, exact, m));
 }
 
@@ -139,13 +139,13 @@ template <typename V1, typename V2>
 ENormScalar reduce_error(const V1 err, const V2 exact,
                          const scalar_view_type wt) {
   ENormScalar rval;
-  static_assert(static_cast<int>(V1::Rank) == static_cast<int>(V2::Rank),
+  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank),
       "view ranks must match");
   LPM_REQUIRE(err.extent(0) == exact.extent(0) and
               exact.extent(0) == wt.extent(0));
   LPM_REQUIRE(err.extent(1) == exact.extent(1));
   Kokkos::parallel_reduce("reduce error (vector)", err.extent(0),
-                          ReduceErrorFtor<V1, V2, V1::Rank>(err, exact, wt),
+                          ReduceErrorFtor<V1, V2, V1::rank>(err, exact, wt),
                           ErrReducer<Host>(rval));
   return rval;
 }
