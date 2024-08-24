@@ -30,7 +30,6 @@ jobs:
       CC: mpicc
       CXX: mpicxx
       FC: mpifort
-      TPL_ROOT=/lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
 
