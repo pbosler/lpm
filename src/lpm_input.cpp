@@ -1,6 +1,7 @@
 #include "lpm_assert.hpp"
 #include "lpm_input.hpp"
 #include "util/lpm_string_util.hpp"
+#include <iostream>
 #include <sstream>
 
 namespace Lpm {
