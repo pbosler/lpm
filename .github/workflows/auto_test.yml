@@ -4,6 +4,7 @@ name: auto_test
 # 1. when someone creates a pull request for a merge to the main branch
 # 2. when changes are merged into the main branch (via a pull request)
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
