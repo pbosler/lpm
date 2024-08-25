@@ -23,13 +23,15 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl:2
+    container: pbosler/lpm-tpl-release:0
 
     # Environment variables
     env:
       CC: mpicc
       CXX: mpicxx
       FC: mpifort
+      VTK_ROOT: /vtk
+      KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
 
@@ -61,12 +63,12 @@ jobs:
           -G "Unix Makefiles" \
           ..
 
-    - name: Build lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+    - name: Build lpm ${{ matrix.build-type }}
       run: |
         cd build
         make -j
 
-    - name: Runn tests (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+    - name: Runn tests ${{ matrix.build-type }}
       run: |
         cd build
         ctest -V
