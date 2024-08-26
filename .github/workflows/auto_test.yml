@@ -38,7 +38,7 @@ jobs:
     # Steps for building and running tests.
     steps:
     - name: Checking out repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
       with:
         submodules: recursive
 
@@ -68,7 +68,7 @@ jobs:
         cd build
         make -j
 
-    - name: Runn tests ${{ matrix.build-type }}
+    - name: Run tests ${{ matrix.build-type }}
       run: |
         cd build
         ctest -V
