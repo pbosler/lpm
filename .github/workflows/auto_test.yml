@@ -55,7 +55,7 @@ jobs:
           -DCMAKE_VERBOSE_MAKEFILE=ON \
           -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_VTK=ON \
-          -DLPM_ENABLE_COMPOSE=ON \
+          -DLPM_ENABLE_Compose=ON \
           -DLPM_ENABLE_DFS=OFF \
           -DKokkos_DIR=/lpm-tpl \
           -DKokkosKernels_DIR=/lpm-tpl \
