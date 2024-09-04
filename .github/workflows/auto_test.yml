@@ -23,7 +23,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-release:0
+    container: pbosler/lpm-tpl-release:1
 
     # Environment variables
     env:
