@@ -67,7 +67,7 @@ jobs:
     - name: Build lpm ${{ matrix.build-type }}
       run: |
         cd build
-        make -j
+        make -j 8
 
     - name: Run tests ${{ matrix.build-type }}
       run: |
