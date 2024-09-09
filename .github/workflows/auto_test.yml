@@ -7,8 +7,14 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
 
 # Below are jobs, each of which runs sequentially.
 jobs:
