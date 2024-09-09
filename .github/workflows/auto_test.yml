@@ -13,9 +13,10 @@ on:
 # Below are jobs, each of which runs sequentially.
 jobs:
   # This job builds LPM and runs our test suite.
-  build:
+  auto-test:
     # A build matrix storing all desired configurations.
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
@@ -23,7 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-release:0
+    container: pbosler/lpm-tpl-release:1
 
     # Environment variables
     env:
@@ -35,27 +36,47 @@ jobs:
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
       GIT_SSL_NO_VERIFY: 1
+      OMP_NUM_THREADS: 16
+      OMP_PROC_BIND: spread
+      OMP_PLACES: threads
+      LPM_INSTALL: /lpm-install 
+      CMAKE_BUILD_PARALLEL_LEVEL: 8
 
     # Steps for building and running tests.
     steps:
-    - name: Checking out repository
+    - name: Cache git folder
+      uses: actions/cache@v4
+      with:
+        path: ${{github.workspace}}/.git
+        key: git-folder
+        
+    - name: Check out lpm
       uses: actions/checkout@v4
       with:
+        path: ${{github.workspace}}
         submodules: recursive
+    
+    - name: Cache spdlog and catch2
+      uses: actions/cache@v4
+      with:
+        path: $LPM_INSTALL
+        key: tpl-folder
 
     - name: Configure lpm (${{ matrix.build-type }})
+      shell: bash
+      working-directory: ${{github.workspace}}
       run: |
         mkdir build
         cd build
         cmake \
-          -DCMAKE_INSTALL_PREFIX=`pwd`/build \
+          -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
           -DCMAKE_VERBOSE_MAKEFILE=ON \
-          -DLPM_ENABLE_NETCDF=ON \
+          -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_VTK=ON \
-          -DLPM_ENABLE_COMPOSE=ON \
+          -DLPM_ENABLE_Compose=ON \
           -DLPM_ENABLE_DFS=OFF \
           -DKokkos_DIR=/lpm-tpl \
           -DKokkosKernels_DIR=/lpm-tpl \
@@ -65,12 +86,10 @@ jobs:
           ..
 
     - name: Build lpm ${{ matrix.build-type }}
-      run: |
-        cd build
-        make -j
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . --config ${{ matrix.build-type }}
 
-    - name: Run tests ${{ matrix.build-type }}
-      run: |
-        cd build
-        ctest -V
+    - name: Test lpm ${{ matrix.build-type }}
+      working-directory: ${{github.workspace}}/build
+      run: ctest -V -C ${{ matrix.build-type }} --no-tests=error
 

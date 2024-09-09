@@ -9,4 +9,8 @@ function (list2str list str)
     set(${str} ${tmp} PARENT_SCOPE)
 endfunction()
 
+function (print_imported)
+  get_property(imported_tgts DIRECTORY "${CMAKE_SOURCE_DIR}" PROPERTY IMPORTED_TARGETS)
+  printvar(imported_tgts)
+endfunction()
 

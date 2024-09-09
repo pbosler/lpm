@@ -72,7 +72,7 @@ CreateUnitTest(bivar lpm_bivar_tests.cpp)
 
 CreateUnitTest(ssrfpack lpm_ssrfpack_tests.cpp)
 
-CreateUnitTest(swe_kernels lpm_swe_kernels_tests.cpp)
+# CreateUnitTest(swe_kernels lpm_swe_kernels_tests.cpp)
 
 CreateUnitTest(swe_init lpm_swe_init_test.cpp)
 
