@@ -13,9 +13,10 @@ on:
 # Below are jobs, each of which runs sequentially.
 jobs:
   # This job builds LPM and runs our test suite.
-  build:
+  auto-test:
     # A build matrix storing all desired configurations.
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
@@ -38,20 +39,35 @@ jobs:
       OMP_NUM_THREADS: 16
       OMP_PROC_BIND: spread
       OMP_PLACES: threads
+      LPM_INSTALL: /lpm-install 
+      CMAKE_BUILD_PARALLEL_LEVEL: 8
 
     # Steps for building and running tests.
     steps:
-    - name: Checking out repository
+    - name: Cache git folder
+      uses: actions/cache@v4
+      with:
+        path: ${{github.workspace}}/.git
+        key: git-folder
+        
+    - name: Check out lpm
       uses: actions/checkout@v4
       with:
+        path: ${{github.workspace}}
         submodules: recursive
+    
+    - name: Cache spdlog and catch2
+      uses: actions/cache@v4
+      with:
+        path: $LPM_INSTALL
+        key: tpl-folder
 
     - name: Configure lpm (${{ matrix.build-type }})
+      shell: bash
+      working-directory: ${{github.workspace}}/build
       run: |
-        mkdir build
-        cd build
         cmake \
-          -DCMAKE_INSTALL_PREFIX=`pwd`/build \
+          -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
@@ -68,12 +84,10 @@ jobs:
           ..
 
     - name: Build lpm ${{ matrix.build-type }}
-      run: |
-        cd build
-        make -j 8
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . --config ${{ matrix.build-type }}
 
-    - name: Run tests ${{ matrix.build-type }}
-      run: |
-        cd build
-        ctest -V
+    - name: Test lpm ${{ matrix.build-type }}
+      working-directory: ${{github.workspace}}/build
+      run: ctest -V -C ${{ matrix.build-type }} --no-tests=error
 
