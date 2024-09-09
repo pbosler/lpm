@@ -64,8 +64,10 @@ jobs:
 
     - name: Configure lpm (${{ matrix.build-type }})
       shell: bash
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}
       run: |
+        mkdir build
+        cd build
         cmake \
           -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
