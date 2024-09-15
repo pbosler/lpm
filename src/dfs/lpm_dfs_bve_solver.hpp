@@ -26,7 +26,7 @@ class DFSRK2 {
 
   DFSRK2(const Real timestep, DFSBVE<SeedType>& sph) :
     dt(timestep),
-    Omega(sph.Omega),
+    Omega(sph.coriolis.Omega),
     xyz_particles(sph.gathered_mesh->phys_crds),
     rel_vort_particles(sph.gathered_mesh->scalar_fields.at("relative_vorticity")),
     velocity_particles(sph.gathered_mesh->vector_fields.at("velocity")),

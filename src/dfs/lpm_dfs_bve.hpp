@@ -6,6 +6,7 @@
 #include "lpm_geometry.hpp"
 #include "lpm_compadre.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_coriolis.hpp"
 #include "dfs/lpm_dfs_grid.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -32,11 +33,22 @@ template <typename SeedType>
 class DFSBVE {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
                 "Spherical mesh seed required.");
-  typedef SphereGeometry::crd_view_type crd_view;
-  typedef SphereGeometry::vec_view_type vec_view;
+  using geo = SphereGeometry;
+  using Coriolis = CoriolisSphere;
+  using crd_view = typename SphereGeometry::crd_view_type;
+  using vec_view = typename SphereGeometry::vec_view_type;
+
   friend class DFSRK2<SeedType>;
 
   public:
+    /// Coriolis
+    Coriolis coriolis;
+    /// reference coordinates, for FTLE computations
+    Coords<geo> ref_crds_passive;
+    Coords<geo> ref_crds_active;
+    // FTLE
+    ScalarField<FaceField> ftle;
+    ScalarField<VertexField> ftle_grid;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles
@@ -67,8 +79,6 @@ class DFSBVE {
     DFSGrid grid;
     /// number of passive tracers
     Int ntracers;
-    /// background rotation rate of sphere about positive z-axis
-    Real Omega;
     /// time
     Real t;
     /// passive tracers at passive particles
@@ -130,6 +140,8 @@ class DFSBVE {
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
+
+    void update_grid_absolute_vorticity();
 
     std::string info_string(const int tab_level=0) const;
 
