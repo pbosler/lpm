@@ -14,6 +14,7 @@ Coords<Geo>::Coords(const Coords<Geo>& other) :
   _nmax(other.view.extent(0)),
   n("n")
 {
+  _hostview = ko::create_mirror_view(view);
   Kokkos::deep_copy(view, other.view);
   Kokkos::deep_copy(n, other.n);
   _nh = Kokkos::create_mirror_view(n);

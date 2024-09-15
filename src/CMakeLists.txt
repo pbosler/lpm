@@ -167,6 +167,8 @@ if (LPM_ENABLE_DFS)
 	      )
 endif()
 
+print_imported()
+
 install(FILES ${LPM_HEADERS}
     DESTINATION include)
 install(TARGETS lpm lpm_fortran DESTINATION lib)

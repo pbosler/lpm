@@ -4,100 +4,100 @@ name: auto_test
 # 1. when someone creates a pull request for a merge to the main branch
 # 2. when changes are merged into the main branch (via a pull request)
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
+      - 'README.md'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
+      - 'README.md'
 
 # Below are jobs, each of which runs sequentially.
 jobs:
   # This job builds LPM and runs our test suite.
-  build:
+  auto-test:
     # A build matrix storing all desired configurations.
     strategy:
+      fail-fast: true
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
-        fp-precision: [double] #, single]
 
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl:0
+    container: pbosler/lpm-tpl-release:1
 
     # Environment variables
     env:
       CC: mpicc
       CXX: mpicxx
-      YAMLCPP_LIBRARY_DIR: /yaml-cpp/lib
-      YAMLCPP_INCLUDE_DIR: /yaml-cpp/include
-      YAMLCPP_LIBRARY: /yaml-cpp/lib/libyaml-cpp.a
-      HDF5_LIBRARY_DIR: /hdf5/lib
-      HDF5_INCLUDE_DIR: /hdf5/include
-      HDF5_LIBRARY: /hdf5/lib/libhdf5.a
-      HDF5_HL_LIBRARY: /hdf5/lib/libhdf5_hl.a
-      NETCDF_INCLUDE_DIR: /netcdf-c/include
-      NETCDF_LIBRARY_DIR: /netcdf-c/lib
-      NETCDF_LIBRARY: /netcdf-c/lib/libnetcdf.a
-      SPDLOG_LIBRARY_DIR: /spdlog/lib
-      SPDLOG_INCLUDE_DIR: /spdlog/include
-      SPDLOG_LIBRARY: /spdlog/lib/libspdlog.a
-      TRILINOS_INCLUDE_DIR: /trilinos/include
-      TRILINOS_LIBRARY_DIR: /trilinos/lib
-      TRILINOS_TPL_INCLUDE_DIR: /trilinos/include
-      TRILINOS_TPL_LIBRARY_DIR: /trilinos/lib
-      VTK_INCLUDE_DIR: /vtk/include
-      VTK_LIBRARY_DIR: /vtk/lib
-      BOOST_INCLUDE_DIR: /boost/include
-      BOOST_LIBRARY_DIR: /boost/lib
+      FC: mpifort
+      VTK_ROOT: /vtk
+      KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
+      GIT_SSL_NO_VERIFY: 1
+      OMP_NUM_THREADS: 16
+      OMP_PROC_BIND: spread
+      OMP_PLACES: threads
+      LPM_INSTALL: /lpm-install 
+      CMAKE_BUILD_PARALLEL_LEVEL: 8
 
     # Steps for building and running tests.
     steps:
-    - name: Checking out repository
-      uses: actions/checkout@v2
+    - name: Cache git folder
+      uses: actions/cache@v4
       with:
+        path: ${{github.workspace}}/.git
+        key: git-folder
+        
+    - name: Check out lpm
+      uses: actions/checkout@v4
+      with:
+        path: ${{github.workspace}}
         submodules: recursive
+    
+    - name: Cache spdlog and catch2
+      uses: actions/cache@v4
+      with:
+        path: $LPM_INSTALL
+        key: tpl-folder
 
-    - name: Configuring lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
+    - name: Configure lpm (${{ matrix.build-type }})
+      shell: bash
+      working-directory: ${{github.workspace}}
       run: |
-        ./setup build
+        mkdir build
         cd build
         cmake \
-          -DCMAKE_INSTALL_PREFIX=`pwd`/build \
+          -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
           -DCMAKE_VERBOSE_MAKEFILE=ON \
-          -DLPM_PRECISION=${{ matrix.fp-precision }} \
-          -DLPM_DEVICE=CPU \
-          -DLPM_DEVICE_ARCH=AMDAVX \
           -DLPM_ENABLE_NETCDF=OFF \
-          -DLPM_ENABLE_BOOST=OFF \
-          -DLPM_ENABLE_VTK=OFF \
-          -DYAMLCPP_LIBRARY_DIR=/yaml-cpp \
-          -DYAMLCPP_LIBRARY=/yaml-cpp/lib/libyaml-cpp.a \
-          -DYAMLCPP_INCLUDE_DIR=/yaml-cpp/include \
-          -DSPDLOG_LIBRARY_DIR=/spdlog/lib \
-          -DSPDLOG_INCLUDE_DIR=/spdlog/include \
-          -DSPDLOG_LIBRARY=/spdlog/lib/libspdlog.a \
-          -DTrilinos_DIR=/trilinos/lib/cmake \
+          -DLPM_ENABLE_VTK=ON \
+          -DLPM_ENABLE_Compose=ON \
+          -DLPM_ENABLE_DFS=OFF \
+          -DKokkos_DIR=/lpm-tpl \
+          -DKokkosKernels_DIR=/lpm-tpl \
+          -DCompadre_DIR=/lpm-tpl \
+          -DCompose_DIR=/lpm-tpl \
           -G "Unix Makefiles" \
           ..
 
-    - name: Building lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
-      run: |
-        cd build
-        make -j
+    - name: Build lpm ${{ matrix.build-type }}
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . --config ${{ matrix.build-type }}
 
-    - name: Running tests (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
-      run: |
-        cd build
-        ctest -V
-
-    - name: Installing lpm (${{ matrix.build-type }}, ${{ matrix.fp-precision }} precision)
-      run: |
-        cd build
-        make install
+    - name: Test lpm ${{ matrix.build-type }}
+      working-directory: ${{github.workspace}}/build
+      run: ctest -V -C ${{ matrix.build-type }} --no-tests=error
 
