@@ -24,7 +24,7 @@ class DFSRK2 {
   DFSBVE<SeedType>& sphere;
   Int t_idx;
 
-  DFSRK2(const Real timestep, DFSBVE<SeedType>& sph) :
+  DFSRK2(const Real timestep, DFSBVE<SeedType>& sph, const Int tidx = 0) :
     dt(timestep),
     Omega(sph.coriolis.Omega),
     xyz_particles(sph.gathered_mesh->phys_crds),
@@ -40,7 +40,7 @@ class DFSRK2 {
     rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
     vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
     sphere(sph),
-    t_idx(0)
+    t_idx(tidx)
     {}
 
   void advance_timestep() ;

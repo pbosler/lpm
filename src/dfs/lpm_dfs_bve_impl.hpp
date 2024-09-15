@@ -43,6 +43,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   ntracers(n_tracers),
   coriolis(Omg),
   t(0.0),
+  t_ref(0.0),
   gmls_params(interp_params)
 {
   for (int k=0; k<n_tracers; ++k) {
@@ -289,6 +290,46 @@ void DFSBVE<SeedType>::init_velocity_from_vorticity() {
     passive_vector_fields, active_vector_fields);
 }
 
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_vorticity() const {
+  const auto zeta_view = rel_vort_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Real total;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += (mask_view(i) ? 0 : zeta_view(i) * area_view(i) );
+    }, total);
+  return total;
+}
+
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_enstrophy() const {
+  const auto zeta_view = rel_vort_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Real total;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += (mask_view(i) ? 0 : square(zeta_view(i)) * area_view(i) );
+    }, total);
+  return 0.5*total;
+}
+
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_kinetic_energy() const {
+  const auto vel_view = velocity_active.view;
+  const auto area_view = mesh.faces.area;
+  const auto mask_view = mesh.faces.mask;
+  Real total;
+  Kokkos::parallel_reduce(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      const auto ui = Kokkos::subview(vel_view, i, Kokkos::ALL);
+      sum += (mask_view(i) ? 0 : geo::norm2(ui) * area_view(i) );
+    }, total);
+  return 0.5*total;
+}
+
 template <typename SeedType> template <typename SolverType>
 void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
   solver.advance_timestep();
@@ -341,6 +382,14 @@ template <typename SeedType>
     return vtk;
   }
 #endif
+
+template <typename SeedType>
+CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& dfs_bve, const gmls::Params& gmls_params) {
+  using passive_scalar_field_map = std::map<std::string, ScalarField<VertexField>>;
+  using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
+  using passive_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, VertexField>>;
+  using active_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, FaceField>>;
+}
 
 } // namespace DFS
 } // namespace Lpm

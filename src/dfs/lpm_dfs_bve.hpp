@@ -8,6 +8,7 @@
 #include "lpm_constants.hpp"
 #include "lpm_coriolis.hpp"
 #include "dfs/lpm_dfs_grid.hpp"
+#include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
@@ -81,6 +82,8 @@ class DFSBVE {
     Int ntracers;
     /// time
     Real t;
+    /// reference time for ftle
+    Real t_ref;
     /// passive tracers at passive particles
     std::vector<ScalarField<VertexField>> tracer_passive;
     /// passive tracers at active particles
@@ -143,6 +146,11 @@ class DFSBVE {
 
     void update_grid_absolute_vorticity();
 
+    Real total_vorticity() const;
+    Real total_kinetic_energy() const;
+    Real total_enstrophy() const;
+    Real ftle_max() const;
+
     std::string info_string(const int tab_level=0) const;
 
     template <typename SolverType>
@@ -166,6 +174,9 @@ class DFSBVE {
   template <typename SeedType>
   VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve);
 #endif
+
+template <typename SeedType>
+CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
 
 } // namespace DFS
 } // namespace Lpm

@@ -137,6 +137,7 @@ class VtkInterface {
 };
 
 inline std::string vtp_suffix() { return ".vtp"; }
+inline std::string vts_suffix() { return ".vts"; }
 
 }  // namespace Lpm
 
