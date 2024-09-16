@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     const Int gmls_order = 4; // TODO: this can be an input parameter
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
-    DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
+    DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, gmls_params);
     sphere.init_vorticity(vorticity_fn);
     Real total_vorticity;
     Kokkos::parallel_reduce("set Gauss constant", sphere.mesh.n_faces_host(),

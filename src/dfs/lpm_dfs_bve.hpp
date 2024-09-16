@@ -49,7 +49,6 @@ class DFSBVE {
     Coords<geo> ref_crds_active;
     // FTLE
     ScalarField<FaceField> ftle;
-    ScalarField<VertexField> ftle_grid;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles
@@ -85,9 +84,9 @@ class DFSBVE {
     /// reference time for ftle
     Real t_ref;
     /// passive tracers at passive particles
-    std::vector<ScalarField<VertexField>> tracer_passive;
+    std::map<std::string, ScalarField<VertexField>> tracer_passive;
     /// passive tracers at active particles
-    std::vector<ScalarField<FaceField>> tracer_active;
+    std::map<std::string, ScalarField<FaceField>> tracer_active;
     /// area weights for grid points
     scalar_view_type grid_area;
     /// DFS grid coordinates
@@ -126,7 +125,6 @@ class DFSBVE {
     */
     DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
            const Int nlon,
-           const Int n_tracers,
            const gmls::Params& interp_params,
            const Real Omg = 2*constants::PI);
 
@@ -150,6 +148,16 @@ class DFSBVE {
     Real total_kinetic_energy() const;
     Real total_enstrophy() const;
     Real ftle_max() const;
+
+    Int n_tracers() const;
+
+    void allocate_tracer(const std::string& name);
+
+    template <typename TracerType>
+    void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
+
+    template <typename TracerType>
+    void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
     std::string info_string(const int tab_level=0) const;
 

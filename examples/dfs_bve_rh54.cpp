@@ -16,6 +16,8 @@
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "lpm_vorticity_gallery.hpp"
+#include "mesh/lpm_compadre_remesh.hpp"
+#include "mesh/lpm_compadre_remesh_impl.hpp"
 #include "mesh/lpm_ftle.hpp"
 #include "util/lpm_matlab_io.hpp"
 #include "util/lpm_string_util.hpp"
@@ -53,15 +55,15 @@ int main(int argc, char* argv[]) {
     init_input(input);
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
-      std::cout << input.usage();
+      logger.info(input.info_string());
       Kokkos::finalize();
       MPI_Finalize();
       return 1;
     }
     logger.info(input.info_string());
-    const Int ntracers = 0;
     // problem types: velocity and vorticity
     using Coriolis = CoriolisSphere;
+    using Lat0 = LatitudeTracer;
     Coriolis coriolis(input.get_option("omega").get_real());
     RossbyWave54Velocity velocity(constants::PI/7);
     RossbyHaurwitz54 vorticity(constants::PI/7);
@@ -82,7 +84,7 @@ int main(int argc, char* argv[]) {
     const Int nlon = input.get_option("nlon").get_int();
     const Int gmls_order = input.get_option("gmls_interpolation_order").get_int();
     gmls::Params gmls_params(gmls_order);
-    auto sphere = std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, ntracers, gmls_params);
+    auto sphere = std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
     const Real ftle_tol = input.get_option("ftle_tol").get_real();
     sphere->init_vorticity(vorticity);
     sphere->init_velocity(velocity);
@@ -92,6 +94,9 @@ int main(int argc, char* argv[]) {
     if (amr) {
       logger.warn("AMR not implemented for DFS yet.");
     }
+    Lat0 lat0;
+    sphere->init_tracer(lat0);
+
     logger.info(sphere->info_string());
 
     // Solver initialization
@@ -111,6 +116,7 @@ int main(int argc, char* argv[]) {
       nsteps = input.get_option("nsteps").get_int();
       dt = tfinal / nsteps;
     }
+
     const Real cr = vel_range.second * dt / sphere->mesh.appx_mesh_size();
     logger.info("dt = {}, cr = {}", dt, cr);
 
@@ -166,6 +172,21 @@ int main(int argc, char* argv[]) {
     Real tref = 0;
     Real max_ftle = 0;
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
+      logger.debug("stepping time 1: idx {}", t_idx);
+      sphere->advance_timestep(*solver);
+      logger.debug("stepping time 2: idx {}", solver->t_idx);
+      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+        ComputeFTLE<SeedType>(sphere->ftle.view,
+          sphere->mesh.vertices.phys_crds.view,
+          sphere->ref_crds_passive.view,
+          sphere->mesh.faces.phys_crds.view,
+          sphere->ref_crds_active.view,
+          sphere->mesh.faces.verts,
+          sphere->mesh.faces.mask,
+          sphere->t - sphere->t_ref));
+      max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
+      logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
+
       const bool ftle_trigger = (use_ftle and max_ftle > ftle_tol);
       const bool interval_trigger = ((t_idx+1)%remesh_interval == 0);
       const bool do_remesh = (ftle_trigger or interval_trigger);
@@ -178,7 +199,8 @@ int main(int argc, char* argv[]) {
           logger.info("remesh {} triggered by ftle", rm_counter);
         }
 
-        auto new_sphere = std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, ntracers, gmls_params);
+        auto new_sphere = std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
+        new_sphere->allocate_tracer(lat0);
         new_sphere->t = sphere->t;
 
         auto remesh = compadre_remesh(*new_sphere, *sphere, gmls_params);
@@ -186,8 +208,10 @@ int main(int argc, char* argv[]) {
         }
         else {
           if (remesh_strategy == "direct") {
+            remesh.uniform_direct_remesh();
           }
           else {
+            remesh.uniform_indirect_remesh(vorticity, coriolis, lat0);
           }
         }
         tref = sphere->t;
@@ -195,19 +219,6 @@ int main(int argc, char* argv[]) {
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
       }
-
-      sphere->advance_timestep(*solver);
-      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-        ComputeFTLE<SeedType>(sphere->ftle.view,
-          sphere->mesh.vertices.phys_crds.view,
-          sphere->ref_crds_passive.view,
-          sphere->mesh.faces.phys_crds.view,
-          sphere->ref_crds_active.view,
-          sphere->mesh.faces.verts,
-          sphere->mesh.faces.mask,
-          sphere->t - sphere->t_ref));
-      max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
-      logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
       time[t_idx+1] = (t_idx+1) * dt;
       ftle_max[t_idx+1] = max_ftle;
@@ -225,7 +236,7 @@ int main(int argc, char* argv[]) {
         ++vtk_counter;
       }
 
-      logger.info("t = {}", t_idx*dt);
+      logger.info("t = {}", (t_idx+1)*dt);
     }
     const std::string matlab_file = ofile_root + ".m";
     std::ofstream ofile(matlab_file);
@@ -244,7 +255,7 @@ int main(int argc, char* argv[]) {
 }
 
 void init_input(user::Input& input) {
-  user::Option nlon_option("nlon", "-nlon", "--n_lon", "number of longitude points in DFS grid", 90);
+  user::Option nlon_option("nlon", "-nlon", "--n_lon", "number of longitude points in DFS grid", 20);
   input.add_option(nlon_option);
 
   user::Option omega_option("omega", "-omg", "--omega", "background rotation rate of the sphere", 2*constants::PI);

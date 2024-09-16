@@ -200,43 +200,18 @@ struct ComputeFTLE {
         FloatingPoint<Real>::zero(PlaneGeometry::dot(xdir_ref, ydir_ref), fp_tol) );
 
       Real flow_map_gradient[4];
-//       flow_map_gradient[0] = PlaneGeometry::dot(edge1_phys, xdir_ref) / dx0;
-//       flow_map_gradient[1] = PlaneGeometry::dot(edge0_rev_phys, xdir_ref) / dx0;
-//       flow_map_gradient[2] = PlaneGeometry::dot(edge1_phys, ydir_ref) / dy0;
-//       flow_map_gradient[3] = PlaneGeometry::dot(edge0_rev_phys, ydir_ref) /dy0;
       set_flow_map_gradient(flow_map_gradient, edge0_rev_phys, edge1_phys, xdir_ref, ydir_ref, dx0, dy0);
       Real cg_tensor[4];
       cauchy_green_tensor(cg_tensor, flow_map_gradient);
-
-//       for (int i=0; i<2; ++i) {
-//         for (int j=0; j<2; ++j) {
-//           const int ij_idx = 2*i + j;
-//           const int ji_idx = 2*j + i;
-//           cg_tensor[ij_idx] = flow_map_gradient[ij_idx]*flow_map_gradient[ji_idx];
-//         }
-//       }
-
-//       const Real half_trace = 0.5*(cg_tensor[0] + cg_tensor[3]);
-//       const Real half_trace_sq = square(half_trace);
-//       const Real det = cg_tensor[0]*cg_tensor[3] - cg_tensor[1]*cg_tensor[2];
-//       Real sqrt_arg = half_trace_sq - det;
-//
-//       LPM_KERNEL_ASSERT( (FloatingPoint<Real>::zero(sqrt_arg, fp_tol) or sqrt_arg > 0 ));
-//
-//       // guard against -\epsilon floating point
-//       if (FloatingPoint<Real>::zero(sqrt_arg, fp_tol)) sqrt_arg = 0;
-//       const Real bterm = sqrt(sqrt_arg);
-//       const Real lambda1 = half_trace + bterm;
-//       const Real lambda2 = half_trace - bterm;
 
       const auto eigs = two_by_two_real_eigenvalues(cg_tensor);
       const Real lambda1 = eigs[0];
       const Real lambda2 = eigs[1];
 #ifndef NDEBUG
-      if (!FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol)) {
-        spdlog::warn("ftle error: abs(lambda1 * lambda2 - 1)= {} (should be 0)",
-          abs(lambda1*lambda2-1));
-      }
+//       if (!FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol)) {
+//         spdlog::warn("ftle error: abs(lambda1 * lambda2 - 1)= {} (should be 0)",
+//           abs(lambda1*lambda2-1));
+//       }
 #endif
 //         LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol));
 

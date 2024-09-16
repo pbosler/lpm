@@ -19,11 +19,9 @@ namespace DFS {
 template <typename SeedType>
 DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
                          const Int nlon,
-                         const Int n_tracers,
                          const gmls::Params& interp_params,
                          const Real Omg) :
   ftle("ftle", mesh_params.nmaxfaces),
-  ftle_grid("ftle", nlon*(nlon/2 + 1)),
   ref_crds_passive(mesh_params.nmaxverts),
   ref_crds_active(mesh_params.nmaxfaces),
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
@@ -40,17 +38,11 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   velocity_grid("velocity", nlon*(nlon/2 + 1)),
   mesh(mesh_params),
   grid(nlon),
-  ntracers(n_tracers),
   coriolis(Omg),
   t(0.0),
   t_ref(0.0),
   gmls_params(interp_params)
 {
-  for (int k=0; k<n_tracers; ++k) {
-    tracer_passive.push_back(ScalarField<VertexField>("tracer" + std::to_string(k), mesh_params.nmaxverts));
-    tracer_active.push_back(ScalarField<FaceField>("tracer" + std::to_string(k), mesh_params.nmaxfaces));
-  }
-
   grid_crds = grid.init_coords();
   grid_crds.update_host();
   grid_area = grid.weights_view();
@@ -68,6 +60,9 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   gathered_mesh->init_vector_fields(passive_vector_fields, active_vector_fields);
 
   mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds, grid_crds.get_host_crd_view(), gmls_params);
+
+  Kokkos::deep_copy(ref_crds_passive.view, mesh.vertices.phys_crds.view);
+  Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
 }
 
 template <typename SeedType> template <typename VorticityInitialCondition>
@@ -154,12 +149,13 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   vtk_mesh.add_scalar_cell_data(stream_fn_active.view, "stream_function");
   vtk_mesh.add_vector_cell_data(velocity_active.view, "velocity");
   vtk_mesh.add_scalar_cell_data(ftle.view, "ftle");
-  for (Short i = 0; i < tracer_passive.size(); ++i) {
-    vtk_mesh.add_scalar_point_data(tracer_passive[i].view,
-                              tracer_passive[i].view.label());
-    vtk_mesh.add_scalar_cell_data(tracer_active[i].view,
-                             tracer_active[i].view.label());
+  for (const auto& t : tracer_passive) {
+    vtk_mesh.add_scalar_point_data(t.second.view, t.first);
   }
+  for (const auto& t : tracer_active) {
+    vtk_mesh.add_scalar_cell_data(t.second.view, t.first);
+  }
+
   vtk_mesh.write(mesh_fname);
 
   vtkSmartPointer<vtkStructuredGrid> vtk_grid = grid.vtk_grid();
@@ -167,7 +163,6 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   auto grid_absvort = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_stream = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_vel = vtkSmartPointer<vtkDoubleArray>::New();
-  auto grid_ftle = vtkSmartPointer<vtkDoubleArray>::New();
 
   /// vtkStructuredGrid needs the longitude periodicity repeated, so we have to add
   /// an extra point for each row of the grid
@@ -187,15 +182,10 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_vel->SetNumberOfComponents(3);
   grid_vel->SetNumberOfTuples(grid.size()+grid.nlat);
 
-  grid_ftle->SetName("ftle");
-  grid_ftle->SetNumberOfComponents(1);
-  grid_ftle->SetNumberOfTuples(grid.size() + grid.nlat);
-
   rel_vort_grid.update_host();
   abs_vort_grid.update_host();
   stream_fn_grid.update_host();
   velocity_grid.update_host();
-  ftle_grid.update_host();
 
   Index vtk_idx = 0;
   for (Index i=0; i<grid.nlat; ++i) {
@@ -203,7 +193,6 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
       grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon + j));
       grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon + j));
       grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon + j));
-      grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon + j));
       const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon + j, Kokkos::ALL);
       grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
       ++vtk_idx;
@@ -211,7 +200,6 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
     grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon));
     grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon));
     grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon));
-    grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon));
     const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon, Kokkos::ALL);
     grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
     ++vtk_idx;
@@ -222,7 +210,6 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_data->AddArray(grid_absvort);
   grid_data->AddArray(grid_stream);
   grid_data->AddArray(grid_vel);
-  grid_data->AddArray(grid_ftle);
 
   vtkNew<vtkXMLStructuredGridWriter> grid_writer;
   grid_writer->SetInputData(vtk_grid);
@@ -230,6 +217,24 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_writer->Write();
 }
 #endif
+
+template <typename SeedType>
+void DFSBVE<SeedType>::allocate_tracer(const std::string& name) {
+  tracer_passive.emplace(name, ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name, ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+}
+
+template <typename SeedType> template <typename TracerType>
+void DFSBVE<SeedType>::allocate_tracer(const TracerType& tracer, const std::string& tname) {
+static_assert(std::is_same<typename SeedType::geo,
+      typename TracerType::geo>::value, "Geometry types must match.");
+
+  const std::string name = (tname.empty() ? tracer.name() : tname);
+  tracer_passive.emplace(name,
+    ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name,
+    ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+}
 
 template <typename SeedType>
 std::string DFSBVE<SeedType>::info_string(const int tab_level) const {
@@ -243,6 +248,35 @@ std::string DFSBVE<SeedType>::info_string(const int tab_level) const {
   ss << mesh_to_grid_neighborhoods.info_string(tab_level+1);
   ss << grid_crds.info_string("DFSBVE grid_crds", tab_level+1);
   return ss.str();
+}
+
+template <typename SeedType>
+Int DFSBVE<SeedType>::n_tracers() const {
+  LPM_ASSERT( tracer_active.size() == tracer_passive.size() );
+  return tracer_active.size();
+}
+
+template <typename SeedType> template <typename TracerType>
+void DFSBVE<SeedType>::init_tracer(const TracerType& tracer, const std::string& tname) {
+  static_assert(std::is_same<SphereGeometry, typename TracerType::geo>::value, "geometry types must match.");
+
+  const std::string name = (tname.empty() ? tracer.name() : tname);
+  tracer_passive.emplace(name, ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+  tracer_active.emplace(name, ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+  auto tracer_view = tracer_passive.at(name).view;
+  auto lag_crd_view = mesh.vertices.lag_crds.view;
+  Kokkos::parallel_for(mesh.n_vertices_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+      tracer_view(i) = tracer(mcrd);
+    });
+  tracer_view = tracer_active.at(name).view;
+  lag_crd_view = mesh.faces.lag_crds.view;
+  Kokkos::parallel_for(mesh.n_faces_host(),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto mcrd = Kokkos::subview(lag_crd_view, i, Kokkos::ALL);
+      tracer_view(i) = tracer(mcrd);
+    });
 }
 
 template <typename SeedType>
@@ -360,35 +394,95 @@ template <typename SeedType>
     vtk.add_scalar_cell_data(dfs_bve.stream_fn_active.view, "stream_function");
     vtk.add_vector_cell_data(dfs_bve.velocity_active.view, "velocity");
     vtk.add_scalar_cell_data(dfs_bve.ftle.view, "ftle");
-    for (short i=0; i<dfs_bve.tracer_passive.size(); ++i) {
-      vtk.add_scalar_point_data(dfs_bve.tracer_passive[i].view,
-        dfs_bve.tracer_passive[i].view.label());
-      vtk.add_scalar_cell_data(dfs_bve.tracer_active[i].view,
-        dfs_bve.tracer_active[i].view.label());
+
+    for (const auto& t : dfs_bve.tracer_passive) {
+      vtk.add_scalar_point_data(t.second.view, t.first);
+    }
+    for (const auto& t : dfs_bve.tracer_active) {
+      vtk.add_scalar_cell_data(t.second.view, t.first);
     }
     return vtk;
-  }
+}
 
-
-
-  template <typename SeedType>
+template <typename SeedType>
   VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve) {
     VtkGridInterface vtk(dfs_bve.grid);
     vtk.add_scalar_point_data(dfs_bve.rel_vort_grid.view, "relative_vorticity");
     vtk.add_scalar_point_data(dfs_bve.abs_vort_grid.view, "absolute_vorticity");
     vtk.add_scalar_point_data(dfs_bve.stream_fn_grid.view, "stream_function");
     vtk.add_vector_point_data(dfs_bve.velocity_grid.view, "velocity");
-    vtk.add_scalar_point_data(dfs_bve.ftle_grid.view, "ftle");
     return vtk;
   }
 #endif
 
 template <typename SeedType>
-CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& dfs_bve, const gmls::Params& gmls_params) {
+CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params) {
   using passive_scalar_field_map = std::map<std::string, ScalarField<VertexField>>;
   using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
   using passive_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, VertexField>>;
   using active_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, FaceField>>;
+
+  Kokkos::deep_copy(new_dfs_bve.ref_crds_passive.view, new_dfs_bve.mesh.vertices.phys_crds.view);
+  Kokkos::deep_copy(new_dfs_bve.ref_crds_active.view, new_dfs_bve.mesh.faces.phys_crds.view);
+  new_dfs_bve.t_ref = old_dfs_bve.t;
+
+  /**
+    Interpolate particle data from old particles to new particles
+  */
+  passive_scalar_field_map passive_scalars_old;
+  passive_scalars_old.emplace("relative_vorticity", old_dfs_bve.rel_vort_passive);
+  passive_scalars_old.emplace("absolute_vorticity", old_dfs_bve.abs_vort_passive);
+  passive_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_passive);
+  for (const auto& t : old_dfs_bve.tracer_passive) {
+    passive_scalars_old.emplace(t.first, t.second);
+  }
+
+  passive_scalar_field_map passive_scalars_new;
+  passive_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_passive);
+  passive_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_passive);
+  passive_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_passive);
+  for (const auto& t : new_dfs_bve.tracer_passive) {
+    passive_scalars_new.emplace(t.first, t.second);
+  }
+
+  active_scalar_field_map active_scalars_old;
+  active_scalars_old.emplace("relative_vorticity", old_dfs_bve.rel_vort_active);
+  active_scalars_old.emplace("absolute_vorticity", old_dfs_bve.abs_vort_active);
+  active_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_active);
+  for (const auto& t : old_dfs_bve.tracer_active) {
+    active_scalars_old.emplace(t.first, t.second);
+  }
+  active_scalar_field_map active_scalars_new;
+  active_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_active);
+  active_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_active);
+  active_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_active);
+  for (const auto& t : new_dfs_bve.tracer_active) {
+    active_scalars_new.emplace(t.first, t.second);
+  }
+
+  passive_vector_field_map passive_vectors_old;
+  passive_vectors_old.emplace("velocity", old_dfs_bve.velocity_passive);
+
+  active_vector_field_map active_vectors_old;
+  active_vectors_old.emplace("velocity", old_dfs_bve.velocity_active);
+
+  passive_vector_field_map passive_vectors_new;
+  passive_vectors_new.emplace("velocity", new_dfs_bve.velocity_passive);
+
+  active_vector_field_map active_vectors_new;
+  active_vectors_new.emplace("velocity", new_dfs_bve.velocity_active);
+
+  return CompadreRemesh<SeedType>(new_dfs_bve.mesh,
+    passive_scalars_new,
+    active_scalars_new,
+    passive_vectors_new,
+    active_vectors_new,
+    old_dfs_bve.mesh,
+    passive_scalars_old,
+    active_scalars_old,
+    passive_vectors_old,
+    active_vectors_old,
+    gmls_params);
 }
 
 } // namespace DFS
