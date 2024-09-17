@@ -255,7 +255,7 @@ int main(int argc, char* argv[]) {
 }
 
 void init_input(user::Input& input) {
-  user::Option nlon_option("nlon", "-nlon", "--n_lon", "number of longitude points in DFS grid", 40);
+  user::Option nlon_option("nlon", "-nlon", "--n_lon", "number of longitude points in DFS grid", 20);
   input.add_option(nlon_option);
 
   user::Option omega_option("omega", "-omg", "--omega", "background rotation rate of the sphere", 2*constants::PI);
