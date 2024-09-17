@@ -6,7 +6,9 @@
 #include "lpm_geometry.hpp"
 #include "lpm_compadre.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_coriolis.hpp"
 #include "dfs/lpm_dfs_grid.hpp"
+#include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
@@ -32,11 +34,21 @@ template <typename SeedType>
 class DFSBVE {
   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
                 "Spherical mesh seed required.");
-  typedef SphereGeometry::crd_view_type crd_view;
-  typedef SphereGeometry::vec_view_type vec_view;
+  using geo = SphereGeometry;
+  using Coriolis = CoriolisSphere;
+  using crd_view = typename SphereGeometry::crd_view_type;
+  using vec_view = typename SphereGeometry::vec_view_type;
+
   friend class DFSRK2<SeedType>;
 
   public:
+    /// Coriolis
+    Coriolis coriolis;
+    /// reference coordinates, for FTLE computations
+    Coords<geo> ref_crds_passive;
+    Coords<geo> ref_crds_active;
+    // FTLE
+    ScalarField<FaceField> ftle;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles
@@ -67,14 +79,14 @@ class DFSBVE {
     DFSGrid grid;
     /// number of passive tracers
     Int ntracers;
-    /// background rotation rate of sphere about positive z-axis
-    Real Omega;
     /// time
     Real t;
+    /// reference time for ftle
+    Real t_ref;
     /// passive tracers at passive particles
-    std::vector<ScalarField<VertexField>> tracer_passive;
+    std::map<std::string, ScalarField<VertexField>> tracer_passive;
     /// passive tracers at active particles
-    std::vector<ScalarField<FaceField>> tracer_active;
+    std::map<std::string, ScalarField<FaceField>> tracer_active;
     /// area weights for grid points
     scalar_view_type grid_area;
     /// DFS grid coordinates
@@ -113,7 +125,6 @@ class DFSBVE {
     */
     DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
            const Int nlon,
-           const Int n_tracers,
            const gmls::Params& interp_params,
            const Real Omg = 2*constants::PI);
 
@@ -130,6 +141,23 @@ class DFSBVE {
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
+
+    void update_grid_absolute_vorticity();
+
+    Real total_vorticity() const;
+    Real total_kinetic_energy() const;
+    Real total_enstrophy() const;
+    Real ftle_max() const;
+
+    Int n_tracers() const;
+
+    void allocate_tracer(const std::string& name);
+
+    template <typename TracerType>
+    void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
+
+    template <typename TracerType>
+    void init_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
     std::string info_string(const int tab_level=0) const;
 
@@ -154,6 +182,9 @@ class DFSBVE {
   template <typename SeedType>
   VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve);
 #endif
+
+template <typename SeedType>
+CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
 
 } // namespace DFS
 } // namespace Lpm
