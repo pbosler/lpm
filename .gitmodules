@@ -1,7 +1,3 @@
-[submodule "ext/yaml-cpp"]
-	path = ext/yaml-cpp
-	url = git@github.com:SNLComputation/yaml-cpp.git
-	shallow = true
 [submodule "ext/spdlog"]
 	path = ext/spdlog
 	url = git@github.com:gabime/spdlog.git
