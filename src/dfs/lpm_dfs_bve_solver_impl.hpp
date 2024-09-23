@@ -52,18 +52,10 @@ void DFSRK2<SeedType>::advance_timestep()  {
   KokkosBlas::update(0.5, rel_vort_particles1, 0.5, rel_vort_particles2, 1, rel_vort_particles);
 
   // update velocity to the particles
-  auto mystart = high_resolution_clock::now();
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles,
     xyz_grid, rel_vort_particles);
-  auto myfinal = high_resolution_clock::now();
-  auto duration = duration_cast<microseconds>(myfinal - mystart);
-  std::cout<<"Exec time GMLS:\t"<<duration.count()<<std::endl;
 
-  auto st = high_resolution_clock::now();
   dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
-  auto myf = high_resolution_clock::now();
-  auto dd = duration_cast<microseconds>(myf - st);
-  std::cout<<"Exec time DFS:\t"<<dd.count()<<std::endl;
   sphere.rel_vort_grid.view = rel_vort_grid;
 
   ++t_idx;

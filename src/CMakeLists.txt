@@ -101,7 +101,10 @@ if (LPM_USE_FFTW3)
 endif()
 if (LPM_USE_FINUFFT)
   target_link_libraries(lpm PUBLIC finufft)
- 
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(lpm PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_libraries(lpm PRIVATE -fsanitize=address,undefined)
+  endif()
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h

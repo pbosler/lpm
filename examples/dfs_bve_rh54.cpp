@@ -21,10 +21,8 @@
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
-#include <chrono>
 
 using namespace Lpm;
-using namespace std::chrono;
 /** Test input.  Sets default parameter values, reads optional replacement
   values from the command line.
 */
@@ -129,7 +127,6 @@ int main(int argc, char* argv[]) {
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
     sphere.init_vorticity(vorticity_fn);
-    //sphere.init_velocity(velocity_fn);
     sphere.init_velocity_from_vorticity();
     logger.info(sphere.info_string());
 
@@ -141,9 +138,9 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-  //  DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
-    DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
-//    DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
+  //  DFS::DFSRK3<seed_type> rk3_solver(dt, sphere); // Third order Runga-Kutta
+ //     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);  //Fourth order Runga-Kutta
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_rh54" + seed_type::id_string() + "_nlon" +
@@ -166,12 +163,7 @@ int main(int argc, char* argv[]) {
 
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx){
-  //  for (int time_idx=0; time_idx<1; ++time_idx) {
-//  auto mystart = high_resolution_clock::now();
-      sphere.advance_timestep(rk4_solver);
-  //    auto myfinal = high_resolution_clock::now();
-    //  auto duration = duration_cast<microseconds>(myfinal - mystart);
-      //logger.info("Exec time = {}", duration.count());
+      sphere.advance_timestep(rk2_solver);
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {
@@ -217,6 +209,7 @@ Input::Input(int argc, char* argv[]) {
   nlon = 40;
   output_interval = 0;
   help_and_exit = false;
+  gmls_order = 2;
   for (int i=1; i<argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-d" or token == "--depth") {
@@ -242,7 +235,7 @@ Input::Input(int argc, char* argv[]) {
     else if (token == "-f" or token == "--output--frequency") {
       output_interval = std::stoi(argv[++i]);
     }
-    else if (token == "-gd" or token == "--gmls")
+    else if (token == "-gm" or token == "--gmls--order")
     {
 	gmls_order = std::stoi(argv[++i]);
     }

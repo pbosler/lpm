@@ -21,10 +21,8 @@
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
-#include <chrono>
 
 using namespace Lpm;
-using namespace std::chrono;
 /** Test input.  Sets default parameter values, reads optional replacement
   values from the command line.
 */
@@ -36,6 +34,7 @@ struct Input {
   Int init_mesh_depth; // initial depth of Lagrangian particle/panel mesh quadtree
   Int nlon; // number of longitude points in the Fourier grid
   Int output_interval; // number of time steps between each output file
+  Int gmls_order;     // gmls interpolation order
 
   std::string vtk_froot; // base filename for vtk output
 
@@ -116,20 +115,19 @@ int main(int argc, char* argv[]) {
     const bool write_output = input.output_interval > 0;
     const Int nlon = input.nlon;
     const Int ntracers = 0;
+    const Int rossby_order = 6;
     // problem types: velocity and vorticity
-    //RossbyWave54Velocity velocity_fn(constants::PI/7);
-    RossbyHaurwitzR vorticity_fn(4*constants::PI/(6*(6+3)), 1, 6);
+    RossbyHaurwitzR vorticity_fn(4*constants::PI/(rossby_order*(rossby_order+3)), 1, rossby_order);
 
     // LPM particle/panel initialization
     typedef CubedSphereSeed seed_type;
     const Int mesh_depth = input.init_mesh_depth;
     PolyMeshParameters<seed_type> mesh_params(mesh_depth);
-    const Int gmls_order = 8; // TODO: this can be an input parameter
+    const Int gmls_order = input.gmls_order;
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
     sphere.init_vorticity(vorticity_fn);
-    //sphere.init_velocity(velocity_fn);
     sphere.init_velocity_from_vorticity();
     logger.info(sphere.info_string());
 
@@ -141,9 +139,9 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-    //DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
-    DFS::DFSRK4<seed_type> rk4_solver(dt, sphere); // Fourth order Runga-Kutta
-   // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere);
+    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
+   // DFS::DFSRK3<seed_type> rk3_solver(dt, sphere); // Third order Runga-Kutta
+  //  DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_rRl" + seed_type::id_string() + "_nlon" +
@@ -166,12 +164,7 @@ int main(int argc, char* argv[]) {
 
     // timestepping loop
     for (int time_idx=0; time_idx<nsteps; ++time_idx) {
-    //  auto mystart = high_resolution_clock::now();
-      sphere.advance_timestep(rk4_solver);
-     // sphere.advance_timestep(rk3_solver);
-      //auto myfinal = high_resolution_clock::now();
-     // auto duration = duration_cast<microseconds>(myfinal - mystart);
-     // logger.info("Exec time = {}", duration.count());
+      sphere.advance_timestep(rk2_solver);
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
       {
@@ -217,6 +210,7 @@ Input::Input(int argc, char* argv[]) {
   nlon = 40;
   output_interval = 0;
   help_and_exit = false;
+  gmls_order = 2;
   for (int i=1; i<argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-d" or token == "--depth") {
@@ -226,6 +220,9 @@ Input::Input(int argc, char* argv[]) {
     else if (token == "-nl" or token == "--nlon") {
       nlon = std::stoi(argv[++i]);
       LPM_REQUIRE((nlon > 0) and (nlon%2 == 0));
+    }
+    else if (token == "-gm" or token == "--gmls--order") {
+      gmls_order = std::stoi(argv[++i]);
     }
     else if (token == "-o" or token == "--output-file-root") {
       case_name = argv[++i];
