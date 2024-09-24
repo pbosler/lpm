@@ -293,6 +293,8 @@ template void tridiag_solver_3d<Real>(view_3d<Real> AA, view_2d<Complex> name, I
         view_3d<Real> Llo("Lok", nrows, nrows, mid);
         view_3d<Complex> Lle("Lek", nrows, nrows, mid);
         view_1d<Real> dd("shifts", mid);
+	
+	LPM_ASSERT_MSG( (UU.extent(0) == 2*nrows and UU.extent(1) == ncols), "UU size error");
 
         Kokkos::parallel_for(mid, [=](Int k){
             dd(k) =- pow(double(mid - k),2);

@@ -1,7 +1,6 @@
 #ifndef DFS_RHS_NEW_HPP
 #define DFS_RHS_NEW_HPP
 #include <fftw3.h>
-#include "omp.h"
 #include "dfs_config.hpp"
 #include <KokkosBlas3_gemm.hpp>
 #include "dfs_doubling.hpp"

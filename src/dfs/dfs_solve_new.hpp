@@ -4,7 +4,7 @@
 
 #include "KokkosBlas.hpp"
 #include "dfs_config.hpp"
-
+#include "lpm_assert.hpp" 
 
 namespace SpherePoisson {
     // Thomas algorithm: the tridiagonal solver

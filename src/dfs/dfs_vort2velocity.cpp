@@ -11,7 +11,7 @@ namespace SpherePoisson {
           accelerate computation.
           Best Idea is to compute this one and reuse, we keep here for now.
           */
-        Int ncols = abs(sqrt(2*vort.extent(0)+1))-1;
+        Int ncols = sqrt(2*vort.extent(0)+1)-1;
         Int nrows = ncols/2 + 1;
         Int dnrows = ncols; 
         Real Kappa = 0;    // For poisson Kappa=0 else Helmholtz
@@ -38,7 +38,6 @@ namespace SpherePoisson {
         interp_shifts(grid_type, cn);
         poisson_rhs(grid_type, ie, io, cn, vort, vort_rhso, vort_rhse);
 
-          
         /*
             Sove the Fourier coefficients of the stream function
         */

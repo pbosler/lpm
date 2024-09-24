@@ -64,7 +64,7 @@ namespace SpherePoisson {
 
         // compute fft using fftw3
         fftw_plan plan;
-        int nthreads = 8;	//omp_get_max_threads();
+        const Int nthreads = Lpm::DevExe().concurrency();
         fftw_init_threads();
         fftw_plan_with_nthreads(nthreads);
         fftw_complex *X;
@@ -200,7 +200,7 @@ namespace SpherePoisson {
         // 2D FFT
         fftw_complex *X;
         fftw_plan plan;
-        Int nthreads = 8; // omp_get_max_threads();
+        const Int nthreads = Lpm::DevExe().concurrency();
         fftw_init_threads();
         fftw_plan_with_nthreads(nthreads);
         X = fftw_alloc_complex(sizeof(fftw_complex) * (dnrows * ncols));
