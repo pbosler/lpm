@@ -286,6 +286,12 @@ template void tridiag_solver_3d<Real>(view_3d<Real> AA, view_2d<Complex> name, I
      void solver(view_2d<Real> Le, view_2d<Real> Lo, view_2d<Complex> rhse,  view_2d<Complex> rhso, view_2d<Complex> UU,
     view_1d<Int> io, view_1d<Int> ie, Real Kappa)
      {
+	/* To solve the system LU=F we split both L and F into even 
+	 * odd mode parts. Here rhse and rhso are for even and odd
+	 * modes of F, respectively. Where as Lle and Llo are the even
+	 * modes of L. This decoupling of the equation reduces the
+	 * computation cost of the method by a factor of two.
+	 */
         Int ncols = rhse.extent(1);
         Int nrows = rhse.extent(0);
         Int mid = ncols/2;
