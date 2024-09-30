@@ -81,6 +81,7 @@ jobs:
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
           -DCMAKE_VERBOSE_MAKEFILE=ON \
+          -DCMAKE_PREFIX_PATH=/lpm-tpl \
           -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_VTK=ON \
           -DLPM_ENABLE_Compose=ON \
