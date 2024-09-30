@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-release:1
+    container: pbosler/lpm-tpl-base:1
 
     # Environment variables
     env:
@@ -43,7 +43,6 @@ jobs:
       KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
-      GIT_SSL_NO_VERIFY: 1
       OMP_NUM_THREADS: 16
       OMP_PROC_BIND: spread
       OMP_PLACES: threads
