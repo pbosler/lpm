@@ -12,14 +12,21 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   libnetcdf-mpi-dev \
   make pkg-config \
   mesa-common-dev libglu1-mesa-dev freeglut3-dev \
-  libblas-dev liblapack-dev  && mkdir -p /lpm-tpl
+  libblas-dev liblapack-dev  && mkdir -p /lpm-tpl && mkdir /tpl-src \
+  && rm -rf /var/lib/apt/lists/*
 ENV VTK_ROOT=/lpm-tpl
 ENV KOKKOS_ROOT=/lpm-tpl
 ENV FFTW_ROOT=/lpm-tpl
 ENV GIT_SSL_NO_VERIFY=1
-  
+
+WORKDIR /tpl-src
 ADD https://github.com/Kitware/VTK.git#v9.3.1 /tpl-src/vtk-9.3.1
-WORKDIR /tpl-src/vtk-9.3.1/build
+ADD https://github.com/kokkos/kokkos.git#4.4.00 /tpl-src/kokkos
+ADD https://github.com/kokkos/kokkos-kernels.git#4.4.00 /tpl-src/kokkos-kernels
+ADD https://github.com/sandialabs/compadre.git /tpl-src/compadre
+ADD https://github.com/pbosler/COMPOSE.git#lpm-tpl /tpl-src/compose
+
+WORKDIR /tpl-src/vtk-9.3.1
 RUN mkdir build && cd build && \
 cmake \
 -DCMAKE_C_COMPILER=gcc \
@@ -39,19 +46,20 @@ cmake \
 -DVTK_WRAP_PYTHON=OFF \
 -DOpenGL_GL_PREFERENCE=GLVND \
 /tpl-src/vtk-9.3.1 && \
-make -j 2 && make install && cd .. && rm -rf build && ls /lpm-tpl
+make -j 4 && make install && cd .. && rm -rf build && ls /lpm-tpl
 
 WORKDIR /tpl-src
 COPY fftw-3.3.10.tar.gz /tpl-src/fftw-3.3.10.tar.gz
 RUN tar -xzf fftw-3.3.10.tar.gz && \
   cd fftw-3.3.10 && \
   ./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-mpi --disable-dependency-tracking && \
-make -j 2 && make install && cd .. && rm -rf build
+make -j 4 && make install && cd .. && rm -rf build && cd /tpl-src && rm -rf fftw-3.3.10/ &&
 WORKDIR /tpl-src
 
-ADD https://github.com/kokkos/kokkos.git#4.4.00 /tpl-src/kokkos
-WORKDIR /tpl-src/kokkos/build
-RUN cmake \
+
+WORKDIR /tpl-src/kokkos
+RUN mkdir build && cd build && \
+cmake \
 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 -DCMAKE_CXX_STANDARD=17 \
 -DCMAKE_C_COMPILER=mpicc \
@@ -63,22 +71,24 @@ RUN cmake \
 -DKokkos_ARCH_NATIVE=ON \
 -DBUILD_SHARED_LIBS=OFF \
 /tpl-src/kokkos && \
-make -j 2 && make install && cd .. && rm -rf build
+make -j 4 && make install && cd .. && rm -rf build
 
-ADD https://github.com/kokkos/kokkos-kernels.git#4.4.00 /tpl-src/kokkos-kernels
-WORKDIR /tpl-src/kokkos-kernels/build
-RUN cmake \
+
+WORKDIR /tpl-src/kokkos-kernels
+RUN mkdir build && cd build && \
+cmake \
 -DCMAKE_INSTALL_PREFIX=${KOKKOS_ROOT} \
 -DCMAKE_CXX_STANDARD=17 \
 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 -DKokkos_ROOT=${KOKKOS_ROOT} \
 -DKokkos_DIR=${KOKKOS_ROOT} \
 /tpl-src/kokkos-kernels && \
-make -j 2 && make install && rm -rf build
+make -j 4 && make install && rm -rf build
 
-ADD https://github.com/sandialabs/compadre.git /tpl-src/compadre
-WORKDIR /tpl-src/compadre/build
-RUN cmake \
+
+WORKDIR /tpl-src/compadre
+RUN mkdir build && cd build && \
+cmake \
 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 -DBUILD_SHARED_LIBS=OFF \
 -DCMAKE_INSTALL_PREFIX=${KOKKOS_ROOT} \
@@ -90,11 +100,12 @@ RUN cmake \
 -DCompadre_USE_PYTHON=OFF \
 -DKokkosKernels_PREFIX=${KOKKOS_ROOT} \
 /tpl-src/compadre && \
-make -j 2 && make install && cd .. && rm -rf build
+make -j 4 && make install && cd .. && rm -rf build
 
-ADD https://github.com/pbosler/COMPOSE.git#lpm-tpl /tpl-src/compose
-WORKDIR /tpl-src/compose/build
-RUN cmake \
+
+WORKDIR /tpl-src/compose
+RUN mkdir build && cd build && \
+cmake \
 -DCMAKE_C_COMPILER=mpicc \
 -DCMAKE_CXX_COMPILER=mpicxx \
 -DCMAKE_CXX_STANDARD=17 \
@@ -103,4 +114,4 @@ RUN cmake \
 -DCMAKE_INSTALL_PREFIX=${KOKKOS_ROOT} \
 -DKokkos_DIR=${KOKKOS_ROOT} \
 /tpl-src/compose && \
-make -j 2 && make install && cd .. && rm -rf build && ls /lpm-tpl/lib
+make -j 4 && make install && cd .. && rm -rf build && ls /lpm-tpl/lib
