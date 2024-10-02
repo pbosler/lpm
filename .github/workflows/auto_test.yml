@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-base:1
+    container: pbosler/lpm-tpl-relwithdebinfo:0
 
     # Environment variables
     env:
@@ -46,7 +46,7 @@ jobs:
       OMP_NUM_THREADS: 16
       OMP_PROC_BIND: spread
       OMP_PLACES: threads
-      LPM_INSTALL: /lpm-install 
+      LPM_INSTALL: /lpm-install
       CMAKE_BUILD_PARALLEL_LEVEL: 8
 
     # Steps for building and running tests.
@@ -56,13 +56,13 @@ jobs:
       with:
         path: ${{github.workspace}}/.git
         key: git-folder
-        
+
     - name: Check out lpm
       uses: actions/checkout@v4
       with:
         path: ${{github.workspace}}
         submodules: recursive
-    
+
     - name: Cache spdlog and catch2
       uses: actions/cache@v4
       with:
@@ -81,6 +81,7 @@ jobs:
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
           -DCMAKE_VERBOSE_MAKEFILE=ON \
+          -DCMAKE_PREFIX_PATH=/lpm-tpl \
           -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_VTK=ON \
           -DLPM_ENABLE_Compose=ON \
