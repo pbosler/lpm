@@ -8,7 +8,9 @@
 #include <limits>
 #include <initializer_list>
 
-#include "spdlog/fmt/ostr.h"
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/fmt/ranges.h>
+
 #include "util/lpm_floating_point.hpp"
 /**
 Kokkos-array subclass for reductions

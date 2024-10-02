@@ -67,7 +67,9 @@ function(CreateUnitTest target_name target_sources)
         ${lpmtest_INCLUDE_DIRS}
         )
   target_link_libraries(${target_name} PUBLIC lpm ${LPM_LIBRARIES} ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
-  add_dependencies(${target_name} catch2)
+  if (NOT LPM_USE_EXTERNAL_CATCH2)
+    add_dependencies(${target_name} catch2)
+  endif()
 
  if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
    target_link_libraries(${target_name} PUBLIC lpm_test_main)

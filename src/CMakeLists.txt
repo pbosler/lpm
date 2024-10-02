@@ -79,7 +79,9 @@ add_library(lpm ${LPM_SOURCES})
 
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 
+if (NOT LPM_USE_EXTERNAL_SPDLOG)
 add_dependencies(lpm spdlog)
+endif()
 
 target_link_libraries(lpm PUBLIC
                           lpm_fortran
@@ -87,8 +89,12 @@ target_link_libraries(lpm PUBLIC
                           Kokkos::kokkoskernels
                           Compadre::compadre
                           compose
-                          spdlog
                           )
+if (LPM_USE_EXTERNAL_SPDLOG) 
+  target_link_libraries(lpm PUBLIC spdlog::spdlog)
+else()
+  target_link_libraries(lpm PUBLIC spdlog)
+endif()                          
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm PUBLIC NetCDF::NetCDF)
 endif()
@@ -100,7 +106,6 @@ if (LPM_USE_FFTW3)
 endif()
 if (LPM_USE_FINUFFT)
   target_link_libraries(lpm PUBLIC finufft_static)
-  add_link_options(-fsanitize=address)
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
@@ -180,9 +185,14 @@ install(TARGETS lpm lpm_fortran DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main util/lpm_catch_main.cpp)
+if (NOT LPM_USE_EXTERNAL_CATCH2) 
 add_dependencies(lpm_test_main catch2)
-target_link_libraries(lpm_test_main PUBLIC lpm catch2 ${CMAKE_DL_LIBS})
-target_include_directories(lpm_test_main PUBLIC ${CATCH2_INCLUDE_DIR})
+  target_link_libraries(lpm_test_main PUBLIC lpm catch2 ${CMAKE_DL_LIBS})
+  target_include_directories(lpm_test_main PUBLIC ${CATCH2_INCLUDE_DIR})
+else()
+  target_link_libraries(lpm_test_main PUBLIC Catch2::Catch2 Catch2::Catch2WithMain)
+endif()
+
 install(TARGETS lpm_test_main
         EXPORT LpmTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

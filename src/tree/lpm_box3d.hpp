@@ -10,6 +10,7 @@
 
 #include "Kokkos_Core.hpp"
 
+#include <spdlog/fmt/ostr.h>
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -181,6 +182,13 @@ struct Box3d {
         zmin = c[2] - half_len;
         zmax = c[2] + half_len;
       }
+    }
+
+    template <typename OStream>
+    friend OStream& operator << (OStream& os, const Box3d& b) {
+    os << "(" << std::setw(4) << b.xmin << " " << std::setw(4) << b.xmax << " " << std::setw(4) << b.ymin << " "
+              << std::setw(4) << b.ymax << " " << std::setw(4) << b.zmin << " " << std::setw(4) << b.zmax << ")\n";
+    return os;
     }
 
     template <typename PtType> KOKKOS_INLINE_FUNCTION
@@ -371,7 +379,9 @@ bool operator == (const Box3d& lhs, const Box3d& rhs) {
 KOKKOS_INLINE_FUNCTION
 bool operator != (const Box3d& lhs, const Box3d& rhs) {return !(lhs == rhs);}
 
-std::ostream& operator << (std::ostream& os, const Box3d& b);
+// std::ostream& operator << (std::ostream& os, const Box3d& b);
+
+// template <> struct fmt::formatter<Box3d> : fmt::ostream_formatter {};
 
 template <typename Space=Dev>
 struct Box3dReducer {
