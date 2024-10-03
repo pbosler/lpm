@@ -48,16 +48,6 @@ cmake \
 /tpl-src/vtk-9.3.1 && \
 make -j 8 && make install && cd .. && rm -rf build && ls /lpm-tpl
 
-WORKDIR /tpl-src
-COPY fftw-3.3.10.tar.gz /tpl-src/fftw-3.3.10.tar.gz
-RUN tar -xzf fftw-3.3.10.tar.gz && \
-cd fftw-3.3.10 && \
-./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-threads --enable-mpi \
---enable-float --disable-dependency-tracking && \
-make -j 8 && make install && cd .. && rm -rf build && cd /tpl-src && rm -rf fftw-3.3.10/
-WORKDIR /tpl-src
-
-
 WORKDIR /tpl-src/kokkos
 RUN mkdir build && cd build && \
 cmake \
@@ -116,3 +106,16 @@ cmake \
 -DKokkos_DIR=${KOKKOS_ROOT} \
 /tpl-src/compose && \
 make -j 8 && make install && cd .. && rm -rf build && ls /lpm-tpl/lib
+
+WORKDIR /tpl-src
+COPY fftw-3.3.10.tar.gz /tpl-src/fftw-3.3.10.tar.gz
+RUN tar -xzf fftw-3.3.10.tar.gz && \
+cd fftw-3.3.10 && \
+./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-threads --enable-mpi \
+--enable-float --enable-type-prefix --disable-dependency-tracking && \
+make -j 8 && make install && make clean && \
+./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-threads --enable-mpi \
+--enable-type-prefix --disable-dependency-tracking && \
+make -j 8 && make install && cd .. && rm -rf build && \
+cd /tpl-src && rm -rf fftw-3.3.10/ && ls /lpm-tpl/lib
+
