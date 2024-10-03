@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
-        dfs-option: [ON]#, OFF]
+        dfs-option: [OFF]#, ON]
 
     runs-on: ${{ matrix.os }}
 
