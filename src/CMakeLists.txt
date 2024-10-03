@@ -100,7 +100,6 @@ if (LPM_USE_FFTW3)
 endif()
 if (LPM_USE_FINUFFT)
   target_link_libraries(lpm PUBLIC finufft_static)
-  add_link_options(-fsanitize=address)
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h

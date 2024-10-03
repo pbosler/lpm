@@ -15,3 +15,4 @@ CPMAddPackage(
 )
 
 set(LPM_USE_FINUFFT TRUE CACHE BOOL "")
+printvar(LPM_USE_FINUFFT)
