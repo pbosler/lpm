@@ -15,7 +15,8 @@ set(LPM_VERSION_PATCH 0)
 # Set c++ standard and env variable policy
 set(CMAKE_CXX_STANDARD 17)
 CMAKE_POLICY(SET CMP0074 NEW)
-message(STATUS "Setting policy CMP0074 to use <Package>_ROOT environmental variables")
+# CMAKE_POLICY(SET CMP0144 NEW) # requires CMake 3.27 or greater
+# message(STATUS "Setting policy CMP0074 and CMP0144 to use <Package>_ROOT environmental variables")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Tools for CMake repetitive tasks & debugging
