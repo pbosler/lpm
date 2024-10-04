@@ -17,3 +17,5 @@ if (LPM_USE_FFTW3)
   message(STATUS "FFTW3 libraries enabled.")
 endif()
 
+print_imported()
+

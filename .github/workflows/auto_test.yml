@@ -28,11 +28,12 @@ jobs:
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
+        dfs-option: [OFF]#, ON]
 
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-relwithdebinfo:0
+    container: pbosler/lpm-tpl-relwithdebinfo:2
 
     # Environment variables
     env:
@@ -69,7 +70,7 @@ jobs:
         path: $LPM_INSTALL
         key: tpl-folder
 
-    - name: Configure lpm (${{ matrix.build-type }})
+    - name: Configure lpm (${{ matrix.build-type }} DFS ${{ matrix.dfs-option }})
       shell: bash
       working-directory: ${{github.workspace}}
       run: |
@@ -85,7 +86,7 @@ jobs:
           -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_VTK=ON \
           -DLPM_ENABLE_Compose=ON \
-          -DLPM_ENABLE_DFS=OFF \
+          -DLPM_ENABLE_DFS=${{ matrix.dfs-option }} \
           -DKokkos_DIR=/lpm-tpl \
           -DKokkosKernels_DIR=/lpm-tpl \
           -DCompadre_DIR=/lpm-tpl \
@@ -93,11 +94,11 @@ jobs:
           -G "Unix Makefiles" \
           ..
 
-    - name: Build lpm ${{ matrix.build-type }}
+    - name: Build lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build
       run: cmake --build . --config ${{ matrix.build-type }}
 
-    - name: Test lpm ${{ matrix.build-type }}
+    - name: Test lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build
       run: ctest -V -C ${{ matrix.build-type }} --no-tests=error
 

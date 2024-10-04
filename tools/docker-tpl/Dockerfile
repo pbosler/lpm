@@ -46,16 +46,7 @@ cmake \
 -DVTK_WRAP_PYTHON=OFF \
 -DOpenGL_GL_PREFERENCE=GLVND \
 /tpl-src/vtk-9.3.1 && \
-make -j 4 && make install && cd .. && rm -rf build && ls /lpm-tpl
-
-WORKDIR /tpl-src
-COPY fftw-3.3.10.tar.gz /tpl-src/fftw-3.3.10.tar.gz
-RUN tar -xzf fftw-3.3.10.tar.gz && \
-  cd fftw-3.3.10 && \
-  ./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-mpi --disable-dependency-tracking && \
-make -j 4 && make install && cd .. && rm -rf build && cd /tpl-src && rm -rf fftw-3.3.10/ &&
-WORKDIR /tpl-src
-
+make -j 8 && make install && cd .. && rm -rf build && ls /lpm-tpl
 
 WORKDIR /tpl-src/kokkos
 RUN mkdir build && cd build && \
@@ -71,7 +62,7 @@ cmake \
 -DKokkos_ARCH_NATIVE=ON \
 -DBUILD_SHARED_LIBS=OFF \
 /tpl-src/kokkos && \
-make -j 4 && make install && cd .. && rm -rf build
+make -j 8 && make install && cd .. && rm -rf build
 
 
 WORKDIR /tpl-src/kokkos-kernels
@@ -83,7 +74,7 @@ cmake \
 -DKokkos_ROOT=${KOKKOS_ROOT} \
 -DKokkos_DIR=${KOKKOS_ROOT} \
 /tpl-src/kokkos-kernels && \
-make -j 4 && make install && rm -rf build
+make -j 8 && make install && rm -rf build
 
 
 WORKDIR /tpl-src/compadre
@@ -100,7 +91,7 @@ cmake \
 -DCompadre_USE_PYTHON=OFF \
 -DKokkosKernels_PREFIX=${KOKKOS_ROOT} \
 /tpl-src/compadre && \
-make -j 4 && make install && cd .. && rm -rf build
+make -j 8 && make install && cd .. && rm -rf build
 
 
 WORKDIR /tpl-src/compose
@@ -114,4 +105,17 @@ cmake \
 -DCMAKE_INSTALL_PREFIX=${KOKKOS_ROOT} \
 -DKokkos_DIR=${KOKKOS_ROOT} \
 /tpl-src/compose && \
-make -j 4 && make install && cd .. && rm -rf build && ls /lpm-tpl/lib
+make -j 8 && make install && cd .. && rm -rf build && ls /lpm-tpl/lib
+
+WORKDIR /tpl-src
+COPY fftw-3.3.10.tar.gz /tpl-src/fftw-3.3.10.tar.gz
+RUN tar -xzf fftw-3.3.10.tar.gz && \
+cd fftw-3.3.10 && \
+./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-threads --enable-mpi \
+--enable-float --enable-type-prefix --disable-dependency-tracking && \
+make -j 8 && make install && make clean && \
+./configure --prefix=${FFTW_ROOT} --enable-openmp --enable-threads --enable-mpi \
+--enable-type-prefix --disable-dependency-tracking && \
+make -j 8 && make install && cd .. && rm -rf build && \
+cd /tpl-src && rm -rf fftw-3.3.10/ && ls /lpm-tpl/lib
+
