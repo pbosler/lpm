@@ -44,7 +44,7 @@ jobs:
       KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
-      OMP_NUM_THREADS: 16
+      OMP_NUM_THREADS: 4
       OMP_PROC_BIND: spread
       OMP_PLACES: threads
       LPM_INSTALL: /lpm-install
