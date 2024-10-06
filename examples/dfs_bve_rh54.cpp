@@ -23,7 +23,6 @@
 #include <iostream>
 
 using namespace Lpm;
-
 /** Test input.  Sets default parameter values, reads optional replacement
   values from the command line.
 */
@@ -35,7 +34,7 @@ struct Input {
   Int init_mesh_depth; // initial depth of Lagrangian particle/panel mesh quadtree
   Int nlon; // number of longitude points in the Fourier grid
   Int output_interval; // number of time steps between each output file
-
+  Int gmls_order;	// gmls polynomial order
   std::string vtk_froot; // base filename for vtk output
 
   // write Input state to a string
@@ -123,12 +122,12 @@ int main(int argc, char* argv[]) {
     typedef CubedSphereSeed seed_type;
     const Int mesh_depth = input.init_mesh_depth;
     PolyMeshParameters<seed_type> mesh_params(mesh_depth);
-    const Int gmls_order = 4; // TODO: this can be an input parameter
+   const Int gmls_order = input.gmls_order; 
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
     sphere.init_vorticity(vorticity_fn);
-    sphere.init_velocity(velocity_fn);
+    sphere.init_velocity_from_vorticity();
     logger.info(sphere.info_string());
 
     ScalarField<VertexField> vert_rel_vort_error("relative_vorticity_error", sphere.mesh.n_vertices_host());
@@ -139,8 +138,9 @@ int main(int argc, char* argv[]) {
     const Real dt = input.dt;
     const Real tfinal = input.tfinal;
     const int nsteps = int(tfinal/dt);
-    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere);
-
+    DFS::DFSRK2<seed_type> rk2_solver(dt, sphere); // Second order Runge-Kutta
+  //  DFS::DFSRK3<seed_type> rk3_solver(dt, sphere); // Third order Runga-Kutta
+ //     DFS::DFSRK4<seed_type> rk4_solver(dt, sphere);  //Fourth order Runga-Kutta
 
     int output_ctr = 0;
     const std::string fname_root = "dfs_bve_rh54" + seed_type::id_string() + "_nlon" +
@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     #endif
 
     // timestepping loop
-    for (int time_idx=0; time_idx<nsteps; ++time_idx) {
+    for (int time_idx=0; time_idx<nsteps; ++time_idx){
       sphere.advance_timestep(rk2_solver);
       compute_vorticity_error(vert_rel_vort_error.view, face_rel_vort_error.view, sphere);
       #ifdef LPM_USE_VTK
@@ -209,6 +209,7 @@ Input::Input(int argc, char* argv[]) {
   nlon = 40;
   output_interval = 0;
   help_and_exit = false;
+  gmls_order = 2;
   for (int i=1; i<argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-d" or token == "--depth") {
@@ -233,6 +234,10 @@ Input::Input(int argc, char* argv[]) {
     }
     else if (token == "-f" or token == "--output--frequency") {
       output_interval = std::stoi(argv[++i]);
+    }
+    else if (token == "-gm" or token == "--gmls--order")
+    {
+	gmls_order = std::stoi(argv[++i]);
     }
     else if (token == "-h" or token == "--help") {
       help_and_exit = true;
@@ -266,6 +271,7 @@ std::string Input::info_string() const {
      << "\t\t" << "particle/panel data files will have a .vtp suffix;\n"
      << "\t\t" << "DFS grid data files will have a .vts suffix\n"
      << "\t" << "time step: " << dt << "\n"
-     << "\t" << "tfinal : " << tfinal << "\n";
+     << "\t" << "tfinal : " << tfinal << "\n"
+     <<"\t"<<"gmls order: " <<gmls_order<<"\n";
   return ss.str();
 }

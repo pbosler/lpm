@@ -1,11 +1,9 @@
 #ifndef DFS_RHS_NEW_HPP
 #define DFS_RHS_NEW_HPP
 #include <fftw3.h>
-
 #include "dfs_config.hpp"
 #include <KokkosBlas3_gemm.hpp>
 #include "dfs_doubling.hpp"
-
 
 namespace SpherePoisson {
     // function to compute       sshift necessary to interpolate

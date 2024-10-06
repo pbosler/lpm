@@ -47,7 +47,7 @@ namespace SpherePoisson {
    /*
         Compute double product of the
    */
-  void compute_ddot_X(view_2d<Complex> U, view_2d<Complex> V, view_2d<Complex> W, view_r3pts<Real> X,view_r3pts<Real> uddot_x);
+  void compute_ddot_X(view_2d<Complex> U, view_2d<Complex> V, view_2d<Complex> W, view_r3pts<Real> X,view_1d<Real> uddot_x);
 
 }
 #endif
