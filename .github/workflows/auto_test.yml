@@ -40,7 +40,7 @@ jobs:
       CC: mpicc
       CXX: mpicxx
       FC: mpifort
-      VTK_ROOT: /vtk
+      VTK_ROOT: /lpm-tpl
       KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
