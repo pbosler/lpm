@@ -34,7 +34,7 @@ int main (int argc, char* argv[]) {
   using init_sfc_type = PlanarGaussianSurfacePerturbation;
   using coriolis_type = CoriolisBetaPlane;
   using geo = PlaneGeometry;
-  using pse_type = pse::BivariateOrder8<geo>;
+  using pse_type = pse::BivariateOrder8;
 
   Kokkos::initialize(argc, argv);
   { // Kokkos scope
@@ -111,7 +111,7 @@ int main (int argc, char* argv[]) {
     plane->init_surface(topo, sfc);
     constexpr bool do_velocity = true;
     plane->set_kernel_parameters(input.get_option("kernel_smoothing_parameter").get_real(),
-      pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
+      pse::PSEKernel<PlaneGeometry>::get_epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real()));
     plane->init_direct_sums(do_velocity);
 
     logger.info("mesh initialized");

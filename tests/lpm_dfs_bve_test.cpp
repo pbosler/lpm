@@ -30,7 +30,7 @@ TEST_CASE("dfs_bve_unit_tests", "[dfs]") {
   const Int gmls_order = 4;
   gmls::Params gmls_params(gmls_order);
 
-  DFS::DFSBVE<seed_type> dfs_bve(mesh_params, nlon, ntracers, gmls_params);
+  DFS::DFSBVE<seed_type> dfs_bve(mesh_params, nlon, gmls_params);
   dfs_bve.init_vorticity(vorticity_fn);
   dfs_bve.init_velocity(velocity_fn);
 

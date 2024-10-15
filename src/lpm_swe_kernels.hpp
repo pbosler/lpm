@@ -404,7 +404,7 @@ Kokkos::Tuple<Real, 9> planar_swe_sums_rhs_pse(
   const Real& eps, /// velocity kernel regularization parameter
   const Real& pse_eps /// PSE kernel width parameter
 ){
-  using pse_type = pse::BivariateOrder8<PlaneGeometry>;
+  using pse_type = pse::BivariateOrder8;
   using value_type = Kokkos::Tuple<Real,9>;
   value_type result;
 
@@ -491,7 +491,7 @@ Kokkos::Tuple<Real,13> sphere_swe_sums_rhs_pse(
   const Real& pse_eps
   )
 {
-  using pse_type = pse::BivariateOrder8<PlaneGeometry>;
+  using pse_type = pse::BivariateOrder8;
   Kokkos::Tuple<Real,13> result;
 
   // compute the velocity contribution from vorticity interaction
@@ -1000,11 +1000,11 @@ struct SWEVorticityDivergenceHeightTendencies {
     const Real f = coriolis.f(xi);
     dzeta(i) = (-coriolis.dfdt(ui) - (zeta(i) + f) * sigma(i))*dt;
     if constexpr (std::is_same<Geo, SphereGeometry>::value) {
-      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi,ui) 
+      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi,ui)
         - ddot(i) - g*laps(i) - SphereGeometry::norm2(ui))*dt;
     }
     else {
-      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi,ui) - ddot(i) - g*laps(i))*dt; 
+      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi,ui) - ddot(i) - g*laps(i))*dt;
     }
     dh(i) = (-sigma(i) * h(i))*dt;
   }
@@ -1070,7 +1070,7 @@ struct SWEVorticityDivergenceAreaTendencies {
     const Real f = coriolis.f(xi);
     dzeta(i) = (-coriolis.dfdt(ui) - (zeta(i) + f) * sigma(i)) * dt;
     if constexpr (std::is_same<Geo,SphereGeometry>::value) {
-      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi, ui) 
+      dsigma(i) = (f*zeta(i) + coriolis.grad_f_cross_u(xi, ui)
         - ddot(i) - g*laps(i) - SphereGeometry::norm2(ui)) * dt;
     }
     else {

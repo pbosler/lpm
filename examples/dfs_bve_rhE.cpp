@@ -82,12 +82,12 @@ void compute_vorticity_error(scalar_view_type vert_err, scalar_view_type face_er
     sph.mesh.n_vertices_host(),
     RelVortError(vert_err,
       sph.abs_vort_passive.view, sph.rel_vort_passive.view,
-      sph.mesh.vertices.phys_crds.view, sph.Omega));
+      sph.mesh.vertices.phys_crds.view, sph.Omega()));
   Kokkos::parallel_for("relative vorticity error (faces)",
     sph.mesh.n_faces_host(),
     RelVortError(face_err,
       sph.abs_vort_active.view, sph.rel_vort_active.view,
-      sph.mesh.faces.phys_crds.view, sph.Omega));
+      sph.mesh.faces.phys_crds.view, sph.Omega()));
 }
 
 int main(int argc, char* argv[]) {
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     const Int gmls_order = input.gmls_order;
     gmls::Params gmls_params(gmls_order);
     // DFS initialization
-    DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, ntracers, gmls_params);
+    DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, gmls_params);
     sphere.init_vorticity(vorticity_fn);
     sphere.init_velocity_from_vorticity();
     logger.info(sphere.info_string());
@@ -183,7 +183,7 @@ int main(int argc, char* argv[]) {
     }
 
     const auto abs_vort_faces = sphere.abs_vort_active.view;
-    const auto OMG = sphere.Omega;
+    const auto OMG = sphere.Omega();
     const auto xyz_faces = sphere.mesh.faces.phys_crds.view;
     Kokkos::View<Real*> rel_vort_faces_exact("rel_vort_faces_exact", sphere.mesh.n_faces_host());
     Kokkos::parallel_for("compute exact rel_vort on LPM faces",
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
 
     ErrNorms rel_vort_err(face_rel_vort_error.view, rel_vort_faces_exact, sphere.mesh.faces.area);
     logger.info("At t = {}, active panel error is:\n\t{}", sphere.t, rel_vort_err.info_string());
-    
+
   }  // Kokkos scope
   /**
     program finalize
