@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ubuntu-latest] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
-        dfs-option: [OFF]#, ON]
+        dfs-option: [OFF, ON]
 
     runs-on: ${{ matrix.os }}
 
@@ -40,15 +40,15 @@ jobs:
       CC: mpicc
       CXX: mpicxx
       FC: mpifort
-      VTK_ROOT: /vtk
+      VTK_ROOT: /lpm-tpl
       KOKKOS_ROOT: /lpm-tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
-      OMP_NUM_THREADS: 16
+      OMP_NUM_THREADS: 4
       OMP_PROC_BIND: spread
       OMP_PLACES: threads
       LPM_INSTALL: /lpm-install
-      CMAKE_BUILD_PARALLEL_LEVEL: 8
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
 
     # Steps for building and running tests.
     steps:

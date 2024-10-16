@@ -62,14 +62,16 @@ namespace SpherePoisson {
      }
 
      // multiply cos(lambda) / sin(lambda)
-     void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, std::string str)
+     void multi_trig(view_2d<Complex> mat, view_2d<Complex> res, Int trigsign)
     {
         Int nrows = mat.extent(0);
         Int ncols = mat.extent(1);
+        Complex val;
+        Complex valb;
 
-        Kokkos::parallel_for("in",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
-            Complex val = (str=="sin") ? Complex(0,0.5) : 0.5;
-            Complex valb = (str=="sin") ? -Complex(0,0.5) : 0.5;
+        val = (trigsign==Sin) ? Complex(0,0.5) :Complex(0.5, 0.0);
+        valb = (trigsign==Sin) ? -Complex(0,0.5) : Complex(0.5, 0.0);
+         Kokkos::parallel_for("copyU",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j) {
             if(j == 0)
             {
                 res(i,j) = valb * mat(i,j);
@@ -147,32 +149,29 @@ namespace SpherePoisson {
             Int nrows = vort.extent(0);
             Int ncols = vort.extent(1);
             view_2d<Complex> tmp("temp", nrows, ncols);
+            view_2d<Complex> tmp_th("temp", nrows, ncols);
+            view_2d<Complex> tmp_lb("temp", nrows, ncols);
             view_2d<Complex> lhs("LHS", nrows, ncols);
             view_2d<Complex> lhs_a("LHS", nrows, ncols);
-
-            Kokkos::parallel_for("differentiate",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {nrows, ncols}), KOKKOS_LAMBDA (const int i, const int j){
-                W(i,j) = vort(i,j);         // we do not want to point to the same memory
-            });
-          
-
-            differentiate(vort, W);
-            multi_cos(W, lhs_a);
-            divide_sin(lhs_a, lhs);
             
+           KokkosBlas::axpby(Complex(1,0.0), vort, Complex(0.0,0.0), W);  
+        
+           differentiate(vort, W);
+           multi_cos(W, lhs_a);
+           divide_sin(lhs_a, lhs);
             
-
             // Compute component u
-            multi_trig(lhs, tmp, "cos");
-            multi_trig(vort, U, "sin");
+             multi_trig(lhs, tmp, 1);    // multi_trig(vort, U, Cos)
+             multi_trig(vort, U, 0);  //  multi_trig(vort, U, Sin)
     
             // u = -lsh_a - u
             KokkosBlas::axpby(alpha, tmp, beta, U);    
             // Compute v
-            multi_trig(lhs, lhs_a, "sin");
-            multi_trig(vort, V, "cos");
+            multi_trig(lhs, lhs_a, 0); // multi_trig(vort, U, Sin)
+            multi_trig(vort, V, 1);    // multi_trig(vort, U, Cos)
             beta = 1.0;
             KokkosBlas::axpby(alpha, lhs_a, beta, V);   
+  
 
         }
-
 }

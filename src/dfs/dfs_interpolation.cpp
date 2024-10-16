@@ -10,23 +10,23 @@ namespace SpherePoisson
      {
         Int N1 = U.extent(0);
         Int N2 = U.extent(1);
-        Int nrows = th.extent(0);
+        Int M = U_X.extent(0);
        
         // rearrange the intput in the form accepted by the finufft library
-        view_1d<Complex> cu("cu", nrows);
+        view_1d<Complex> cu("cu", M);
         view_1d<Complex> uj("uj", N1*N2);
-        view_1d<Complex> cv("cv", nrows);
+        view_1d<Complex> cv("cv", M);
         view_1d<Complex> vj("vj", N1*N2);
-        view_1d<Complex> cw("cw", nrows);
+        view_1d<Complex> cw("cw", M);
         view_1d<Complex> wj("wj", N1*N2);
 
 
         // copy sample coefficients in 1d vectors
-         Kokkos::parallel_for("initialize",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {N1, N2}), KOKKOS_LAMBDA (const int i, const int j) {
+         Kokkos::parallel_for("initialize",  Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {N1, N2}), KOKKOS_LAMBDA (Int i, Int j) {
     
-            uj(i + j * N1) = U(i,j);
-            vj(i + j * N1) = V(i,j);
-            wj(i + j * N1) = W(i,j);
+            uj(i + j*N1) = U(i,j);
+            vj(i + j*N1) = V(i,j);
+            wj(i + j*N1) = W(i,j);
             
         });
 
@@ -34,9 +34,10 @@ namespace SpherePoisson
 
         // step 1: create plan
         int64_t Ns [] = {N1, N2};   // N1, N2 as 64-bit int
-        Int type = 2, dim = 2, ntrans=1, M = nrows;
+        Int type = 2, dim = 2, ntrans=1;
+        
         finufft_plan plan;
-        Int ier = finufft_makeplan(type, dim, Ns, +1, ntrans, 
+        Int ier = finufft_makeplan(type, dim, Ns, 1, ntrans, 
                     1e-15, &plan, NULL);
 
         
@@ -51,19 +52,18 @@ namespace SpherePoisson
         finufft_execute(plan, cu.data(), uj.data());
         finufft_execute(plan, cv.data(), vj.data());
         finufft_execute(plan, cw.data(), wj.data());
-
-        //  step 4: copy the results into a Kokkos::View
-
-        Kokkos::parallel_for(M, KOKKOS_LAMBDA (const int i) {
-            U_X(i,0) = cu(i).real();
-            U_X(i,1) = cv(i).real();
-            U_X(i,2) = cw(i).real();
-        });
-    
-        // step 5: when done, free the memory using the 
-        // and set pointers to NULL
         finufft_destroy(plan);
         
+        //  step 4: copy the results into a Kokkos::View
+        Kokkos::parallel_for(M, KOKKOS_LAMBDA (const Int i) {
+             U_X(i,0) = cu[i].real();
+             U_X(i,1) = cv[i].real();
+             U_X(i,2) = cw[i].real();
+             
+        });
+
+        
+    
      }
 
 

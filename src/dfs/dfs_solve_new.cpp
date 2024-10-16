@@ -5,7 +5,7 @@ namespace SpherePoisson {
      // Thomas algorithm: the tridiagonal solver
      // In our application we expect real RHS and
      template<typename T>
-     void tridiag_solver(view_2d<T> A, view_1d<Complex> d)
+     void tridiag_solver(view_2d<T> A, view_2d<Complex> d, Int k)
      {
         // forward propagation
         Int n = A.extent(0);
@@ -14,18 +14,14 @@ namespace SpherePoisson {
             for(int i=0; i<n-2; i++)
             {
                 T tmp = -A(n-1,i)/A(i,i);
-                //if(i != n-3)
-                //{
-                    A(n-1,n-1) = tmp * A(i, n-1) + A(n-1, n-1);
-                //}
+                A(n-1,n-1) = tmp * A(i, n-1) + A(n-1, n-1);
                 A(n-1, i+1)  = tmp * A(i, i+1) + A(n-1, i+1);
-              //  A(n-1, i+2)  = tmp * A(i, i+2) + A(n-1, i+2);
-                d(n-1) = tmp*d(i) + d(n-1);
+                d(n-1,k) = tmp*d(i,k) + d(n-1,k);
                 A(n-1,i)=0;
 
                 tmp = -A(i+1, i)/A(i,i);
                 A(i+1, i+1) = tmp * A(i, i+1) + A(i+1, i+1);
-                d(i+1) = tmp * d(i) + d(i+1);
+                d(i+1,k) = tmp * d(i,k) + d(i+1,k);
                 A(i+1, i) = 0;
                 A(i+1, n-1) = tmp * A(i, n-1) + A(i+1, n-1);
             }
@@ -33,14 +29,14 @@ namespace SpherePoisson {
             Int jj= n-2;
             T tmp = - A(n-1, jj) / A(jj, jj);
             A(n-1, jj+1) = tmp*A(jj, jj+1) + A(n-1, jj+1);
-            d(n-1) = tmp*d(jj) + d(n-1);
+            d(n-1,k) = tmp*d(jj,k) + d(n-1,k);
             A(n-1, jj) = 0;
 
-            d(n-1) = d(n-1)/A(n-1, n-1);
-            d(n-2) = (d(n-2) - A(n-2,n-1)*d(n-1))/A(n-2, n-2);
+            d(n-1,k) = d(n-1,k)/A(n-1, n-1);
+            d(n-2,k) = (d(n-2,k) - A(n-2,n-1)*d(n-1,k))/A(n-2, n-2);
             for(int i=n-3; i>-1; i--)
             {
-                d(i) = (d(i) - A(i, i+1)*d(i+1) -A(i, n-1)*d(n-1))/A(i,i);
+                d(i,k) = (d(i,k) - A(i, i+1)*d(i+1,k) -A(i, n-1)*d(n-1,k))/A(i,i);
             }
         }
         else    // use the normal Thomas algorithm
@@ -51,19 +47,78 @@ namespace SpherePoisson {
              {
                 w = A(i, i-1)/A(i-1,i-1);
                 A(i,i) = A(i,i) - w * A(i-1,i);
-                d(i) = d(i) - w*d(i-1);
+                d(i,k) = d(i,k) - w*d(i-1,k);
              }
 
             // backward substitution
-            d(n-1) = d(n-1) / A(n-1, n-1);
+            d(n-1,k) = d(n-1,k) / A(n-1, n-1);
             for(int i=n-2; i>-1; i--)
             {
-                d(i) = (d(i) - A(i,i+1)*d(i+1))/A(i,i);
+                d(i,k) = (d(i,k) - A(i,i+1)*d(i+1,k))/A(i,i);
             }
         }
      }
-template void tridiag_solver<Complex>(view_2d<Complex> AA, view_1d<Complex> name);
-template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
+template void tridiag_solver<Complex>(view_2d<Complex> AA, view_2d<Complex> name, Int k);
+template void tridiag_solver<Real>(view_2d<Real> AA, view_2d<Complex> name, Int k);
+
+// Triadiagonal solver 3d
+template<typename T>
+void tridiag_solver_3d(view_3d<T> A, view_2d<Complex> d, Int k)
+{
+    // forward propagation
+    Int n = A.extent(0);
+    if(abs(A(n-1,0, k)) + abs(A(0, n-1, k)) > 0)  // if true use the modified Thomas algorithm
+    {
+        for(int i=0; i<n-2; i++)
+        {
+            T tmp = -A(n-1,i, k)/A(i,i, k);
+            A(n-1,n-1, k) = tmp * A(i, n-1, k) + A(n-1, n-1, k);
+            A(n-1, i+1, k)  = tmp * A(i, i+1, k) + A(n-1, i+1, k);
+            d(n-1,k) = tmp*d(i,k) + d(n-1,k);
+            A(n-1,i, k)=0;
+
+            tmp = -A(i+1, i, k)/A(i,i, k);
+            A(i+1, i+1, k) = tmp * A(i, i+1, k) + A(i+1, i+1, k);
+            d(i+1,k) = tmp * d(i,k) + d(i+1,k);
+            A(i+1, i, k) = 0;
+            A(i+1, n-1, k) = tmp * A(i, n-1, k) + A(i+1, n-1, k);
+        }
+        
+        Int jj= n-2;
+        T tmp = - A(n-1, jj, k) / A(jj, jj, k);
+        A(n-1, jj+1, k) = tmp*A(jj, jj+1, k) + A(n-1, jj+1, k);
+        d(n-1,k) = tmp*d(jj,k) + d(n-1,k);
+        A(n-1, jj, k) = 0;
+
+            d(n-1,k) = d(n-1,k)/A(n-1, n-1,k);
+            d(n-2,k) = (d(n-2,k) - A(n-2,n-1,k)*d(n-1,k))/A(n-2, n-2,k);
+            for(int i=n-3; i>-1; i--)
+            {
+                d(i,k) = (d(i,k) - A(i, i+1,k)*d(i+1,k) -A(i, n-1,k)*d(n-1,k))/A(i,i,k);
+            }
+    }
+    else    // use the normal Thomas algorithm
+    {
+        T w;
+        // forward substitution
+        for(int i=1; i<n; i++)
+        {
+            w = A(i, i-1,k)/A(i-1,i-1,k);
+            A(i,i,k) = A(i,i,k) - w * A(i-1,i,k);
+            d(i,k) = d(i,k) - w*d(i-1,k);
+        }
+
+        // backward substitution
+        d(n-1,k) = d(n-1,k) / A(n-1, n-1,k);
+        for(int i=n-2; i>-1; i--)
+        {
+            d(i,k) = (d(i,k) - A(i,i+1,k)*d(i+1,k))/A(i,i,k);
+        }
+    }
+}
+template void tridiag_solver_3d<Complex>(view_3d<Complex> AA, view_2d<Complex> name, Int k);
+template void tridiag_solver_3d<Real>(view_3d<Real> AA, view_2d<Complex> name, Int k);
+
 
 
  // Prepare matrix Le  for the zero mode when singular
@@ -231,91 +286,98 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
      void solver(view_2d<Real> Le, view_2d<Real> Lo, view_2d<Complex> rhse,  view_2d<Complex> rhso, view_2d<Complex> UU,
     view_1d<Int> io, view_1d<Int> ie, Real Kappa)
      {
+	/* To solve the system LU=F we split both L and F into even 
+	 * odd mode parts. Here rhse and rhso are for even and odd
+	 * modes of F, respectively. Where as Lle and Llo are the even
+	 * modes of L. This decoupling of the equation reduces the
+	 * computation cost of the method by a factor of two.
+	 */
         Int ncols = rhse.extent(1);
         Int nrows = rhse.extent(0);
         Int mid = ncols/2;
 
-        view_2d<Real> Llo_k("Lok", nrows, nrows);
-        view_2d<Real> Lle_k("Lek", nrows, nrows);
-        view_1d<Complex> fo("fo", nrows);
-        view_1d<Complex> fe("fe", nrows);
+        view_3d<Real> Llo("Lok", nrows, nrows, mid);
+        view_3d<Complex> Lle("Lek", nrows, nrows, mid);
+        view_1d<Real> dd("shifts", mid);
+	
+	LPM_ASSERT_MSG( (UU.extent(0) == 2*nrows and UU.extent(1) == ncols), "UU size error");
 
-       
         Kokkos::parallel_for(mid, [=](Int k){
-                Real dd =- pow(double(mid - k),2);
-                
-                for(int i=0; i<nrows; i++)
+            dd(k) =- pow(double(mid - k),2);
+            for(int i=0; i<nrows; i++)
             {
                 for(int j=0; j<nrows; j++)
                 {
-                Llo_k(i,j) = Lo(i,j);
-                Lle_k(i,j) = Le(i,j);
+                    Llo (i,j,k) = Lo(i,j);
+                    Lle(i,j,k) = Le(i,j);
+
                 }
-                Llo_k(i,i) = Llo_k(i,i) + dd;
-                Lle_k(i,i) = Lle_k(i,i) + dd;
-                fe(i) = rhse(i, k);
-                fo(i) = rhso(i, k);
+                Llo(i,i,k) = Llo(i,i,k) + dd(k);
+                Lle(i,i,k) = Lle(i,i,k) + dd(k);
             }
-
-                
-                   
-                    tridiag_solver(Lle_k, fe);  
-                    tridiag_solver(Llo_k, fo);
-
-                
-                // copy to the output array
-        
-                for(int i=0; i<nrows; i++)
-                { 
-                    UU(io(i),k) = fo(i);
-                    UU(ie(i),k) = fe(i);
-                }
+            
+            tridiag_solver_3d(Lle, rhse, k);  
+            tridiag_solver_3d(Llo, rhso, k);
+  
+            // copy to the output array
+            for(int i=0; i<nrows; i++)
+            { 
+                UU(io(i),k) = rhso(i, k);
+                UU(ie(i),k) = rhse(i, k);
+            }
         });
         
         // Solving for the odd zero mode
         view_2d<Real> Lo_k("Lok", nrows, nrows);
         view_2d<Complex> Le_k("Lek", nrows, nrows);
-        //view_1d<Complex> fo("fo", nrows);
-       // view_1d<Complex> fe("fe", nrows);
+        view_1d<Complex> fel("fe", nrows);
         Kokkos::parallel_for(nrows, [=](Int i){
-            
+            if(i !=0){
                 Lo_k(i,i-1) = Lo(i,i-1);
                 Le_k(i,i-1) = Le(i,i-1);
-                
+            }
+            if (i != nrows -1){
                 Lo_k(i,i+1) = Lo(i,i+1);
                 Le_k(i,i+1) = Le(i,i+1);
-    
-                Lo_k(i,i) = Lo(i,i); 
-                Le_k(i,i) = Le(i,i);
+            }
+            
+            Lo_k(i,i) = Lo(i,i); 
+            Le_k(i,i) = Le(i,i);
 
-                fe(i) = rhse(i,mid);
-                fo(i) = rhso(i,mid);
+            fel(i) = rhse(i,mid);
 
      });
 
     Lo_k(0,nrows-1) = Lo(0,nrows-1);
     Lo_k(nrows-1,0) = Lo(nrows-1,0);
-    tridiag_solver(Lo_k, fo);
+    tridiag_solver(Lo_k, rhso, mid);
     
     Le_k(0,nrows-1) = Le(0,nrows-1);
     Le_k(nrows-1,0) = Le(nrows-1,0);
-        
+
+      
      if(Kappa == 0 )
     {
         // Use the integral constraint to regularize
-        special_solver(Le_k, fe, ie);
+        special_solver(Le_k, fel, ie);
        
-
      }
      else
      {
-        tridiag_solver(Le_k, fe);
+        tridiag_solver(Le_k, rhse, mid);
      }
     
     // Update UU for the zero mode
     Kokkos::parallel_for("solves", nrows, KOKKOS_LAMBDA(const Int i){
-            UU(io(i), mid) = fo(i);
-            UU(ie(i), mid) = fe(i);
+            UU(io(i), mid) = rhso(i,mid);
+            if (Kappa == 0)
+            {
+            UU(ie(i), mid) = fel(i);
+            }
+            else
+            {
+                UU(ie(i), mid) = rhse(i, mid);
+            }
         
         });
 
@@ -331,8 +393,7 @@ template void tridiag_solver<Real>(view_2d<Real> AA, view_1d<Complex> name);
     
     });
 
-
-
 }
+
 
 }

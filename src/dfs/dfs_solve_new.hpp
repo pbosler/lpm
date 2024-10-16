@@ -4,14 +4,18 @@
 
 #include "KokkosBlas.hpp"
 #include "dfs_config.hpp"
-
+#include "lpm_assert.hpp" 
 
 namespace SpherePoisson {
     // Thomas algorithm: the tridiagonal solver
      // In our application we expect real RHS and
      // Complex left handside
     template<typename T>
-    void tridiag_solver(view_2d<T> A, view_1d<Complex> d);
+    void tridiag_solver(view_2d<T> A, view_2d<Complex> d, Int k);
+
+    // the triadiagonal solver when we have a stuck of two-dimensional arrays
+    template<typename T>
+    void tridiag_solver_3d(view_3d<T> A, view_2d<Complex> d, Int k);
 
     // Fixes the singularity in rhse when K=0 (Poisson) for even zero mode
     // It also rearange the matrix Le so that the dense row is
