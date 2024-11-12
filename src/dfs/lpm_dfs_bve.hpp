@@ -7,8 +7,8 @@
 #include "lpm_compadre.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_coriolis.hpp"
+#include "dfs/lpm_compadre_dfs_remesh.hpp"
 #include "dfs/lpm_dfs_grid.hpp"
-#include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
@@ -169,6 +169,8 @@ class DFSBVE {
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
 
+    void sync_solver_views();
+
 #ifdef LPM_USE_VTK
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
 
@@ -189,7 +191,7 @@ class DFSBVE {
 #endif
 
 template <typename SeedType>
-CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
+CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
 
 } // namespace DFS
 } // namespace Lpm

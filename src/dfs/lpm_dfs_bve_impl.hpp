@@ -5,6 +5,7 @@
 #include "lpm_field_impl.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
+#include "mesh/lpm_compadre_remesh_impl.hpp"
 #include "util/lpm_string_util.hpp"
 #include "lpm_velocity_gallery.hpp"
 
@@ -256,6 +257,21 @@ Int DFSBVE<SeedType>::n_tracers() const {
   return tracer_active.size();
 }
 
+template <typename SeedType>
+void DFSBVE<SeedType>::sync_solver_views() {
+  const std::map<std::string, ScalarField<VertexField>> passive_scalar_map = {
+    {"relative_vorticity", rel_vort_passive}};
+  const std::map<std::string, ScalarField<FaceField>> active_scalar_map = {
+    {"relative_vorticity", rel_vort_active}};
+  const std::map<std::string, VectorField<SphereGeometry,VertexField>> passive_vector_map = {
+    {"velocity", velocity_passive}};
+  const std::map<std::string, VectorField<SphereGeometry, FaceField>> active_vector_map = {
+    {"velocity", velocity_active}};
+
+  gathered_mesh->gather_scalar_fields(passive_scalar_map, active_scalar_map);
+  gathered_mesh->gather_vector_fields(passive_vector_map, active_vector_map);
+}
+
 template <typename SeedType> template <typename TracerType>
 void DFSBVE<SeedType>::init_tracer(const TracerType& tracer, const std::string& tname) {
   static_assert(std::is_same<SphereGeometry, typename TracerType::geo>::value, "geometry types must match.");
@@ -300,14 +316,6 @@ void DFSBVE<SeedType>::interpolate_vorticity_from_mesh_to_grid(ScalarField<Verte
 
 template <typename SeedType>
 void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
-  // pb->mc:
-  // 1. add your code to the src/dfs/ folder
-  //            and update lpm/src/CMakeLists.txt to build your code.
-  // 2. Then make sure this function works by adding it to lpm/tests/lpm_dfs_bve_test.cpp
-  // 3. Compute the error on the particles: Add a scalar field to the test
-  //      for each set of particles (active and passive).   Look at src/lpm_error.hpp;
-  //      Just give it the exact velocity and the interpolated velocity, and it will do the rest.
-  // 4. Output the velocity to vtk with lpm/tests/dfs_bve_test.cpp
   const auto rel_vort_dfs = rel_vort_grid.view;
   auto velocity_out = gathered_mesh->vector_fields.at("velocity");
   dfs_vort_2_velocity(gathered_mesh->phys_crds, rel_vort_dfs, velocity_out);
@@ -415,18 +423,20 @@ template <typename SeedType>
 #endif
 
 template <typename SeedType>
-CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params) {
+CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params) {
   using passive_scalar_field_map = std::map<std::string, ScalarField<VertexField>>;
   using active_scalar_field_map = std::map<std::string, ScalarField<FaceField>>;
   using passive_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, VertexField>>;
   using active_vector_field_map = std::map<std::string, VectorField<typename SeedType::geo, FaceField>>;
+  using grid_scalar_field_map = std::map<std::string, Lpm::DFS::scalar_field_type>;
+  using grid_vector_field_map = std::map<std::string, Lpm::DFS::vector_field_type>;
 
   Kokkos::deep_copy(new_dfs_bve.ref_crds_passive.view, new_dfs_bve.mesh.vertices.phys_crds.view);
   Kokkos::deep_copy(new_dfs_bve.ref_crds_active.view, new_dfs_bve.mesh.faces.phys_crds.view);
   new_dfs_bve.t_ref = old_dfs_bve.t;
 
   /**
-    Interpolate particle data from old particles to new particles
+    set up interpolation of particle data from old particles to new particles
   */
   passive_scalar_field_map passive_scalars_old;
   passive_scalars_old.emplace("relative_vorticity", old_dfs_bve.rel_vort_passive);
@@ -459,6 +469,14 @@ CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DF
     active_scalars_new.emplace(t.first, t.second);
   }
 
+  grid_scalar_field_map grid_scalars_new;
+  grid_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_grid);
+  grid_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_grid);
+  grid_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_grid);
+
+  grid_vector_field_map grid_vectors_new;
+  grid_vectors_new.emplace("velocity", new_dfs_bve.velocity_grid);
+
   passive_vector_field_map passive_vectors_old;
   passive_vectors_old.emplace("velocity", old_dfs_bve.velocity_passive);
 
@@ -471,11 +489,14 @@ CompadreRemesh<SeedType> compadre_remesh(DFSBVE<SeedType>& new_dfs_bve, const DF
   active_vector_field_map active_vectors_new;
   active_vectors_new.emplace("velocity", new_dfs_bve.velocity_active);
 
-  return CompadreRemesh<SeedType>(new_dfs_bve.mesh,
+  return CompadreDfsRemesh<SeedType>(new_dfs_bve.mesh,
     passive_scalars_new,
     active_scalars_new,
+    grid_scalars_new,
     passive_vectors_new,
     active_vectors_new,
+    grid_vectors_new,
+    new_dfs_bve.grid_crds,
     old_dfs_bve.mesh,
     passive_scalars_old,
     active_scalars_old,

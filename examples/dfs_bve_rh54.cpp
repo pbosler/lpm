@@ -3,6 +3,8 @@
 #include "lpm_constants.hpp"
 #include "lpm_compadre.hpp"
 #include "lpm_coriolis.hpp"
+#include "dfs/lpm_compadre_dfs_remesh.hpp"
+#include "dfs/lpm_compadre_dfs_remesh_impl.hpp"
 #include "dfs/lpm_dfs_bve.hpp"
 #include "dfs/lpm_dfs_bve_impl.hpp"
 #include "dfs/lpm_dfs_bve_solver.hpp"
@@ -16,8 +18,6 @@
 #include "lpm_tracer_gallery.hpp"
 #include "lpm_velocity_gallery.hpp"
 #include "lpm_vorticity_gallery.hpp"
-#include "mesh/lpm_compadre_remesh.hpp"
-#include "mesh/lpm_compadre_remesh_impl.hpp"
 #include "mesh/lpm_ftle.hpp"
 #include "util/lpm_matlab_io.hpp"
 #include "util/lpm_string_util.hpp"
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
-  Logger<> logger("dfs_bve_rh54", Log::level::info, comm);
+  Logger<> logger("dfs_bve_rh54", Log::level::debug, comm);
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
@@ -213,18 +213,7 @@ int main(int argc, char* argv[]) {
     Real tref = 0;
     Real max_ftle = 0;
     for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-      logger.debug("stepping time 1: idx {}", t_idx);
-      sphere->advance_timestep(*solver);
-      logger.debug("stepping time 2: idx {}", solver->t_idx);
-      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-        ComputeFTLE<SeedType>(sphere->ftle.view,
-          sphere->mesh.vertices.phys_crds.view,
-          sphere->ref_crds_passive.view,
-          sphere->mesh.faces.phys_crds.view,
-          sphere->ref_crds_active.view,
-          sphere->mesh.faces.verts,
-          sphere->mesh.faces.mask,
-          sphere->t - sphere->t_ref));
+
       max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
       logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
@@ -244,23 +233,71 @@ int main(int argc, char* argv[]) {
         new_sphere->allocate_tracer(lat0);
         new_sphere->t = sphere->t;
 
-        auto remesh = compadre_remesh(*new_sphere, *sphere, gmls_params);
+        auto remesh = compadre_dfs_remesh(*new_sphere, *sphere, gmls_params);
         if (amr) {
           logger.error("AMR not yet implemented for DFS; skipping remesh step.");
         }
         else {
           if (remesh_strategy == "direct") {
-            remesh.uniform_direct_remesh();
+            remesh.uniform_direct_remesh(); // replace with a custom method
+            /**
+              uniform_direct_remesh(new_sphere, sphere); // rely on deep copies, rather than cute pointer/view stuff.
+            */
           }
           else {
-            remesh.uniform_indirect_remesh(vorticity, coriolis, lat0);
+            logger.error("indirect remesh not implemented for DFS; skipping remesh step.");
           }
         }
+        logger.info(remesh.info_string());
+
+        {
+          auto rel_vort_grid_range = sphere->rel_vort_grid.range(sphere->grid.size());
+          logger.debug("before remesh: sphere rel_vort_grid_range min = {} sphere rel_vort_grid_range max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
+          rel_vort_grid_range = new_sphere->rel_vort_grid.range(new_sphere->grid.size());
+          logger.debug("after remesh: new sphere rel_vort_grid min = {}, new sphere rel vort grid max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
+        }
+        {
+          /** output initial conditions to mesh/grid files */
+          auto vtk_mesh = vtk_mesh_interface(*sphere);
+          auto vtk_grid = vtk_grid_interface(*sphere);
+          std::string mesh_vtk_file = "pre_remesh" + zero_fill_str(rm_counter) + vtp_suffix();
+          std::string grid_vtk_file = "pre_remesh" + zero_fill_str(rm_counter) + vts_suffix();
+          vtk_mesh.write(mesh_vtk_file);
+          vtk_grid.write(grid_vtk_file);
+          }
+          {
+          auto vtk_mesh = vtk_mesh_interface(*new_sphere);
+          auto vtk_grid = vtk_grid_interface(*new_sphere);
+          std::string mesh_vtk_file = "post_remesh" + zero_fill_str(rm_counter) + vtp_suffix();
+          std::string grid_vtk_file = "post_remesh" + zero_fill_str(rm_counter) + vts_suffix();
+          vtk_mesh.write(mesh_vtk_file);
+          vtk_grid.write(grid_vtk_file);
+        }
+
         tref = sphere->t;
         sphere = std::move(new_sphere);
+        sphere->sync_solver_views();
+        if (do_remesh) {
+          auto rel_vort_grid_range = sphere->rel_vort_grid.range(sphere->grid.size());
+          logger.debug("after pointer reset: sphere rel_vort_grid min = {}, sphere rel vort grid max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
+        }
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
+
       }
+
+      logger.debug("stepping time 1: idx {}", t_idx);
+      sphere->advance_timestep(*solver);
+      logger.debug("stepping time 2: idx {}", solver->t_idx);
+      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+        ComputeFTLE<SeedType>(sphere->ftle.view,
+          sphere->mesh.vertices.phys_crds.view,
+          sphere->ref_crds_passive.view,
+          sphere->mesh.faces.phys_crds.view,
+          sphere->ref_crds_active.view,
+          sphere->mesh.faces.verts,
+          sphere->mesh.faces.mask,
+          sphere->t - sphere->t_ref));
 
       time[t_idx+1] = (t_idx+1) * dt;
       ftle_max[t_idx+1] = max_ftle;
@@ -277,8 +314,8 @@ int main(int argc, char* argv[]) {
         vtk_grid.write(grid_vtk_file);
         ++vtk_counter;
       }
-
-      logger.info("t = {}", (t_idx+1)*dt);
+      const auto rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.vertices.nh());
+      logger.info("t = {}, rel. vort passive range : ({}, {})", (t_idx+1)*dt, rel_vort_range.first, rel_vort_range.second);
     }
     const std::string matlab_file = ofile_root + ".m";
     std::ofstream ofile(matlab_file);
