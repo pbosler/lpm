@@ -111,25 +111,6 @@ CompadreDfsRemesh<SeedType>::CompadreDfsRemesh(PolyMesh2d<SeedType>& new_mesh,
       logger = lpm_logger();
     }
 
-// #ifndef NDEBUG
-{
-    logger->debug("CompadreDfsRemesh constructor:\n");
-    std::ostringstream ss;
-    typename Kokkos::MinMax<Real>::value_type min_max;
-    for (const auto& sf: old_vert_scalars) {
-      auto vals = sf.second;
-
-      Kokkos::parallel_reduce(old_mesh.vertices.n(), KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
-        if (vals(i) < mm.min_val) mm.min_val = vals(i);
-        if (vals(i) > mm.max_val) mm.max_val = vals(i);
-      }, Kokkos::MinMax<Real>(min_max));
-      ss << sf.first << " (min, max) = (" << min_max.min_val << ", " << min_max.max_val << ") ";
-    }
-    ss << "\n";
-    logger->debug(ss.str());
-}
-// #endif
-
     old_gather = std::make_unique<GatherMeshData<SeedType>>(old_mesh);
     old_gather->unpack_coordinates();
     old_gather->init_scalar_fields(old_vert_scalars, old_face_scalars);
@@ -328,8 +309,6 @@ void CompadreDfsRemesh<SeedType>::uniform_direct_remesh() {
       KOKKOS_LAMBDA (const Index i, Real& m) {
         if (abs(src_data(i)) > m ) m = abs(src_data(i));
       }, Kokkos::Max<Real>(src_max));
-    logger->debug("src data {} max = {}", scalar_field.first, src_max);
-    logger->debug("new {} max = {}", scalar_field.first, new_max);
 
     Kokkos::deep_copy(scalar_field.second.view, new_view);
   }

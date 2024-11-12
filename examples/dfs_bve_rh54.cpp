@@ -250,45 +250,17 @@ int main(int argc, char* argv[]) {
         }
         logger.info(remesh.info_string());
 
-        {
-          auto rel_vort_grid_range = sphere->rel_vort_grid.range(sphere->grid.size());
-          logger.debug("before remesh: sphere rel_vort_grid_range min = {} sphere rel_vort_grid_range max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
-          rel_vort_grid_range = new_sphere->rel_vort_grid.range(new_sphere->grid.size());
-          logger.debug("after remesh: new sphere rel_vort_grid min = {}, new sphere rel vort grid max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
-        }
-        {
-          /** output initial conditions to mesh/grid files */
-          auto vtk_mesh = vtk_mesh_interface(*sphere);
-          auto vtk_grid = vtk_grid_interface(*sphere);
-          std::string mesh_vtk_file = "pre_remesh" + zero_fill_str(rm_counter) + vtp_suffix();
-          std::string grid_vtk_file = "pre_remesh" + zero_fill_str(rm_counter) + vts_suffix();
-          vtk_mesh.write(mesh_vtk_file);
-          vtk_grid.write(grid_vtk_file);
-          }
-          {
-          auto vtk_mesh = vtk_mesh_interface(*new_sphere);
-          auto vtk_grid = vtk_grid_interface(*new_sphere);
-          std::string mesh_vtk_file = "post_remesh" + zero_fill_str(rm_counter) + vtp_suffix();
-          std::string grid_vtk_file = "post_remesh" + zero_fill_str(rm_counter) + vts_suffix();
-          vtk_mesh.write(mesh_vtk_file);
-          vtk_grid.write(grid_vtk_file);
-        }
-
         tref = sphere->t;
         sphere = std::move(new_sphere);
         sphere->sync_solver_views();
-        if (do_remesh) {
-          auto rel_vort_grid_range = sphere->rel_vort_grid.range(sphere->grid.size());
-          logger.debug("after pointer reset: sphere rel_vort_grid min = {}, sphere rel vort grid max = {}", rel_vort_grid_range.first, rel_vort_grid_range.second);
-        }
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
 
       }
 
-      logger.debug("stepping time 1: idx {}", t_idx);
+
       sphere->advance_timestep(*solver);
-      logger.debug("stepping time 2: idx {}", solver->t_idx);
+
       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
         ComputeFTLE<SeedType>(sphere->ftle.view,
           sphere->mesh.vertices.phys_crds.view,
