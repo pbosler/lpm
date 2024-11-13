@@ -17,9 +17,15 @@ struct PSEKernel {
   static constexpr Int ndim = Geo::ndim;
 
   KOKKOS_INLINE_FUNCTION
-  static Real epsilon(const Real dx, const Real p = 11.0 / 20) {
+  static Real get_epsilon(const Real dx, const Real p = 11.0 / 20) {
     LPM_KERNEL_ASSERT(p < 1);
     return pow(dx, p);
+  }
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION
+  static Real kernel_input(const CV& x, const Real eps) {
+    return Geo::mag(x)/eps;
   }
 
   template <typename CV, typename CV2>
@@ -29,10 +35,14 @@ struct PSEKernel {
   }
 };
 
-template <typename Geo>
-struct BivariateOrder8 : public PSEKernel<Geo> {
-  typedef Geo geo;
-  static constexpr Int ndim = 2;
+struct BivariateOrder8 {
+  using geo = PlaneGeometry;
+  static constexpr Int ndim = geo::ndim;
+
+  template <typename VecType1, typename VecType2> KOKKOS_INLINE_FUNCTION
+  static Real kernel_input(const VecType1& x1, const VecType2& x2, const Real& eps) {
+    return PSEKernel<geo>::kernel_input(x1, x2, eps);
+  }
 
   KOKKOS_INLINE_FUNCTION
   static Real delta(const Real r) {
@@ -43,11 +53,57 @@ struct BivariateOrder8 : public PSEKernel<Geo> {
   }
 
   KOKKOS_INLINE_FUNCTION
+  static Real first_derivative(const Real xi, const Real r) {
+    const Real rsq = square(r);
+    const Real pre_fac = 20 * (rsq - 1) - 5 * square(rsq) + rsq*square(rsq)/3;
+    const Real exp_fac = xi * exp(-rsq) / constants::PI;
+    return pre_fac * exp_fac;
+  }
+
+  KOKKOS_INLINE_FUNCTION
   static Real laplacian(const Real r) {
     const Real rsq = square(r);
     const Real exp_fac = exp(-rsq) / constants::PI;
     const Real pre_fac =
         40 * (1 - rsq) + 10 * square(rsq) - 2 * rsq * square(rsq) / 3;
+    return pre_fac * exp_fac;
+  }
+};
+
+template <typename Geo>
+struct BivariateOrder2 {
+  using geo = PlaneGeometry;
+  static constexpr Int ndim = geo::ndim;
+
+  KOKKOS_INLINE_FUNCTION
+  static Real delta(const Real r) {
+    const Real rsq = square(r);
+    const Real exp_fac = exp(-rsq) / constants::PI;
+    const Real pre_fac = 1;
+    return pre_fac * exp_fac;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real first_derivative(const Real xi, const Real r) {
+    const Real rsq = square(r);
+    const Real exp_fac = xi * exp(-rsq) / constants::PI;
+    const Real pre_fac = -2;
+    return pre_fac * exp_fac;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real left_first_derivative(const Real xi, const Real r) {
+    const Real rsq = square(r);
+    const Real exp_fac = xi * exp(-rsq) / constants::PI;
+    const Real pre_fac = -20 + 8 * rsq;
+    return pre_fac * exp_fac;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real laplacian(const Real r) {
+    const Real rsq = square(r);
+    const Real exp_fac = exp(-rsq) / constants::PI;
+    const Real pre_fac = 4;
     return pre_fac * exp_fac;
   }
 };
@@ -83,12 +139,12 @@ struct DeltaReducer {
     const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
     if constexpr (std::is_same<geo, SphereGeometry>::value) {
       if (geo::dot(mtgt, msrc) > 0) {
-        const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+        const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
         val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
       }
     }
     else {
-      const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+      const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
       val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
   //            (ndim == 2 ? square(epsilon) : cube(epsilon));
     }
@@ -128,7 +184,7 @@ struct LaplacianReducer {
   void operator()(const Index j, Real& val) const {
     const auto mtgt = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
     const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
-    const auto rscaled = PSEKind::kernel_input(mtgt, msrc, epsilon);
+    const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
     if constexpr (std::is_same<geo, SphereGeometry>::value) {
       if (geo::dot(mtgt, msrc) > 0) {
         const auto kern =
