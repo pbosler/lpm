@@ -1,6 +1,7 @@
 #include "lpm_kokkos_defs.hpp"
 #include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "mesh/lpm_polymesh2d_parameters_impl.hpp"
 #include "mesh/lpm_vertices_impl.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"

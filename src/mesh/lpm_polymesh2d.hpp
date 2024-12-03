@@ -7,6 +7,7 @@
 #include "mesh/lpm_edges.hpp"
 #include "mesh/lpm_faces.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
+#include "mesh/lpm_polymesh2d_parameters.hpp"
 #include "mesh/lpm_vertices.hpp"
 #include "util/lpm_floating_point.hpp"
 
@@ -24,54 +25,6 @@
 #include <memory>
 
 namespace Lpm {
-
-/** @brief Parameters that define a mesh and its memory requirements
-    for initialization.
-
-  @param depth initial depth of mesh quadtree, uniform resolution
-  @param r radius of initial mesh in physical space
-  @param amr values > 0 allocate additional memory for adaptive refinement
-*/
-template <typename SeedType>
-struct PolyMeshParameters {
-  Index nmaxverts;  /// max number of vertices to allocate in memory
-  Index nmaxedges;  /// max number of edges to allocate in memory
-  Index nmaxfaces;  /// max number of faces to allocated in memory
-  Int init_depth;   /// initial depth of mesh quadtree
-  Real radius;      /// radius of initial mesh in physical space
-  Int amr_limit;    /// maximum number of times a panel may be refined beyond its initial depth
-  Int amr_buffer;    /// if > 0, the allocated memory includes space for adaptive
-                    /// refinement
-  MeshSeed<SeedType> seed;  /// instance of the MeshSeed that initializes the
-                            /// particles and panels
-
-  PolyMeshParameters() = default;
-
-  PolyMeshParameters(const PolyMeshParameters& other) = default;
-
-  /** Use this constructor when memory allocations have been determined elsewhere.
-  */
-  PolyMeshParameters(const Index nmv, const Index nme, const Index nmf)
-      : nmaxverts(nmv),
-        nmaxedges(nme),
-        nmaxfaces(nmf),
-        init_depth(0),
-        radius(1),
-        amr_limit(0),
-        amr_buffer(0) {}
-
-  /** @brief Primary constructor.
-
-    @param [in] depth Initial uniform depth of mesh quadtree
-    @param [in] r radius Radius in R3 or R2 of mesh's maximum extent
-    @param [in] amr Memory allocations will yield enough space for each face to be divided (depth + amr) times;
-      hence, any amr computation requires amr > 0.
-  */
-  PolyMeshParameters(const Int depth, const Real r = 1, const Int amr_buff = 0, const Int amr_lim = 0)
-      : init_depth(depth), amr_buffer(amr_buff), amr_limit(amr_lim), seed(r) {
-    seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr_buff);
-  }
-};
 
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
 

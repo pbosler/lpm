@@ -40,6 +40,7 @@ set(LPM_SOURCES
                 mesh/lpm_gather_mesh_data.cpp
                 mesh/lpm_mesh_seed.cpp
                 mesh/lpm_polymesh2d.cpp
+                mesh/lpm_polymesh_parameters.cpp
                 mesh/lpm_scatter_mesh_data.cpp
                 mesh/lpm_vertices.cpp
                 tree/lpm_box3d.cpp
@@ -126,6 +127,8 @@ set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
               mesh/lpm_mesh_seed.hpp
               mesh/lpm_polymesh2d.hpp
               mesh/lpm_polymesh2d_impl.hpp
+              mesh/lpm_polymesh2d_parameters.hpp
+              mesh/lpm_polymesh2d_parameters_impl.hpp
               mesh/lpm_refinement_flags.hpp
               mesh/lpm_scatter_mesh_data.hpp
               mesh/lpm_scatter_mesh_data_impl.hpp
