@@ -328,6 +328,25 @@ void CompadreDfsRemesh<SeedType>::uniform_direct_remesh() {
   logger->debug("uniform direct remesh complete");
 }
 
+template <typename SeedType> template <typename FlagType>
+void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType& flag) {
+  uniform_direct_remesh();
+  Index face_start_idx = 0;
+  for (int i=0; i<new_mesh.params.amr_limit; ++i) {
+    const Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag);
+    new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+    new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+    new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+    new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+    new_gather->update_host();
+
+    mesh_neighborhoods = gmls::Neighborhoods(old_gather->h_phys_crds, new_gather->h_phys_crds,
+      gmls_params);
+  }
+}
 
 } // namespace DFS
 } // namespace Lpm

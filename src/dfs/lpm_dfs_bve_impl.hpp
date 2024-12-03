@@ -48,6 +48,16 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   grid_crds.update_host();
   grid_area = grid.weights_view();
 
+  if (not mesh_params.is_adaptive()) {
+    mesh_ready = true;
+    init_mesh_grid_coupling();
+  }
+}
+
+template <typename SeedType>
+void DFSBVE<SeedType>::init_mesh_grid_coupling() {
+  LPM_REQUIRE_MSG(mesh_ready, "DFSBVE error: mesh must be ready before grid coupling can proceed.");
+
   gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
   scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
 
@@ -64,6 +74,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
 
   Kokkos::deep_copy(ref_crds_passive.view, mesh.vertices.phys_crds.view);
   Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
+  gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 }
 
 template <typename SeedType> template <typename VorticityInitialCondition>
@@ -102,8 +113,6 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
     zeta_grid(i) = zeta;
     omega_grid(i) = zeta + coriolis.f(mxyz);
   });
-
-  gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 };
 
 template <typename SeedType>

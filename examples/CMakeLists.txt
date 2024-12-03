@@ -140,6 +140,9 @@ if (LPM_ENABLE_DFS)
   target_link_libraries(dfs_bve_rhR PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
   target_include_directories(dfs_bve_rhR PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
 
+  add_executable(dfs_polar_vortex dfs_polar_vortex.cpp)
+  target_link_libraries(dfs_polar_vortex PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+  target_include_directories(dfs_polar_vortex PUBLIC ${LPM_INCLUDE_DIRS} ${VTK_INCLUDE_DIRS} ${lpmtest_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_test(NAME dfs_bve_rh54 COMMAND dfs_bve_rh54 -d 2 -nl 10 -dt 0.05 -tf 0.05)
 add_test(NAME dfs_bve_rh54_remesh COMMAND dfs_bve_rh54 -d2 -nl 10 -dt 0.05 -tf 0.1 -rm 1)

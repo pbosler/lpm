@@ -15,16 +15,6 @@ Coords<SphereGeometry> DFSGrid::init_coords() const {
 }
 
 void DFSGrid::fill_packed_view(view_type& view) const {
-
-//     auto h_view = Kokkos::create_mirror_view(view);
-//     for (Int i=0; i<nlat; ++i) {
-//       for (Int j=0; j<nlon; ++j) {
-//         const Int idx = i * nlon + j;
-//         auto mxyz = Kokkos::subview(h_view, idx, Kokkos::ALL);
-//         sph2xyz(mxyz, i, j);
-//       }
-//     }
-//     Kokkos::deep_copy(view, h_view);
     const auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{nlat,nlon});
     Kokkos::parallel_for("DfsGridCoords", policy,
       KOKKOS_LAMBDA (const Index i, const Index j) {

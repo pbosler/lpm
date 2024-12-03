@@ -6,6 +6,7 @@
 
 #include "Kokkos_Core.hpp"
 #include "LpmConfig.h"
+#include "lpm_coriolis.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 #include "util/lpm_floating_point.hpp"
@@ -145,6 +146,161 @@ struct RossbyHaurwitz54 {
   }
 };
 
+
+/**  This functor implements vorticity and forcing similar to those defined in the
+Juckes & McIntyre 1987 Nature article, "A high-resolution one-layer model of breaking
+planetary waves in the stratosphere."
+
+  Initial vorticity is a Gaussian centered at the north pole.
+*/
+struct JuckesMcIntyre87 {
+  typedef SphereGeometry geo;
+  Real F0; // maximum forcing amplitude
+  Real tp; // duration of forcing transition from zero to maximum amplitude
+  Real tf; // final time of forcing
+  Real beta; // shape parameter of vorticity
+  Real theta1; // central latitude of forcing function
+  Real background_constant; // constant to ensure total integral is zero
+
+  JuckesMcIntyre87(const Real F0=2*0.6*constants::PI,
+    const Real tp = 4,
+    const Real tf = 15,
+    const Real beta = 2,
+    const Real theta0 = constants::PI/2,
+    const Real theta1 = constants::PI/3) :
+    F0(F0), tp(tp), tf(tf), beta(beta), theta1(theta1),
+    background_constant((1-exp(-2*square(beta)))*constants::PI/(4*square(beta))) {
+      LPM_KERNEL_ASSERT(F0 >= 0);
+      LPM_KERNEL_ASSERT(tp > 0);
+      LPM_KERNEL_ASSERT(tf > tp);
+      LPM_KERNEL_ASSERT(beta > 1);
+      LPM_KERNEL_ASSERT(theta0 > 0);
+      LPM_KERNEL_ASSERT(theta1 > 0);
+    }
+
+  /** @brief time component of forcing
+
+    Ramps up from 0 to maximum during 0 to t=tp.
+    Stays at maximum from t=tp to t=tf-tp.
+    Ramps down from maximum to 0 during t=tf-tp to t=tf.
+    0 otherwise.
+
+    @param t time (days)
+    @return amplitude
+  */
+  KOKKOS_INLINE_FUNCTION
+  Real a(const Real t) const {
+    Real result = 0;
+    if (t < tf) {
+      if (t < tp) {
+        result = 0.5*(1-cos(constants::PI * t/tp));
+      }
+      else if (t >= tp and t < tf-tp) {
+        result = 1.0;
+      }
+      else {
+        result = 0.5*(1 - cos(constants::PI * (t-(tf-tp))/tp + constants::PI));
+      }
+    }
+    return result;
+  }
+
+  /** @brief time derivative of time component
+
+    @param t time (days)
+    @return da/dt
+  */
+  KOKKOS_INLINE_FUNCTION
+  Real aprime(const Real t) const {
+    Real result = 0;
+    if (t < tf) {
+      if (t < tp) {
+        result = 0.5*constants::PI / tp * sin(constants::PI * t/tp);
+      }
+      else if (t > tf - tp) {
+        result = 0.5*constants::PI / tp * sin(constants::PI * (t-(tf-tp))/tp + constants::PI);
+      }
+    }
+    return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  void set_background_const(const Real vorticity_sum) {
+    background_constant = vorticity_sum / (4 * constants::PI );
+  }
+
+  /** @brief space component of forcing
+
+    @param theta latitude
+    @return b
+  */
+  KOKKOS_INLINE_FUNCTION
+  Real b(const Real theta) const {
+    Real result = 0;
+    if (theta > 0) {
+      const Real tan_ratio = square(tan(theta1)) / square(tan(theta));
+      result = tan_ratio * exp(1-tan_ratio);
+    }
+    return result;
+  }
+
+  /** unused. required by interface.
+  */
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const Real& x, const Real& y) const {return 0;}
+
+  /** @brief relative vorticity at t>0.
+
+    computes relative vorticity from the materially conserved potential vorticity.
+
+    @param xyz position
+    @param potential_vorticity Q = zeta + f + F, where f is coriolis and F is forcing
+    @param t time (days)
+    @param coriolis
+    @return zeta
+  */
+  template <typename XType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const XType& xyz, const Real& potential_vorticity, const Real& t, const CoriolisSphere& coriolis) const {
+    return potential_vorticity - coriolis.f(xyz) - forcing(xyz[0], xyz[1], xyz[2], t);
+  }
+
+  /** @brief relative vorticity at time 0.
+
+    A zonal jet centered at latitude theta0.
+  */
+  template <typename XType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const XType& xyz) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real coeff = constants::PI / 2;
+    const Real arg = -square(beta)*(1-sin(theta));
+    return coeff * exp(arg) - background_constant;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y, const Real& z) const {
+    Real xyz[3] = {x, y, z};
+    return this->operator()(xyz);
+  }
+
+  /** @brief  The forcing function from Juckes & McIntyre's 1987 (Nature) article
+  describing polar vortex breakdown.
+  */
+  template <typename XType> KOKKOS_INLINE_FUNCTION
+  Real forcing(const XType& xyz, const Real& t) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    return F0 * a(t) * b(theta) * cos(lambda);
+  }
+
+  /** @brief time derivative of forcing
+  */
+  template <typename XType> KOKKOS_INLINE_FUNCTION
+  Real dforcing_dt(const XType& xyz, const Real& t) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    return F0*aprime(t)*b(theta) * cos(lambda);
+  }
+};
 
 //
 struct RossbyHaurwitzR {

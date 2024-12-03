@@ -28,8 +28,8 @@ template <typename SeedType> class DFSRK4;
 template <typename SeedType> class DFSRK3;
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
 
-  Advection and vorticity are computed on Lagrangian particles.
-  Velocity is solved on a uniform colatitude-longitude grid with
+  Advection and vorticity are computed on a Lagrangian particle/panel *mesh*.
+  Velocity is solved on a uniform colatitude-longitude *grid* with
   double Fourier series (DFS) methods.
 */
 template <typename SeedType>
@@ -119,7 +119,8 @@ class DFSBVE {
 
     void update_mesh_to_grid_neighborhoods();
 
-
+    // true if particle/panel mesh is ready for simulation.
+    bool mesh_ready;
 
   public:
     /** Constructor.
@@ -140,6 +141,8 @@ class DFSBVE {
     void init_velocity(const VelocityType& vel_fn);
 
     void init_velocity_from_vorticity();
+
+    void init_mesh_grid_coupling();
 
     Index grid_size() const {return grid.size();}
 
@@ -170,6 +173,8 @@ class DFSBVE {
     void advance_timestep(SolverType& solver);
 
     void sync_solver_views();
+
+    inline void set_mesh_ready() {mesh_ready = true;}
 
 #ifdef LPM_USE_VTK
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;

@@ -30,9 +30,17 @@ struct DFSGrid {
   Real dtheta; /// increment of arc length in colatitude
   Real dlambda; /// increment of arc length in longitude direction
 
+  /** Return the number of grid points.
+
+    For LPM methods, the grid contains longitude = 0, but not longitude = 2*pi (we omit the repeated points).
+  */
   KOKKOS_INLINE_FUNCTION
   Index size() const {return nlon*nlat;}
 
+  /** Return the number of VTK Structured Grid points.
+
+    VTK needs the repeated periodic points (both 0 and 2*pi).
+  */
   Index vtk_size() const {return size() + nlat;}
 
   /** Constructor.   Given a desired number of longitude points,
@@ -110,20 +118,28 @@ struct DFSGrid {
     lambda = SphereGeometry::azimuth(xyz);
   }
 
+  /** Construct and return a Coords<Geo> object containing the grid.
+  */
   Coords<SphereGeometry> init_coords() const;
 
+  /** Construct and return a view of area weights for the grid.
+  */
   scalar_view_type weights_view() const;
 
+  /** Write basic info to a string.
+  */
   std::string info_string(const int tab_level=0) const;
 
 #ifdef LPM_USE_VTK
+  /** Construct and return a VtkStructuredGrid.
+  */
   vtkSmartPointer<vtkStructuredGrid> vtk_grid() const;
 #endif
 
   private:
   /**  Pack all Cartesian coordinates into an nlat*nlon x 3 view.
 
-    @return coordinate view with point (i,j)'s coordinates at view(i*nlat + j, :)
+    @return coordinate view with point (i,j)'s xyz coordinates at view(i*nlat + j, :)
   */
   void fill_packed_view(view_type& view) const;
 };

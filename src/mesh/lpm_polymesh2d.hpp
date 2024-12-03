@@ -71,6 +71,8 @@ struct PolyMeshParameters {
       : init_depth(depth), amr_buffer(amr_buff), amr_limit(amr_lim), seed(r) {
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr_buff);
   }
+
+  inline bool is_adaptive() const {return (amr_buffer > 0 and amr_limit > 0);}
 };
 
 /** @brief Class for organizing a topologically 2D mesh of particles and panels

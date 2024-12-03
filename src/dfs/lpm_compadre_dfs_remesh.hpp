@@ -63,6 +63,9 @@ struct CompadreDfsRemesh {
     const gmls::Params& params,
     const std::shared_ptr<spdlog::logger> logger_in = nullptr);
 
+  template <typename FlagType>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType& flag);
+
   void uniform_direct_remesh();
 
   std::string info_string(const int tab_lev=0) const;
