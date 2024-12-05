@@ -6,6 +6,7 @@
 #include "lpm_field_impl.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_kernels.hpp"
+#include "lpm_regularized_kernels.hpp"
 
 namespace Lpm {
 
@@ -334,6 +335,7 @@ void SWE<SeedType>::init_vorticity(const VorticityType& vorticity, const bool de
   auto relvort_view = rel_vort_passive.view;
   auto potvort_view = pot_vort_passive.view;
   auto depth_view = depth_passive.view;
+  auto cor = coriolis;
   Kokkos::parallel_for("SWE::init_vorticity (passive)",
     mesh.n_vertices_host(),
     KOKKOS_LAMBDA (const Index i) {
@@ -341,7 +343,7 @@ void SWE<SeedType>::init_vorticity(const VorticityType& vorticity, const bool de
       const Real zeta = vorticity(mcrd);
       relvort_view(i) = zeta;
       if (depth_set) {
-        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+        potvort_view(i) = (zeta + cor.f(mcrd)) / depth_view(i);
       }
     });
 
@@ -356,7 +358,7 @@ void SWE<SeedType>::init_vorticity(const VorticityType& vorticity, const bool de
       const Real zeta = vorticity(mcrd);
       relvort_view(i) = zeta;
       if (depth_set) {
-        potvort_view(i) = (zeta + coriolis.f(mcrd)) / depth_view(i);
+        potvort_view(i) = (zeta + cor.f(mcrd)) / depth_view(i);
       }
     });
 }
@@ -502,6 +504,49 @@ std::string SWE<SeedType>::info_string(const int tab_level, const bool verbose) 
   }
   return ss.str();
 }
+
+template <typename SeedType> template <typename KernelType>
+void SWE<SeedType>::init_velocity_direct_sum(const KernelType& kernels) {
+  Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
+  Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
+
+  if constexpr (std::is_same<typename SeedType::geo, PlaneGeometry>::value) {
+    Kokkos::parallel_for(vertex_policy,
+      VelocityDirectSum<KernelType>(velocity_passive.view,
+        double_dot_passive.view,
+        du1dx1_passive.view,
+        du1dx2_passive.view,
+        du2dx1_passive.view,
+        du2dx2_passive.view,
+        mesh.vertices.phys_crds.view,
+        mesh.faces.phys_crds.view,
+        kernels,
+        rel_vort_active.view,
+        div_active.view,
+        mesh.faces.area,
+        mesh.faces.mask,
+        mesh.n_faces_host()));
+    Kokkos::parallel_for(face_policy,
+      VelocityDirectSum<KernelType>(velocity_active.view,
+        double_dot_active.view,
+        du1dx1_active.view,
+        du1dx2_active.view,
+        du2dx1_active.view,
+        du2dx2_active.view,
+        mesh.faces.phys_crds.view,
+        mesh.faces.phys_crds.view,
+        kernels,
+        rel_vort_active.view,
+        div_active.view,
+        mesh.faces.area,
+        mesh.faces.mask,
+        mesh.n_faces_host()));
+  }
+  else {
+    LPM_STOP("SWE::init_velocity_direct_sum SphereGeometry not implemented yet.");
+  }
+}
+
 
 template <typename SeedType>
 void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {

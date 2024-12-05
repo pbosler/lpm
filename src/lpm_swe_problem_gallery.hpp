@@ -44,6 +44,13 @@ struct PlanarGaussian {
 /**
   Functor that outputs the negative Laplacian of the Gaussian function
   represented by PlanarGaussian defined with the same parameters.
+
+  In other words, if the stream function @$f\psi@$f is given by PlanarGaussian,
+  then the vorticity @$f\zeta@$f is given by this functor.
+
+  Clearly, both PlanarGausiann and  PlanarNegativeLaplacianOfGaussian must be initialized
+  with the same parameters for this relationship to hold; the constructor of this
+  functor requires an instance of PlanarGaussian to ensure this property.
 */
 struct PlanarNegativeLaplacianOfGaussian {
   typedef PlaneGeometry geo;
@@ -51,8 +58,10 @@ struct PlanarNegativeLaplacianOfGaussian {
   Real shape_parameter;
   Kokkos::Tuple<Real,2> xy_ctr;
 
+  PlanarNegativeLaplacianOfGaussian() = delete;
+
   KOKKOS_INLINE_FUNCTION
-  PlanarNegativeLaplacianOfGaussian(const PlanarGaussian& g) :
+  explicit PlanarNegativeLaplacianOfGaussian(const PlanarGaussian& g) :
     strength(g.strength),
     shape_parameter(g.shape_parameter),
     xy_ctr(g.xy_ctr) {}
@@ -95,6 +104,7 @@ struct PlanarGaussianTestVelocity {
   Real sigma_b;
   Kokkos::Tuple<Real,2> sigma_ctr;
 
+  KOKKOS_INLINE_FUNCTION
   PlanarGaussianTestVelocity(vec_view u, scalar_view_type dd,
     const crd_view x,
     const PlanarNegativeLaplacianOfGaussian& vorticity,

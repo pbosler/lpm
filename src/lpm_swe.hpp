@@ -152,6 +152,9 @@ class SWE {
     */
     void init_direct_sums(const bool do_velocity = true);
 
+    template <typename KernelType>
+    void init_velocity_direct_sum(const KernelType& kernels);
+
     Real total_mass() const;
     Real total_energy() const;
     Real kinetic_energy() const;
