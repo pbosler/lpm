@@ -39,6 +39,18 @@ struct PlanarGaussian {
     const Real rsq = square(PlaneGeometry::distance(xy, xy_ctr));
     return strength * exp(-shape_parameter * rsq );
   }
+
+  template <typename PtType> KOKKOS_INLINE_FUNCTION
+  Real ddx1(const PtType& xy) const {
+    const Real rsq = square(PlaneGeometry::distance(xy, xy_ctr));
+    return -2*strength * shape_parameter * (xy[0] - xy_ctr[0]) * exp(-shape_parameter * rsq);
+  }
+
+  template <typename PtType> KOKKOS_INLINE_FUNCTION
+  Real ddx2(const PtType& xy) const {
+    const Real rsq = square(PlaneGeometry::distance(xy, xy_ctr));
+    return -2*strength * shape_parameter * (xy[1] - xy_ctr[1]) * exp(-shape_parameter * rsq);
+  }
 };
 
 /**
@@ -95,6 +107,10 @@ struct PlanarGaussianTestVelocity {
 
   vec_view u;
   scalar_view_type double_dot;
+  scalar_view_type du1dx1;
+  scalar_view_type du1dx2;
+  scalar_view_type du2dx1;
+  scalar_view_type du2dx2;
   crd_view x;
 
   Real zeta0;
@@ -106,11 +122,17 @@ struct PlanarGaussianTestVelocity {
 
   KOKKOS_INLINE_FUNCTION
   PlanarGaussianTestVelocity(vec_view u, scalar_view_type dd,
+    scalar_view_type du1dx1, scalar_view_type du1dx2,
+    scalar_view_type du2dx1, scalar_view_type du2dx2,
     const crd_view x,
     const PlanarNegativeLaplacianOfGaussian& vorticity,
     const PlanarNegativeLaplacianOfGaussian& divergence) :
     u(u),
     double_dot(dd),
+    du1dx1(du1dx1),
+    du1dx2(du1dx2),
+    du2dx1(du2dx1),
+    du2dx2(du2dx2),
     x(x),
     zeta0(vorticity.strength),
     zeta_b(vorticity.shape_parameter),
@@ -135,16 +157,21 @@ struct PlanarGaussianTestVelocity {
     u(i,1) =  2*zeta0 * zeta_b * x_zeta[0] * zeta_exp +
               2*sigma0 * sigma_b * x_sigma[1] * sigma_exp;
 
-    const Real du1dx1 =  4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
+    const Real d11 =  4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
       2*sigma0*sigma_b * (1 - 2 * sigma_b * square(x_sigma[0])) * sigma_exp;
-    const Real du1dx2 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp -
+    const Real d12 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp -
       2*zeta0 * zeta_b * (1 - 2 * zeta_b  * square(x_zeta[1]) ) * zeta_exp;
-    const Real du2dx1 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp +
+    const Real d21 = -4*sigma0 * square(sigma_b) * x_sigma[0] * x_sigma[1] * sigma_exp +
       2*zeta0 * zeta_b * (1 - 2 * zeta_b  * square(x_zeta[0]) ) * zeta_exp;
-    const Real du2dx2 = -4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
+    const Real d22 = -4*zeta0 * square(zeta_b) * x_zeta[0] * x_zeta[1] * zeta_exp +
       2*sigma0*sigma_b * (1 - 2 * sigma_b * square(x_sigma[1])) * sigma_exp;
 
-    double_dot(i) = square(du1dx1) + 2 * du1dx2 * du2dx1 + square(du2dx2);
+    du1dx1(i) = d11;
+    du1dx2(i) = d12;
+    du2dx1(i) = d21;
+    du2dx2(i) = d22;
+
+    double_dot(i) = square(d11) + 2 * d12 * d21 + square(d22);
 
 //     double_dot(i) =
 //       square( 4 * zeta0 * square(zeta_b) *

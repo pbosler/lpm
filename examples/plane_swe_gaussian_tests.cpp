@@ -127,16 +127,16 @@ int main (int argc, char* argv[]) {
     Kokkos::View<Real*[2]> velocity_exact_active("velocity_exact", plane->mesh.n_faces_host());
     scalar_view_type double_dot_exact_active("double_dot_exact", plane->mesh.n_faces_host());
 
-    Kokkos::parallel_for(plane->mesh.n_vertices_host(),
-      PlanarGaussianTestVelocity(velocity_exact_passive,
-        double_dot_exact_passive,
-        plane->mesh.vertices.phys_crds.view,
-        vorticity, divergence));
-    Kokkos::parallel_for(plane->mesh.n_faces_host(),
-      PlanarGaussianTestVelocity(velocity_exact_active,
-        double_dot_exact_active,
-        plane->mesh.faces.phys_crds.view,
-        vorticity, divergence));
+//     Kokkos::parallel_for(plane->mesh.n_vertices_host(),
+//       PlanarGaussianTestVelocity(velocity_exact_passive,
+//         double_dot_exact_passive,
+//         plane->mesh.vertices.phys_crds.view,
+//         vorticity, divergence));
+//     Kokkos::parallel_for(plane->mesh.n_faces_host(),
+//       PlanarGaussianTestVelocity(velocity_exact_active,
+//         double_dot_exact_active,
+//         plane->mesh.faces.phys_crds.view,
+//         vorticity, divergence));
     auto crds = plane->mesh.vertices.phys_crds.view;
     Kokkos::parallel_for(plane->mesh.n_vertices_host(),
       KOKKOS_LAMBDA (const Index i) {

@@ -18,9 +18,11 @@ namespace Lpm {
 */
 struct Plane2ndOrder {
   Real eps;
+  Real epssq;
+  static constexpr Int order = 2;
 
   KOKKOS_INLINE_FUNCTION
-  explicit Plane2ndOrder(const Real epsilon) : eps(epsilon) {};
+  explicit Plane2ndOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane2ndOrder(const Plane2ndOrder& other) = default;
@@ -35,9 +37,7 @@ struct Plane2ndOrder {
   template <typename XType> KOKKOS_INLINE_FUNCTION
    Real scaled_blob(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
-    const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = 1/(constants::PI * square(eps));
-    return coeff*exp(-rsq);
+    return blob(xscaled)/epssq;
   }
 
   template <typename XType> KOKKOS_INLINE_FUNCTION
@@ -58,7 +58,6 @@ struct Plane2ndOrder {
   template <typename XType> KOKKOS_INLINE_FUNCTION
   Kokkos::Tuple<Real,6> velocity(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
-    const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real one_over_rsq = FloatingPoint<Real>::safe_denominator(PlaneGeometry::norm2(x));
     const Real q = blobq(xscaled);
     const Real ucoeff = q * one_over_rsq / (2*constants::PI);
@@ -117,7 +116,8 @@ struct Plane2ndOrder {
 
 struct Plane4thOrder {
     Real eps;
-
+  static constexpr Int order = 4
+  ;
   KOKKOS_INLINE_FUNCTION
   explicit Plane4thOrder(const Real epsilon) : eps(epsilon) {};
 
@@ -218,6 +218,7 @@ struct Plane4thOrder {
 
 struct Plane6thOrder {
   Real eps;
+  static constexpr Int order = 6;
 
   KOKKOS_INLINE_FUNCTION
   explicit Plane6thOrder(const Real epsilon) : eps(epsilon) {}
@@ -322,9 +323,11 @@ struct Plane6thOrder {
 
 struct Plane8thOrder {
   Real eps;
+  Real epssq;
+  static constexpr Int order = 8;
 
   KOKKOS_INLINE_FUNCTION
-  explicit Plane8thOrder(const Real epsilon) : eps(epsilon) {};
+  explicit Plane8thOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane8thOrder(const Plane8thOrder& other) = default;
@@ -340,10 +343,7 @@ struct Plane8thOrder {
   template <typename XType> KOKKOS_INLINE_FUNCTION
    Real scaled_blob(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
-    const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real r4th = square(rsq);
-    const Real coeff = ( 4 - 6*rsq + 2*r4th - rsq*r4th / 6 ) / (constants::PI * square(eps));
-    return coeff*exp(-rsq);
+    return blob(xscaled) / square(eps);
   }
 
   template <typename XType> KOKKOS_INLINE_FUNCTION
@@ -358,7 +358,7 @@ struct Plane8thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (40 - 40 * rsq + 10*r4th - 2*rsq*r4th/3  ) / (constants::PI * square(eps));
+    const Real coeff = (40 - 40 * rsq + 10*r4th - 2*rsq*r4th/3  ) / (constants::PI * epssq);
     return coeff * exp(-rsq);
   }
 
@@ -392,7 +392,6 @@ struct Plane8thOrder {
   template <typename XType> KOKKOS_INLINE_FUNCTION
   Kokkos::Tuple<Real,6> velocity(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
-    const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real one_over_rsq = FloatingPoint<Real>::safe_denominator(PlaneGeometry::norm2(x));
     const Real q = blobq(xscaled);
     const Real ucoeff = q * one_over_rsq / (2*constants::PI);
@@ -497,21 +496,24 @@ struct PlaneScalarInterpolationReducer {
   using view_type = scalar_view_type;
   static constexpr Int ndim = 1;
   crd_view tgt_x;
+  scalar_view_type tgt_values;
   crd_view src_x;
   KernelType kernels;
-  scalar_view_type values;
+  scalar_view_type src_values;
   scalar_view_type area;
   mask_view_type src_mask;
   Index i;
 
   KOKKOS_INLINE_FUNCTION
-  PlaneScalarInterpolationReducer(const crd_view tgt_x, const crd_view src_x,
-    const KernelType& kernels, const scalar_view_type values, const scalar_view_type area,
+  PlaneScalarInterpolationReducer(const crd_view tgt_x, const scalar_view_type tgt_values,
+    const crd_view src_x, const scalar_view_type src_values,
+    const KernelType& kernels, const scalar_view_type area,
     const mask_view_type src_mask, const Index i) :
     tgt_x(tgt_x),
+    tgt_values(tgt_values),
     src_x(src_x),
+    src_values(src_values),
     kernels(kernels),
-    values(values),
     area(area),
     src_mask(src_mask),
     i(i) {}
@@ -522,7 +524,7 @@ struct PlaneScalarInterpolationReducer {
       const auto x_tgt = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto x_src = Kokkos::subview(src_x, j, Kokkos::ALL);
       const Real xij[2] = {x_tgt[0] - x_src[0], x_tgt[1] - x_src[1]};
-      f += values(j) * area(j) * kernels.scaled_blob(xij);
+      f += src_values(j) * area(j) * kernels.scaled_blob(xij);
     }
   }
 };
@@ -536,21 +538,24 @@ struct PlaneGradientReducer {
   using view_type = vec_view;
   static constexpr Int ndim = 2;
   crd_view tgt_x;
+  scalar_view_type tgt_values;
   crd_view src_x;
+  scalar_view_type src_values;
   KernelType kernels;
-  scalar_view_type values;
   scalar_view_type area;
   mask_view_type src_mask;
   Index i;
 
   KOKKOS_INLINE_FUNCTION
-  PlaneGradientReducer(const crd_view tgt_x, const crd_view src_x,
-    const KernelType& kernels, const scalar_view_type values, const scalar_view_type area,
+  PlaneGradientReducer(const crd_view tgt_x, const scalar_view_type tgt_values,
+    const crd_view src_x, const scalar_view_type src_values,
+    const KernelType& kernels, const scalar_view_type area,
     const mask_view_type src_mask, const Index i) :
     tgt_x(tgt_x),
+    tgt_values(tgt_values),
     src_x(src_x),
+    src_values(src_values),
     kernels(kernels),
-    values(values),
     area(area),
     src_mask(src_mask),
     i(i) {}
@@ -561,7 +566,7 @@ struct PlaneGradientReducer {
       const auto x_tgt = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto x_src = Kokkos::subview(src_x, j, Kokkos::ALL);
       const Real xij[2] = {x_tgt[0] - x_src[0], x_tgt[1] - x_src[1]};
-      const Real vij = area(j) * (values(j) + values(i));
+      const Real vij = area(j) * (tgt_values(j) + src_values(i));
       grad[0] += vij * kernels.x0_derivative(xij);
       grad[1] += vij * kernels.x1_derivative(xij);
     }
@@ -577,21 +582,24 @@ struct PlaneOneSidedInteriorGradientReducer {
   using view_type = vec_view;
   static constexpr Int ndim = 2;
   crd_view tgt_x;
+  scalar_view_type tgt_values;
   crd_view src_x;
   KernelType kernels;
-  scalar_view_type values;
+  scalar_view_type src_values;
   scalar_view_type area;
   mask_view_type src_mask;
   Index i;
 
   KOKKOS_INLINE_FUNCTION
-  PlaneOneSidedInteriorGradientReducer(const crd_view tgt_x, const crd_view src_x,
-    const KernelType& kernels, const scalar_view_type values, const scalar_view_type area,
+  PlaneOneSidedInteriorGradientReducer(const crd_view tgt_x, const scalar_view_type tgt_values,
+    const crd_view src_x, const scalar_view_type src_values,
+    const KernelType& kernels, const scalar_view_type area,
     const mask_view_type src_mask, const Index i) :
     tgt_x(tgt_x),
+    tgt_values(tgt_values),
     src_x(src_x),
+    src_values(src_values),
     kernels(kernels),
-    values(values),
     area(area),
     src_mask(src_mask),
     i(i) {}
@@ -604,7 +612,7 @@ struct PlaneOneSidedInteriorGradientReducer {
       const bool is_interior = PlaneGeometry::norm2(x_tgt) - PlaneGeometry::norm2(x_src) > 0;
       if (is_interior) {
         const Real xij[2] = {x_tgt[0] - x_src[0], x_tgt[1] - x_src[1]};
-        const Real vij = area(j) * (values(j) + values(i));
+        const Real vij = area(j) * (tgt_values(j) + src_values(i));
         grad[0] += vij * kernels.left_x0_derivative(xij);
         grad[1] += vij * kernels.left_x1_derivative(xij);
       }
@@ -621,32 +629,35 @@ struct PlaneLaplacianReducer {
   using view_type = scalar_view_type;
   static constexpr Int ndim = 1;
   crd_view tgt_x;
+  scalar_view_type tgt_values;
   crd_view src_x;
+  scalar_view_type src_values;
   KernelType kernels;
-  scalar_view_type values;
   scalar_view_type area;
   mask_view_type src_mask;
   Index i;
 
   KOKKOS_INLINE_FUNCTION
-  PlaneLaplacianReducer(const crd_view tgt_x, const crd_view src_x,
-    const KernelType& kernels, const scalar_view_type values, const scalar_view_type area,
+  PlaneLaplacianReducer(const crd_view tgt_x, const scalar_view_type tgt_values,
+    const crd_view src_x, const scalar_view_type src_values,
+    const KernelType& kernels, const scalar_view_type area,
     const mask_view_type src_mask, const Index i) :
     tgt_x(tgt_x),
+    tgt_values(tgt_values),
     src_x(src_x),
+    src_values(src_values),
     kernels(kernels),
-    values(values),
     area(area),
     src_mask(src_mask),
     i(i) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (const Index& j, const Real& lap) const {
+  void operator() (const Index& j, Real& lap) const {
     if (!src_mask(j)) {
       const auto x_tgt = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto x_src = Kokkos::subview(src_x, j, Kokkos::ALL);
       const Real xij[2] = {x_tgt[0] - x_src[0], x_tgt[1] - x_src[1]};
-      lap += (values(j) - values(i)) * area(j) * kernels.laplacian(xij);
+      lap += (tgt_values(j) - src_values(i)) * area(j) * kernels.laplacian(xij);
     }
   }
 };
@@ -658,14 +669,29 @@ struct DirectSum {
   using view_type = typename ReducerType::view_type;
   using crd_view = PlaneGeometry::crd_view_type;
   using vec_view = PlaneGeometry::vec_view_type;
-  view_type tgt_f;
+  view_type output_view;
+  scalar_view_type tgt_f;
   crd_view tgt_x;
   crd_view src_x;
+  scalar_view_type src_f;
   kernel_type kernels;
-  scalar_view_type f_vals;
   scalar_view_type area;
   mask_view_type src_mask;
   Index n_src;
+
+  DirectSum(view_type output_view, const crd_view tx, const scalar_view_type tf,
+    const crd_view sx, const scalar_view_type f,
+    const kernel_type& kernels,
+    const scalar_view_type area, const mask_view_type mask, const Index n) :
+    output_view(output_view),
+    tgt_x(tx),
+    tgt_f(tf),
+    src_x(sx),
+    src_f(f),
+    kernels(kernels),
+    area(area),
+    src_mask(mask),
+    n_src(n) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const member_type& thread_team) const {
@@ -673,13 +699,13 @@ struct DirectSum {
 
     value_type f_sum;
     Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, n_src),
-      ReducerType(tgt_x, src_x, kernels, f_vals, area, src_mask, i), f_sum);
+      ReducerType(tgt_x, tgt_f, src_x, src_f, kernels, area, src_mask, i), f_sum);
     if constexpr (ReducerType::ndim == 2) {
-      tgt_f(i,0) = f_sum[0];
-      tgt_f(i,1) = f_sum[1];
+      output_view(i,0) = f_sum[0];
+      output_view(i,1) = f_sum[1];
     }
     else {
-      tgt_f(i) = f_sum;
+      output_view(i) = f_sum;
     }
 
   }

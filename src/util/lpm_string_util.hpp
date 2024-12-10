@@ -26,6 +26,13 @@ static std::string sprarr(const std::string& name, const T* const v,
   return ss.str();
 }
 
+template <typename T>
+static std::string sprarr(const std::vector<T>& v) {
+  std::ostringstream ss;
+  for (size_t i=0; i<v.size(); ++i) ss << " " << v[i];
+  return ss.str();
+}
+
 inline std::string nc_suffix() { return ".nc"; }
 
 template <typename T>

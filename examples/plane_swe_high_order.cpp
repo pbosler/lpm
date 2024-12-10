@@ -7,12 +7,12 @@
 #include "lpm_input.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_pse.hpp"
-#include "lpm_regularized_kernels.hpp"
 #include "lpm_surface_gallery.hpp"
 #include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_impl.hpp"
-#include "util/lpm_floating_point.hpp"
+#include "lpm_swe_rk4.hpp"
+#include "lpm_swe_rk4_impl.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
 #ifdef LPM_USE_VTK
@@ -24,39 +24,33 @@ using namespace Lpm;
 
 void input_init(user::Input& input);
 
-bool input_valid(const user::Input& input);
-
 template <typename PtType> KOKKOS_INLINE_FUNCTION
 Kokkos::Tuple<Real,2> velocity_exact(const PtType& x);
 
 int main (int argc, char* argv[]) {
-  //
-  // START SECTION: COMPILE TIME OPTIONS
-  // vvvvvvvv
-  using Seed = QuadRectSeed; // TriHexSeed;
-  using Topography  = ZeroFunctor;
-  using InitialSurface = UniformDepthSurface;
-  using Coriolis = CoriolisBetaPlane;
-  using Geo = PlaneGeometry;
-  using StreamFunction = PlanarGaussian;
-  using PotentialFunction = PlanarGaussian;
-  using Vorticity = PlanarNegativeLaplacianOfGaussian;
-  using Divergence = PlanarNegativeLaplacianOfGaussian;
-  using Kernels = Plane2ndOrder; // Plane2ndOrder; // Plane4thOrder; // Plane6thOrder; // Plane8thOrder;
-  //
-  // END SECTION ^^^^^^
-  //
-
-  //
-  // START SECTION: Initialize computing environment
-  // vvvvvvvv
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
-  Logger<> logger("plane_high_order_kernel_tests", Log::level::debug, comm);
+  Logger<> logger("plane_gaussian_tests", Log::level::debug, comm);
+
+  // compile-time settings
+  // mesh seed
+  using seed_type = QuadRectSeed; // TriHexSeed;
+
+  // plane Gaussian test problem setup
+  using topography_type  = ZeroFunctor;
+  using init_sfc_type = UniformDepthSurface;
+  using coriolis_type = CoriolisBetaPlane;
+  using geo = PlaneGeometry;
+  using pse_type = pse::BivariateOrder8<geo>;
+  using stream_fn_type = PlanarGaussian;
+  using potential_fn_type = PlanarGaussian;
+  using vorticity_type = PlanarNegativeLaplacianOfGaussian;
+  using divergence_type = PlanarNegativeLaplacianOfGaussian;
+
   Kokkos::initialize(argc, argv);
   { // Kokkos scope
     // initialize command line input
-    user::Input input("plane_high_order_kernel_tests");
+    user::Input input("plane_gaussian_tests");
     input_init(input);
     // parse command line args
     input.parse_args(argc, argv);
@@ -66,55 +60,60 @@ int main (int argc, char* argv[]) {
       MPI_Finalize();
       return 1;
     }
-    if (!input_valid(input)) {
-      logger.error("invalid input: {}", input.info_string());
-      Kokkos::finalize();
-      MPI_Finalize();
-      return 1;
-    }
     logger.info(input.info_string());
 
+    const int nsteps = input.get_option("nsteps").get_int();
+    const Real dt = input.get_option("tfinal").get_real() / nsteps;
+    int frame_counter = 0;
+    const int write_frequency = input.get_option("output_write_frequency").get_int();
+
     Timer total_time("total_time");
-    total_time.start();
-    //
-    // END SECTION ^^^^^^
-    //
 
-
-    //
-    // START SECTION: Initialize problem
-    // vvvvvvvv
     // initialize planar particle/panel mesh
-    PolyMeshParameters<Seed> mesh_params(
+    PolyMeshParameters<seed_type> mesh_params(
       input.get_option("tree_depth").get_int(),
       input.get_option("mesh_radius").get_real(),
       input.get_option("amr_limit").get_int());
-    Coriolis coriolis;
 
-    auto plane = std::make_unique<SWE<Seed>>(mesh_params, coriolis);
-    const Real eps = std::pow(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
-    plane->set_kernel_parameters(eps, eps);
+    coriolis_type coriolis(input.get_option("f-coriolis").get_real(),
+      input.get_option("beta-coriolis").get_real());
+
+    auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
+    const Real eps_multiplier = input.get_option("mesh_size_multiplier").get_real();
+    const Real vel_eps = plane->mesh.appx_mesh_size() * eps_multiplier;
+    const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
+    plane->set_kernel_parameters(vel_eps, pse_eps);
 
     // set problem initial conditions
-    StreamFunction psi(input.get_option("zeta0").get_real(),
+    topography_type topo;
+    const Real h0 = input.get_option("h0").get_real();
+    init_sfc_type sfc(h0);
+    plane->init_surface(topo, sfc);
+
+    stream_fn_type psi(input.get_option("zeta0").get_real(),
                        input.get_option("zetab").get_real(),
                        input.get_option("zetax").get_real(),
                        input.get_option("zetay").get_real());
-    PotentialFunction phi(input.get_option("sigma0").get_real(),
+    potential_fn_type phi(input.get_option("sigma0").get_real(),
                          input.get_option("sigmab").get_real(),
                          input.get_option("sigmax").get_real(),
                          input.get_option("sigmay").get_real());
-    Topography topo;
-    const Real h0 = input.get_option("h0").get_real();
-    InitialSurface sfc(h0);
-    plane->init_surface(topo, sfc);
+
     constexpr bool depth_set = true;
-    Vorticity vorticity(psi);
-    Divergence divergence(phi);
+    vorticity_type vorticity(psi);
+    divergence_type divergence(phi);
     plane->init_vorticity(vorticity, depth_set);
     plane->init_divergence(divergence);
 
-    // set exact solutions
+    constexpr bool do_velocity = true;
+    plane->init_direct_sums(do_velocity);
+
+    logger.info("mesh initialized");
+    logger.info(plane->info_string());
+
+    /**
+      t = 0 only: set up exact solutions
+    */
     scalar_view_type psi_exact_passive("psi_exact", plane->mesh.n_vertices_host());
     scalar_view_type psi_exact_active("psi_exact", plane->mesh.n_faces_host());
     scalar_view_type psi_error_passive("psi_error", plane->mesh.n_vertices_host());
@@ -127,31 +126,15 @@ int main (int argc, char* argv[]) {
     scalar_view_type double_dot_exact_passive("double_dot_exact", plane->mesh.n_vertices_host());
     Kokkos::View<Real*[2]> velocity_exact_active("velocity_exact", plane->mesh.n_faces_host());
     scalar_view_type double_dot_exact_active("double_dot_exact", plane->mesh.n_faces_host());
-    scalar_view_type du1dx1_exact_passive("du1dx1_exact", plane->mesh.n_vertices_host());
-    scalar_view_type du1dx1_exact_active("du1dx1_exact", plane->mesh.n_faces_host());
-    scalar_view_type du1dx2_exact_passive("du1dx2_exact", plane->mesh.n_vertices_host());
-    scalar_view_type du1dx2_exact_active("du1dx2_exact", plane->mesh.n_faces_host());
-    scalar_view_type du2dx1_exact_passive("du2dx1_exact", plane->mesh.n_vertices_host());
-    scalar_view_type du2dx1_exact_active("du2dx1_exact", plane->mesh.n_faces_host());
-    scalar_view_type du2dx2_exact_passive("du2dx2_exact", plane->mesh.n_vertices_host());
-    scalar_view_type du2dx2_exact_active("du2dx2_exact", plane->mesh.n_faces_host());
 
     Kokkos::parallel_for(plane->mesh.n_vertices_host(),
       PlanarGaussianTestVelocity(velocity_exact_passive,
         double_dot_exact_passive,
-        du1dx1_exact_passive,
-        du1dx2_exact_passive,
-        du2dx1_exact_passive,
-        du2dx2_exact_passive,
         plane->mesh.vertices.phys_crds.view,
         vorticity, divergence));
     Kokkos::parallel_for(plane->mesh.n_faces_host(),
       PlanarGaussianTestVelocity(velocity_exact_active,
         double_dot_exact_active,
-        du1dx1_exact_active,
-        du1dx2_exact_active,
-        du2dx1_exact_active,
-        du2dx2_exact_active,
         plane->mesh.faces.phys_crds.view,
         vorticity, divergence));
     auto crds = plane->mesh.vertices.phys_crds.view;
@@ -168,27 +151,10 @@ int main (int argc, char* argv[]) {
         psi_exact_active(i) = psi(xi);
         phi_exact_active(i) = phi(xi);
       });
-    logger.info("mesh initialized");
-    logger.info(plane->info_string());
-    //
-    // END SECTION ^^^^^^
-    //
 
-
-    //
-    // START SECTION: Compute solutions
-    // vvvvvvvv
-    Kernels kernels(eps);
-    plane->init_velocity_direct_sum(kernels);
-
-    //
-    // END SECTION ^^^^^^
-    //
-
-
-    //
-    // START SECTION: Compute error
-    // vvvvvvvv
+    /**
+      t = 0 only: compute velocity and double dot error
+    */
     Kokkos::View<Real*[2]> velocity_error_passive("velocity_error", plane->mesh.n_vertices_host());
     compute_error(velocity_error_passive, plane->velocity_passive.view, velocity_exact_passive);
 
@@ -211,17 +177,12 @@ int main (int argc, char* argv[]) {
     ErrNorms potential_err(phi_error_active, plane->potential_active.view, phi_exact_active,
       plane->mesh.faces.area);
     logger.info("potential function error: {}", potential_err.info_string());
-    //
-    // END SECTION ^^^^^^
-    //
 
-    //
-    // START SECTION: write date
-    // vvvvvvvv
+#ifdef LPM_USE_VTK
     const std::string resolution_str = std::to_string(input.get_option("tree_depth").get_int());
-    const std::string eps_str = "eps" + float_str(eps);
+    const std::string eps_str = "eps" + float_str(vel_eps);
     const std::string vtk_file_root = input.get_option("output_file_root").get_str()
-      + "_" + Seed::id_string() + resolution_str + eps_str ;
+      + "_" + seed_type::id_string() + resolution_str + eps_str + "_";
     {
       plane->update_host();
       auto vtk = vtk_mesh_interface(*plane);
@@ -241,13 +202,32 @@ int main (int argc, char* argv[]) {
       vtk.add_scalar_cell_data(psi_exact_active);
       vtk.add_scalar_cell_data(phi_error_active);
       vtk.add_scalar_cell_data(phi_exact_active);
-      const std::string vtk_fname = vtk_file_root + vtp_suffix();
+      auto ctr_str = zero_fill_str(frame_counter);
+      const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
       logger.info("writing output at t = {} to file: {}", plane->t, vtk_fname);
       vtk.write(vtk_fname);
     }
-    //
-    // END SECTION ^^^^^^
-    //
+#endif
+
+    // setup time stepper
+    auto solver = std::make_unique<SWERK4<seed_type, topography_type>>(dt, *plane, topo);
+    logger.info(solver->info_string());
+
+    for (int t_idx=0; t_idx<nsteps; ++t_idx) {
+      plane->advance_timestep(*solver);
+      logger.debug("t = {}", plane->t);
+
+#ifdef LPM_USE_VTK
+      if ((t_idx+1)%write_frequency == 0) {
+        plane->update_host();
+        auto vtk = vtk_mesh_interface(*plane);
+        auto ctr_str = zero_fill_str(++frame_counter);
+        const std::string vtk_fname = vtk_file_root + ctr_str + vtp_suffix();
+        logger.info("writing output at t = {} to file: {}", plane->t, vtk_fname);
+        vtk.write(vtk_fname);
+      }
+#endif
+    }
 
     total_time.stop();
     logger.info("total time: {}", total_time.info_string());
@@ -256,30 +236,22 @@ int main (int argc, char* argv[]) {
   MPI_Finalize();
 }
 
-bool input_valid(const user::Input& input) {
-  bool result = true;
-  if (input.get_option("tree_depth").get_int() < 0) {
-    result = false;
-  }
-  if (input.get_option("h0").get_real() <= 0) {
-    result = false;
-  }
-  if (input.get_option("mesh_radius").get_real() < 1) {
-    result = false;
-  }
-  if (input.get_option("amr_buffer").get_int() < 0) {
-    result = false;
-  }
-  if (input.get_option("amr_limit").get_int() < 0) {
-    result = false;
-  }
-  return result;
-}
-
 void input_init(user::Input& input) {
   // define user parameters
+  user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final", 0.0);
+  input.add_option(tfinal_option);
+
+  user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps", 0);
+  input.add_option(nsteps_option);
+
   user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 4);
+
   input.add_option(tree_depth_option);
+  user::Option f_coriolis_option("f-coriolis", "-f", "--f-coriolis", "f coriolis", 0.0);
+  input.add_option(f_coriolis_option);
+
+  user::Option beta_coriolis_option("beta-coriolis", "-b", "--beta-coriolis", "beta coriolis", 0.0);
+  input.add_option(beta_coriolis_option);
 
   user::Option h0_option("h0", "-h0", "--init-depth", "initial uniform depth", 1.0);
   input.add_option(h0_option);
@@ -317,8 +289,14 @@ void input_init(user::Input& input) {
   user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
   input.add_option(amr_refinement_limit_option);
 
-  user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("gaussian_high_order"));
+  user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("gaussian_tests"));
   input.add_option(output_file_root_option);
+
+  user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
+  input.add_option(output_write_frequency_option);
+
+  user::Option kernel_smoothing_parameter_option("mesh_size_multiplier", "-eps", "--velocity-epsilon", "velocity kernel smoothing parameter mesh size multiplier", 0.0);
+  input.add_option(kernel_smoothing_parameter_option);
 
   user::Option pse_power_option("pse_kernel_width_power", "-pse", "--pse-kernel-width-power", "pse kernel width power",
     11.0/20);

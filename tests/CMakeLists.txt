@@ -86,6 +86,7 @@ CreateUnitTest(ic2d_dt_conv lpm_ic2d_tests.cpp
   THREADS ${LPM_TEST_MAX_THREADS} ${LPM_TEST_MAX_THREADS} ${LPM_TEST_THREAD_INC})
 
 CreateUnitTest(swe_high_order_kernels lpm_high_order_swe_tests.cpp)
+CreateUnitTest(colloc_swe_init lpm_test_colloc_swe_init.cpp)
 
 if (LPM_ENABLE_NETCDF)
 CreateUnitTest(netcdf_test lpm_netcdf_tests.cpp)

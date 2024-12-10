@@ -31,12 +31,13 @@ typedef ko::Device<HostExe, HostMemory> Host;
 typedef ko::View<Index, Dev> n_view_type;  // view() = n
 /// View to a scalar array
 typedef ko::View<Real*, Dev> scalar_view_type;
+typedef ko::View<const Real*, Dev> const_scalar_view;
 /// View to an index array
 typedef ko::View<Index*, Dev> index_view_type;
 typedef ko::View<Index* [4], Dev> quad_tree_view;
 /// View to a bool array
 typedef ko::View<bool*, Dev> mask_view_type;
-typedef ko::View<const bool*, Dev> const_mask_view_type;
+typedef ko::View<const bool*, Dev> const_mask_view;
 
 template <typename T>
 using view_1d = Kokkos::View<T*>;
