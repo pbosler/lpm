@@ -72,12 +72,17 @@ struct PlanarGaussianSurfacePerturbation {
   static constexpr Int ndim = 2;
 
   // Modifiable parameters
-  static constexpr Real H0 = 1.0; // height of unperturbed surface
-  static constexpr Real ptb_height = 0.1;  // height of surface perturbation
-  static constexpr Real ptb_bx = 20;  // Gaussian shape parameter, x-direction
-  static constexpr Real ptb_by = 5; // Gaussian shape parameter, y-direction
-  static constexpr Real ptb_x0 = -1.125; // Center of perturbation, x-coordinate
-  static constexpr Real ptb_y0 = 0; // Center of perturbation, y-coordinate
+  Real H0 = 1.0; // height of unperturbed surface
+  Real ptb_height = 0.1;  // height of surface perturbation
+  Real ptb_bx = 20;  // Gaussian shape parameter, x-direction
+  Real ptb_by = 5; // Gaussian shape parameter, y-direction
+  Real ptb_x0 = -1.125; // Center of perturbation, x-coordinate
+  Real ptb_y0 = 0; // Center of perturbation, y-coordinate
+
+  PlanarGaussianSurfacePerturbation(const Real H = 1, const Real h = 0.1,
+    const Real bx = 20, const Real by = 5,
+    const Real x0 = -1.125, const Real y0 = 0) :
+      H0(H), ptb_height(h), ptb_bx(bx), ptb_by(by), ptb_x0(x0), ptb_y0(y0) {}
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION Real operator() (const CV xy) const {
@@ -85,6 +90,13 @@ struct PlanarGaussianSurfacePerturbation {
   }
 
   std::string name() const {return "PlanarGaussianSurfacePerturbation";}
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Real laplacian(const CV xy) const {
+    return 2* ptb_height * (ptb_bx*(-1 + 2*ptb_bx*square(xy[0]-ptb_x0)) +
+          ptb_by*(-1 + 2*ptb_by*square(xy[1]-ptb_y0))) *
+          exp(-ptb_bx*square(xy[0]-ptb_x0) - ptb_by*square(xy[1]-ptb_y0));
+  }
 };
 
 /** Topography functor for a flat bottom
@@ -111,6 +123,9 @@ struct UniformDepthSurface {
 
   template <typename CV>
   KOKKOS_INLINE_FUNCTION Real operator() (const CV x) const {return H0;}
+
+  template <typename CV>
+  KOKKOS_INLINE_FUNCTION Real laplacian(const CV x) const {return 0;}
 };
 
 struct SphereTestCase2InitialSurface {

@@ -21,7 +21,7 @@ using namespace Lpm::colloc;
 template <typename SeedType, typename KernelType>
 struct TestCollocSweInit{
   using Topography  = ZeroFunctor;
-  using InitialSurface = UniformDepthSurface;
+  using InitialSurface = PlanarGaussianSurfacePerturbation;
   using Coriolis = CoriolisBetaPlane;
   using Geo = PlaneGeometry;
   using StreamFunction = PlanarGaussian;
@@ -38,6 +38,11 @@ struct TestCollocSweInit{
   static constexpr Real deltax = 1; // potential function center x1
   static constexpr Real deltay = 0; // potential function center x2
   static constexpr Real h0 = 1; // initial depth
+  static constexpr Real ptb_h = 0.1; // surface perturbation height
+  static constexpr Real ptb_bx0 = 5; // surface perturbation x0 shape parameter
+  static constexpr Real ptb_bx1 = 3; // surface perturbation x1 shape parameter
+  static constexpr Real ptb_x0 = -1.25; // surface perturbation x0 center
+  static constexpr Real ptb_x1 = 0; // surface perturbation x1 center
 
   Int tree_depth;
   Int amr_limit;
@@ -66,7 +71,7 @@ struct TestCollocSweInit{
     logger.debug(plane->mesh.info_string());
 
     Topography topo;
-    InitialSurface sfc;
+    InitialSurface sfc(h0, ptb_h, ptb_bx0, ptb_bx1, ptb_x0, ptb_x1);
     StreamFunction psi(zeta0, zetab, zetax, zetay);
     PotentialFunction phi(delta0, deltab, deltax, deltay);
     Vorticity zeta(psi);
@@ -74,6 +79,7 @@ struct TestCollocSweInit{
     plane->set_kernel_width_from_power(eps_power);
     KernelType kernels(plane->eps);
     plane->init_swe_problem(topo, sfc, zeta, delta, kernels);
+    logger.info("eps = {}, eps power = {}, dx = {}, eps / dx = {}", plane->eps, eps_power, plane->mesh.appx_mesh_size(), plane->eps/plane->mesh.appx_mesh_size());
 
     Kokkos::View<Real*[2]> velocity_error_active("velocity_error", plane->mesh.n_faces_host());
     Kokkos::View<Real*[2]> velocity_error_passive("velocity_error", plane->mesh.n_vertices_host());
@@ -89,6 +95,8 @@ struct TestCollocSweInit{
     plane->allocate_scalar_tracer("du1dx2_error");
     plane->allocate_scalar_tracer("du2dx1_error");
     plane->allocate_scalar_tracer("du2dx2_error");
+    plane->allocate_scalar_tracer("surf_lap_exact");
+    plane->allocate_scalar_tracer("surf_lap_error");
 
     scalar_view_type dummy_view("dummy", plane->mesh.n_vertices_host());
 
@@ -110,6 +118,13 @@ struct TestCollocSweInit{
       dummy_view,
       plane->mesh.vertices.phys_crds.view,
       zeta, delta));
+    auto crds = plane->mesh.faces.phys_crds.view;
+    auto lap_exact_view = plane->tracers.at("surf_lap_exact").view;
+    Kokkos::parallel_for(plane->mesh.n_faces_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto x_i = Kokkos::subview(crds, i, Kokkos::ALL);
+        lap_exact_view(i) = sfc.laplacian(x_i);
+      });
     logger.debug("fields initialized; computing error.");
 
     compute_error(velocity_error_passive, plane->velocity_passive.view, velocity_exact_passive);
@@ -128,10 +143,13 @@ struct TestCollocSweInit{
       plane->mesh.faces.area);
     ErrNorms d22_err(plane->tracers.at("du2dx2_error").view, plane->du1dx1.view, plane->tracers.at("du2dx2_exact").view,
       plane->mesh.faces.area);
+    ErrNorms lap_err(plane->tracers.at("surf_lap_error").view, plane->surface_lap.view, plane->tracers.at("surf_lap_exact").view,
+      plane->mesh.faces.area);
     logger.info("du1dx1 error: {}", d11_err.info_string());
     logger.info("du1dx2 error: {}", d12_err.info_string());
     logger.info("du2dx1 error: {}", d21_err.info_string());
     logger.info("du2dx2 error: {}", d22_err.info_string());
+    logger.info("surface lap error: {}", lap_err.info_string());
 
 
     plane->update_host();

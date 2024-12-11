@@ -243,7 +243,6 @@ void CollocatedSWE<SeedType>::init_surface_and_depth(const TopographyType& topo,
   auto topo_view = bottom.view;
   auto sfc_view = surface.view;
   auto depth_view = depth.view;
-  auto lap_view = surface_lap.view;
   auto mass_view = mass.view;
   const auto area = mesh.faces.area;
   Kokkos::parallel_for(mesh.n_faces_host(),
