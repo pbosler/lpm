@@ -21,6 +21,7 @@
 #endif
 
 using namespace Lpm;
+using namespace Lpm::colloc;
 
 void input_init(user::Input& input);
 
