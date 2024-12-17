@@ -1,5 +1,5 @@
-#ifndef LPM_REGULARIZED_KERNELS_HPP
-#define LPM_REGULARIZED_KERNELS_HPP
+#ifndef LPM_REGULARIZED_KERNELS_2D_HPP
+#define LPM_REGULARIZED_KERNELS_2D_HPP
 
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"

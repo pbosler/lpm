@@ -1,5 +1,5 @@
-#ifndef LPM_REGULARIZED_KERNELS_HPP
-#define LPM_REGULARIZED_KERNELS_HPP
+#ifndef LPM_REGULARIZED_KERNELS_1D_HPP
+#define LPM_REGULARIZED_KERNELS_1D_HPP
 
 #include "LpmConfig.h"
 #include "lpm_constants.hpp"
@@ -166,7 +166,7 @@ struct LineXDerivativeReducer {
   using vec_view = scalar_view_type;
   using value_type = Real;
   using kernel_type = KernelType;
-  using kernel_order = KernelType::order;
+  static constexpr Int kernel_order = KernelType::order;
   using view_type = scalar_view_type;
   static constexpr Int ndim = 1;
   static constexpr Int order = 1;
@@ -184,7 +184,9 @@ struct LineXDerivativeReducer {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, Real& dfdx) const {
      const Real xij = (x(i) - x(j))/kernels.eps;
-     dfdx += (f_values(i) + f_values(j)) * kernels.x_derivative(xij) / kernels.eps * length(j) / kernels.eps;
+     const Real Fi = f_values(i) * length(i);
+     const Real Fj = f_values(j) * length(j);
+     dfdx += (Fi * length(j) + Fj * length(i)) * kernels.x_derivative(xij) / kernels.eps * length(j) / kernels.eps;
   }
 };
 
@@ -194,7 +196,7 @@ struct Line2ndDerivativeReducer {
   using vec_view = scalar_view_type;
   using value_type = Real;
   using kernel_type = KernelType;
-  using kernel_order = KernelType::order;
+  static constexpr Int kernel_order = KernelType::order;
   using view_type = scalar_view_type;
   static constexpr Int ndim = 1;
   static constexpr Int order = 2;
@@ -212,7 +214,9 @@ struct Line2ndDerivativeReducer {
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, Real& df2dx2) const {
      const Real xij = (x(i) - x(j))/kernels.eps;
-     df2dx2 += (f_values(j) - f_values(i)) * kernels.laplacian(xij) / kernels.eps * length(j) / kernels.epssq;
+     const Real Fi = f_values(i) * length(i);
+     const Real Fj = f_values(j) * length(j);
+     df2dx2 += (Fj*length(i) - Fi*length(j)) * kernels.laplacian(xij) / kernels.eps / kernels.epssq;
   }
 };
 
@@ -221,6 +225,8 @@ struct LineDirectSum {
   using kernel_type = typename ReducerType::kernel_type;
   using value_type = typename ReducerType::value_type;
   using view_type = typename ReducerType::view_type;
+  static constexpr Int kernel_order = ReducerType::kernel_order;
+  static constexpr Int derivative_order = ReducerType::order;
   view_type output_view;
   scalar_view_type x;
   scalar_view_type f;

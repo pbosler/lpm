@@ -9,7 +9,7 @@
 #include "lpm_swe.hpp"
 #include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe_impl.hpp"
-#include "lpm_regularized_kernels.hpp"
+// #include "lpm_regularized_kernels.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_math.hpp"
 #include "util/lpm_timer.hpp"
@@ -23,6 +23,7 @@
 #include <catch2/catch_approx.hpp>
 
 using namespace Lpm;
+using namespace Lpm::colloc;
 using Catch::Approx;
 
 template <typename SeedType, typename KernelType>
@@ -273,7 +274,7 @@ struct HighOrderTest {
         ErrNorms psi_err(psi_error_active, plane->stream_fn_active.view, psi_exact_active,
           plane->mesh.faces.area);
         // solve for velocity
-        plane->init_velocity_direct_sum(kernels);
+//         plane->init_velocity_direct_sum(kernels);
         compute_error(velocity_error_passive, plane->velocity_passive.view, velocity_exact_passive);
         ErrNorms vel_err(velocity_error_active, plane->velocity_active.view, velocity_exact_active,
           plane->mesh.faces.area);
@@ -309,30 +310,30 @@ struct HighOrderTest {
         ErrNorms grad_err(phi_grad_error_active, grad_active, phi_grad_exact_active,
           plane->mesh.faces.area);
         // compute a 1-sided gradient
-        Kokkos::parallel_for(vertex_policy,
-          DirectSum<PlaneOneSidedInteriorGradientReducer<KernelType>>(
-            left_grad_passive,
-            plane->mesh.vertices.phys_crds.view,
-            plane->potential_passive.view,
-            plane->mesh.faces.phys_crds.view,
-            plane->potential_active.view,
-            kernels,
-            plane->mesh.faces.area,
-            plane->mesh.faces.mask,
-            plane->mesh.n_faces_host())
-          );
-        Kokkos::parallel_for(face_policy,
-          DirectSum<PlaneOneSidedInteriorGradientReducer<KernelType>>(
-            left_grad_active,
-            plane->mesh.faces.phys_crds.view,
-            plane->potential_active.view,
-            plane->mesh.faces.phys_crds.view,
-            plane->potential_active.view,
-            kernels,
-            plane->mesh.faces.area,
-            plane->mesh.faces.mask,
-            plane->mesh.n_faces_host())
-          );
+//         Kokkos::parallel_for(vertex_policy,
+//           DirectSum<PlaneOneSidedInteriorGradientReducer<KernelType>>(
+//             left_grad_passive,
+//             plane->mesh.vertices.phys_crds.view,
+//             plane->potential_passive.view,
+//             plane->mesh.faces.phys_crds.view,
+//             plane->potential_active.view,
+//             kernels,
+//             plane->mesh.faces.area,
+//             plane->mesh.faces.mask,
+//             plane->mesh.n_faces_host())
+//           );
+//         Kokkos::parallel_for(face_policy,
+//           DirectSum<PlaneOneSidedInteriorGradientReducer<KernelType>>(
+//             left_grad_active,
+//             plane->mesh.faces.phys_crds.view,
+//             plane->potential_active.view,
+//             plane->mesh.faces.phys_crds.view,
+//             plane->potential_active.view,
+//             kernels,
+//             plane->mesh.faces.area,
+//             plane->mesh.faces.mask,
+//             plane->mesh.n_faces_host())
+//           );
         compute_error(left_phi_grad_error_passive, left_grad_passive, phi_grad_exact_passive);
         ErrNorms left_grad_err(left_phi_grad_error_active, left_grad_active, phi_grad_exact_active,
           plane->mesh.faces.area);

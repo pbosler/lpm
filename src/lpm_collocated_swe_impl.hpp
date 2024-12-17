@@ -7,7 +7,7 @@
 #include "lpm_field_impl.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include "mesh/lpm_polymesh2d_impl.hpp"
-#include "lpm_regularized_kernels.hpp"
+#include "lpm_regularized_kernels_2d.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 
 namespace Lpm {
