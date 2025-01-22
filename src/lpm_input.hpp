@@ -85,6 +85,9 @@ struct Input {
   const Option& get_option(const std::string& name) const;
 };
 
+template <typename ProblemType>
+Input setup_problem_input() {return Input();}
+
 } // namespace user
 } // namespace Lpm
 

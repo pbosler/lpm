@@ -41,6 +41,15 @@ void ScatterMeshData<SeedType>::scatter_lag_crds() {
 }
 
 template <typename SeedType>
+std::string ScatterMeshData<SeedType>::info_string(const int tab_lev) const {
+  std::ostringstream ss;
+  auto tabstr = indent_string(tab_lev);
+  ss << tabstr << "ScatterMeshDatea<" << SeedType::id_string() << "> info: \n";
+  ss << tabstr <<  "\tgathered output: " << output.info_string(tab_lev+1);
+  return ss.str();
+}
+
+template <typename SeedType>
 void ScatterMeshData<SeedType>::scatter_phys_crds() {
   const auto face_mask = mesh.faces.mask;
   const auto face_leaf_idx = mesh.faces.leaf_idx;

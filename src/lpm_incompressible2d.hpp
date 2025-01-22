@@ -5,6 +5,7 @@
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
 #include "lpm_logger.hpp"
+#include "lpm_input.hpp"
 #include "mesh/lpm_bivar_remesh.hpp"
 #include "mesh/lpm_compadre_remesh.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -107,8 +108,6 @@ class Incompressible2D {
   template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const Incompressible2D<SeedType>& ic2d);
 #endif
-
-
 
 template <typename SeedType>
 BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d, const Incompressible2D<SeedType>& old_ic2d);

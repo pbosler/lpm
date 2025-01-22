@@ -358,7 +358,14 @@ std::string GatherMeshData<SeedType>::info_string(const Int tab_lev,
   if (!scalar_fields.empty()) {
     ss << tabstr << "scalar fields : ";
     for (const auto& sf : scalar_fields) {
-      ss << sf.first << " ";
+      typename Kokkos::MinMax<Real>::value_type min_max;
+      auto vals = sf.second;
+
+      Kokkos::parallel_reduce(n(), KOKKOS_LAMBDA (const Index i, typename Kokkos::MinMax<Real>::value_type& mm) {
+        if (vals(i) < mm.min_val) mm.min_val = vals(i);
+        if (vals(i) > mm.max_val) mm.max_val = vals(i);
+      }, Kokkos::MinMax<Real>(min_max));
+      ss << sf.first << " (min, max) = (" << min_max.min_val << ", " << min_max.max_val << ") ";
     }
     ss << "\n";
   }

@@ -62,6 +62,7 @@ if (LPM_ENABLE_DFS)
  		dfs/dfs_surface_grad.cpp
  		dfs/lpm_dfs_grid.cpp
     dfs/dfs_swe_vort2velocity_to_ddproduct.cpp
+    dfs/lpm_compadre_dfs_remesh.cpp
  	)
 endif()
 
@@ -155,6 +156,8 @@ if (LPM_ENABLE_DFS)
         dfs/lpm_dfs_bve_solver.hpp
         dfs/lpm_dfs_bve_solver_impl.hpp
         dfs/lpm_dfs_impl.hpp
+        dfs/lpm_compadre_dfs_remesh.hpp
+        dfs/lpm_compadre_dfs_remesh_impl.hpp
 	      dfs/dfs_doubling.hpp
 	      dfs/dfs_laplacian_new.hpp
 	      dfs/dfs_rhs_new.hpp

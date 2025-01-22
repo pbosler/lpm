@@ -130,8 +130,6 @@ CompadreRemesh<SeedType>::CompadreRemesh(PolyMesh2d<SeedType>& new_mesh,
 
     scalar_gmls->generateAlphas();
     vector_gmls->generateAlphas();
-//     logger->debug("old_gather info: {}", old_gather->info_string());
-//     logger->debug("new_gather info: {}", new_gather->info_string());
 }
 
 template <typename SeedType>

@@ -25,9 +25,9 @@ class DFSRK2 {
   DFSBVE<SeedType>& sphere;
   Int t_idx;
 
-  DFSRK2(const Real timestep, DFSBVE<SeedType>& sph) :
+  DFSRK2(const Real timestep, DFSBVE<SeedType>& sph, const Int tidx = 0) :
     dt(timestep),
-    Omega(sph.Omega),
+    Omega(sph.Omega()),
     xyz_particles(sph.gathered_mesh->phys_crds),
     rel_vort_particles(sph.gathered_mesh->scalar_fields.at("relative_vorticity")),
     velocity_particles(sph.gathered_mesh->vector_fields.at("velocity")),
@@ -41,7 +41,7 @@ class DFSRK2 {
     rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
     vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
     sphere(sph),
-    t_idx(0)
+    t_idx(tidx)
     {}
 
   void advance_timestep() ;
@@ -81,9 +81,10 @@ class DFSRK4 {
   DFSBVE<SeedType>& sphere;
   Int t_idx;
 
-  DFSRK4(const Real timestep, DFSBVE<SeedType>& sph) :
+  DFSRK4(const Real timestep, DFSBVE<SeedType>& sph, const Int t_idx = 0) :
     dt(timestep),
-    Omega(sph.Omega),
+    Omega(sph.Omega()),
+    t_idx(t_idx),
     xyz_particles(sph.gathered_mesh->phys_crds),
     rel_vort_particles(sph.gathered_mesh->scalar_fields.at("relative_vorticity")),
     velocity_particles(sph.gathered_mesh->vector_fields.at("velocity")),
@@ -100,8 +101,7 @@ class DFSRK4 {
     rel_vort_particles4("rel_vort_particels_stage4", sph.gathered_mesh->n()),
     rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
     vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
-    sphere(sph),
-    t_idx(0)
+    sphere(sph)
     {}
 
   void advance_timestep();
@@ -111,7 +111,7 @@ class DFSRK4 {
 
     crd_view xyz_particles1;
     crd_view xyz_particles2;
-    crd_view xyz_particles3;  
+    crd_view xyz_particles3;
     crd_view xyz_particles4;
     crd_view xyz_particles_work;
 
@@ -147,9 +147,10 @@ class DFSRK3 {
   DFSBVE<SeedType>& sphere;
   Int t_idx;
 
-  DFSRK3(const Real timestep, DFSBVE<SeedType>& sph) :
+  DFSRK3(const Real timestep, DFSBVE<SeedType>& sph, const Int t_idx = 0) :
     dt(timestep),
-    Omega(sph.Omega),
+    Omega(sph.Omega()),
+    t_idx(t_idx),
     xyz_particles(sph.gathered_mesh->phys_crds),
     rel_vort_particles(sph.gathered_mesh->scalar_fields.at("relative_vorticity")),
     velocity_particles(sph.gathered_mesh->vector_fields.at("velocity")),
@@ -164,8 +165,7 @@ class DFSRK3 {
     rel_vort_particles3("rel_vort_particles_stage3", sph.gathered_mesh->n()),
     rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
     vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
-    sphere(sph),
-    t_idx(0)
+    sphere(sph)
     {}
 
   void advance_timestep();
@@ -175,7 +175,7 @@ class DFSRK3 {
 
     crd_view xyz_particles1;
     crd_view xyz_particles2;
-    crd_view xyz_particles3;  
+    crd_view xyz_particles3;
     crd_view xyz_particles_work;
 
     scalar_view_type rel_vort_particles1;

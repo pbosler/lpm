@@ -41,7 +41,7 @@ int main (int argc, char* argv[]) {
   using init_sfc_type = UniformDepthSurface;
   using coriolis_type = CoriolisBetaPlane;
   using geo = PlaneGeometry;
-  using pse_type = pse::BivariateOrder8<geo>;
+  using pse_type = pse::BivariateOrder8;
   using stream_fn_type = PlanarGaussian;
   using potential_fn_type = PlanarGaussian;
   using vorticity_type = PlanarNegativeLaplacianOfGaussian;
@@ -81,7 +81,7 @@ int main (int argc, char* argv[]) {
     auto plane = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
     const Real eps_multiplier = input.get_option("mesh_size_multiplier").get_real();
     const Real vel_eps = plane->mesh.appx_mesh_size() * eps_multiplier;
-    const Real pse_eps = pse_type::epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
+    const Real pse_eps = pse::PSEKernel<PlaneGeometry>::get_epsilon(plane->mesh.appx_mesh_size(), input.get_option("pse_kernel_width_power").get_real());
     plane->set_kernel_parameters(vel_eps, pse_eps);
 
     // set problem initial conditions

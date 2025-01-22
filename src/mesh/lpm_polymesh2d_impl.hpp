@@ -1,3 +1,6 @@
+#ifndef LPM_POLYMESH2D_IMPL_HPP
+#define LPM_POLYMESH2D_IMPL_HPP
+
 #include "lpm_kokkos_defs.hpp"
 #include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -67,6 +70,7 @@ void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
       vtk.toVtkPolyData(faces, edges, vertices, NULL, cd);
   vtk.writePolyData(fname, pd);
 }
+#endif
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::update_device() const {
@@ -169,5 +173,3 @@ std::string PolyMesh2d<SeedType>::info_string(const std::string& label,
   }
 }  // namespace Lpm
 #endif
-
-
