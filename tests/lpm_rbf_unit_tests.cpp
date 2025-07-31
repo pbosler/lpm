@@ -7,7 +7,8 @@
 #include "lpm_geometry.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_compadre.hpp"
-#include "lpm_rbffd.hpp"
+#include "lpm_rbf_knn.hpp"
+#include "lpm_rbf.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_error.hpp"
 #include "lpm_error_impl.hpp"
@@ -103,32 +104,64 @@ TEST_CASE("rbf_unit_tests", "") {
   vtk.write("rbf_sphere_test.vtp");
 #endif
 
-    gmls::Params rbf_params(input.rbf_order);
-    gmls::Neighborhoods face_neighbors(h_src_crds, ll.h_pts,rbf_params);
 
     logger.info(face_neighbors.info_string());
 
     // Target operations interpoaltion and laplacian evaluation
     /**insert function call**/
-    std::cout << face_neighbors.neighbor_lists(0,0) << std::endl;
-    rbf_team_matrices rbf_mat(input);
+//    std::cout << face_neighbors.neighbor_lists(0,0) << std::endl;
+//    std::cout << face_neighbors. << std::endl;
+    
+    //input variables and neighbor search
+    rbf_neighbor_search<Input> rbf_nn(input);
+    Kokkos::deep_copy(rbf_nn.source_data_sites,src_crds);
+
+    std::cout << "KNN search start" << std::endl;
+    rbf_nn.knn_search();
+    std::cout << "KNN search complete" << std::endl;
+//    std::cout <<rbf_nn.num_nbrs_list(2) <<std::endl;
+  
+    //instantiate rbf matrix class and copy neighbor lists
+    rbf_team_matrices<Input> rbf_mat(input);
+    ko::deep_copy(rbf_mat.dpts,src_crds);
+//    ko::deep_copy(rbf_mat.number_neighbors_list,rbf_nn.num_nbrs_list);
+//    ko::deep_copy(rbf_mat.cr_neighbor_lists,rbf_nn.nbr_lists);
+    rbf_mat.number_neighbors_list = rbf_nn.num_nbrs_list;
+    rbf_mat.cr_neighbor_lists = rbf_nn.nbr_lists;
+//    
+//    //Construct u for f = Au
+    sphharm54(src_crds,rbf_mat.u,input.N);
+
+    //generate rbf fd weights for lap in tangent plane (laplace beltrami)    
+    auto start = high_resolution_clock::now(); 
+    std::cout << "Begin Weight Generation " << std::endl;
+    rbf_mat.tpm_lap_wgts();
+    std::cout << "Weight Generation Completion" << std::endl;
+
+    auto stop = high_resolution_clock::now(); 
+    auto duration = duration_cast<microseconds>(stop - start); 
+    std::cout << "Time to calculate weights: "
+          << duration.count() * 0.000001 << " seconds" << std::endl; 
+
+
+//    rbf_team_matrices rbf_mat(input);
 
     //evaluation of weights to target data
     /**insert function call**/
 
     //Set result vectors
-    auto src_data = trisphere.faces.leaf_field_vals(rh54_faces);
-//    auto rh54_rbf = rbf_team_matrices.Iku
-//    auto lap_rh54_rbf =
-
-    // Error evaluation
-    Kokkos::View<Real*> rh54_error("rh54_error", ll.n());
-    ErrNorms rh54_err_norms(rh54_error, rh54_rbf, ll_rh54, ll.wts);
-    logger.info("interpolation error: {}", rh54_err_norms.info_string());
-
-    Kokkos::View<Real*> lap_rh54_error("lap_rh54_error", ll.n());
-    ErrNorms lap_rh54_err_norms(lap_rh54_error, lap_rh54_rbf, ll_lap_rh54, ll.wts);
-    logger.info("laplacian error: {}", lap_rh54_err_norms.info_string());
+//    auto src_data = trisphere.faces.leaf_field_vals(rh54_faces);
+////    auto rh54_rbf = rbf_team_matrices.Iku
+////    auto lap_rh54_rbf =
+//
+//    // Error evaluation
+//    Kokkos::View<Real*> rh54_error("rh54_error", ll.n());
+//    ErrNorms rh54_err_norms(rh54_error, rh54_rbf, ll_rh54, ll.wts);
+//    logger.info("interpolation error: {}", rh54_err_norms.info_string());
+//
+//    Kokkos::View<Real*> lap_rh54_error("lap_rh54_error", ll.n());
+//    ErrNorms lap_rh54_err_norms(lap_rh54_error, lap_rh54_rbf, ll_lap_rh54, ll.wts);
+//    logger.info("laplacian error: {}", lap_rh54_err_norms.info_string());
   }
 }
 
@@ -137,7 +170,7 @@ Input::Input(const std::map<std::string, std::string>& params) {
   rbf_order = 3;
   rbf_eps = 2;
   nunif = 60;
-  m_filename = "compadre_tests.m";
+  m_filename = "rbf_tests.m";
   for (const auto& p : params) {
     if (p.first == "tree_depth") {
       tree_depth = std::stoi(p.second);
