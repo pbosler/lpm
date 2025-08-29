@@ -4,13 +4,9 @@
 #ifndef LPM_CONFIG_H
 #define LPM_CONFIG_H
 
-#cmakedefine LPM_USE_CUDA
-#cmakedefine LPM_USE_VTK
-#cmakedefine LPM_USE_VTK_GRAPHICS
 #cmakedefine LPM_HAVE_SPHEREPACK
 #cmakedefine LPM_USE_BOOST
 #cmakedefine LPM_USE_NETCDF
-#cmakedefine LPM_USE_COMPOSE
 #cmakedefine LPM_USE_FINUFFT
 #cmakedefine LPM_USE_FFTW3
 #cmakedefine LPM_ENABLE_DFS
