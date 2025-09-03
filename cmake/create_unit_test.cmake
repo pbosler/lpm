@@ -62,11 +62,12 @@ function(CreateUnitTest target_name target_sources)
   # Set all target properties #
   #---------------------------#
   target_include_directories(${target_name} PUBLIC
-        ${LPM_INCLUDE_DIRS}
+        ${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${lpmtest_INCLUDE_DIRS}
         )
-  target_link_libraries(${target_name} PUBLIC lpm ${LPM_LIBRARIES} ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
+  target_link_libraries(${target_name} PUBLIC lpm ${CMAKE_DL_LIBS} ${MPI_C_LIBRARIES})
 
  if (NOT lpmtest_EXCLUDE_CATCH_MAIN)
    target_link_libraries(${target_name} PUBLIC lpm_test_main PRIVATE Catch2::Catch2)

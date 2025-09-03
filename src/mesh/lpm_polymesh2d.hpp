@@ -10,9 +10,7 @@
 #include "mesh/lpm_vertices.hpp"
 #include "util/lpm_floating_point.hpp"
 
-#ifdef LPM_USE_COMPOSE
 #include "compose/siqk_sqr.hpp"
-#endif
 
 #ifndef NDEBUG
 #include <iostream>
@@ -652,9 +650,7 @@ class PolyMesh2d {
       typename std::enable_if<std::is_same<GeoType, SphereGeometry>::value,
                               void>::type
       quad_ref(VT& ref, const CVT& pt) const {
-#ifndef LPM_USE_COMPOSE
-    static_assert(false, "Compose TPL required.");
-#else
+
     const auto f_idx = locate_face_containing_pt(pt);
     LPM_KERNEL_ASSERT(f_idx != LPM_NULL_IDX);
     auto quad = Kokkos::subview(faces.verts, f_idx, Kokkos::ALL);
@@ -668,7 +664,6 @@ class PolyMesh2d {
     }
     siqk::sqr::calc_sphere_to_ref(vertices.phys_crds.view, quad_cyc, rpt,
                                   ref[0], ref[1]);
-#endif
   }
 
   /** @brief Private. Computes the reference coordinates of a point in a

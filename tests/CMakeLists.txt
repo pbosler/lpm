@@ -93,9 +93,9 @@ endif()
 
 if (LPM_ENABLE_DFS)
 
-CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp)
+CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp )
 
-CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp)
+CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp LIBS FFTW3::Double FFTW3::Float FFTW3::DoubleOpenMP FFTW3::FloatOpenMP finufft::finufft)
 
 endif()
 

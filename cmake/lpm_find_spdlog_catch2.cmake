@@ -1,5 +1,5 @@
-message(STATUS "Looking for spdlog at $ENV{SPDLOG_ROOT} ${SPDLOG_DIR} ${LPM_TPL_DIR}")
-message(STATUS "Looking for catch2 at $ENV{CATHC2_ROOT} ${CATCH2_DIR} ${LPM_TPL_DIR}")
+message(STATUS "LPM: Looking for spdlog at $ENV{SPDLOG_ROOT} ${SPDLOG_DIR} ${LPM_TPL_DIR}")
+message(STATUS "LPM: Looking for catch2 at $ENV{CATCH2_ROOT} ${CATCH2_DIR} ${LPM_TPL_DIR}")
 
 find_package(spdlog 1 REQUIRED HINTS $ENV{SPDLOG_ROOT} ${SPDLOG_DIR} ${LPM_TPL_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake)
 find_package(Catch2 3 REQUIRED HINTS $ENV{CATCH2_ROOT} ${CATCH2_DIR} ${LPM_TPL_DIR}/${CMAKE_INSTALL_LIBDIR}/cmake)

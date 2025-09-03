@@ -11,6 +11,7 @@
 #cmakedefine LPM_USE_FFTW3
 #cmakedefine LPM_ENABLE_DFS
 #cmakedefine LPM_USE_FASTBVE
+#cmakedefine LPM_USE_VTK
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 #define LPM_TEST_DATA_DIR "@CMAKE_CURRENT_SOURCE_DIR@/tests/data"

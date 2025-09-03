@@ -36,7 +36,7 @@ TEST_CASE("box3d", "[tree]") {
     Real c0[3];
     box0.centroid(c0[0], c0[1], c0[2]);
     const auto c00 = box0.centroid();
-    logger.info("box0.centroid() = {}. Expected result: [0,0,0]", c00);
+    logger.info("box0.centroid() = [{}, {}, {}]. Expected result: [0,0,0]", c00[0], c00[1], c00[2]);
     REQUIRE(FloatingPoint<Real>::zero(SphereGeometry::square_euclidean_distance(c0, c00)));
     REQUIRE(FloatingPoint<Real>::zero(SphereGeometry::square_euclidean_distance(c0, origin)));
     REQUIRE(box0.pt_in_neighborhood(c00) == 13);
@@ -44,7 +44,7 @@ TEST_CASE("box3d", "[tree]") {
     Kokkos::Tuple<Real,3> external_pt({2, 0, 0});
     const auto cp = box0.closest_pt_l1(external_pt);
     const auto cpexpected = Kokkos::Tuple<Real,3>({1,0,0});
-    logger.info("box0.closest_pt_l1([2,0,0]) = {}. Expected result [1,0,0]", cp);
+    logger.info("box0.closest_pt_l1([2,0,0]) = [{}, {}, {}]. Expected result [1,0,0]", cp[0], cp[1], cp[2]);
     REQUIRE(cp == cpexpected);
 
  }
