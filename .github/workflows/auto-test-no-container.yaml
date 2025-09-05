@@ -24,7 +24,6 @@ jobs:
 
     steps:
       - name: Setup runner
-          - uses: actions/checkout@v4
           - uses: actions/cache-apt-pkgs-action@latest
           - with:
               packages: |
