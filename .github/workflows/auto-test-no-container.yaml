@@ -24,9 +24,9 @@ jobs:
 
     steps:
       - name: Setup runner
-          - uses: actions/cache-apt-pkgs-action@latest
-          - with:
-              packages: |
+        - uses: actions/cache-apt-pkgs-action@latest
+        - with:
+            packages: |
                 libopenmpi-dev 
                 openmpi-bin 
                 netcdf-bin 
