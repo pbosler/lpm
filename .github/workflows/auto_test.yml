@@ -77,6 +77,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=/lpm-tpl \
           -DLPM_ENABLE_NETCDF=OFF \
           -DLPM_ENABLE_DFS=${{ matrix.dfs-option }} \
+          -DLPM_ENABLE_Compose=ON \
           -DKokkos_DIR=/tpl \
           -DKokkosKernels_DIR=/tpl \
           -DCompadre_DIR=/tpl \
