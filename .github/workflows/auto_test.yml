@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest] #, macos-latest]
+        os: [ubuntu-22.04] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
         dfs-option: [OFF, ON]
 
@@ -89,7 +89,7 @@ jobs:
           .
 
     - name: Build lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{github.workspace}}
       run: cmake --build ./build --config ${{ matrix.build-type }}
 
     - name: Test lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
