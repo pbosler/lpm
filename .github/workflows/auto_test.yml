@@ -65,7 +65,7 @@ jobs:
 
     - name: Configure lpm (${{ matrix.build-type }} DFS ${{ matrix.dfs-option }})
       shell: bash
-      working-directory: ${{github.workspace}}
+      working-directory: ${{github.workspace}}/lpm
       run: |
         cmake -B ./build \
           -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
