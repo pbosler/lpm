@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.27)
 
 # Point CMake to our .cmake files
 set( LPM_CMAKE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake CACHE INTERNAL "")
@@ -15,7 +15,7 @@ set(LPM_VERSION_PATCH 0)
 # Set c++ standard and env variable policy
 set(CMAKE_CXX_STANDARD 17)
 CMAKE_POLICY(SET CMP0074 NEW)
-CMAKE_POLICY(SET CMP0144 NEW) # Requires CMake 3.27 or greater
+#CMAKE_POLICY(SET CMP0144 NEW) # Requires CMake 3.27 or greater
 
 set(CMAKE_CXX_EXTENSIONS OFF) # required by Kokkos
 
