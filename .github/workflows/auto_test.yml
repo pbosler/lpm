@@ -65,7 +65,7 @@ jobs:
 
     - name: Configure lpm (${{ matrix.build-type }} DFS ${{ matrix.dfs-option }})
       shell: bash
-      working-directory: ${{github.workspace}}/lpm
+      working-directory: ${{github.workspace}}
       run: |
         cmake -B ./build \
           -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
@@ -86,7 +86,7 @@ jobs:
           -DFFTW3_DIR=/tpl \
           -DFINUFFT_DIR=/tpl \
           -G "Unix Makefiles" \
-          .
+          lpm/
 
     - name: Build lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build
