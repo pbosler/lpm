@@ -1,5 +1,5 @@
 message(STATUS "LPM: Looking for VTK at $ENV{VTK_ROOT} ${VTK_DIR}")
-find_package(VTK REQUIRED COMPONENTS
+find_package(VTK 9 REQUIRED COMPONENTS
     CommonColor
     CommonCore
     CommonDataModel
@@ -17,7 +17,6 @@ find_package(VTK REQUIRED COMPONENTS
 
 message(STATUS "LPM: Found VTK Version: ${VTK_VERSION}")
 
-message(STATUS "LPM: VTK_LIBRARIES = ${VTK_LIBRARIES}")
 if (VTK_VERSION VERSION_LESS "9.0.0")
     set(LPM_USE_VTK TRUE)
 else ()
