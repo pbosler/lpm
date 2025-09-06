@@ -86,7 +86,7 @@ jobs:
           -DFFTW3_DIR=/tpl \
           -DFINUFFT_DIR=/tpl \
           -G "Unix Makefiles" \
-          ..
+          .
 
     - name: Build lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build
