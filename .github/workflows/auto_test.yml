@@ -11,12 +11,14 @@ on:
       - 'doc/**'
       - 'tools/**'
       - 'README.md'
+      - 'scripts/**'
   pull_request:
     branches: [ main ]
     paths-ignore:
       - 'doc/**'
       - 'tools/**'
       - 'README.md'
+      - 'scripts/**'
 
 # Below are jobs, each of which runs sequentially.
 jobs:
