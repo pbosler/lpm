@@ -2,7 +2,7 @@
 
 ![Auto-test](https://github.com/pbosler/lpm/actions/workflows/auto_test.yml/badge.svg)
 
-This file contains several algorithms for computing solutions to PDEs using Lagrangian Particle Methods.  Generally, these methods are "mesh free," in the sense that the numerical methods used to solve the PDE and advance the simulation forward in time do not require a mesh topology to exist between particles.  Optionally, we support meshes that are defined recursively in a quad-tree structure (for 2D problems) for use with adaptive refinement.
+LPM contains several algorithms for computing solutions to PDEs using Lagrangian Particle Methods.  Generally, these methods are "mesh free," in the sense that the numerical methods used to solve the PDE and advance the simulation forward in time do not require a mesh topology to exist between particles.  Optionally, we support meshes that are defined recursively in a quad-tree structure (for 2D problems) for use with adaptive refinement.
 
 ## Dependencies
 
