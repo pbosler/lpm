@@ -1,46 +1,26 @@
-  # Third-party libraries for LPM
+# Third-party libraries for LPM
   
+  [Spdlog](https://github.com/gabime/spdlog) and [Catch2](https://github.com/catchorg/Catch2) can be built independently, and simply, by following the default instructions for each library.  Some specific configurations that have worked with LPM can be found in the [scripts folder](https://github.com/pbosler/lpm/tree/main/scripts) and in the [tools folder](https://github.com/pbosler/lpm/tree/common-tpls/tools)' Dockerfile.
+  
+  LPM uses Kokkos, and relies on several other libraries that also use Kokkos.
+  
+## VTK
 
-  LPM uses Kokkos, and relies on several other libraries that also use Kokkos.  Eventually we'd like to handle this build ourselves but for now we rely on user-supplied TPLs.
+VTK may be available from your package manager via, e.g., `sudo apt-get libvtk9-dev`, but if it isn't, some simple [scripts](https://github.com/pbosler/lpm/tree/main/scripts) to configured and build it are included with LPM.
+VTK is a large set of software and can take a while to build.
 
-  ## Kokkos (Required)
-First, we need to install Kokkos so that LPM and all of its other Kokkos-related TPLs can use it.  For now, we still require Kokkos major version 3 (not the recently released 4)because of other TPL dependencies.
+## Kokkos and dependent TPLs
 
+LPM, and several of its dependencies, are written in C++/Kokkos. Kokkos must therefore be installed before KokkosKernels, COMPOSE, and Compadre.  
 These steps and the supplied scripts will walk through a CPU build.  If you're working with GPU hardware, we'll assume you know already enough about Kokkos to get started.
-
-Steps:
-1. Clone [Kokkos](https://github.com/kokkos/kokkos) and checkout a version 3.x release (e.g., 3.7.02)
-  ```
-      git clone git@github.com:kokkos/kokkos.git
-      cd kokkos
-      git checkout tags/3.7.02
-      mkdir build
-  ```
-2. Copy the lpm script `configure_kokkos_tpl.sh` into your build directory.  Edit the CMAKE_BUILD_TYPE and CMAKE_INSTALL_PREFIX to your liking.  Choose the CPU (Host) parallel model (Threads or OpenMP); on Mac, OpenMP isn't available with the default compilers, so we use threads.
-
-3. Run the configure script, which calls `cmake` for Kokkos, e.g., `./configure_kokkos_tpl.sh`
-4. Build it: `make -j 8 && make install`
-  
-## KokkosKernels and COMPOSE (Required)
-
-Both [KokkosKernels](https://github.com/kokkos/kokkos-kernels) and [Compose](https://github.com/E3SM-Project/COMPOSE) depend only on Kokkos, so they can be built now that Kokkos has finished installation.
-
-### KokkosKernels
-
-Follow the same steps as above: Clone the repo, checkout the latest version 3.x release, copy the configure script and edit it to match your Kokkos configuration & installation details from the previous step.  Run it to finish the CMake configure step.  Then build and install.
 
 ### COMPOSE
 
-For Compose, we use a fork instead of the main repo.   Clone that fork, `https://github.com/pbosler/COMPOSE, and checkout the `lpm-tpl` branch.   This branch adds some configuration options that Lpm needs; it changes none of the COMPOSE source.
-Again, the same steps apply: copy the configure script, edit it to match your specific machine and installation paths, run it, then build and install.
+For Compose, as of 03SEP2025, we need to checkout the `pb-lpm-kokkos-4.7` branch instead of `main`, to allow it to work with the latest release of Kokkos (4.7).
 
-## Compadre (Required)
+## Optional
 
-[Compadre](https://github.com/sandialabs/compadre) requires both Kokkos and KokkosKernels.   The same steps as above work again here.
-
-## VTK (Optional, but recommended)
-
-VTK is a different kind of build.   It doesn't require Kokkos and it's big enough on its own that LPM will never support its own automatic download-configure-build-install workflow.  However, the `confiugre_vtk_tpl.sh` shows how to configure the VTK-9.2.2 release for use with LPM.
+To use the double Fourier series (DFS) solver, FFTW3 and FINUFFT are also required.   Note that FINUFFT has non-standard dependencies on FFTW3 that may not be supported by a package manager's `fftw` (specifically, it requires both the `float` and `double` precision `fftw` libraries to be present).   You may have to build FFTW3 yourself to install both libraries side by side; see [FFTW3](fftw3.org) for instructions, and the LPM [tools folder](https://github.com/pbosler/lpm/tree/common-tpls/tools)' Dockerfile for an example.
 
 # Ready to build LPM
 

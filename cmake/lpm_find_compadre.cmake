@@ -1,5 +1,5 @@
 if (Compadre_DIR)
-  message(STATUS "looking for Compadre at ${Compadre_DIR}")
+  message(STATUS "LPM: looking for Compadre at ${Compadre_DIR}")
   find_package(Compadre REQUIRED HINTS ${Compadre_DIR})
 else()
   message(FATAL_ERROR "Compadre_DIR not specified.")

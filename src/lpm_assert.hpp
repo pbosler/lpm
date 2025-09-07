@@ -29,7 +29,7 @@ namespace Lpm {
     }                                                                   \
   } while (0)
 
-#define IMPL_KERNEL_THROW(condition, msg)                              \
+#define LPM_IMPL_KERNEL_THROW(condition, msg)                              \
   do {                                                                 \
     if (!(condition)) {                                                \
       printf("KERNEL CHECK FAILED:\n   %s\n   %s\n", #condition, msg); \
@@ -41,8 +41,8 @@ namespace Lpm {
 #define LPM_ASSERT(condition) IMPL_THROW(condition, "", std::runtime_error)
 #define LPM_ASSERT_MSG(condition, msg) \
   IMPL_THROW(condition, msg, std::runtime_error)
-#define LPM_KERNEL_ASSERT(condition) IMPL_KERNEL_THROW(condition, "")
-#define LPM_KERNEL_ASSERT_MSG(condition, msg) IMPL_KERNEL_THROW(condition, msg)
+#define LPM_KERNEL_ASSERT(condition) LPM_IMPL_KERNEL_THROW(condition, "")
+#define LPM_KERNEL_ASSERT_MSG(condition, msg) LPM_IMPL_KERNEL_THROW(condition, msg)
 #else
 #define LPM_ASSERT(condition) ((void)(0))
 #define LPM_ASSERT_MSG(condition, msg) ((void)(0))
@@ -53,10 +53,10 @@ namespace Lpm {
 #define LPM_REQUIRE(condition) IMPL_THROW(condition, "", std::runtime_error)
 #define LPM_REQUIRE_MSG(condition, msg) \
   IMPL_THROW(condition, msg, std::runtime_error)
-#define LPM_KERNEL_REQUIRE(condition) IMPL_KERNEL_THROW(condition, "")
-#define LPM_KERNEL_REQUIRE_MSG(condition, msg) IMPL_KERNEL_THROW(condition, msg)
+#define LPM_KERNEL_REQUIRE(condition) LPM_IMPL_KERNEL_THROW(condition, "")
+#define LPM_KERNEL_REQUIRE_MSG(condition, msg) LPM_IMPL_KERNEL_THROW(condition, msg)
 #define LPM_STOP(msg) IMPL_THROW(false, msg, std::runtime_error)
-#define LPM_KERNEL_STOP(msg) IMPL_KERNEL_THROW(false, msg)
+#define LPM_KERNEL_STOP(msg) LPM_IMPL_KERNEL_THROW(false, msg)
 
 }  // namespace Lpm
 #endif

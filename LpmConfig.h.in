@@ -4,17 +4,14 @@
 #ifndef LPM_CONFIG_H
 #define LPM_CONFIG_H
 
-#cmakedefine LPM_USE_CUDA
-#cmakedefine LPM_USE_VTK
-#cmakedefine LPM_USE_VTK_GRAPHICS
 #cmakedefine LPM_HAVE_SPHEREPACK
 #cmakedefine LPM_USE_BOOST
 #cmakedefine LPM_USE_NETCDF
-#cmakedefine LPM_USE_COMPOSE
 #cmakedefine LPM_USE_FINUFFT
 #cmakedefine LPM_USE_FFTW3
 #cmakedefine LPM_ENABLE_DFS
 #cmakedefine LPM_USE_FASTBVE
+#cmakedefine LPM_USE_VTK
 
 #define LPM_MESH_SEED_DIR "@CMAKE_CURRENT_SOURCE_DIR@/mesh_seeds"
 #define LPM_TEST_DATA_DIR "@CMAKE_CURRENT_SOURCE_DIR@/tests/data"

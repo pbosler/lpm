@@ -12,9 +12,7 @@
 #include "util/lpm_math.hpp"
 #include "util/lpm_tuple.hpp"
 
-#ifdef LPM_USE_COMPOSE
 #include "siqk_sqr.hpp"
-#endif
 
 namespace Lpm {
 

@@ -1,20 +1,10 @@
-if (Kokkos_DIR)
-  message(STATUS "looking for Kokkos at ${Kokkos_DIR}")
-  find_package(Kokkos REQUIRED HINTS ${Kokkos_DIR})
-else()
-  message(FATAL_ERROR "Kokkos_DIR not specified.")
-endif()
+message(STATUS "LPM: looking for Kokkos at ${Kokkos_DIR}")
+message(STATUS "LPM: looking for KokkosKernels at ${KokkosKernels_DIR}")
+message(STATUS "LPM: looking for Compadre at ${Compadre_DIR}")
 
-if (KokkosKernels_DIR)
-  message(STATUS "looking for KokkosKernels at ${KokkosKernels_DIR}")
-  find_package(KokkosKernels REQUIRED HINTS ${KokkosKernels_DIR})
-else()
-  message(FATAL_ERROR "KokkosKernels_DIR not specified.")
-endif()
+find_package(Kokkos REQUIRED HINTS ${Kokkos_DIR})
 
-if (Compadre_DIR)
-  message(STATUS "looking for Compadre at ${Compadre_DIR}")
-  find_package(Compadre REQUIRED HINTS ${Compadre_DIR})
-else()
-  message(FATAL_ERROR "Compadre_DIR not specified.")
-endif()
+find_package(KokkosKernels REQUIRED HINTS ${KokkosKernels_DIR})
+
+find_package(Compadre REQUIRED HINTS ${Compadre_DIR})
+

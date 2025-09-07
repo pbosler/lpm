@@ -26,22 +26,22 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest] #, macos-latest]
+        os: [ubuntu-22.04] #, macos-latest]
         build-type: [Debug, RelWithDebInfo]
         dfs-option: [OFF, ON]
 
     runs-on: ${{ matrix.os }}
 
     # Pre-fab container with third-party libs installed.
-    container: pbosler/lpm-tpl-relwithdebinfo:2
+    container: pbosler/lpm-tpl-sep25:0
 
     # Environment variables
     env:
       CC: mpicc
       CXX: mpicxx
       FC: mpifort
-      VTK_ROOT: /lpm-tpl
-      KOKKOS_ROOT: /lpm-tpl
+      VTK_ROOT: /tpl
+      KOKKOS_ROOT: /tpl
       DOCKER_ALLOW_MPI_RUN_AS_ROOT: 1
       DOCKER_ALLOW_MPI_RUN_AS_ROOT_CONFIRM: 1
       OMP_NUM_THREADS: 4
@@ -62,41 +62,36 @@ jobs:
       uses: actions/checkout@v4
       with:
         path: ${{github.workspace}}
-        submodules: recursive
-
-    - name: Cache spdlog and catch2
-      uses: actions/cache@v4
-      with:
-        path: $LPM_INSTALL
-        key: tpl-folder
 
     - name: Configure lpm (${{ matrix.build-type }} DFS ${{ matrix.dfs-option }})
       shell: bash
       working-directory: ${{github.workspace}}
       run: |
-        mkdir build
-        cd build
-        cmake \
+        cmake -B ./build \
           -DCMAKE_INSTALL_PREFIX=$LPM_INSTALL \
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_CXX_COMPILER=mpicxx \
           -DCMAKE_C_COMPILER=mpicc \
+          -DCMAKE_Fortran_COMPILER=mpifort \
           -DCMAKE_VERBOSE_MAKEFILE=ON \
           -DCMAKE_PREFIX_PATH=/lpm-tpl \
           -DLPM_ENABLE_NETCDF=OFF \
-          -DLPM_ENABLE_VTK=ON \
-          -DLPM_ENABLE_Compose=ON \
           -DLPM_ENABLE_DFS=${{ matrix.dfs-option }} \
-          -DKokkos_DIR=/lpm-tpl \
-          -DKokkosKernels_DIR=/lpm-tpl \
-          -DCompadre_DIR=/lpm-tpl \
-          -DCompose_DIR=/lpm-tpl \
+          -DLPM_ENABLE_Compose=ON \
+          -DKokkos_DIR=/tpl \
+          -DKokkosKernels_DIR=/tpl \
+          -DCompadre_DIR=/tpl \
+          -DCompose_DIR=/tpl \
+          -DSPDLOG_DIR=/tpl \
+          -DCATCH2_DIR=/tpl \
+          -DFFTW3_DIR=/tpl \
+          -DFINUFFT_DIR=/tpl \
           -G "Unix Makefiles" \
-          ..
+          .
 
     - name: Build lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
-      working-directory: ${{github.workspace}}/build
-      run: cmake --build . --config ${{ matrix.build-type }}
+      working-directory: ${{github.workspace}}
+      run: cmake --build ./build --config ${{ matrix.build-type }}
 
     - name: Test lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build

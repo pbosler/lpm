@@ -1,0 +1,37 @@
+name: Build and Test LPM
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
+      - 'scripts/**'
+      - 'README.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'doc/**'
+      - 'tools/**'
+      - 'scripts/**'
+      - 'README.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup runner
+        - uses: actions/cache-apt-pkgs-action@latest
+        - with:
+            packages: |
+                libopenmpi-dev 
+                openmpi-bin 
+                netcdf-bin 
+                libnetcdf-mpi-dev 
+                libblas-dev 
+                liblapack-dev
+                libvtk9-dev
+        

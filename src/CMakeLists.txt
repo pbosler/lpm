@@ -1,6 +1,5 @@
-include_directories(${LPM_INCLUDE_DIRS}
-                    ${Trilinos_INCLUDE_DIRS}
-                    ${Trilinos_TPL_INCLUDE_DIRS}
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}
+                    ${PROJECT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/fortran
 )
 
@@ -51,12 +50,12 @@ set(LPM_SOURCES
 
 if (LPM_ENABLE_DFS)
   LIST(APPEND LPM_SOURCES
-    dfs/dfs_doubling.cpp
+        dfs/dfs_doubling.cpp
 		dfs/dfs_laplacian_new.cpp
 		dfs/dfs_rhs_new.cpp
  		dfs/dfs_solve_new.cpp
 		dfs/dfs_test_support.cpp
-    dfs/dfs_velocity.cpp
+        dfs/dfs_velocity.cpp
 		dfs/dfs_interpolation.cpp
 		dfs/dfs_vort2velocity.cpp
  		dfs/dfs_surface_grad.cpp
@@ -81,15 +80,13 @@ add_library(lpm ${LPM_SOURCES})
 
 target_include_directories(lpm PUBLIC ${LPM_INCLUDE_DIRS})
 
-add_dependencies(lpm spdlog)
-
 target_link_libraries(lpm PUBLIC
                           lpm_fortran
                           Kokkos::kokkos
                           Kokkos::kokkoskernels
                           Compadre::compadre
                           compose
-                          spdlog
+                          spdlog::spdlog
                           )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm PUBLIC NetCDF::NetCDF)
@@ -97,11 +94,8 @@ endif()
 if (LPM_USE_VTK)
   target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
 endif()
-if (LPM_USE_FFTW3)
-  target_link_libraries(lpm PUBLIC ${FFTW_LIBRARIES})
-endif()
-if (LPM_USE_FINUFFT)
-  target_link_libraries(lpm PUBLIC finufft)
+if (LPM_ENABLE_DFS)
+  target_link_libraries(lpm PUBLIC FFTW3::Double FFTW3::Float FFTW3::DoubleOpenMP FFTW3::FloatOpenMP finufft::finufft)
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h
@@ -171,8 +165,6 @@ if (LPM_ENABLE_DFS)
 	      )
 endif()
 
-print_imported()
-
 install(FILES ${LPM_HEADERS}
     DESTINATION include)
 install(TARGETS lpm lpm_fortran DESTINATION lib)
@@ -184,9 +176,8 @@ install(TARGETS lpm lpm_fortran DESTINATION lib)
 # Pre-compile lpm_catch_main.cpp into its own mini-library, so that individual
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main util/lpm_catch_main.cpp)
-add_dependencies(lpm_test_main catch2)
-target_link_libraries(lpm_test_main PUBLIC lpm catch2 ${CMAKE_DL_LIBS})
-target_include_directories(lpm_test_main PUBLIC ${CATCH2_INCLUDE_DIR})
+#add_dependencies(lpm_test_main catch2)
+target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS} PRIVATE Catch2::Catch2 )
 install(TARGETS lpm_test_main
         EXPORT LpmTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
