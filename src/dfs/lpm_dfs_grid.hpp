@@ -2,6 +2,7 @@
 #define LPM_DFS_GRID_HPP
 
 #include "LpmConfig.h"
+#ifdef LPM_ENABLE_DFS
 #include "lpm_constants.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
@@ -131,4 +132,5 @@ struct DFSGrid {
 } // namespace DFS
 } // namespace Lpm
 
+#endif // LPM_ENABLE_DFS
 #endif
