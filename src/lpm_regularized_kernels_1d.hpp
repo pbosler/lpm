@@ -186,7 +186,7 @@ struct LineXDerivativeReducer {
      const Real xij = (x(i) - x(j))/kernels.eps;
      const Real Fi = f_values(i) * length(i);
      const Real Fj = f_values(j) * length(j);
-     dfdx += (Fi * length(j) + Fj * length(i)) * kernels.x_derivative(xij) / kernels.eps * length(j) / kernels.eps;
+     dfdx += (Fi * length(j) + Fj * length(i)) * kernels.x_derivative(xij) / kernels.eps * length(j);
   }
 };
 
@@ -209,14 +209,20 @@ struct Line2ndDerivativeReducer {
   KOKKOS_INLINE_FUNCTION
   Line2ndDerivativeReducer(const scalar_view_type x, const scalar_view_type f, const KernelType& kernels,
     const scalar_view_type l, const Index i) :
-    x(x), f_values(f), length(l), kernels(kernels), i(i) {}
+    x(x),
+    f_values(f),
+    kernels(kernels),
+    length(l),
+    i(i) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& j, Real& df2dx2) const {
-     const Real xij = (x(i) - x(j))/kernels.eps;
-     const Real Fi = f_values(i) * length(i);
-     const Real Fj = f_values(j) * length(j);
-     df2dx2 += (Fj*length(i) - Fi*length(j)) * kernels.laplacian(xij) / kernels.eps / kernels.epssq;
+    const Real xij_scal = (x(i) - x(j)) / kernels.eps;
+    const Real kscal = kernels.laplacian(xij_scal) / kernels.eps;
+    df2dx2 += (f_values(j) - f_values(i)) * length(j) * kscal;
+//     const Real Fi = f_values(i) * length(i);
+//     const Real Fj = f_values(j) * length(j);
+//     df2dx2 += (Fi*length(j) - Fj*length(i)) * kscal;
   }
 };
 
@@ -249,7 +255,7 @@ struct LineDirectSum {
     Real output_value;
     Kokkos::parallel_reduce(Kokkos::TeamVectorRange(thread_team, n_src),
       ReducerType(x, f, kernels, length, i), output_value);
-    output_view(i) = output_value;
+    output_view(i) = output_value / pow(kernels.eps, derivative_order);
   }
 };
 

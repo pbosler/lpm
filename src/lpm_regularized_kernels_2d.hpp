@@ -49,19 +49,23 @@ Real plane_scaled_blob_impl(const XType& x, const KernelType& kernels) {
 struct Plane2ndOrder {
   Real eps;
   Real epssq;
+  static constexpr Real denom = constants::PI;
+  Real scaled_denom;
   static constexpr Int order = 2;
 
   KOKKOS_INLINE_FUNCTION
-  explicit Plane2ndOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {};
+  explicit Plane2ndOrder(const Real epsilon) :
+    eps(epsilon),
+    epssq(square(epsilon)),
+    scaled_denom(constants::PI * square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane2ndOrder(const Plane2ndOrder& other) = default;
 
   template <typename XType> KOKKOS_INLINE_FUNCTION
    Real blob(const XType& x) const {
-    constexpr Real coeff = 1/constants::PI;
     const Real rsq = PlaneGeometry::norm2(x);
-    return coeff * exp(-rsq);
+    return exp(-rsq) / denom;
   }
 
   template <typename XType> KOKKOS_INLINE_FUNCTION
@@ -93,7 +97,7 @@ struct Plane2ndOrder {
    Real x0_derivative(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = -2 / (constants::PI * epssq);
+    const Real coeff = -2 / scaled_denom;
     return xscaled[0] * coeff * exp(-rsq);
   }
 
@@ -101,7 +105,7 @@ struct Plane2ndOrder {
    Real x1_derivative(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff =  -2 / ( constants::PI * epssq );
+    const Real coeff =  -2 / scaled_denom;
     return xscaled[1] * coeff * exp(-rsq);
   }
 
@@ -109,7 +113,7 @@ struct Plane2ndOrder {
    Real left_x0_derivative(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = (-20 + 8*rsq) / (constants::PI * epssq);
+    const Real coeff = (-20 + 8*rsq) / scaled_denom;
     return xscaled[0] * coeff * exp(-rsq);
   }
 
@@ -117,7 +121,7 @@ struct Plane2ndOrder {
    Real left_x1_derivative(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = (-20 + 8*rsq) / ( constants::PI * epssq );
+    const Real coeff = (-20 + 8*rsq) / scaled_denom;
     return xscaled[1] * coeff * exp(-rsq);
   }
 
@@ -125,18 +129,23 @@ struct Plane2ndOrder {
    Real laplacian(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = 4 / (constants::PI * epssq);
+    const Real coeff = 4 / scaled_denom;
     return coeff * exp(-rsq);
   }
 };
 
 struct Plane4thOrder {
-    Real eps;
-    Real epssq;
-  static constexpr Int order = 4
-  ;
+  Real eps;
+  Real epssq;
+  static constexpr Real denom = constants::PI;
+  Real scaled_denom;
+  static constexpr Int order = 4;
+
   KOKKOS_INLINE_FUNCTION
-  explicit Plane4thOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {};
+  explicit Plane4thOrder(const Real epsilon) :
+    eps(epsilon),
+    epssq(square(epsilon)),
+    scaled_denom(constants::PI * square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane4thOrder(const Plane4thOrder& other) = default;
@@ -144,7 +153,7 @@ struct Plane4thOrder {
   template <typename XType> KOKKOS_INLINE_FUNCTION
   Real blob(const XType& x) const {
       const Real rsq = PlaneGeometry::norm2(x);
-      const Real coeff = ( 2 - rsq ) /constants::PI;
+      const Real coeff = ( 2 - rsq ) / denom;
     return coeff * exp(-rsq);
   }
 
@@ -177,7 +186,7 @@ struct Plane4thOrder {
   Real laplacian(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = (12 - 4 * rsq ) / (constants::PI * epssq);
+    const Real coeff = (12 - 4 * rsq ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -185,7 +194,7 @@ struct Plane4thOrder {
    Real x0_derivative(const XType& x) const  {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = xscaled[0] * ( -6 + 2*rsq ) / (constants::PI * epssq);
+    const Real coeff = xscaled[0] * ( -6 + 2*rsq ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -193,7 +202,7 @@ struct Plane4thOrder {
    Real x1_derivative(const XType& x) const {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
-    const Real coeff = xscaled[1] * ( -6 + 2*rsq ) / (constants::PI * epssq);
+    const Real coeff = xscaled[1] * ( -6 + 2*rsq ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -202,7 +211,7 @@ struct Plane4thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (-140 + 196*rsq - 64*r4th + 16*rsq*r4th/3) / (constants::PI * epssq);
+    const Real coeff = (-140 + 196*rsq - 64*r4th + 16*rsq*r4th/3) / scaled_denom;
     return xscaled[0] * coeff * exp(-rsq);
   }
 
@@ -211,7 +220,7 @@ struct Plane4thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (-140 + 196*rsq - 64*r4th + 16*rsq*r4th/3) / (constants::PI * epssq);
+    const Real coeff = (-140 + 196*rsq - 64*r4th + 16*rsq*r4th/3) / scaled_denom;
     return xscaled[1] * coeff * exp(-rsq);
   }
 };
@@ -219,10 +228,15 @@ struct Plane4thOrder {
 struct Plane6thOrder {
   Real eps;
   Real epssq;
+  static constexpr Real denom = constants::PI;
+  Real scaled_denom;
   static constexpr Int order = 6;
 
   KOKKOS_INLINE_FUNCTION
-  explicit Plane6thOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {}
+  explicit Plane6thOrder(const Real epsilon) :
+    eps(epsilon),
+    epssq(square(epsilon)),
+    scaled_denom(constants::PI * square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane6thOrder(const Plane6thOrder& other) = default;
@@ -231,7 +245,7 @@ struct Plane6thOrder {
    Real blob(const XType& x) const {
     const Real rsq = PlaneGeometry::norm2(x);
     const Real r4th = square(rsq);
-    const Real coeff = ( 3 - 3*rsq + r4th/2 ) /constants::PI;
+    const Real coeff = ( 3 - 3*rsq + r4th/2 ) / denom;
     return coeff * exp(-rsq);
   }
 
@@ -251,7 +265,7 @@ struct Plane6thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (24 - 16*rsq + 2*r4th ) / (constants::PI * epssq);
+    const Real coeff = (24 - 16*rsq + 2*r4th ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -260,7 +274,7 @@ struct Plane6thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = xscaled[0] * ( -12 + 8*rsq - r4th ) / (constants::PI * epssq);
+    const Real coeff = xscaled[0] * ( -12 + 8*rsq - r4th ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -269,7 +283,7 @@ struct Plane6thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = xscaled[1] * ( -12 + 8*rsq - r4th ) / (constants::PI * epssq);
+    const Real coeff = xscaled[1] * ( -12 + 8*rsq - r4th ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -292,7 +306,7 @@ struct Plane6thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (-504 + 1344*rsq - 978*r4th+268*rsq*r4th-88*square(r4th)/3 + 16*square(r4th)*rsq/15) / (constants::PI * epssq);
+    const Real coeff = (-504 + 1344*rsq - 978*r4th+268*rsq*r4th-88*square(r4th)/3 + 16*square(r4th)*rsq/15) / scaled_denom;
     return xscaled[0] * coeff * exp(-rsq);
   }
 
@@ -301,17 +315,23 @@ struct Plane6thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (-504 + 1344*rsq - 978*r4th+268*rsq*r4th-88*square(r4th)/3 + 16*square(r4th)*rsq/15) / (constants::PI * epssq);
+    const Real coeff = (-504 + 1344*rsq - 978*r4th+268*rsq*r4th-88*square(r4th)/3 + 16*square(r4th)*rsq/15) / scaled_denom;
     return xscaled[1] * coeff * exp(-rsq);
   }};
 
 struct Plane8thOrder {
   Real eps;
   Real epssq;
+  Real denom;
+  Real scaled_denom;
   static constexpr Int order = 8;
 
   KOKKOS_INLINE_FUNCTION
-  explicit Plane8thOrder(const Real epsilon) : eps(epsilon), epssq(square(epsilon)) {};
+  explicit Plane8thOrder(const Real epsilon) :
+    eps(epsilon),
+    epssq(square(epsilon)),
+    denom(constants::PI),
+    scaled_denom(constants::PI * square(epsilon)) {};
 
   KOKKOS_INLINE_FUNCTION
   Plane8thOrder(const Plane8thOrder& other) = default;
@@ -320,7 +340,7 @@ struct Plane8thOrder {
    Real blob(const XType& x) const {
     const Real rsq = PlaneGeometry::norm2(x);
     const Real r4th = square(rsq);
-    const Real coeff = ( 4 - 6*rsq + 2*r4th - rsq*r4th / 6 ) /constants::PI;
+    const Real coeff = ( 4 - 6*rsq + 2*r4th - rsq*r4th / 6 ) / denom;
     return coeff * exp(-rsq);
   }
 
@@ -342,7 +362,7 @@ struct Plane8thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = (40 - 40 * rsq + 10*r4th - 2*rsq*r4th/3  ) / (constants::PI * epssq);
+    const Real coeff = (40 - 40 * rsq + 10*r4th - 2*rsq*r4th/3  ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -351,7 +371,7 @@ struct Plane8thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = xscaled[0] * ( -20 + 20*rsq - 5 * r4th + rsq*r4th/3 ) / (constants::PI * epssq);
+    const Real coeff = xscaled[0] * ( -20 + 20*rsq - 5 * r4th + rsq*r4th/3 ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -360,7 +380,7 @@ struct Plane8thOrder {
     const Real xscaled[2] = {x[0]/eps, x[1]/eps};
     const Real rsq = PlaneGeometry::norm2(xscaled);
     const Real r4th = square(rsq);
-    const Real coeff = xscaled[1] * ( -20 + 20*rsq - 5 * r4th + rsq*r4th/3 ) / (constants::PI * epssq);
+    const Real coeff = xscaled[1] * ( -20 + 20*rsq - 5 * r4th + rsq*r4th/3 ) / scaled_denom;
     return coeff * exp(-rsq);
   }
 
@@ -385,7 +405,7 @@ struct Plane8thOrder {
     const Real r4th = square(rsq);
     const Real r6th = rsq*r4th;
     const Real r8th = square(r4th);
-    const Real coeff = (-1320 + 5544*rsq -6666*r4th + 9922*r6th/3 - 2336*r8th/3 + 272*r8th*rsq/3 - 224*square(r6th)/45 + 32*r4th*r8th/315) / (constants::PI * epssq);
+    const Real coeff = (-1320 + 5544*rsq -6666*r4th + 9922*r6th/3 - 2336*r8th/3 + 272*r8th*rsq/3 - 224*square(r6th)/45 + 32*r4th*r8th/315) / scaled_denom;
     return xscaled[0] * coeff * exp(-rsq);
   }
 
@@ -396,7 +416,7 @@ struct Plane8thOrder {
     const Real r4th = square(rsq);
     const Real r6th = rsq*r4th;
     const Real r8th = square(r4th);
-    const Real coeff = (-1320 + 5544*rsq -6666*r4th + 9922*r6th/3 - 2336*r8th/3 + 272*r8th*rsq/3 - 224*square(r6th)/45 + 32*r4th*r8th/315) / (constants::PI * epssq);
+    const Real coeff = (-1320 + 5544*rsq -6666*r4th + 9922*r6th/3 - 2336*r8th/3 + 272*r8th*rsq/3 - 224*square(r6th)/45 + 32*r4th*r8th/315) / scaled_denom;
     return xscaled[1] * coeff * exp(-rsq);
   }
 };
@@ -580,7 +600,7 @@ struct PlaneLaplacianReducer {
     if (!src_mask(j)) {
       const auto x_tgt = Kokkos::subview(tgt_x, i, Kokkos::ALL);
       const auto x_src = Kokkos::subview(src_x, j, Kokkos::ALL);
-      const Real xij[2] = {x_tgt[0] - x_src[0], x_tgt[1] - x_src[1]};
+      const Real xij[2] = {(x_tgt[0] - x_src[0]), (x_tgt[1] - x_src[1])};
       lap += (tgt_values(j) - src_values(i)) * area(j) * kernels.laplacian(xij) / kernels.epssq;
     }
   }
