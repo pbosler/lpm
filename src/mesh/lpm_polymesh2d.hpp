@@ -69,6 +69,8 @@ struct PolyMeshParameters {
       : init_depth(depth), amr_buffer(amr_buff), amr_limit(amr_lim), seed(r) {
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr_buff);
   }
+
+  bool is_adaptive() const {return (amr_limit > 0 and amr_buffer > 0); }
 };
 
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
@@ -843,11 +845,9 @@ class PolyMesh2d {
   template <typename LoggerType>
   void divide_face(const Index face_idx, LoggerType& logger);
 
-#ifdef LPM_USE_VTK
   /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d
   /// instance
   virtual void output_vtk(const std::string& fname) const;
-#endif
 
   /// @brief Copies data from host to device
   virtual void update_device() const;

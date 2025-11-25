@@ -13,10 +13,9 @@
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "dfs_vort2velocity.hpp"
-#endif
+
 
 using namespace SpherePoisson;
 namespace Lpm {
@@ -138,6 +137,10 @@ class DFSBVE {
     template <typename VorticityInitialCondition>
     void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
+    template <typename VorticityInitialCondition>
+    void init_vorticity_from_lag_crds(const VorticityInitialCondition& vorticity_fn,
+      const Index vert_start_idx, const Index face_start_idx);
+
     template <typename VelocityType>
     void init_velocity(const VelocityType& vel_fn);
 
@@ -177,14 +180,15 @@ class DFSBVE {
 
     void update_mesh_to_grid_neighborhoods();
 
-#ifdef LPM_USE_VTK
-  void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
+//     void reset_gather_scatter();
 
-  inline Index vtk_grid_size() {return grid.vtk_size(); }
-#endif
+    void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
+
+    inline Index vtk_grid_size() {return grid.vtk_size(); }
+
+    void finalize_mesh_to_grid_coupling();
 };
 
-#ifdef LPM_USE_VTK
   /** Return a vtk interface for the DFSBVE's Lagrangian particle/panel mesh
   */
   template <typename SeedType>
@@ -194,10 +198,10 @@ class DFSBVE {
   */
   template <typename SeedType>
   VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve);
-#endif
 
-template <typename SeedType>
-CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
+  template <typename SeedType>
+  CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve,
+    const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
 
 } // namespace DFS
 } // namespace Lpm

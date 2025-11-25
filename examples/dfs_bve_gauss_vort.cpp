@@ -19,6 +19,8 @@
 #include "lpm_velocity_gallery.hpp"
 #include "lpm_vorticity_gallery.hpp"
 #include "mesh/lpm_ftle.hpp"
+#include "mesh/lpm_refinement.hpp"
+#include "mesh/lpm_refinement_flags.hpp"
 #include "util/lpm_matlab_io.hpp"
 #include "util/lpm_string_util.hpp"
 #ifdef LPM_USE_VTK
@@ -106,7 +108,6 @@ int main(int argc, char* argv[]) {
     Coriolis coriolis(input.get_option("omega").get_real());
     GaussianVortexSphere gauss_vort;
 
-
     //  particle/panel/grid initialization
     using SeedType = CubedSphereSeed;
     using Coriolis = CoriolisSphere;
@@ -119,43 +120,87 @@ int main(int argc, char* argv[]) {
       amr_limit = input.get_option("amr_both").get_int();
     }
     const bool amr = (amr_buffer > 0 and amr_limit > 0);
+    /**
+      Build the Lagrangian particle/panel mesh and DFS grid
+    */
     PolyMeshParameters<SeedType> mesh_params(mesh_depth, sphere_radius, amr_buffer, amr_limit);
     const Int nlon = input.get_option("nlon").get_int();
     const Int gmls_order = input.get_option("gmls_interpolation_order").get_int();
     gmls::Params gmls_params(gmls_order);
 
-    // DFS initialization
     auto sphere = std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
 
+    /**
+      initial vorticity values (a) : a Gaussian distribution about a center point
+    */
     sphere->init_vorticity(gauss_vort);
-//     const Real total_vort0 = 0.196349540849363;  // sphere->total_vorticity();
     const Real total_vort0 = sphere->total_vorticity();
+    /**
+      initial vorticity values (b) : ensure total vorticity = 0.
+    */
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
-    sphere->init_velocity_from_vorticity();
-    const Real ftle_tol = input.get_option("ftle_tol").get_real();
 
     /**
       Initial adaptive refinement
     */
+    Real circ_tol = 0.0;
     if (amr) {
       /**
         To start adaptive refinement, we convert relative tolerances from the
         input to absolute tolerances based on the initialized uniform mesh and
         functions defined on it.
       */
-      Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
 
-      auto face_area = sphere->mesh.faces.area;
-      auto face_vort = sphere->rel_vort_active.view;
-      auto face_mask = sphere->mesh.faces.mask;
+      const auto rel_vort_range = sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
+      logger.info("amr: uniform mesh has (min, max) vorticity = ({}, {}), max. circ. appx {}", rel_vort_range.first, rel_vort_range.second, rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
+
+      Refinement<SeedType> refiner(sphere->mesh);
+
+        /**
+        refinement criteria 1: circulation about a face, will refine local
+          vorticity extrema
+        */
       const auto rel_circ_tol = input.get_option("max_circulation_tol").get_real();
-      ScalarIntegralFlag circ_flag(flags, face_vort, face_area, face_mask,
-        sphere->mesh.n_faces_host(), rel_circ_tol);
+      ScalarIntegralFlag circ_flag(refiner.flags,
+        sphere->rel_vort_active.view,
+        sphere->mesh.faces.area,
+        sphere->mesh.faces.mask,
+        sphere->mesh.n_faces_host(),
+        rel_circ_tol);
       circ_flag.set_tol_from_relative_value();
       logger.info("relative max. circulation tol (from input) {} converts to absolute circulation tol {}",
         rel_circ_tol, circ_flag.tol);
-    }
+      circ_tol = circ_flag.tol;
+
+      Index vert_start_idx = 0;
+      Index face_start_idx = 0;
+      for (int i=0; i< amr_limit; ++i) {
+        Index vert_end_idx = sphere->mesh.n_vertices_host();
+        Index face_end_idx = sphere->mesh.n_faces_host();
+
+        refiner.iterate(face_start_idx, face_end_idx, circ_flag);
+        logger.info("amr iteration {}: circulation refinement count = {}", i, refiner.count[0]);
+
+        sphere->mesh.divide_flagged_faces(refiner.flags, logger);
+        // reset for next iteration
+        Kokkos::deep_copy(refiner.flags, false);
+        face_start_idx = face_end_idx;
+        sphere->init_vorticity(gauss_vort);
+        logger.debug("vorticity reinitialized");
+//         sphere->reset_gather_scatter();
+//         logger.debug("gather/scatter reset");
+
+      } // amr iterations
+      // TODO: update Courant number, write to log
+      sphere->finalize_mesh_to_grid_coupling();
+    } // if (amr)
+
+    /**
+      With vorticity initialized, we can compute the initial velocity
+    */
+    sphere->init_velocity_from_vorticity();
+
     Lat0 lat0;
     sphere->init_tracer(lat0);
     logger.info(sphere->info_string());
@@ -163,6 +208,7 @@ int main(int argc, char* argv[]) {
     // Solver initialization
 //     using SolverType = DFS::DFSRK2<SeedType>;
 //      using SolverType = DFS::DFSRK3<SeedType>;
+    const Real ftle_tol = input.get_option("ftle_tol").get_real();
     using SolverType = DFS::DFSRK4<SeedType>;
     const Real tfinal = input.get_option("tfinal").get_real();
     const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
@@ -203,7 +249,9 @@ int main(int argc, char* argv[]) {
 
     std::string amr_str = "_";
     if (amr) {
-      logger.warn("AMR not implemented for DFS yet.");
+      std::ostringstream ss;
+      ss << "amr_d" << mesh_depth << "-" << amr_limit << "_circtol" << std::setprecision(6) << circ_tol << "_";
+      amr_str = ss.str();
     }
     const std::string resolution_str =  std::to_string(mesh_depth) + dt_str(dt);
     std::string remesh_str;
@@ -228,7 +276,7 @@ int main(int argc, char* argv[]) {
       ++vtk_counter;
     }
     /**
-    time stepping
+      time stepping
     */
     int rm_counter = 0;
     Real tref = 0;
@@ -242,6 +290,9 @@ int main(int argc, char* argv[]) {
       const bool interval_trigger = ((t_idx+1)%remesh_interval == 0);
       const bool do_remesh = (ftle_trigger or interval_trigger);
       if (do_remesh) {
+        /**
+          do remesh before time step
+        */
         ++rm_counter;
         if (interval_trigger) {
           logger.debug("remesh {} triggered by remesh interval", rm_counter);
@@ -260,10 +311,7 @@ int main(int argc, char* argv[]) {
         }
         else {
           if (remesh_strategy == "direct") {
-            remesh.uniform_direct_remesh(); // replace with a custom method
-            /**
-              uniform_direct_remesh(new_sphere, sphere); // rely on deep copies, rather than cute pointer/view stuff.
-            */
+            remesh.uniform_direct_remesh();
           }
           else {
             logger.error("indirect remesh not implemented for DFS; skipping remesh step.");

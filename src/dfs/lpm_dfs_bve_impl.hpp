@@ -49,9 +49,21 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   grid_crds.update_host();
   grid_area = grid.weights_view();
 
-  gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
-  scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
+  if (!mesh_params.is_adaptive()) {
+    finalize_mesh_to_grid_coupling();
+  }
+}
 
+template <typename SeedType>
+void DFSBVE<SeedType>::finalize_mesh_to_grid_coupling() {
+  if (!gathered_mesh) {
+    gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
+    scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
+  }
+  else {
+    gathered_mesh.reset(new GatherMeshData<SeedType>(mesh));
+    scatter_mesh.reset(new ScatterMeshData<SeedType>(*gathered_mesh, mesh));
+  }
   passive_scalar_fields.emplace("relative_vorticity", rel_vort_passive);
   active_scalar_fields.emplace("relative_vorticity", rel_vort_active);
   active_scalar_fields.emplace("ftle", ftle);
@@ -61,7 +73,9 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   gathered_mesh->init_scalar_fields(passive_scalar_fields, active_scalar_fields);
   gathered_mesh->init_vector_fields(passive_vector_fields, active_vector_fields);
 
-  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds, grid_crds.get_host_crd_view(), gmls_params);
+  mesh_to_grid_neighborhoods =
+    gmls::Neighborhoods(gathered_mesh->h_phys_crds,
+          grid_crds.get_host_crd_view(), gmls_params);
 
   leaf_face_crds = mesh.faces.leaf_crd_view();
   h_leaf_face_crds = Kokkos::create_mirror_view(leaf_face_crds);
@@ -71,6 +85,8 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
 
   Kokkos::deep_copy(ref_crds_passive.view, mesh.vertices.phys_crds.view);
   Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
+
+  gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 }
 
 template <typename SeedType>
@@ -83,6 +99,14 @@ void DFSBVE<SeedType>::update_mesh_to_grid_neighborhoods() {
   Kokkos::deep_copy(h_leaf_face_crds, leaf_face_crds);
   face_to_grid_neighborhoods = gmls::Neighborhoods(h_leaf_face_crds, grid_crds.get_host_crd_view(), gmls_params);
 }
+
+// template <typename SeedType>
+// void DFSBVE<SeedType>::reset_gather_scatter() {
+//   LPM_ASSERT(gathered_mesh);
+//   LPM_ASSERT(scatter_mesh);
+//
+//   gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
+// }
 
 template <typename SeedType> template <typename VorticityInitialCondition>
 void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity_fn) {
@@ -120,9 +144,38 @@ void DFSBVE<SeedType>::init_vorticity(const VorticityInitialCondition& vorticity
     zeta_grid(i) = zeta;
     omega_grid(i) = zeta + coriolis.f(mxyz);
   });
-
-  gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
 };
+
+template <typename SeedType> template <typename VorticityInitialCondition>
+void DFSBVE<SeedType>::init_vorticity_from_lag_crds(const VorticityInitialCondition& vorticity_fn,
+      const Index vert_start_idx, const Index face_start_idx) {
+    static_assert(std::is_same<typename VorticityInitialCondition::geo, SphereGeometry>::value, "Spherical vorticity function required.");
+
+  auto zeta_verts = rel_vort_passive.view;
+  auto omega_verts = abs_vort_passive.view;
+  auto zeta_faces = rel_vort_active.view;
+  auto omega_faces = abs_vort_active.view;
+
+  const auto vlag_crds = mesh.vertices.lag_crds.view;
+  const auto flag_crds = mesh.faces.lag_crds.view;
+
+  Kokkos::parallel_for(
+    Kokkos::RangePolicy<>(vert_start_idx, mesh.n_vertices_host()),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto crd = Kokkos::subview(vlag_crds, i, Kokkos::ALL);
+      const Real zeta = vorticity_fn(crd[0], crd[1], crd[2]);
+      zeta_verts(i) = zeta;
+      omega_verts(i) = zeta + coriolis.f(crd);
+    });
+  Kokkos::parallel_for(
+    Kokkos::RangePolicy<>(face_start_idx, mesh.n_faces_host()),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto crd = Kokkos::subview(flag_crds, i, Kokkos::ALL);
+      const Real zeta = vorticity_fn(crd[0], crd[1], crd[2]);
+      zeta_faces(i) = zeta;
+      omega_faces(i) = zeta + coriolis.f(crd);
+    });
+}
 
 template <typename SeedType>
 void DFSBVE<SeedType>::update_grid_absolute_vorticity() {
@@ -155,7 +208,7 @@ void DFSBVE<SeedType>::init_velocity(const VelocityType& vel_fn) {
     VelocityKernel<VelocityType>(u_grid, gridcrds, 0, vel_fn));
 }
 
-#ifdef LPM_USE_VTK
+
 template <typename SeedType>
 void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string grid_fname) const {
   auto vtk_mesh = VtkPolymeshInterface<SeedType>(mesh);
@@ -244,7 +297,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_writer->SetFileName(grid_fname.c_str());
   grid_writer->Write();
 }
-#endif
+
 
 template <typename SeedType>
 void DFSBVE<SeedType>::allocate_tracer(const std::string& name) {
