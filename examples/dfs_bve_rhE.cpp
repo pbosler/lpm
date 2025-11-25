@@ -128,6 +128,7 @@ int main(int argc, char* argv[]) {
     // DFS initialization
     DFS::DFSBVE<seed_type> sphere(mesh_params, nlon, gmls_params);
     sphere.init_vorticity(vorticity_fn);
+    sphere.finalize_mesh_to_grid_coupling();
     sphere.init_velocity_from_vorticity();
     logger.info(sphere.info_string());
 

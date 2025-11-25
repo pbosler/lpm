@@ -810,6 +810,13 @@ class PolyMesh2d {
         });
   }
 
+  /**
+    @brief Defines vertex values of a field as the average of
+    that field's values at adjacent faces
+  */
+  void average_face_field_to_vertex_field(ScalarField<VertexField>& vert_vals,
+    const ScalarField<FaceField>& face_vals) const;
+
   /** @brief @return surface area
 
     @hostfn

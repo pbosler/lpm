@@ -326,6 +326,21 @@ void GatherMeshData<SeedType>::gather_scalar_fields(
 }
 
 template <typename SeedType>
+void GatherMeshData<SeedType>::gather_scalar_field(const ScalarField<VertexField>& vert_field,
+        const ScalarField<FaceField>& face_field) {
+  LPM_REQUIRE(vert_field.name == face_field.name);
+
+  const auto vert_range = std::make_pair(0, mesh.n_vertices_host());
+  auto vert_vals = Kokkos::subview(scalar_fields.at(vert_field.name), vert_range);
+
+  Kokkos::deep_copy(vert_vals, Kokkos::subview(vert_field.view, vert_range));
+
+  Kokkos::parallel_for(mesh.n_faces_host(),
+    GatherScalarFaceData(scalar_fields.at(vert_field.name),
+      face_field.view, mesh.faces.leaf_idx, mesh.faces.mask, mesh.n_vertices_host()));
+}
+
+template <typename SeedType>
 void GatherMeshData<SeedType>::gather_vector_fields(
     const std::map<std::string, VectorField<typename SeedType::geo,
                                             VertexField>>& vert_fields,

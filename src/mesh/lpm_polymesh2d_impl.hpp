@@ -5,9 +5,7 @@
 #include "mesh/lpm_faces_impl.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_vertices_impl.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
-#endif
 #include <iostream>
 
 #include "lpm_constants.hpp"
@@ -60,7 +58,34 @@ void PolyMesh2d<SeedType>::reset_face_centroids() {
                                        vertices.crd_inds, faces.verts));
 }
 
-#ifdef LPM_USE_VTK
+template <typename SeedType>
+void PolyMesh2d<SeedType>::average_face_field_to_vertex_field(ScalarField<VertexField>& vert_vals,
+    const ScalarField<FaceField>& face_vals) const {
+
+  Kokkos::View<int*> count_view("face_count", vertices.nh());
+  auto vert_view = vert_vals.view;
+  const auto face_view = face_vals.view;
+  const auto face_mask = faces.mask;
+  const auto face_verts = faces.verts;
+  const int nverts = face_verts.extent(1);
+  Kokkos::parallel_for(faces.nh(),
+    KOKKOS_LAMBDA (const Index i) {
+      if (!face_mask(i)) {
+        for (int j=0; j<nverts; ++j) {
+          const Index vert_idx = face_verts(i,j);
+          const Real val = vert_view(vert_idx);
+          Kokkos::atomic_inc(&count_view(vert_idx));
+          Kokkos::atomic_add(&vert_view(vert_idx), face_view(i));
+        }
+      }
+    }
+  );
+  Kokkos::parallel_for(vertices.nh(),
+    KOKKOS_LAMBDA (const Index i) {
+      vert_view(i) /= count_view(i);
+    });
+}
+
 template <typename SeedType>
 void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
   VtkInterface<Geo, FaceType> vtk;
@@ -70,7 +95,7 @@ void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
       vtk.toVtkPolyData(faces, edges, vertices, NULL, cd);
   vtk.writePolyData(fname, pd);
 }
-#endif
+
 
 template <typename SeedType>
 void PolyMesh2d<SeedType>::update_device() const {

@@ -52,7 +52,8 @@ class DFSBVE {
     Coords<geo> ref_crds_passive;
     Coords<geo> ref_crds_active;
     // FTLE
-    ScalarField<FaceField> ftle;
+    ScalarField<VertexField> ftle_passive;
+    ScalarField<FaceField> ftle_active;
     ScalarField<VertexField> ftle_grid;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
@@ -116,11 +117,11 @@ class DFSBVE {
     gmls::Params gmls_params;
     /// GMLS neighborhoods
     gmls::Neighborhoods mesh_to_grid_neighborhoods;
-    gmls::Neighborhoods face_to_grid_neighborhoods;
+//     gmls::Neighborhoods face_to_grid_neighborhoods;
 
-    scalar_view_type leaf_ftle_vals;
-    crd_view leaf_face_crds;
-    typename crd_view::HostMirror h_leaf_face_crds;
+//     scalar_view_type leaf_ftle_vals;
+//     crd_view leaf_face_crds;
+//     typename crd_view::HostMirror h_leaf_face_crds;
 
   public:
     /** Constructor.
