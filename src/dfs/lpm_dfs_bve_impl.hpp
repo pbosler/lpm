@@ -23,6 +23,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
                          const gmls::Params& interp_params,
                          const Real Omg) :
   ftle("ftle", mesh_params.nmaxfaces),
+  ftle_grid("ftle", nlon*(nlon/2 + 1)),
   ref_crds_passive(mesh_params.nmaxverts),
   ref_crds_active(mesh_params.nmaxfaces),
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
@@ -62,8 +63,25 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
 
   mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds, grid_crds.get_host_crd_view(), gmls_params);
 
+  leaf_face_crds = mesh.faces.leaf_crd_view();
+  h_leaf_face_crds = Kokkos::create_mirror_view(leaf_face_crds);
+  Kokkos::deep_copy(h_leaf_face_crds, leaf_face_crds);
+  face_to_grid_neighborhoods = gmls::Neighborhoods(h_leaf_face_crds, grid_crds.get_host_crd_view(), gmls_params);
+  leaf_ftle_vals = scalar_view_type("ftle", mesh.faces.n_leaves());
+
   Kokkos::deep_copy(ref_crds_passive.view, mesh.vertices.phys_crds.view);
   Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
+}
+
+template <typename SeedType>
+void DFSBVE<SeedType>::update_mesh_to_grid_neighborhoods() {
+  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
+    grid_crds.get_host_crd_view(), gmls_params);
+
+  mesh.faces.leaf_crd_view(leaf_face_crds);
+
+  Kokkos::deep_copy(h_leaf_face_crds, leaf_face_crds);
+  face_to_grid_neighborhoods = gmls::Neighborhoods(h_leaf_face_crds, grid_crds.get_host_crd_view(), gmls_params);
 }
 
 template <typename SeedType> template <typename VorticityInitialCondition>
@@ -164,6 +182,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   auto grid_absvort = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_stream = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_vel = vtkSmartPointer<vtkDoubleArray>::New();
+  auto grid_ftle = vtkSmartPointer<vtkDoubleArray>::New();
 
   /// vtkStructuredGrid needs the longitude periodicity repeated, so we have to add
   /// an extra point for each row of the grid
@@ -183,10 +202,15 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_vel->SetNumberOfComponents(3);
   grid_vel->SetNumberOfTuples(grid.size()+grid.nlat);
 
+  grid_ftle->SetName("ftle");
+  grid_ftle->SetNumberOfComponents(1);
+  grid_ftle->SetNumberOfTuples(grid.size()+grid.nlat);
+
   rel_vort_grid.update_host();
   abs_vort_grid.update_host();
   stream_fn_grid.update_host();
   velocity_grid.update_host();
+  ftle_grid.update_host();
 
   Index vtk_idx = 0;
   for (Index i=0; i<grid.nlat; ++i) {
@@ -194,6 +218,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
       grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon + j));
       grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon + j));
       grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon + j));
+      grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon+j));
       const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon + j, Kokkos::ALL);
       grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
       ++vtk_idx;
@@ -201,6 +226,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
     grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon));
     grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon));
     grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon));
+    grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon));
     const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon, Kokkos::ALL);
     grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
     ++vtk_idx;
@@ -210,6 +236,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_data->AddArray(grid_relvort);
   grid_data->AddArray(grid_absvort);
   grid_data->AddArray(grid_stream);
+  grid_data->AddArray(grid_ftle);
   grid_data->AddArray(grid_vel);
 
   vtkNew<vtkXMLStructuredGridWriter> grid_writer;
@@ -315,6 +342,22 @@ void DFSBVE<SeedType>::interpolate_vorticity_from_mesh_to_grid(ScalarField<Verte
 }
 
 template <typename SeedType>
+void DFSBVE<SeedType>::interpolate_ftle_from_mesh_to_grid() {
+  return interpolate_ftle_from_mesh_to_grid(ftle_grid);
+}
+
+template <typename SeedType>
+void DFSBVE<SeedType>::interpolate_ftle_from_mesh_to_grid(ScalarField<VertexField>& target) {
+  const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+
+  auto ftle_gmls = gmls::sphere_scalar_gmls(leaf_face_crds, grid_crds.view, face_to_grid_neighborhoods, gmls_params, gmls_ops);
+
+  Compadre::Evaluator ftle_eval(&ftle_gmls);
+  target.view = ftle_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(
+    leaf_ftle_vals, Compadre::ScalarPointEvaluation, Compadre::PointSample);
+}
+
+template <typename SeedType>
 void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
   const auto rel_vort_dfs = rel_vort_grid.view;
   auto velocity_out = gathered_mesh->vector_fields.at("velocity");
@@ -384,11 +427,12 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
 #else
   constexpr bool verbose_output = false;
 #endif
-  mesh_to_grid_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
-    grid_crds.get_host_crd_view(), gmls_params);
+  update_mesh_to_grid_neighborhoods();
+  leaf_ftle_vals = mesh.faces.leaf_field_vals(ftle);
   t = solver.t_idx * solver.dt;
 }
-#ifdef LPM_USE_VTK
+
+
 template <typename SeedType>
   VtkPolymeshInterface<SeedType> vtk_mesh_interface(const DFSBVE<SeedType>& dfs_bve) {
     VtkPolymeshInterface<SeedType> vtk(dfs_bve.mesh);
@@ -418,9 +462,10 @@ template <typename SeedType>
     vtk.add_scalar_point_data(dfs_bve.abs_vort_grid.view, "absolute_vorticity");
     vtk.add_scalar_point_data(dfs_bve.stream_fn_grid.view, "stream_function");
     vtk.add_vector_point_data(dfs_bve.velocity_grid.view, "velocity");
+    vtk.add_scalar_point_data(dfs_bve.ftle_grid.view, "ftle");
     return vtk;
   }
-#endif
+
 
 template <typename SeedType>
 CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params) {

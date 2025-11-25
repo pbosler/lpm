@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_geometry.hpp"
 #include "lpm_comm.hpp"
+#include "lpm_input.hpp"
 #include "lpm_logger.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -21,65 +22,56 @@
 
 using namespace Lpm;
 
-struct Input {
-  int init_depth;
-  std::string ofroot;
-  std::string vtk_fname;
-  std::string nc_fname;
-
-  Input(int argc, char* argv[]);
-
-  std::string info_string() const;
-
-  std::string usage() const;
-
-  bool help_and_exit;
-};
+void input_init(user::Input& input);
 
 /**
   Choose a MeshSeed
 */
-typedef CubedSphereSeed seed_type;
-// typedef IcosTriSphereSeed seed_type;
+// typedef CubedSphereSeed SeedType;
+typedef IcosTriSphereSeed SeedType;
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
   Logger<> logger("sphere_mesh_init", Log::level::info, comm);
-
-  Input input(argc, argv);
-  if (input.help_and_exit) {
-    return 1;
-  }
-
-  logger.info(input.usage());
-  logger.info(input.info_string());
-
   ko::initialize(argc, argv);
   {
-      MeshSeed<seed_type> seed;
+      user::Input input("swe_mesh_init");
+      input_init(input);
+      input.parse_args(argc, argv);
+      if (input.help_and_exit) {
+        logger.info(input.usage());
+        Kokkos::finalize();
+        MPI_Finalize();
+        return 1;
+      }
+
+      MeshSeed<SeedType> seed;
 
       /**
       Set memory allocations
       */
+      const int init_depth = input.get_option("tree_depth").get_int();
       Index nmaxverts;
       Index nmaxedges;
       Index nmaxfaces;
-      seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
+      seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, init_depth);
 
       /** Build the particle/panel mesh
       */
-      auto sphere = std::make_unique<PolyMesh2d<seed_type>>(nmaxverts, nmaxedges, nmaxfaces);
-      sphere->tree_init(input.init_depth, seed);
+      auto sphere = std::make_unique<PolyMesh2d<SeedType>>(nmaxverts, nmaxedges, nmaxfaces);
+      sphere->tree_init(init_depth, seed);
       sphere->update_device();
 
       logger.info(sphere->info_string());
 
+      const std::string output_root = input.get_option("output_file_root").get_str() + SeedType::id_string() +
+        std::to_string(init_depth);
 #ifdef LPM_USE_VTK
       /** Output mesh to a vtk file */
-      VtkPolymeshInterface<seed_type> vtk(*sphere);
-      vtk.write(input.vtk_fname);
+      VtkPolymeshInterface<SeedType> vtk(*sphere);
+      vtk.write(output_root + vtp_suffix());
 #endif
 #ifdef LPM_USE_NETCDF
 // TODO
@@ -95,49 +87,10 @@ int main(int argc, char* argv[]) {
 return 0;
 }
 
-Input::Input(int argc, char* argv[]) {
-  init_depth = 2;
-  ofroot = "unif_";
-  help_and_exit = false;
+void input_init(user::Input& input) {
+  user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree depth", 4);
+  input.add_option(tree_depth_option);
 
-  for (int i=1; i<argc; ++i) {
-    const std::string& token = argv[i];
-    if (token == "-o") {
-      vtk_fname = argv[++i];
-    }
-    else if (token == "-n") {
-      init_depth = std::stoi(argv[++i]);
-    }
-    else if (token == "-h") {
-      std::cout << usage() << "\n";
-      help_and_exit = true;
-    }
-  }
-
-  ofroot += (std::is_same<CubedSphereSeed, seed_type>::value ?
-    "cubed_sphere" : "icos_tri_sphere") + std::to_string(init_depth);
-
-  vtk_fname = ofroot + ".vtp";
-  nc_fname = ofroot + ".nc";
+  user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("sphere_mesh"));
+  input.add_option(output_file_root_option);
 }
-
-std::string Input::usage() const {
-  std::ostringstream ss;
-  ss << "Sphere Mesh Init: This program initializes a uniform spherical mesh \n" <<
-    "and writes the mesh to data files in 2 formats: \n\tVTK's .vtp format and the NetCDF4 .nc format.\n";
-  ss << "\t" << "optional arguments:\n";
-  ss << "\t   " << "-o [output_filename_root] (default: unif_)\n";
-  ss << "\t   " << "-n [nonnegative integer] (default: 2); defines the initial depth of the uniform mesh's face quadtree.\n";
-  return ss.str();
-}
-
-std::string Input::info_string() const {
-  std::ostringstream ss;
-  ss << "Sphere mesh init:\n";
-  ss << "\tInitializing from seed: " << seed_type::id_string() << "\n";
-  ss << "\tTo uniform tree depth: " << init_depth << "\n";
-  ss << "\tvtk data saved in file: " << vtk_fname << "\n";
-  ss << "\tnetCDF data saved in file: " << nc_fname << "\n";
-  return ss.str();
-}
-

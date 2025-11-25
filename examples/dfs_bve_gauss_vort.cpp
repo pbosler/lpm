@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     using Lat0 = LatitudeTracer;
     Coriolis coriolis(input.get_option("omega").get_real());
     GaussianVortexSphere gauss_vort;
-   
+
 
     //  particle/panel/grid initialization
     using SeedType = CubedSphereSeed;
@@ -128,17 +128,33 @@ int main(int argc, char* argv[]) {
     auto sphere = std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
 
     sphere->init_vorticity(gauss_vort);
-    const Real total_vort0 = 0.196349540849363;  // sphere->total_vorticity();
+//     const Real total_vort0 = 0.196349540849363;  // sphere->total_vorticity();
+    const Real total_vort0 = sphere->total_vorticity();
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
     sphere->init_velocity_from_vorticity();
     const Real ftle_tol = input.get_option("ftle_tol").get_real();
-   
+
     /**
       Initial adaptive refinement
     */
     if (amr) {
-      logger.warn("AMR not implemented for DFS yet.");
+      /**
+        To start adaptive refinement, we convert relative tolerances from the
+        input to absolute tolerances based on the initialized uniform mesh and
+        functions defined on it.
+      */
+      Kokkos::View<bool*> flags("refinement_flags", mesh_params.nmaxfaces);
+
+      auto face_area = sphere->mesh.faces.area;
+      auto face_vort = sphere->rel_vort_active.view;
+      auto face_mask = sphere->mesh.faces.mask;
+      const auto rel_circ_tol = input.get_option("max_circulation_tol").get_real();
+      ScalarIntegralFlag circ_flag(flags, face_vort, face_area, face_mask,
+        sphere->mesh.n_faces_host(), rel_circ_tol);
+      circ_flag.set_tol_from_relative_value();
+      logger.info("relative max. circulation tol (from input) {} converts to absolute circulation tol {}",
+        rel_circ_tol, circ_flag.tol);
     }
     Lat0 lat0;
     sphere->init_tracer(lat0);
@@ -146,8 +162,8 @@ int main(int argc, char* argv[]) {
 
     // Solver initialization
 //     using SolverType = DFS::DFSRK2<SeedType>;
-     using SolverType = DFS::DFSRK3<SeedType>;
- //   using SolverType = DFS::DFSRK4<SeedType>;
+//      using SolverType = DFS::DFSRK3<SeedType>;
+    using SolverType = DFS::DFSRK4<SeedType>;
     const Real tfinal = input.get_option("tfinal").get_real();
     const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
     Real dt;
@@ -165,7 +181,7 @@ int main(int argc, char* argv[]) {
     }
 
     const Real cr = vel_range.second * dt / sphere->mesh.appx_mesh_size();
-    logger.info("dt = {}, cr = {}", dt, cr);
+    logger.info("dt = {}, max cr = {}", dt, cr);
 
     const Int remesh_interval = input.get_option("remesh_interval").get_int();
     const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
@@ -274,6 +290,8 @@ int main(int argc, char* argv[]) {
           sphere->mesh.faces.verts,
           sphere->mesh.faces.mask,
           sphere->t - sphere->t_ref));
+
+      sphere->interpolate_ftle_from_mesh_to_grid();
 
       time[t_idx+1] = (t_idx+1) * dt;
       ftle_max[t_idx+1] = max_ftle;

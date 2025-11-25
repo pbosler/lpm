@@ -54,6 +54,7 @@ class DFSBVE {
     Coords<geo> ref_crds_active;
     // FTLE
     ScalarField<FaceField> ftle;
+    ScalarField<VertexField> ftle_grid;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles
@@ -116,10 +117,11 @@ class DFSBVE {
     gmls::Params gmls_params;
     /// GMLS neighborhoods
     gmls::Neighborhoods mesh_to_grid_neighborhoods;
+    gmls::Neighborhoods face_to_grid_neighborhoods;
 
-    void update_mesh_to_grid_neighborhoods();
-
-
+    scalar_view_type leaf_ftle_vals;
+    crd_view leaf_face_crds;
+    typename crd_view::HostMirror h_leaf_face_crds;
 
   public:
     /** Constructor.
@@ -146,6 +148,8 @@ class DFSBVE {
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
+    void interpolate_ftle_from_mesh_to_grid();
+    void interpolate_ftle_from_mesh_to_grid(ScalarField<VertexField>& target);
 
     void update_grid_absolute_vorticity();
 
@@ -170,6 +174,8 @@ class DFSBVE {
     void advance_timestep(SolverType& solver);
 
     void sync_solver_views();
+
+    void update_mesh_to_grid_neighborhoods();
 
 #ifdef LPM_USE_VTK
   void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
