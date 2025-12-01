@@ -27,8 +27,8 @@ void input_init(user::Input& input);
 /**
   Choose a MeshSeed
 */
-// typedef CubedSphereSeed SeedType;
-typedef IcosTriSphereSeed SeedType;
+typedef CubedSphereSeed SeedType;
+// typedef IcosTriSphereSeed SeedType;
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);

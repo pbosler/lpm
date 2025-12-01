@@ -3,6 +3,9 @@
 
 #include "LpmConfig.h"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "util/lpm_string_util.hpp"
+
+#include <algorithm>
 
 namespace Lpm {
 
@@ -24,6 +27,20 @@ template <typename SeedType> struct Refinement {
   Refinement(PolyMesh2d<SeedType>& mesh) :
     flags("refinement_flags", mesh.faces.area.extent(0)),
     mesh(mesh) {}
+
+  inline Index total() const {
+    return std::accumulate(count.begin(), count.end(), 0);
+  }
+
+  inline std::string info_string(const int tab_level=0) const {
+    std::ostringstream ss;
+    auto tab_str = indent_string(tab_level);
+    ss << tab_str << "refinement info: ";
+    for (int i=0; i<count.size(); ++i) {
+      ss << "count[" << i << "] =  " << count[i] << " ";
+    }
+    return ss.str();
+  }
 
   template <typename FlagType>
   void iterate(const Index start_idx, const Index end_idx, FlagType& flagger) {

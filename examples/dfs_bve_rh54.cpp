@@ -253,7 +253,8 @@ int main(int argc, char* argv[]) {
 
         tref = sphere->t;
         sphere = std::move(new_sphere);
-        sphere->sync_solver_views();
+//         sphere->sync_solver_views();
+        sphere->finalize_mesh_to_grid_coupling();
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
 

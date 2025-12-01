@@ -34,9 +34,9 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   abs_vort_passive("absolute_vorticity", mesh_params.nmaxverts),
   abs_vort_active("absolute_vorticity", mesh_params.nmaxfaces),
   abs_vort_grid("absolute_vorticity", nlon*(nlon/2 + 1)),
-  stream_fn_passive("stream_function", mesh_params.nmaxverts),
-  stream_fn_active("stream_function", mesh_params.nmaxfaces),
-  stream_fn_grid("stream_function", nlon*(nlon/2 + 1)),
+//   stream_fn_passive("stream_function", mesh_params.nmaxverts),
+//   stream_fn_active("stream_function", mesh_params.nmaxfaces),
+//   stream_fn_grid("stream_function", nlon*(nlon/2 + 1)),
   velocity_passive("velocity", mesh_params.nmaxverts),
   velocity_active("velocity", mesh_params.nmaxfaces),
   velocity_grid("velocity", nlon*(nlon/2 + 1)),
@@ -214,12 +214,12 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   auto vtk_mesh = VtkPolymeshInterface<SeedType>(mesh);
   vtk_mesh.add_scalar_point_data(rel_vort_passive.view, "relative_vorticity");
   vtk_mesh.add_scalar_point_data(abs_vort_passive.view, "absolute_vorticity");
-  vtk_mesh.add_scalar_point_data(stream_fn_passive.view, "stream_function");
+//   vtk_mesh.add_scalar_point_data(stream_fn_passive.view, "stream_function");
   vtk_mesh.add_scalar_point_data(ftle_passive.view, "ftle");
   vtk_mesh.add_vector_point_data(velocity_passive.view, "velocity");
   vtk_mesh.add_scalar_cell_data(rel_vort_active.view, "relative_vorticity");
   vtk_mesh.add_scalar_cell_data(abs_vort_active.view, "absolute_vorticity");
-  vtk_mesh.add_scalar_cell_data(stream_fn_active.view, "stream_function");
+//   vtk_mesh.add_scalar_cell_data(stream_fn_active.view, "stream_function");
   vtk_mesh.add_vector_cell_data(velocity_active.view, "velocity");
   vtk_mesh.add_scalar_cell_data(ftle_active.view, "ftle");
   for (const auto& t : tracer_passive) {
@@ -234,7 +234,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   vtkSmartPointer<vtkStructuredGrid> vtk_grid = grid.vtk_grid();
   auto grid_relvort = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_absvort = vtkSmartPointer<vtkDoubleArray>::New();
-  auto grid_stream = vtkSmartPointer<vtkDoubleArray>::New();
+//   auto grid_stream = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_vel = vtkSmartPointer<vtkDoubleArray>::New();
   auto grid_ftle = vtkSmartPointer<vtkDoubleArray>::New();
 
@@ -248,9 +248,9 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   grid_absvort->SetNumberOfComponents(1);
   grid_absvort->SetNumberOfTuples(grid.size()+grid.nlat);
 
-  grid_stream->SetName("stream_function");
-  grid_stream->SetNumberOfComponents(1);
-  grid_stream->SetNumberOfTuples(grid.size()+grid.nlat);
+//   grid_stream->SetName("stream_function");
+//   grid_stream->SetNumberOfComponents(1);
+//   grid_stream->SetNumberOfTuples(grid.size()+grid.nlat);
 
   grid_vel->SetName("velocity");
   grid_vel->SetNumberOfComponents(3);
@@ -262,7 +262,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
 
   rel_vort_grid.update_host();
   abs_vort_grid.update_host();
-  stream_fn_grid.update_host();
+//   stream_fn_grid.update_host();
   velocity_grid.update_host();
   ftle_grid.update_host();
 
@@ -271,7 +271,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
     for (Index j=0; j<grid.nlon; ++j) {
       grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon + j));
       grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon + j));
-      grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon + j));
+//       grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon + j));
       grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon+j));
       const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon + j, Kokkos::ALL);
       grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
@@ -279,7 +279,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
     }
     grid_relvort->InsertTuple1(vtk_idx, rel_vort_grid.hview(i*grid.nlon));
     grid_absvort->InsertTuple1(vtk_idx, abs_vort_grid.hview(i*grid.nlon));
-    grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon));
+//     grid_stream->InsertTuple1(vtk_idx, stream_fn_grid.hview(i*grid.nlon));
     grid_ftle->InsertTuple1(vtk_idx, ftle_grid.hview(i*grid.nlon));
     const auto vel = Kokkos::subview(velocity_grid.hview, i*grid.nlon, Kokkos::ALL);
     grid_vel->InsertTuple3(vtk_idx, vel[0], vel[1], vel[2]);
@@ -289,7 +289,7 @@ void DFSBVE<SeedType>::write_vtk(const std::string mesh_fname, const std::string
   auto grid_data = vtk_grid->GetPointData();
   grid_data->AddArray(grid_relvort);
   grid_data->AddArray(grid_absvort);
-  grid_data->AddArray(grid_stream);
+//   grid_data->AddArray(grid_stream);
   grid_data->AddArray(grid_ftle);
   grid_data->AddArray(grid_vel);
 
@@ -338,20 +338,24 @@ Int DFSBVE<SeedType>::n_tracers() const {
   return tracer_active.size();
 }
 
-template <typename SeedType>
-void DFSBVE<SeedType>::sync_solver_views() {
-  const std::map<std::string, ScalarField<VertexField>> passive_scalar_map = {
-    {"relative_vorticity", rel_vort_passive}};
-  const std::map<std::string, ScalarField<FaceField>> active_scalar_map = {
-    {"relative_vorticity", rel_vort_active}};
-  const std::map<std::string, VectorField<SphereGeometry,VertexField>> passive_vector_map = {
-    {"velocity", velocity_passive}};
-  const std::map<std::string, VectorField<SphereGeometry, FaceField>> active_vector_map = {
-    {"velocity", velocity_active}};
-
-  gathered_mesh->gather_scalar_fields(passive_scalar_map, active_scalar_map);
-  gathered_mesh->gather_vector_fields(passive_vector_map, active_vector_map);
-}
+// template <typename SeedType>
+// void DFSBVE<SeedType>::sync_solver_views() {
+//   const std::map<std::string, ScalarField<VertexField>> passive_scalar_map = {
+//     {"relative_vorticity", rel_vort_passive}};
+//   const std::map<std::string, ScalarField<FaceField>> active_scalar_map = {
+//     {"relative_vorticity", rel_vort_active}};
+//   const std::map<std::string, VectorField<SphereGeometry,VertexField>> passive_vector_map = {
+//     {"velocity", velocity_passive}};
+//   const std::map<std::string, VectorField<SphereGeometry, FaceField>> active_vector_map = {
+//     {"velocity", velocity_active}};
+//
+//   auto logger = lpm_logger();
+//   logger->debug("syncing dfs solver views...");
+//   gathered_mesh->gather_scalar_fields(passive_scalar_map, active_scalar_map);
+//   logger->debug("syncing dfs solver views: scalars gathered");
+//   gathered_mesh->gather_vector_fields(passive_vector_map, active_vector_map);
+//   logger->debug("syncing dfs solver views: vectors gathered");
+// }
 
 template <typename SeedType> template <typename TracerType>
 void DFSBVE<SeedType>::init_tracer(const TracerType& tracer, const std::string& tname) {
@@ -469,6 +473,14 @@ Real DFSBVE<SeedType>::total_kinetic_energy() const {
   return 0.5*total;
 }
 
+template <typename SeedType>
+void DFSBVE<SeedType>::reset_ftle() {
+  Kokkos::deep_copy(ftle_passive.view, 0);
+  Kokkos::deep_copy(ftle_active.view, 0);
+  Kokkos::deep_copy(ftle_grid.view, 0);
+  t_ref = t;
+}
+
 template <typename SeedType> template <typename SolverType>
 void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
   solver.advance_timestep();
@@ -499,12 +511,12 @@ template <typename SeedType>
     VtkPolymeshInterface<SeedType> vtk(dfs_bve.mesh);
     vtk.add_scalar_point_data(dfs_bve.rel_vort_passive.view, "relative_vorticity");
     vtk.add_scalar_point_data(dfs_bve.abs_vort_passive.view, "absolute_vorticity");
-    vtk.add_scalar_point_data(dfs_bve.stream_fn_passive.view, "stream_function");
+//     vtk.add_scalar_point_data(dfs_bve.stream_fn_passive.view, "stream_function");
     vtk.add_scalar_point_data(dfs_bve.ftle_passive.view, "ftle");
     vtk.add_vector_point_data(dfs_bve.velocity_passive.view, "velocity");
     vtk.add_scalar_cell_data(dfs_bve.rel_vort_active.view, "relative_vorticity");
     vtk.add_scalar_cell_data(dfs_bve.abs_vort_active.view, "absolute_vorticity");
-    vtk.add_scalar_cell_data(dfs_bve.stream_fn_active.view, "stream_function");
+//     vtk.add_scalar_cell_data(dfs_bve.stream_fn_active.view, "stream_function");
     vtk.add_vector_cell_data(dfs_bve.velocity_active.view, "velocity");
     vtk.add_scalar_cell_data(dfs_bve.ftle_active.view, "ftle");
 
@@ -522,7 +534,7 @@ template <typename SeedType>
     VtkGridInterface vtk(dfs_bve.grid);
     vtk.add_scalar_point_data(dfs_bve.rel_vort_grid.view, "relative_vorticity");
     vtk.add_scalar_point_data(dfs_bve.abs_vort_grid.view, "absolute_vorticity");
-    vtk.add_scalar_point_data(dfs_bve.stream_fn_grid.view, "stream_function");
+//     vtk.add_scalar_point_data(dfs_bve.stream_fn_grid.view, "stream_function");
     vtk.add_vector_point_data(dfs_bve.velocity_grid.view, "velocity");
     vtk.add_scalar_point_data(dfs_bve.ftle_grid.view, "ftle");
     return vtk;
@@ -548,7 +560,8 @@ CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, c
   passive_scalar_field_map passive_scalars_old;
   passive_scalars_old.emplace("relative_vorticity", old_dfs_bve.rel_vort_passive);
   passive_scalars_old.emplace("absolute_vorticity", old_dfs_bve.abs_vort_passive);
-  passive_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_passive);
+//   passive_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_passive);
+  passive_scalars_old.emplace("ftle", old_dfs_bve.ftle_passive);
   for (const auto& t : old_dfs_bve.tracer_passive) {
     passive_scalars_old.emplace(t.first, t.second);
   }
@@ -556,7 +569,8 @@ CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, c
   passive_scalar_field_map passive_scalars_new;
   passive_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_passive);
   passive_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_passive);
-  passive_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_passive);
+//   passive_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_passive);
+  passive_scalars_new.emplace("ftle", new_dfs_bve.ftle_passive);
   for (const auto& t : new_dfs_bve.tracer_passive) {
     passive_scalars_new.emplace(t.first, t.second);
   }
@@ -564,14 +578,16 @@ CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, c
   active_scalar_field_map active_scalars_old;
   active_scalars_old.emplace("relative_vorticity", old_dfs_bve.rel_vort_active);
   active_scalars_old.emplace("absolute_vorticity", old_dfs_bve.abs_vort_active);
-  active_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_active);
+//   active_scalars_old.emplace("stream_function", old_dfs_bve.stream_fn_active);
+  active_scalars_old.emplace("ftle", old_dfs_bve.ftle_active);
   for (const auto& t : old_dfs_bve.tracer_active) {
     active_scalars_old.emplace(t.first, t.second);
   }
   active_scalar_field_map active_scalars_new;
   active_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_active);
   active_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_active);
-  active_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_active);
+//   active_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_active);
+  active_scalars_new.emplace("ftle", new_dfs_bve.ftle_active);
   for (const auto& t : new_dfs_bve.tracer_active) {
     active_scalars_new.emplace(t.first, t.second);
   }
@@ -579,7 +595,7 @@ CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, c
   grid_scalar_field_map grid_scalars_new;
   grid_scalars_new.emplace("relative_vorticity", new_dfs_bve.rel_vort_grid);
   grid_scalars_new.emplace("absolute_vorticity", new_dfs_bve.abs_vort_grid);
-  grid_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_grid);
+//   grid_scalars_new.emplace("stream_function", new_dfs_bve.stream_fn_grid);
 
   grid_vector_field_map grid_vectors_new;
   grid_vectors_new.emplace("velocity", new_dfs_bve.velocity_grid);

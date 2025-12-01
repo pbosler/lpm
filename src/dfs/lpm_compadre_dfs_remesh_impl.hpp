@@ -133,107 +133,9 @@ CompadreDfsRemesh<SeedType>::CompadreDfsRemesh(PolyMesh2d<SeedType>& new_mesh,
 
     const auto scalar_data_functional = scalar_sampling_functional;
     const auto vector_data_functional = vector_sampling_functional;
-    scalar_gmls = std::make_unique<Compadre::GMLS>(
-      scalar_reconstruction_space,
-      scalar_sampling_functional,
-      scalar_data_functional,
-      params.samples_order,
-      SeedType::geo::ndim,
-      solver_type,
-      problem_type,
-      constraint_type,
-      params.manifold_order);
 
-    vector_gmls = std::make_unique<Compadre::GMLS>(
-      vector_reconstruction_space,
-      vector_sampling_functional,
-      vector_data_functional,
-      params.samples_order,
-      SeedType::geo::ndim,
-      solver_type,
-      problem_type,
-      constraint_type,
-      params.manifold_order);
+    gmls_setup();
 
-    grid_scalar_gmls = std::make_unique<Compadre::GMLS>(
-      scalar_reconstruction_space,
-      scalar_sampling_functional,
-      scalar_data_functional,
-      params.samples_order,
-      SeedType::geo::ndim,
-      solver_type,
-      problem_type,
-      constraint_type,
-      params.manifold_order);
-
-    grid_vector_gmls = std::make_unique<Compadre::GMLS>(
-      vector_reconstruction_space,
-      vector_sampling_functional,
-      vector_data_functional,
-      params.samples_order,
-      SeedType::geo::ndim,
-      solver_type,
-      problem_type,
-      constraint_type,
-      params.manifold_order);
-
-    scalar_gmls_ops = {Compadre::ScalarPointEvaluation,
-        Compadre::LaplacianOfScalarPointEvaluation};
-    vector_gmls_ops = {Compadre::VectorPointEvaluation};
-
-    scalar_gmls->setProblemData(mesh_neighborhoods.neighbor_lists,
-      old_gather->phys_crds, new_gather->phys_crds,
-      mesh_neighborhoods.neighborhood_radii);
-    scalar_gmls->addTargets(scalar_gmls_ops);
-    scalar_gmls->setWeightingType(weight_type);
-    scalar_gmls->setWeightingParameter(params.samples_weight_pwr);
-
-    vector_gmls->setProblemData(mesh_neighborhoods.neighbor_lists,
-      old_gather->phys_crds, new_gather->phys_crds,
-      mesh_neighborhoods.neighborhood_radii);
-    vector_gmls->addTargets(vector_gmls_ops);
-    vector_gmls->setWeightingType(weight_type);
-    vector_gmls->setWeightingParameter(params.samples_weight_pwr);
-
-    grid_scalar_gmls->setProblemData(grid_neighborhoods.neighbor_lists,
-      old_gather->phys_crds, grid_crds.view,
-      grid_neighborhoods.neighborhood_radii);
-    grid_scalar_gmls->addTargets(scalar_gmls_ops);
-    grid_scalar_gmls->setWeightingType(weight_type);
-    grid_scalar_gmls->setWeightingParameter(params.samples_weight_pwr);
-
-    grid_vector_gmls->setProblemData(grid_neighborhoods.neighbor_lists,
-      old_gather->phys_crds, grid_crds.view,
-      grid_neighborhoods.neighborhood_radii);
-    grid_vector_gmls->addTargets(vector_gmls_ops);
-    grid_vector_gmls->setWeightingType(weight_type);
-    grid_vector_gmls->setWeightingParameter(params.samples_weight_pwr);
-
-    constexpr bool use_to_orient = true;
-    scalar_gmls->setReferenceOutwardNormalDirection(
-      new_gather->phys_crds, use_to_orient);
-    scalar_gmls->setCurvatureWeightingType(weight_type);
-    scalar_gmls->setCurvatureWeightingParameter(params.manifold_weight_pwr);
-
-    vector_gmls->setReferenceOutwardNormalDirection(
-      new_gather->phys_crds, use_to_orient);
-    vector_gmls->setCurvatureWeightingType(weight_type);
-    vector_gmls->setCurvatureWeightingParameter(params.manifold_weight_pwr);
-
-    grid_scalar_gmls->setReferenceOutwardNormalDirection(
-      grid_crds.view, use_to_orient);
-    grid_scalar_gmls->setCurvatureWeightingType(weight_type);
-    grid_scalar_gmls->setCurvatureWeightingParameter(params.manifold_weight_pwr);
-
-    grid_vector_gmls->setReferenceOutwardNormalDirection(
-      grid_crds.view, use_to_orient);
-    grid_vector_gmls->setCurvatureWeightingType(weight_type);
-    grid_vector_gmls->setCurvatureWeightingParameter(params.manifold_weight_pwr);
-
-    scalar_gmls->generateAlphas();
-    vector_gmls->generateAlphas();
-    grid_scalar_gmls->generateAlphas();
-    grid_vector_gmls->generateAlphas();
 }
 
 template <typename SeedType>
@@ -264,9 +166,13 @@ void CompadreDfsRemesh<SeedType>::interpolate_lag_crds() {
     });
   }
 
-
 template <typename SeedType>
 void CompadreDfsRemesh<SeedType>::uniform_direct_remesh() {
+  direct_remesh();
+}
+
+template <typename SeedType>
+void CompadreDfsRemesh<SeedType>::direct_remesh() {
   interpolate_lag_crds();
   Compadre::Evaluator scalar_eval(scalar_gmls.get());
 
@@ -299,16 +205,16 @@ void CompadreDfsRemesh<SeedType>::uniform_direct_remesh() {
       grid_scalar_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(
         src_data, Compadre::ScalarPointEvaluation, Compadre::PointSample);
 
-    Real new_max;
-    Kokkos::parallel_reduce(new_view.extent(0),
-      KOKKOS_LAMBDA (const Index i, Real& m) {
-        if (abs(new_view(i)) > m ) m = abs(new_view(i));
-      }, Kokkos::Max<Real>(new_max));
-    Real src_max;
-    Kokkos::parallel_reduce(src_data.extent(0),
-      KOKKOS_LAMBDA (const Index i, Real& m) {
-        if (abs(src_data(i)) > m ) m = abs(src_data(i));
-      }, Kokkos::Max<Real>(src_max));
+//     Real new_max;
+//     Kokkos::parallel_reduce(new_view.extent(0),
+//       KOKKOS_LAMBDA (const Index i, Real& m) {
+//         if (abs(new_view(i)) > m ) m = abs(new_view(i));
+//       }, Kokkos::Max<Real>(new_max));
+//     Real src_max;
+//     Kokkos::parallel_reduce(src_data.extent(0),
+//       KOKKOS_LAMBDA (const Index i, Real& m) {
+//         if (abs(src_data(i)) > m ) m = abs(src_data(i));
+//       }, Kokkos::Max<Real>(src_max));
 
     Kokkos::deep_copy(scalar_field.second.view, new_view);
   }
@@ -325,9 +231,237 @@ void CompadreDfsRemesh<SeedType>::uniform_direct_remesh() {
     Kokkos::deep_copy(vector_field.second.view, new_view);
   }
 
-  logger->debug("uniform direct remesh complete");
+  logger->debug("direct remesh complete");
 }
 
+template <typename SeedType> template <typename FlagType>
+void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+  const FlagType& flag) {
+
+  uniform_direct_remesh();
+  logger->debug("adaptive remesh ftle info: {}", new_face_scalars.at("ftle").info_string());
+  Index face_start_idx = 0;
+  for (int amr_i = 0; amr_i < new_mesh.params.amr_limit; ++amr_i) {
+    Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag);
+    if (refiner.total() > 0) {
+
+      new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+      new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+      new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+      new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+      new_gather->update_host();
+
+      mesh_neighborhoods = gmls::Neighborhoods(old_gather->h_phys_crds, new_gather->h_phys_crds,
+        gmls_params);
+
+      new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+      gmls_setup();
+
+      direct_remesh();
+
+      face_start_idx = face_end_idx;
+    }
+    else {
+      break;
+    }
+  }
+}
+
+template <typename SeedType> template <typename FlagType1, typename FlagType2>
+void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+      const FlagType1& flag1, const FlagType2& flag2) {
+
+  uniform_direct_remesh();
+  logger->debug("adaptive remesh ftle info: {}", new_face_scalars.at("ftle").info_string());
+  Index face_start_idx = 0;
+  for (int amr_i = 0; amr_i < new_mesh.params.amr_limit; ++amr_i) {
+    Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2);
+    logger->debug("adaptive remesh : {}", refiner.info_string());
+    if (refiner.total() > 0) {
+
+      new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+      new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+      new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+      new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+      new_gather->update_host();
+
+      mesh_neighborhoods = gmls::Neighborhoods(old_gather->h_phys_crds, new_gather->h_phys_crds,
+        gmls_params);
+
+      new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+      gmls_setup();
+
+      direct_remesh();
+
+      face_start_idx = face_end_idx;
+    }
+    else {
+      break;
+    }
+  }
+}
+
+template <typename SeedType>
+void CompadreDfsRemesh<SeedType>::gmls_setup() {
+  const auto scalar_data_functional = scalar_sampling_functional;
+  const auto vector_data_functional = vector_sampling_functional;
+  if (!scalar_gmls) {
+    scalar_gmls = std::make_unique<Compadre::GMLS>(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+
+    vector_gmls = std::make_unique<Compadre::GMLS>(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+
+    grid_scalar_gmls = std::make_unique<Compadre::GMLS>(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+
+    grid_vector_gmls = std::make_unique<Compadre::GMLS>(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+
+    scalar_gmls_ops = {Compadre::ScalarPointEvaluation,
+        Compadre::LaplacianOfScalarPointEvaluation};
+    vector_gmls_ops = {Compadre::VectorPointEvaluation};
+  }
+  else {
+    scalar_gmls.reset(new Compadre::GMLS(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+
+    vector_gmls.reset(new Compadre::GMLS(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+
+    grid_scalar_gmls.reset(new Compadre::GMLS(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+
+    grid_vector_gmls.reset(new Compadre::GMLS(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+  }
+
+    scalar_gmls->setProblemData(mesh_neighborhoods.neighbor_lists,
+      old_gather->phys_crds, new_gather->phys_crds,
+      mesh_neighborhoods.neighborhood_radii);
+    scalar_gmls->addTargets(scalar_gmls_ops);
+    scalar_gmls->setWeightingType(weight_type);
+    scalar_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+
+    vector_gmls->setProblemData(mesh_neighborhoods.neighbor_lists,
+      old_gather->phys_crds, new_gather->phys_crds,
+      mesh_neighborhoods.neighborhood_radii);
+    vector_gmls->addTargets(vector_gmls_ops);
+    vector_gmls->setWeightingType(weight_type);
+    vector_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+
+    grid_scalar_gmls->setProblemData(grid_neighborhoods.neighbor_lists,
+      old_gather->phys_crds, grid_crds.view,
+      grid_neighborhoods.neighborhood_radii);
+    grid_scalar_gmls->addTargets(scalar_gmls_ops);
+    grid_scalar_gmls->setWeightingType(weight_type);
+    grid_scalar_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+
+    grid_vector_gmls->setProblemData(grid_neighborhoods.neighbor_lists,
+      old_gather->phys_crds, grid_crds.view,
+      grid_neighborhoods.neighborhood_radii);
+    grid_vector_gmls->addTargets(vector_gmls_ops);
+    grid_vector_gmls->setWeightingType(weight_type);
+    grid_vector_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+
+    constexpr bool use_to_orient = true;
+    scalar_gmls->setReferenceOutwardNormalDirection(
+      new_gather->phys_crds, use_to_orient);
+    scalar_gmls->setCurvatureWeightingType(weight_type);
+    scalar_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+
+    vector_gmls->setReferenceOutwardNormalDirection(
+      new_gather->phys_crds, use_to_orient);
+    vector_gmls->setCurvatureWeightingType(weight_type);
+    vector_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+
+    grid_scalar_gmls->setReferenceOutwardNormalDirection(
+      grid_crds.view, use_to_orient);
+    grid_scalar_gmls->setCurvatureWeightingType(weight_type);
+    grid_scalar_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+
+    grid_vector_gmls->setReferenceOutwardNormalDirection(
+      grid_crds.view, use_to_orient);
+    grid_vector_gmls->setCurvatureWeightingType(weight_type);
+    grid_vector_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+
+    scalar_gmls->generateAlphas();
+    vector_gmls->generateAlphas();
+    grid_scalar_gmls->generateAlphas();
+    grid_vector_gmls->generateAlphas();
+}
 
 } // namespace DFS
 } // namespace Lpm

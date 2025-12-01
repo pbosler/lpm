@@ -68,11 +68,11 @@ class DFSBVE {
     /// Absolute vorticity on the grid
     ScalarField<VertexField> abs_vort_grid;
     /// Stream function at passive particles
-    ScalarField<VertexField> stream_fn_passive;
+//     ScalarField<VertexField> stream_fn_passive;
     /// Stream function at active particles
-    ScalarField<FaceField> stream_fn_active;
+//     ScalarField<FaceField> stream_fn_active;
     /// Stream function on the grid
-    ScalarField<VertexField> stream_fn_grid;
+//     ScalarField<VertexField> stream_fn_grid;
     /// Velocity at passive particles
     VectorField<SphereGeometry,VertexField> velocity_passive;
     /// Velocity at active particles
@@ -177,7 +177,7 @@ class DFSBVE {
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
 
-    void sync_solver_views();
+//     void sync_solver_views();
 
     void update_mesh_to_grid_neighborhoods();
 
@@ -188,6 +188,8 @@ class DFSBVE {
     inline Index vtk_grid_size() {return grid.vtk_size(); }
 
     void finalize_mesh_to_grid_coupling();
+
+    void reset_ftle();
 };
 
   /** Return a vtk interface for the DFSBVE's Lagrangian particle/panel mesh

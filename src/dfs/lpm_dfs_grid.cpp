@@ -43,8 +43,8 @@ std::string DFSGrid::info_string(const int tab_level) const {
   ss << tabstr << "nlon = " << nlon << "\n";
   ss << tabstr << "nlat = " << nlat << "\n";
   ss << tabstr << "size() = " << size() << "\n";
-  ss << tabstr << "dtheta = " << dtheta << "\n";
-  ss << tabstr << "dlambda = " << dlambda << "\n";
+  ss << tabstr << "dtheta = " << dtheta << "(" << dtheta * 180 / constants::PI << " degrees)\n";
+  ss << tabstr << "dlambda = " << dlambda << "(" << dlambda * 180 / constants::PI << " degrees)\n";
   return ss.str();
 }
 

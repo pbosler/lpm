@@ -213,6 +213,7 @@ int main(int argc, char* argv[]) {
 //      using SolverType = DFS::DFSRK3<SeedType>;
     using SolverType = DFS::DFSRK4<SeedType>;
     const Real ftle_tol = input.get_option("ftle_tol").get_real();
+    const Real ftle_space_tol = input.get_option("ftle_space_tol").get_real();
     const Real tfinal = input.get_option("tfinal").get_real();
     const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
     Real dt;
@@ -253,7 +254,7 @@ int main(int argc, char* argv[]) {
     std::string amr_str = "_";
     if (amr) {
       std::ostringstream ss;
-      ss << "_amr_d" << mesh_depth << "-" << amr_limit << "_circtol" << std::setprecision(6) << circ_tol << "_";
+      ss << "_amr_d" << mesh_depth << "+" << amr_limit << "_circtol" << std::setprecision(6) << circ_tol << "_";
       amr_str = ss.str();
     }
     const std::string resolution_str =  std::to_string(mesh_depth) + dt_str(dt);
@@ -316,7 +317,23 @@ int main(int argc, char* argv[]) {
 
         auto remesh = compadre_dfs_remesh(*new_sphere, *sphere, gmls_params);
         if (amr) {
-          logger.error("AMR not yet implemented for DFS; skipping remesh step.");
+          Refinement<SeedType> refiner(new_sphere->mesh);
+
+          ScalarIntegralFlag circ_flag(refiner.flags,
+            new_sphere->rel_vort_active.view,
+            new_sphere->mesh.faces.area,
+            new_sphere->mesh.faces.mask,
+            new_sphere->mesh.n_faces_host(),
+            rel_circ_tol);
+          circ_flag.tol = circ_tol;
+
+          ScalarMaxFlag ftle_flag(refiner.flags,
+            new_sphere->ftle_active.view,
+            new_sphere->mesh.faces.mask,
+            new_sphere->mesh.n_faces_host(),
+            ftle_space_tol);
+
+          remesh.adaptive_direct_remesh(refiner, circ_flag, ftle_flag);
         }
         else {
           if (remesh_strategy == "direct") {
@@ -328,12 +345,17 @@ int main(int argc, char* argv[]) {
         }
         logger.info(remesh.info_string());
 
+        logger.debug("returned from remesh.");
         tref = sphere->t;
         sphere = std::move(new_sphere);
-        sphere->sync_solver_views();
+        logger.debug("moved new_sphere to sphere.");
+        sphere->finalize_mesh_to_grid_coupling();
+//         sphere->sync_solver_views();
+        logger.debug("solver views synced.");
         sphere->t_ref = tref;
-        solver.reset(new SolverType(dt, *sphere, solver->t_idx));
-
+        solver.reset(new SolverType(dt, *sphere, t_idx));
+        logger.debug("solver reset.");
+        sphere->reset_ftle();
       }
 
       sphere->advance_timestep(*solver);
@@ -440,7 +462,10 @@ void init_input(user::Input& input) {
   user::Option remesh_trigger_option("remesh_trigger", "-rt", "--remesh-trigger", "trigger for a remeshing : ftle or an interval", std::string("interval"), std::set<std::string>({"interval", "ftle"}));
   input.add_option(remesh_trigger_option);
 
-  user::Option ftle_tolerance_option("ftle_tol", "-ftle", "--ftle-tol", "max value for ftle before remesh", 2.0);
+  user::Option ftle_tolerance_option("ftle_tol", "-ft", "--ftle-tol", "max value for ftle before remesh", 2.0);
   input.add_option(ftle_tolerance_option);
+
+  user::Option ftle_space_tolerance_option("ftle_space_tol", "-fs", "--ftle-space-tol", "spatial amr ftle tolerance remesh", 2.0);
+  input.add_option(ftle_space_tolerance_option);
 }
 

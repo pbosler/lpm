@@ -292,17 +292,24 @@ template <typename SeedType>
 void GatherMeshData<SeedType>::gather_scalar_fields(
     const std::map<std::string, ScalarField<VertexField>>& vert_fields,
     const std::map<std::string, ScalarField<FaceField>>& face_fields) {
+  auto logger = lpm_logger();
   for (const auto& sf : vert_fields) {
+    logger->debug("gathering field {}: {}", sf.first, sf.second.info_string());
+
+
     auto vert_vals = Kokkos::subview(scalar_fields.at(sf.first),
                                      std::make_pair(0, mesh.n_vertices_host()));
+    logger->debug("gathering field {}: vertex subview created", sf.first);
     Kokkos::deep_copy(
         vert_vals, Kokkos::subview(sf.second.view,
                                    std::make_pair(0, mesh.n_vertices_host())));
+    logger->debug("gathering field {}: vertices gathered", sf.first);
     Kokkos::parallel_for(
         mesh.n_faces_host(),
         GatherScalarFaceData(scalar_fields.at(sf.first),
                              face_fields.at(sf.first).view, mesh.faces.leaf_idx,
                              mesh.faces.mask, mesh.n_vertices_host()));
+    logger->debug("gathering field {}: faces gathered", sf.first);
   }
 }
 
