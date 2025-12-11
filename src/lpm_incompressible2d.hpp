@@ -99,6 +99,8 @@ class Incompressible2D {
 
     Real total_enstrophy() const;
 
+    void normalize_coords();
+
   private:
 
     std::shared_ptr<spdlog::logger> logger;

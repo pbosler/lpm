@@ -202,6 +202,8 @@ class PolyMesh2d {
     return faces.leaf_mask_host();
   }
 
+  Real avg_face_area() const;
+
   /** @brief Return a subview of all initialized face areas
 
     @device
@@ -772,6 +774,8 @@ class PolyMesh2d {
     }
   }
 
+  Real total_area() const;
+
   /** @brief Interpolates a scalar field using "native" interpolation.
 
   "Native" implies the highest order interpolation degree for each face type,
@@ -891,6 +895,7 @@ class PolyMesh2d {
     @param [in] seed MeshSeed instance.
   */
   void seed_init(const MeshSeed<SeedType>& seed);
+
 };
 
 /** @brief Resets faces' physical coordinates to the barycenter of the polygon

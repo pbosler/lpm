@@ -195,7 +195,11 @@ KOKKOS_INLINE_FUNCTION T sign(const T& a, const T& b) {
 }
 
 
-/// rotation matrix to move an arbitrary point on the sphere to the north pole
+/** rotation matrix to move an arbitrary point on the sphere to the north pole
+
+  Given input point xyz on the sphere, construct an orthogonal matrix R
+  such that R * xyz = [0 0 1]
+*/
 template <typename Compressed3by3, typename PtType>
 KOKKOS_INLINE_FUNCTION
 void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
@@ -215,6 +219,14 @@ void north_pole_rotation_matrix(Compressed3by3& rmat, const PtType& xyz) {
   rmat[8] =  cosx * cosy;
 }
 
+/** Construct the projection matrix to the plane tangent to the sphere at a point x.
+
+  The function assumes that the matrix entry i,j is stored at mat[3*i + j], i.e.,
+  it presumes that the Compressed3by3 input parameter has LayoutRight.
+
+  @param [out] mat Matrix P = I - x * transpose(x)
+  @param [in] x point on sphere
+*/
 template <typename Compressed3by3, typename PtType>
 KOKKOS_INLINE_FUNCTION
 void spherical_tangent_projection_matrix(Compressed3by3& mat, const PtType& x) {
@@ -241,6 +253,11 @@ Kokkos::Tuple<Real,9> north_pole_rotation_matrix(const PtType& xyz) {
   return result;
 }
 
+/** Apply a 3x3 matrix-vector product.
+
+  The function assumes that the matrix entry i,j is stored at mat[3*i + j], i.e.,
+  it presumes that the Compressed3by3 input parameter has LayoutRight.
+*/
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
 KOKKOS_INLINE_FUNCTION
 void apply_3by3(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
@@ -252,6 +269,11 @@ void apply_3by3(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz)
   }
 }
 
+/** Apply a 3x3 matrix-vector product using the matrix transpose.
+
+  The function assumes that the matrix entry i,j is stored at mat[3*i + j], i.e.,
+  it presumes that the Compressed3by3 input parameter has LayoutRight.
+*/
 template <typename PtType, typename Compressed3by3, typename ConstPtType>
 KOKKOS_INLINE_FUNCTION
 void apply_3by3_transpose(PtType& xyzp, const Compressed3by3& mat, const ConstPtType& xyz) {
@@ -263,6 +285,15 @@ void apply_3by3_transpose(PtType& xyzp, const Compressed3by3& mat, const ConstPt
   }
 }
 
+/** Apply a 3x3 matrix-matrix product.
+
+  The function assumes that the matrix entries i,j are stored at mat[3*i + j], i.e.,
+  it presumes that the Compressed3by3 input parameter has LayoutRight.
+
+  @param[out] c = a * b
+  @param [in] a 3x3 matrix in row-major layout
+  @param [in] b 3x3 matrix in row-major layout
+*/
 template <typename MatType, typename ConstMatType1, typename ConstMatType2>
 KOKKOS_INLINE_FUNCTION
 void matmul_3by3(MatType& c, const ConstMatType1& a, const ConstMatType2& b) {

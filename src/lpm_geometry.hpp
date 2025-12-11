@@ -630,5 +630,18 @@ struct SphereGeometry {
   }
 };
 
+struct SphereNormalize {
+  typedef SphereGeometry geo;
+  typename SphereGeometry::crd_view_type coords_view;
+
+  explicit SphereNormalize(typename SphereGeometry::crd_view_type cview) : coords_view(cview) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index i) const {
+    const auto crd_i = Kokkos::subview(coords_view, i, Kokkos::ALL);
+    SphereGeometry::normalize(crd_i);
+  }
+};
+
 }  // namespace Lpm
 #endif

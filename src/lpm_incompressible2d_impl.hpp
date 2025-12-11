@@ -260,6 +260,7 @@ void Incompressible2D<SeedType>::init_velocity() {
 template <typename SeedType> template <typename SolverType>
 void Incompressible2D<SeedType>::advance_timestep(SolverType& solver) {
   solver.advance_timestep_impl();
+  normalize_coords();
   t = solver.t_idx * solver.dt;
 }
 
@@ -267,6 +268,16 @@ template <typename SeedType>
 Int Incompressible2D<SeedType>::n_tracers() const {
   LPM_ASSERT(tracer_active.size() == tracer_passive.size());
   return tracer_active.size();
+}
+
+template <typename SeedType>
+void Incompressible2D<SeedType>::normalize_coords() {
+  if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+    Kokkos::parallel_for(mesh.n_vertices_host(),
+      SphereNormalize(mesh.vertices.phys_crds.view));
+    Kokkos::parallel_for(mesh.n_faces_host(),
+      SphereNormalize(mesh.faces.phys_crds.view));
+  }
 }
 
 template <typename SeedType>

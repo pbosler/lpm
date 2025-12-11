@@ -256,7 +256,7 @@ struct Incompressible2DActiveSums {
 /** @brief  RHS tendencies for 2d incompressible flow
   at active particles  (both planar and spherical problems)
 
-  If U is the state vector, and the SWE are written as a dynamical
+  If U is the state vector, and the BVE is written as a dynamical
   system, dU/dt = F(U), this functor computes the RHS F, given U.
 
   This functor will be called from a Kokkos::parallel_for, with a range

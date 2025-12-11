@@ -259,15 +259,15 @@ int main (int argc, char* argv[]) {
 
     plane->advance_timestep(*solver);
     logger.debug("t = {}", plane->t);
-    Kokkos::parallel_for(plane->mesh.n_faces_host(),
-      ComputeFTLE<seed_type>(plane->ftle.view,
-        plane->mesh.vertices.phys_crds.view,
-        plane->ref_crds_passive.view,
-        plane->mesh.faces.phys_crds.view,
-        plane->ref_crds_active.view,
-        plane->mesh.faces.verts,
-        plane->mesh.faces.mask,
-        plane->t - tref));
+//     Kokkos::parallel_for(plane->mesh.n_faces_host(),
+//       ComputeFTLE<seed_type>(plane->ftle.view,
+//         plane->mesh.vertices.phys_crds.view,
+//         plane->ref_crds_passive.view,
+//         plane->mesh.faces.phys_crds.view,
+//         plane->ref_crds_active.view,
+//         plane->mesh.faces.verts,
+//         plane->mesh.faces.mask,
+//         plane->t - tref));
     max_ftle = get_max_ftle(plane->ftle.view, plane->mesh.faces.mask, plane->mesh.n_faces_host());
 
 #ifdef LPM_USE_VTK

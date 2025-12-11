@@ -261,7 +261,9 @@ void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& r
 
       gmls_setup();
 
-      direct_remesh();
+      // TODO: Accelerate this by skipping previously interpolated particles from the base mesh
+      //   and prior iterations
+      uniform_direct_remesh();
 
       face_start_idx = face_end_idx;
     }
@@ -299,7 +301,9 @@ void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& r
 
       gmls_setup();
 
-      direct_remesh();
+      // TODO: Accelerate this by skipping previously interpolated particles from the base mesh
+      //   and prior iterations
+      uniform_direct_remesh();
 
       face_start_idx = face_end_idx;
     }

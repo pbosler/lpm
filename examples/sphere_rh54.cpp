@@ -300,15 +300,15 @@ int main (int argc, char* argv[]) {
       vel_err = ErrNorms(vel_error_active, velocity_exact_active,
                           sphere->mesh.faces.area);
 
-      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-          ComputeFTLE<seed_type>(sphere->ftle.view,
-            sphere->mesh.vertices.phys_crds.view,
-            sphere->ref_crds_passive.view,
-            sphere->mesh.faces.phys_crds.view,
-            sphere->ref_crds_active.view,
-            sphere->mesh.faces.verts,
-            sphere->mesh.faces.mask,
-            sphere->t - sphere->t_ref));
+//       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+//           ComputeFTLE<seed_type>(sphere->ftle.view,
+//             sphere->mesh.vertices.phys_crds.view,
+//             sphere->ref_crds_passive.view,
+//             sphere->mesh.faces.phys_crds.view,
+//             sphere->ref_crds_active.view,
+//             sphere->mesh.faces.verts,
+//             sphere->mesh.faces.mask,
+//             sphere->t - sphere->t_ref));
       max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
 
       exact_vorticity(sphere->tracer_passive.at("exact_vorticity").view,

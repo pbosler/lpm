@@ -23,10 +23,9 @@
 #include "mesh/lpm_refinement_flags.hpp"
 #include "util/lpm_matlab_io.hpp"
 #include "util/lpm_string_util.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
-#endif
+
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
@@ -110,7 +109,6 @@ int main(int argc, char* argv[]) {
 
     //  particle/panel/grid initialization
     using SeedType = CubedSphereSeed;
-    using Coriolis = CoriolisSphere;
     const Int mesh_depth = input.get_option("tree_depth").get_int();
     constexpr Real sphere_radius = 1;
     Int amr_buffer = input.get_option("amr_buffer").get_int();

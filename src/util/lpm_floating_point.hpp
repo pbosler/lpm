@@ -64,7 +64,8 @@ struct FloatingPoint {
   /** multiplier for safe division by x, @f$ \frac{1}{x} \approx \frac{x}{x^2 +
     \epsilon_{tol}^2}@f$
 
-    For use with removable singularities.
+    For use with removable singularities.  Instead of dividing by x, where x could
+    be close to zero, returns a multiplier @f$ 1/x \approx  x/(x^2+eps^2) @f$.
 
     @warning the return value is a multiplication factor, not a divisor
 

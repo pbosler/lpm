@@ -87,6 +87,17 @@ void PolyMesh2d<SeedType>::average_face_field_to_vertex_field(ScalarField<Vertex
 }
 
 template <typename SeedType>
+Real PolyMesh2d<SeedType>::total_area() const {
+  return faces.total_leaf_area();
+}
+
+template <typename SeedType>
+Real PolyMesh2d<SeedType>::avg_face_area() const {
+  const Real total = total_area();
+  return total / faces.n_leaves_host();
+}
+
+template <typename SeedType>
 void PolyMesh2d<SeedType>::output_vtk(const std::string& fname) const {
   VtkInterface<Geo, FaceType> vtk;
   auto cd = vtkSmartPointer<vtkCellData>::New();

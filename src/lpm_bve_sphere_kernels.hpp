@@ -7,6 +7,7 @@
 #include "lpm_geometry.hpp"
 #include "lpm_kokkos_defs.hpp"
 #include "lpm_sphere_functions.hpp"
+#include "lpm_vorticity_gallery.hpp"
 
 namespace Lpm {
 
@@ -409,6 +410,28 @@ struct BVEVorticityTendency {
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index& i) const {
     dzeta(i) = -2.0 * Omega * vel(i, 2) * dt;
+  }
+};
+
+struct BVEPolarVortexVorticityTendency {
+  scalar_view_type dzeta;
+  crd_view xyz;
+  vec_view vel;
+  Real Omega;
+  Real t;
+  Real dt;
+
+  BVEPolarVortexVorticityTendency(scalar_view_type& dvort, const crd_view& x, const vec_view& u,
+                       const Real& t, const Real& timestep, const Real& rot)
+      : dzeta(dvort), xyz(x), vel(u), t(t), dt(timestep), Omega(rot) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& i) const {
+    const Real dfdt = 2.0 * Omega * vel(i,2);
+    const auto xi = Kokkos::subview(xyz, i, Kokkos::ALL);
+    const auto ui = Kokkos::subview(vel, i, Kokkos::ALL);
+    const Real dFdt = JM86Forcing::derivative(xi, ui, t);
+    dzeta(i) = -(dfdt + dFdt)*dt;
   }
 };
 

@@ -25,6 +25,7 @@ template <typename SeedType> class DFSRK2; // fwd decl
 template <typename SeedType> class DFSRK3;
 template <typename SeedType> class DFSRK4;
 template <typename SeedType> class DFSRK3;
+template <typename SeedType> class DFSPolarVortexRK4;
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
 
   Advection and vorticity are computed on Lagrangian particles.
@@ -44,6 +45,7 @@ class DFSBVE {
   friend class DFSRK3<SeedType>;
   friend class DFSRK4<SeedType>;
   friend class DFSRK3<SeedType>;
+  friend class DFSPolarVortexRK4<SeedType>;
 
   public:
     /// Coriolis
@@ -55,6 +57,8 @@ class DFSBVE {
     ScalarField<VertexField> ftle_passive;
     ScalarField<FaceField> ftle_active;
     ScalarField<VertexField> ftle_grid;
+    ScalarField<VertexField> eigs_product_passive;
+    ScalarField<FaceField> eigs_product_active;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles

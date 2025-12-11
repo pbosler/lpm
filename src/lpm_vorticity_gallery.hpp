@@ -102,6 +102,126 @@ struct GaussianVortexSphere {
   inline std::string name() const { return "SphericalGaussianVortex"; }
 };
 
+struct JM86PolarVortex {
+  typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
+  Real gauss_const;
+  static constexpr Real strength = 1.5*constants::PI;
+  static constexpr Real b = 1.6;
+  static constexpr Real theta0 = 0.5*constants::PI;
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  void set_gauss_const(const Real vorticity_sum) {
+    gauss_const = vorticity_sum / (4 * constants::PI );
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y, const Real& z) const {
+    const Real xyz[3] = {x,y,z};
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(theta)-sin(theta0)*sin(theta));
+    const Real exp_mul = cos(theta)*(2*square(b)*(cos(theta0)*sin(theta)-sin(theta0)*cos(theta)) + sin(theta));
+    const Real zeta = strength*exp_mul*exp(exp_arg) - gauss_const;
+    return zeta;
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& xyz) const {
+    const Real zeta = this->operator()(xyz[0], xyz[1],xyz[2]);
+    return zeta;
+  }
+
+  Real operator()(const Real& x, const Real& y) const { return 0; }
+
+  inline std::string name() const { return "JM86PolarVortex"; }
+};
+
+
+struct JM86Forcing {
+  typedef SphereGeometry geo;
+  static constexpr Real tfull = 4.0;
+  static constexpr Real tend = 15.0;
+  static constexpr Real tstar = tend - tfull;
+  static constexpr Real b0 = 0.5*constants::PI;
+  static constexpr Real b1 = 0.25*constants::PI;
+  static constexpr Real b2 = constants::PI/3;
+  static constexpr Real b3 = 8;
+  static constexpr Real F0 = 6*constants::PI/5;
+
+  KOKKOS_INLINE_FUNCTION
+  JM86Forcing() = default;
+
+  KOKKOS_INLINE_FUNCTION
+  static Real forcing_a(const Real t)  {
+    Real result = 0.0;
+    if (t < tfull) {
+      result = square(sin(constants::PI * t / (2*tfull)));
+    }
+    else {
+      if (tfull <= t and t < tstar) {
+        result = 1.0;
+      }
+      else {
+        if (tstar <= t and t < tend) {
+          result = square(sin(constants::PI * (tend - t)/(2*tfull)));
+        }
+      }
+    }
+    return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real forcing_aprime(const Real t)  {
+    Real result = 0.0;
+    if (t < tfull) {
+      result = constants::PI * sin(constants::PI*t/tfull)/(2*tfull);
+    }
+    else {
+      if (tstar <= t and t < tend) {
+        const Real sinarg = constants::PI * (t - tstar)/tfull;
+        result = -constants::PI*sin(sinarg)/(2*tfull);
+      }
+    }
+    return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  static Real forcing_b(const Real theta)  {
+    return -2*constants::PI*(theta-b0)*(theta-b1)*exp(-b3*square(theta - b2));
+  };
+
+  KOKKOS_INLINE_FUNCTION
+  static Real forcing_bprime(const Real theta)  {
+    const Real polyfac = 2*constants::PI * (2*b3*(theta-b0)*(theta-b1)*(theta-b2) - (theta-b1) - (theta-b0));
+    return polyfac * exp(-b3*square(theta-b2));
+  }
+
+
+  template <typename XYZType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const XYZType& xyz, const Real t) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    return F0 * forcing_a(t) * forcing_b(theta) * cos(lambda);
+  }
+
+  template <typename XyzType, typename VelType> KOKKOS_INLINE_FUNCTION
+  static Real derivative(const XyzType& xyz, const VelType& uvw, const Real t)  {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    const Real uzonal = -sin(lambda)*uvw[0] + cos(lambda)*uvw[1];
+    const Real vmerid = -sin(theta)*cos(lambda)*uvw[0] - sin(theta)*sin(lambda)*uvw[1] + cos(theta)*uvw[2];
+    const Real partial_t = F0*forcing_aprime(t)*forcing_b(theta)*cos(lambda);
+    const Real udotgrad = F0*forcing_a(t) * (vmerid*forcing_bprime(theta)*cos(lambda) -
+      uzonal*forcing_b(theta)*sin(lambda)*FloatingPoint<Real>::safe_denominator(cos(theta)));
+    return partial_t + udotgrad;
+  }
+};
+
+
 struct RossbyHaurwitz54 {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = true;

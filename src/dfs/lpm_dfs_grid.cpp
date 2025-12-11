@@ -1,4 +1,5 @@
 #include "lpm_dfs_grid.hpp"
+#include "lpm_constants.hpp"
 #include "lpm_coords_impl.hpp"
 #include "util/lpm_string_util.hpp"
 

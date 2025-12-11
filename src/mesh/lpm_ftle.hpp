@@ -20,18 +20,20 @@ struct ComputeFTLE {
   static_assert(std::is_same<face_kind, QuadFace>::value,
     "FTLE for non-quadrilateral faces not implemented yet.");
 
-  static constexpr Real fp_tol = 1e-14;
+  static constexpr Real fp_tol = 1e-5;
 
   scalar_view_type ftle; /// output
+  scalar_view_type eigs_product; /// output
   crd_view phys_crds_verts; /// input
   crd_view ref_crds_verts; /// input
   crd_view phys_crds_faces; /// input
   crd_view ref_crds_faces; /// input
   face_vertex_view face_verts; /// input
   mask_view_type face_mask; /// input
-  Real t; // input
+  Real time_delta; // input
 
   ComputeFTLE(scalar_view_type ftle,
+    scalar_view_type eigs,
     const crd_view phys_crds_verts,
     const crd_view ref_crds_verts,
     const crd_view phys_crds_faces,
@@ -40,14 +42,23 @@ struct ComputeFTLE {
     const mask_view_type face_mask,
     const Real& time_since_ref ) :
     ftle(ftle),
+    eigs_product(eigs),
     phys_crds_verts(phys_crds_verts),
     ref_crds_verts(ref_crds_verts),
     phys_crds_faces(phys_crds_faces),
     ref_crds_faces(ref_crds_faces),
     face_verts(face_verts),
     face_mask(face_mask),
-    t(time_since_ref) {}
+    time_delta(time_since_ref) {}
 
+  /** Computes the 2d flow map gradient
+
+    @param [in] e0reverse_phys a quadrilateral's 0th edge, with direction reversed so that it points from its destination vertex to its origin vertex in the LPM mesh convention
+    @param [in] e1phys quadrilateral's edge 1, with original orientation
+    @param [in] xdir orthogonal coordinate basis vector for the local plane's x-direction
+    @param [in] ydir orthogonal coordiante basis vector for the local plane's y-direction
+    @param [in]
+  */
   template <typename Tensor2Type, typename EdgeVecType, typename UnitVecType>
   KOKKOS_INLINE_FUNCTION
   void set_flow_map_gradient(
@@ -107,6 +118,9 @@ struct ComputeFTLE {
       apply_3by3(npole_ref, rot_mat_ref, fai);
       apply_3by3(npole_phys, rot_mat_phys, fxi);
 
+      /**
+        test that after rotation, the face center ends up at the north pole.
+      */
       for (int i=0; i<3; ++i) {
         LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_phys[0], fp_tol) );
         LPM_KERNEL_ASSERT( FloatingPoint<Real>::zero(npole_phys[1], fp_tol) );
@@ -207,16 +221,16 @@ struct ComputeFTLE {
       const auto eigs = two_by_two_real_eigenvalues(cg_tensor);
       const Real lambda1 = eigs[0];
       const Real lambda2 = eigs[1];
-#ifndef NDEBUG
+
 //       if (!FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol)) {
 //         spdlog::warn("ftle error: abs(lambda1 * lambda2 - 1)= {} (should be 0)",
 //           abs(lambda1*lambda2-1));
 //       }
-#endif
-//         LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(lambda1*lambda2, 1, fp_tol));
+//
+//       LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(lambda1*lambda2, 1, 1e-2));
 
-      // TODO: divide by time here?
-      ftle(face_idx) = log(lambda1);// * FloatingPoint<Real>::safe_denominator(2*t);
+      eigs_product(face_idx) = eigs[0]*eigs[1];
+      ftle(face_idx) = log(lambda1) * FloatingPoint<Real>::safe_denominator(2*time_delta);
     }
   }
 

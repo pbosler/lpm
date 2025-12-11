@@ -26,6 +26,8 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   ftle_passive("ftle", mesh_params.nmaxverts),
   ftle_active("ftle", mesh_params.nmaxfaces),
   ftle_grid("ftle", nlon*(nlon/2 + 1)),
+  eigs_product_passive("eigs", mesh_params.nmaxverts),
+  eigs_product_active("eigs", mesh_params.nmaxfaces),
   ref_crds_passive(mesh_params.nmaxverts),
   ref_crds_active(mesh_params.nmaxfaces),
   rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
@@ -491,6 +493,7 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
   t = solver.t_idx * solver.dt;
   Kokkos::parallel_for("update FTLE", mesh.n_faces_host(),
     ComputeFTLE<SeedType>(ftle_active.view,
+      eigs_product_active.view,
       mesh.vertices.phys_crds.view,
       ref_crds_passive.view,
       mesh.faces.phys_crds.view,
@@ -499,6 +502,7 @@ void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
       mesh.faces.mask,
       t - t_ref));
   mesh.average_face_field_to_vertex_field(ftle_passive, ftle_active);
+  mesh.average_face_field_to_vertex_field(eigs_product_passive, eigs_product_active);
   gathered_mesh->gather_scalar_field(ftle_passive, ftle_active);
   gathered_mesh->update_host();
   update_mesh_to_grid_neighborhoods();
@@ -513,12 +517,14 @@ template <typename SeedType>
     vtk.add_scalar_point_data(dfs_bve.abs_vort_passive.view, "absolute_vorticity");
 //     vtk.add_scalar_point_data(dfs_bve.stream_fn_passive.view, "stream_function");
     vtk.add_scalar_point_data(dfs_bve.ftle_passive.view, "ftle");
+    vtk.add_scalar_point_data(dfs_bve.eigs_product_passive.view, "eigs");
     vtk.add_vector_point_data(dfs_bve.velocity_passive.view, "velocity");
     vtk.add_scalar_cell_data(dfs_bve.rel_vort_active.view, "relative_vorticity");
     vtk.add_scalar_cell_data(dfs_bve.abs_vort_active.view, "absolute_vorticity");
 //     vtk.add_scalar_cell_data(dfs_bve.stream_fn_active.view, "stream_function");
     vtk.add_vector_cell_data(dfs_bve.velocity_active.view, "velocity");
     vtk.add_scalar_cell_data(dfs_bve.ftle_active.view, "ftle");
+    vtk.add_scalar_cell_data(dfs_bve.eigs_product_active.view, "eigs");
 
     for (const auto& t : dfs_bve.tracer_passive) {
       vtk.add_scalar_point_data(t.second.view, t.first);

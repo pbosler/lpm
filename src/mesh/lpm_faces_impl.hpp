@@ -240,6 +240,51 @@ Real Faces<FaceKind, Geo>::appx_min_mesh_size() const {
 }
 
 template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::min_face_area() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& a) {
+      if (!m(i)) {
+        a = (ar(i) < a ? ar(i) : a);
+      }
+    }, Kokkos::Min<Real>(result));
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::max_face_area() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index i, Real& a) {
+      if (!m(i)) {
+        a = (ar(i) > a ? ar(i) : a);
+      }
+    }, Kokkos::Max<Real>(result));
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::avg_face_area() const {
+  return total_leaf_area() / n_leaves_host();
+}
+
+template <typename FaceKind, typename Geo>
+Real Faces<FaceKind, Geo>::total_leaf_area() const {
+  Real result = 0;
+  const auto ar = area;
+  const auto m = mask;
+  Kokkos::parallel_reduce(_nh(),
+    KOKKOS_LAMBDA (const Index& i, Real& a) {
+      if (!m(i)) a += ar(i);
+    }, result);
+  return result;
+}
+
+template <typename FaceKind, typename Geo>
 std::string Faces<FaceKind, Geo>::info_string(const std::string& label,
                                               const int& tab_level,
                                               const bool& dump_all) const {

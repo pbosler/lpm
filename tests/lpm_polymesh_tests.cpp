@@ -89,6 +89,8 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     REQUIRE(FloatingPoint<Real>::equiv(trisphere.surface_area_host(), 4*constants::PI,
       31*constants::ZERO_TOL));
 
+    REQUIRE(FloatingPoint<Real>::equiv(trisphere.total_area(), 4*constants::PI, 1e-12));
+
 #ifdef LPM_USE_VTK
     trisphere.output_vtk("trisphere_test.vtk");
     VtkPolymeshInterface<IcosTriSphereSeed> vtk(trisphere);
@@ -112,6 +114,8 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 
     REQUIRE(FloatingPoint<Real>::equiv(quadsphere.surface_area_host(), 4*constants::PI,
       3.5*constants::ZERO_TOL));
+
+    REQUIRE(FloatingPoint<Real>::equiv(quadsphere.total_area(), 4*constants::PI, 1e-12));
 
 #ifdef LPM_USE_VTK
     quadsphere.output_vtk("quadsphere_test.vtk");

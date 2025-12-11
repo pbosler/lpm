@@ -246,15 +246,15 @@ int main (int argc, char* argv[]) {
       }
 
       sphere->advance_timestep(*solver);
-      Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-          ComputeFTLE<seed_type>(sphere->ftle.view,
-            sphere->mesh.vertices.phys_crds.view,
-            sphere->ref_crds_passive.view,
-            sphere->mesh.faces.phys_crds.view,
-            sphere->ref_crds_active.view,
-            sphere->mesh.faces.verts,
-            sphere->mesh.faces.mask,
-            sphere->t - sphere->t_ref));
+//       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+//           ComputeFTLE<seed_type>(sphere->ftle.view,
+//             sphere->mesh.vertices.phys_crds.view,
+//             sphere->ref_crds_passive.view,
+//             sphere->mesh.faces.phys_crds.view,
+//             sphere->ref_crds_active.view,
+//             sphere->mesh.faces.verts,
+//             sphere->mesh.faces.mask,
+//             sphere->t - sphere->t_ref));
       max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
       logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
