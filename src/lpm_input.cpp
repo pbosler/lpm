@@ -1,6 +1,8 @@
 #include "lpm_assert.hpp"
 #include "lpm_input.hpp"
+#include "lpm_logger.hpp"
 #include "util/lpm_string_util.hpp"
+#include "util/lpm_stl_utils.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -259,6 +261,10 @@ void Input::parse_args(const int argc, char* argv[]) {
 }
 
 const Option& Input::get_option(const std::string& name) const {
+  if (!map_contains(options, name)) {
+    auto logger = lpm_logger();
+    logger->error("Input::get_option error. option name '{}' not found", name);
+  }
   return options.at(name);
 }
 

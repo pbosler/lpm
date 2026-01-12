@@ -81,7 +81,14 @@ int main(int argc, char* argv[]) {
   /**
       initialize vorticity, step 1 of 2
   */
-  JM86PolarVortex vorticity;
+  const Real zeta0_max = input.get_option("vortex_strength").get_real();
+  const Real zeta0_b = input.get_option("vortex_shape_parameter").get_real();
+  const Real tfull = input.get_option("forcing_tfull").get_real();
+  const Real tend = input.get_option("forcing_tend").get_real();
+  const Real F0 = input.get_option("forcing_F0").get_real();
+  const PolarVortexParams pv_params(zeta0_max, zeta0_b, tfull, tend, F0);
+
+  JM86PolarVortex vorticity(pv_params);
   sphere->init_vorticity(vorticity);
   const Real total_vort_0 = sphere->total_vorticity();
   /**
@@ -90,8 +97,8 @@ int main(int argc, char* argv[]) {
   vorticity.set_gauss_const(total_vort_0);
   sphere->init_vorticity(vorticity);
   auto rel_vort_range = sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
-  logger.info("uniform mesh has active vorticity (min, max) = ({}, {}), for max. circulation of appx. {}",
-    rel_vort_range.first, rel_vort_range.second, rel_vort_range.second * sphere->mesh.avg_face_area());
+  logger.info("uniform mesh has active vorticity (min, max) = ({}, {}), for max. circulation of appx. {}, gauss.const = {}",
+    rel_vort_range.first, rel_vort_range.second, rel_vort_range.second * sphere->mesh.avg_face_area(), vorticity.gauss_const);
   rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.n_faces_host());
   logger.debug("uniform mesh has passive vorticity (min, max) = ({}, {})",
     rel_vort_range.first, rel_vort_range.second);
@@ -117,7 +124,7 @@ int main(int argc, char* argv[]) {
   const Real dt = timestep_params.dt;
   const Real tfinal = timestep_params.tfinal;
   const Int nsteps = timestep_params.nsteps;
-  auto solver = std::make_unique<SolverType>(dt, *sphere);
+  auto solver = std::make_unique<SolverType>(dt, *sphere, 0, pv_params);
   auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
   logger.info("timestepping ready: dt = {}, nsteps = {}, tfinal = {}, initial courant number = {}",
     dt, nsteps, tfinal, timestep_params.courant_number(sphere->mesh.appx_min_mesh_size(), vel_range.second));
@@ -146,7 +153,7 @@ int main(int argc, char* argv[]) {
     ss << "+amr" << amr_limit << "_circtol" << std::setprecision(6) << circ_tol;
     resolution_str += ss.str();
   }
-  resolution_str += "_nlon" + std::to_string(nlon);
+  resolution_str += "_nlon" + std::to_string(nlon) + "_" + timestep_params.filename_piece();
   std::string remesh_str;
   if (use_ftle) {
     remesh_str = "ftle" + float_str(ftle_tol,3) + "ftle_sp" + float_str(ftle_space_tol,3);
@@ -227,7 +234,7 @@ int main(int argc, char* argv[]) {
       sphere = std::move(new_sphere);
       sphere->finalize_mesh_to_grid_coupling();
       sphere->t_ref = tref;
-      solver.reset(new SolverType(dt, *sphere, t_idx));
+      solver.reset(new SolverType(dt, *sphere, t_idx, pv_params));
       sphere->reset_ftle();
     }
 
@@ -252,7 +259,7 @@ int main(int argc, char* argv[]) {
       ++vtk_counter;
 
       rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
-      logger.info("t = {}, max. ftle = {}, passive rel. vort. range = ({}, {})",
+      logger.info("t = {:4.2f}, max. ftle = {:4.2f}, passive rel. vort. range = ({:4.2f}, {:4.2f})",
         (t_idx+1)*dt, max_ftle, rel_vort_range.first, rel_vort_range.second);
     }
   } // time stepping loop
@@ -264,6 +271,8 @@ int main(int argc, char* argv[]) {
   write_vector_matlab(ofile, "total_kinetic_energy", total_kinetic_energy);
   write_vector_matlab(ofile, "total_enstrophy", total_enstrophy);
   write_vector_matlab(ofile, "max_ftle", ftle_max);
+
+  logger.info("output was written to files beginning: {}", ofile_root);
 
   } // Kokkos scope
   Kokkos::finalize();
@@ -328,7 +337,7 @@ void init_input(user::Input& input) {
   user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
   input.add_option(remesh_interval_option);
 
-  user::Option gmls_interpolation_order("gmls_interpolation_order", "-g", "--gmls-order", "polynomial order for gmls-based interpolation", 8);
+  user::Option gmls_interpolation_order("gmls_interpolation_order", "-g", "--gmls-order", "polynomial order for gmls-based interpolation", 6);
   input.add_option(gmls_interpolation_order);
 
   user::Option remesh_trigger_option("remesh_trigger", "-rt", "--remesh-trigger", "trigger for a remeshing : ftle or an interval", std::string("interval"), std::set<std::string>({"interval", "ftle"}));
@@ -339,6 +348,20 @@ void init_input(user::Input& input) {
 
   user::Option ftle_space_tolerance_option("ftle_space_tol", "-fs", "--ftle-space-tol", "spatial amr ftle tolerance remesh", std::numeric_limits<Real>::max());
   input.add_option(ftle_space_tolerance_option);
+
+  user::Option vortex_strength_option("vortex_strength", "-vs", "--vortex-strength", "maximum strength of initial relative vorticity", 2*constants::PI);
+  input.add_option(vortex_strength_option);
+
+  user::Option vortex_shape_option("vortex_shape_parameter", "-vb", "--vortex-b", "shape parameter for initial vorticity", 2.0);
+  input.add_option(vortex_shape_option);
+
+  user::Option wave_forcing_strength_option("forcing_F0", "-F", "--forcing-F0", "maximum strength of forcing", 6*constants::PI/5);
+  input.add_option(wave_forcing_strength_option);
+
+  user::Option wave_forcing_tfull_option("forcing_tfull", "-tfull", "--forcing-tfull", "time to reach full strength forcing", 4.0);
+  input.add_option(wave_forcing_tfull_option);
+  user::Option wave_forcing_tend_option("forcing_tend", "-tend", "--forcing-tend", "end time for forcing", 15.0);
+  input.add_option(wave_forcing_tend_option);
 }
 
 template <typename SeedType, typename VorticityType, typename LoggerType>

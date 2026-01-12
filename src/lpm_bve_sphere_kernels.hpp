@@ -420,17 +420,18 @@ struct BVEPolarVortexVorticityTendency {
   Real Omega;
   Real t;
   Real dt;
+  JM86Forcing forcing;
 
   BVEPolarVortexVorticityTendency(scalar_view_type& dvort, const crd_view& x, const vec_view& u,
-                       const Real& t, const Real& timestep, const Real& rot)
-      : dzeta(dvort), xyz(x), vel(u), t(t), dt(timestep), Omega(rot) {}
+                       const Real& t, const Real& timestep, const Real& rot, const JM86Forcing& forcing)
+      : dzeta(dvort), xyz(x), vel(u), t(t), dt(timestep), Omega(rot), forcing(forcing) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator() (const Index& i) const {
     const Real dfdt = 2.0 * Omega * vel(i,2);
     const auto xi = Kokkos::subview(xyz, i, Kokkos::ALL);
     const auto ui = Kokkos::subview(vel, i, Kokkos::ALL);
-    const Real dFdt = JM86Forcing::derivative(xi, ui, t);
+    const Real dFdt = forcing.derivative(xi, ui, t);
     dzeta(i) = -(dfdt + dFdt)*dt;
   }
 };

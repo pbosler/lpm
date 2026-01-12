@@ -46,7 +46,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   //  rel_vort_particles1 = dt * d\zeta / dt
   Kokkos::parallel_for("rk4 stage 1 vorticity", rel_vort_particles.extent(0),
     BVEPolarVortexVorticityTendency(rel_vort_particles1, xyz_particles, velocity_particles,
-      t, dt, Omega));
+      t, dt, Omega, forcing));
   // rk stage 1 positions
   //    xyz_particles1 = dt * velocity_particles
   KokkosBlas::axpby(dt, velocity_particles, 0, xyz_particles1);
@@ -65,7 +65,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
   // rk stage 2: vorticity
   Kokkos::parallel_for("rk4 stage2 vorticity", rel_vort_particles.extent(0),
-    BVEPolarVortexVorticityTendency(rel_vort_particles2, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega));
+    BVEPolarVortexVorticityTendency(rel_vort_particles2, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega, forcing));
   // rk stage 2: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles2);
 
@@ -81,7 +81,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
   // rk stage 3: vorticity
   Kokkos::parallel_for("rk4 stage 3 vorticity", rel_vort_particles.extent(0),
-    BVEPolarVortexVorticityTendency(rel_vort_particles3, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega));
+    BVEPolarVortexVorticityTendency(rel_vort_particles3, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega, forcing));
   // rk stage 3: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles3);
 
@@ -97,7 +97,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
   // rk stage 4: vorticity
   Kokkos::parallel_for("rk4 stage 4 vorticity", rel_vort_particles.extent(0),
-    BVEPolarVortexVorticityTendency(rel_vort_particles4, xyz_particles_work, vel_particles, t + dt, dt, Omega));
+    BVEPolarVortexVorticityTendency(rel_vort_particles4, xyz_particles_work, vel_particles, t + dt, dt, Omega, forcing));
   // rk stage 4: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles4);
 

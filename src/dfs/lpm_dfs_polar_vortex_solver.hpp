@@ -4,6 +4,7 @@
 #include "LpmConfig.h"
 #include "lpm_input.hpp"
 #include "dfs/lpm_dfs_bve.hpp"
+#include "lpm_vorticity_gallery.hpp"
 
 namespace Lpm {
 namespace DFS {
@@ -46,9 +47,11 @@ class DFSPolarVortexRK4 {
     Real t;
     Int t_idx;
 
+    JM86Forcing forcing;
+
     DFSBVE<SeedType>& sphere;
 
-    DFSPolarVortexRK4(const Real timestep, DFSBVE<SeedType>& sph, const Int t_idx = 0) :
+    DFSPolarVortexRK4(const Real timestep, DFSBVE<SeedType>& sph, const Int t_idx, const PolarVortexParams& pv_params) :
       dt(timestep),
       Omega(sph.Omega()),
       t_idx(t_idx),
@@ -68,7 +71,8 @@ class DFSPolarVortexRK4 {
       rel_vort_particles4("rel_vort_particels_stage4", sph.gathered_mesh->n()),
       rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
       vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
-      sphere(sph)
+      sphere(sph),
+      forcing(pv_params)
       {}
 
     void advance_timestep();

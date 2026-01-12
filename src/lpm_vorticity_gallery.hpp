@@ -102,16 +102,48 @@ struct GaussianVortexSphere {
   inline std::string name() const { return "SphericalGaussianVortex"; }
 };
 
+struct PolarVortexParams {
+  Real vortex_strength; /// maximum strength of polar vortex
+  Real vortex_shape_b; /// vortex shape parameter
+  Real forcing_tfull; /// time of full forcing onset
+  Real forcing_tend; /// end time of forcing
+  Real forcing_F0; /// maximum strength of forcing
+
+  KOKKOS_INLINE_FUNCTION
+  PolarVortexParams(const Real zeta0, const Real zetab, const Real tfull, const Real tend, const Real F0) :
+    vortex_strength(zeta0), vortex_shape_b(zetab),
+    forcing_tfull(tfull), forcing_tend(tend), forcing_F0(F0)
+    {
+      LPM_KERNEL_ASSERT(zeta0 > 0);
+      LPM_KERNEL_ASSERT(zetab >= 1);
+      LPM_KERNEL_ASSERT(tfull >= 0);
+      LPM_KERNEL_ASSERT(tend > tfull);
+      LPM_KERNEL_ASSERT(F0 >= 0);
+    }
+};
+
 struct JM86PolarVortex {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = true;
   Real gauss_const;
-  static constexpr Real strength = 1.5*constants::PI;
-  static constexpr Real b = 1.6;
+  Real strength;
+  Real b;
   static constexpr Real theta0 = 0.5*constants::PI;
 
   KOKKOS_INLINE_FUNCTION
-  JM86PolarVortex() = default;
+  JM86PolarVortex(const JM86PolarVortex& other) = default;
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex(const PolarVortexParams& params) :
+    gauss_const(0),
+    strength(params.vortex_strength),
+    b(params.vortex_shape_b) {}
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex(const Real str = 2*constants::PI, const Real b = 2.0) :
+    gauss_const(0),
+    strength(str),
+    b(b) {}
 
   KOKKOS_INLINE_FUNCTION
   void set_gauss_const(const Real vorticity_sum) {
@@ -121,11 +153,12 @@ struct JM86PolarVortex {
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     const Real xyz[3] = {x,y,z};
-    const Real theta = SphereGeometry::latitude(xyz);
-    const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(theta)-sin(theta0)*sin(theta));
-    const Real exp_mul = cos(theta)*(2*square(b)*(cos(theta0)*sin(theta)-sin(theta0)*cos(theta)) + sin(theta));
-    const Real zeta = strength*exp_mul*exp(exp_arg) - gauss_const;
-    return zeta;
+//     const Real theta = SphereGeometry::latitude(xyz);
+//     const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(theta)-sin(theta0)*sin(theta));
+//     const Real exp_mul = cos(theta)*(2*square(b)*(cos(theta0)*sin(theta)-sin(theta0)*cos(theta)) + sin(theta));
+//     const Real zeta = strength*exp_mul*exp(exp_arg) - gauss_const;
+//     return zeta;
+      return strength * exp(-2*square(b)*(1-z));
   }
 
   template <typename PtType>
@@ -143,20 +176,33 @@ struct JM86PolarVortex {
 
 struct JM86Forcing {
   typedef SphereGeometry geo;
-  static constexpr Real tfull = 4.0;
-  static constexpr Real tend = 15.0;
-  static constexpr Real tstar = tend - tfull;
   static constexpr Real b0 = 0.5*constants::PI;
   static constexpr Real b1 = 0.25*constants::PI;
   static constexpr Real b2 = constants::PI/3;
   static constexpr Real b3 = 8;
-  static constexpr Real F0 = 6*constants::PI/5;
+  Real tfull;
+  Real tend;
+  Real tstar;
+  Real F0;
 
   KOKKOS_INLINE_FUNCTION
-  JM86Forcing() = default;
+  JM86Forcing(const JM86Forcing& other) = default;
 
   KOKKOS_INLINE_FUNCTION
-  static Real forcing_a(const Real t)  {
+  JM86Forcing(const PolarVortexParams& params) :
+    tfull(params.forcing_tfull),
+    tend(params.forcing_tend),
+    tstar(params.forcing_tfull-params.forcing_tend),
+    F0(params.forcing_F0) {}
+
+  KOKKOS_INLINE_FUNCTION
+  JM86Forcing(const Real tfull = 4, const Real tend = 15,
+    const Real F0 = 6*constants::PI/5) :
+    tfull(tfull), tend(tend), tstar(tend-tfull),
+    F0(F0) {LPM_KERNEL_ASSERT(tend > tfull);}
+
+  KOKKOS_INLINE_FUNCTION
+  Real forcing_a(const Real t) const {
     Real result = 0.0;
     if (t < tfull) {
       result = square(sin(constants::PI * t / (2*tfull)));
@@ -175,7 +221,7 @@ struct JM86Forcing {
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real forcing_aprime(const Real t)  {
+  Real forcing_aprime(const Real t) const {
     Real result = 0.0;
     if (t < tfull) {
       result = constants::PI * sin(constants::PI*t/tfull)/(2*tfull);
@@ -190,12 +236,12 @@ struct JM86Forcing {
   }
 
   KOKKOS_INLINE_FUNCTION
-  static Real forcing_b(const Real theta)  {
+  Real forcing_b(const Real theta) const {
     return -2*constants::PI*(theta-b0)*(theta-b1)*exp(-b3*square(theta - b2));
   };
 
   KOKKOS_INLINE_FUNCTION
-  static Real forcing_bprime(const Real theta)  {
+  Real forcing_bprime(const Real theta) const {
     const Real polyfac = 2*constants::PI * (2*b3*(theta-b0)*(theta-b1)*(theta-b2) - (theta-b1) - (theta-b0));
     return polyfac * exp(-b3*square(theta-b2));
   }
@@ -209,7 +255,7 @@ struct JM86Forcing {
   }
 
   template <typename XyzType, typename VelType> KOKKOS_INLINE_FUNCTION
-  static Real derivative(const XyzType& xyz, const VelType& uvw, const Real t)  {
+  Real derivative(const XyzType& xyz, const VelType& uvw, const Real t) const {
     const Real theta = SphereGeometry::latitude(xyz);
     const Real lambda = SphereGeometry::longitude(xyz);
     const Real uzonal = -sin(lambda)*uvw[0] + cos(lambda)*uvw[1];

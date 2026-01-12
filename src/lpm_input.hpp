@@ -11,12 +11,12 @@ namespace Lpm {
 namespace user {
 
 struct Option {
-  typedef std::variant<Int, Real, std::string> variant_t;
+  typedef std::variant<Int, Real, bool, std::string> variant_t;
   std::string name;
   std::string short_flag;
   std::string long_flag;
   std::string description;
-  std::variant<Int, Real, bool, std::string> value;
+  variant_t value;
   std::set<std::string> allowable_values;
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
@@ -85,8 +85,6 @@ struct Input {
   const Option& get_option(const std::string& name) const;
 };
 
-template <typename ProblemType>
-Input setup_problem_input() {return Input();}
 
 } // namespace user
 } // namespace Lpm
