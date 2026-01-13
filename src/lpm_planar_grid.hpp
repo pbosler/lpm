@@ -30,9 +30,9 @@ struct PlanarGrid {
     for (int i = 0; i < n * n; ++i) {
       const Int ii = i / n;
       const Int jj = i % n;
-      h_pts(i, 0) = xmin + ii * dx;
-      h_pts(i, 1) = ymin + jj * dy;
-      h_wts(i) = dx * dy;
+      h_pts(i, 0)  = xmin + ii * dx;
+      h_pts(i, 1)  = ymin + jj * dy;
+      h_wts(i)     = dx * dy;
     }
     Kokkos::deep_copy(pts, h_pts);
     Kokkos::deep_copy(wts, h_wts);

@@ -2,8 +2,8 @@
 #include "lpm_comm.hpp"
 #include "lpm_logger.hpp"
 #include "lpm_swe.hpp"
-#include "lpm_swe_problem_gallery.hpp"
 #include "lpm_swe_impl.hpp"
+#include "lpm_swe_problem_gallery.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -14,16 +14,15 @@
 using namespace Lpm;
 
 TEST_CASE("planar_swe", "[swe]") {
-
-// typedef PlanarGravityWaveFreeBoundaries ic_type;
-typedef NitscheStricklandVortex ic_type;
-typedef QuadRectSeed seed_type;
+  // typedef PlanarGravityWaveFreeBoundaries ic_type;
+  typedef NitscheStricklandVortex ic_type;
+  typedef QuadRectSeed seed_type;
 
   int tree_init_depth = 4;
-  Real radius = 6;
-  int amr_limit = 0;
+  Real radius         = 6;
+  int amr_limit       = 0;
 
-  Real init_plane_f0 = 0;
+  Real init_plane_f0   = 0;
   Real init_plane_beta = 0;
 
   Comm comm;
@@ -31,7 +30,8 @@ typedef QuadRectSeed seed_type;
   Logger<> logger(test_name, Log::level::debug, comm);
 
   PolyMeshParameters<seed_type> mesh_params(tree_init_depth, radius, amr_limit);
-  auto plane = std::make_unique<SWE<seed_type>>(mesh_params, init_plane_f0, init_plane_beta);
+  auto plane = std::make_unique<SWE<seed_type>>(mesh_params, init_plane_f0,
+                                                init_plane_beta);
 
   ic_type ic;
   plane->init_swe_problem(ic);
@@ -61,4 +61,3 @@ TEST_CASE("sphere swe", "[swe]") {
   vtk.write(test_name + vtp_suffix());
 #endif
 }
-

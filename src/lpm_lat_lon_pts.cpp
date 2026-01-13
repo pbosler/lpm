@@ -15,26 +15,26 @@ LatLonPts::LatLonPts(const int n_unif, const Real)
 
 void LatLonPts::init() {
   const Index npts = nlat * nlon;
-  pts = Kokkos::View<Real* [3]>("lat_lon_pts", npts);
-  wts = Kokkos::View<Real*>("lat_lon_wts", npts);
+  pts              = Kokkos::View<Real* [3]>("lat_lon_pts", npts);
+  wts              = Kokkos::View<Real*>("lat_lon_wts", npts);
 
-  h_pts = Kokkos::create_mirror_view(pts);
-  h_wts = Kokkos::create_mirror_view(wts);
+  h_pts                      = Kokkos::create_mirror_view(pts);
+  h_wts                      = Kokkos::create_mirror_view(wts);
   const Real sin_half_dtheta = sin(0.5 * dtheta);
-  Real sum = 0;
+  Real sum                   = 0;
   for (int i = 0; i < nlat; ++i) {
-    const Real lat = -0.5 * constants::PI + i * dtheta;
+    const Real lat    = -0.5 * constants::PI + i * dtheta;
     const Real coslat = cos(lat);
-    const Real z = sin(lat);
-    const Real w = 2 * dlambda * sin_half_dtheta * coslat;
+    const Real z      = sin(lat);
+    const Real w      = 2 * dlambda * sin_half_dtheta * coslat;
     for (int j = 0; j < nlon; ++j) {
-      const Real lon = j * dlambda;
-      const Real x = cos(lon) * coslat;
-      const Real y = sin(lon) * coslat;
+      const Real lon         = j * dlambda;
+      const Real x           = cos(lon) * coslat;
+      const Real y           = sin(lon) * coslat;
       h_pts(i * nlon + j, 0) = x;
       h_pts(i * nlon + j, 1) = y;
       h_pts(i * nlon + j, 2) = z;
-      h_wts(i * nlon + j) = w;
+      h_wts(i * nlon + j)    = w;
       sum += w;
     }
   }

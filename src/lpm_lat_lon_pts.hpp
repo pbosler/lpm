@@ -39,7 +39,7 @@ struct LatLonPts {
     Kokkos::View<Real**, HostMemory> grid_vals("grid_vals", nlat, nlon);
     for (Int i = 0; i < nlat; ++i) {
       for (Int j = 0; j < nlon; ++j) {
-        const Index k = i * nlon + j;
+        const Index k   = i * nlon + j;
         grid_vals(i, j) = vals(k);
       }
     }

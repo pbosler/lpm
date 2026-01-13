@@ -1,11 +1,11 @@
 #ifndef LPM_INPUT_HPP
 #define LPM_INPUT_HPP
 
-#include "LpmConfig.h"
-
+#include <set>
 #include <string>
 #include <variant>
-#include <set>
+
+#include "LpmConfig.h"
 
 namespace Lpm {
 namespace user {
@@ -20,27 +20,22 @@ struct Option {
   std::set<std::string> allowable_values;
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
-    const std::string& desc,
-    const Int default_value);
+         const std::string& desc, const Int default_value);
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
-    const std::string& desc,
-    const Real default_value);
+         const std::string& desc, const Real default_value);
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
-    const std::string& desc,
-    const bool default_value);
+         const std::string& desc, const bool default_value);
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
-    const std::string& desc,
-    const std::string& default_value);
+         const std::string& desc, const std::string& default_value);
 
   Option(const std::string& name, const std::string& sf, const std::string& lf,
-    const std::string& desc,
-    const std::string& default_value,
-    const std::set<std::string>& allowable_values);
+         const std::string& desc, const std::string& default_value,
+         const std::set<std::string>& allowable_values);
 
-  std::string info_string(const int tab_level=0) const;
+  std::string info_string(const int tab_level = 0) const;
 
   template <typename T>
   void set_value(const T& val) {
@@ -55,12 +50,12 @@ struct Option {
   bool get_bool() const;
   std::string get_str() const;
 
-  friend bool operator < (const Option& lhs, const Option& rhs) noexcept;
-  friend bool operator > (const Option& lhs, const Option& rhs) noexcept;
-  friend bool operator <= (const Option& lhs, const Option& rhs) noexcept;
-  friend bool operator >= (const Option& lhs, const Option& rhs) noexcept;
-  friend bool operator == (const Option& lhs, const Option& rhs) noexcept;
-  friend bool operator != (const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator<(const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator>(const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator<=(const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator>=(const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator==(const Option& lhs, const Option& rhs) noexcept;
+  friend bool operator!=(const Option& lhs, const Option& rhs) noexcept;
 };
 
 struct Input {
@@ -76,7 +71,8 @@ struct Input {
 
   std::string usage() const;
 
-  std::string info_string(const int tab_level = 0, const bool verbose = false) const;
+  std::string info_string(const int tab_level = 0,
+                          const bool verbose  = false) const;
 
   void add_option(const Option& default_opt);
 
@@ -86,9 +82,11 @@ struct Input {
 };
 
 template <typename ProblemType>
-Input setup_problem_input() {return Input();}
+Input setup_problem_input() {
+  return Input();
+}
 
-} // namespace user
-} // namespace Lpm
+}  // namespace user
+}  // namespace Lpm
 
 #endif

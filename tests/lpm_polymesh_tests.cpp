@@ -1,16 +1,16 @@
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
+
 #include "LpmConfig.h"
-#include "lpm_constants.hpp"
-#include "lpm_geometry.hpp"
 #include "lpm_comm.hpp"
-#include "lpm_logger.hpp"
+#include "lpm_constants.hpp"
 #include "lpm_field.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
 #include "util/lpm_floating_point.hpp"
-#include "lpm_constants.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
@@ -22,7 +22,6 @@
 using namespace Lpm;
 
 TEST_CASE("polymesh2d tests", "[mesh]") {
-
   Comm comm;
 
   Logger<> logger("polymesh2d tests", Log::level::info, comm);
@@ -30,7 +29,6 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
   const int tree_lev = 3;
 
   SECTION("planar triangles") {
-
     PolyMeshParameters<TriHexSeed> params(tree_lev);
 
     auto triplane = PolyMesh2d<TriHexSeed>(params);
@@ -41,8 +39,9 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     triplane.update_device();
     logger.info("TriHexSeed mesh info:\n {}", triplane.info_string());
 
-    REQUIRE(FloatingPoint<Real>::equiv(triplane.surface_area_host(), 2.59807621135331512,
-      constants::ZERO_TOL));
+    REQUIRE(FloatingPoint<Real>::equiv(triplane.surface_area_host(),
+                                       2.59807621135331512,
+                                       constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
     triplane.output_vtk("triplane_test.vtk");
@@ -55,15 +54,15 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     const Real mesh_radius = 4;
     PolyMeshParameters<QuadRectSeed> params(tree_lev, mesh_radius);
 
-    auto quadplane =
-      PolyMesh2d<QuadRectSeed>(params);
+    auto quadplane = PolyMesh2d<QuadRectSeed>(params);
 
     REQUIRE(quadplane.vertices.nh() == params.nmaxverts);
     REQUIRE(quadplane.edges.nh() == params.nmaxedges);
     REQUIRE(quadplane.faces.nh() == params.nmaxfaces);
 
     quadplane.update_device();
-    logger.info("QuadRectSeed mesh info:\n {}", quadplane.info_string("radius = 4"));
+    logger.info("QuadRectSeed mesh info:\n {}",
+                quadplane.info_string("radius = 4"));
 
     REQUIRE(FloatingPoint<Real>::equiv(quadplane.surface_area_host(), 64));
 
@@ -86,8 +85,9 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     trisphere.update_device();
     logger.info("IcosTriSphereSeed mesh info:\n {}", trisphere.info_string());
 
-    REQUIRE(FloatingPoint<Real>::equiv(trisphere.surface_area_host(), 4*constants::PI,
-      31*constants::ZERO_TOL));
+    REQUIRE(FloatingPoint<Real>::equiv(trisphere.surface_area_host(),
+                                       4 * constants::PI,
+                                       31 * constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
     trisphere.output_vtk("trisphere_test.vtk");
@@ -108,10 +108,12 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     logger.info("CubedSphereSeed mesh info:\n {}", quadsphere.info_string());
 
     logger.debug("cubed sphere area = {}, |area = 4*pi| = {}",
-      quadsphere.surface_area_host(), abs(quadsphere.surface_area_host() - 4*constants::PI));
+                 quadsphere.surface_area_host(),
+                 abs(quadsphere.surface_area_host() - 4 * constants::PI));
 
-    REQUIRE(FloatingPoint<Real>::equiv(quadsphere.surface_area_host(), 4*constants::PI,
-      3.5*constants::ZERO_TOL));
+    REQUIRE(FloatingPoint<Real>::equiv(quadsphere.surface_area_host(),
+                                       4 * constants::PI,
+                                       3.5 * constants::ZERO_TOL));
 
 #ifdef LPM_USE_VTK
     quadsphere.output_vtk("quadsphere_test.vtk");
@@ -119,7 +121,6 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
     vtk.write("cubed_sphere_vtk_test.vtp");
 #endif
   }
-
 }
 
 #ifdef LPM_USE_NETCDF
@@ -139,11 +140,11 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //   auto quadsphere = std::shared_ptr<PolyMesh2d<seed_type>>(new
 //     PolyMesh2d<seed_type>(params));
 //
-//   ScalarField<FaceField> ones("ones", params.nmaxfaces, ekat::units::Units::nondimensional());
-//   ko::deep_copy(ones.hview, 1.0);
+//   ScalarField<FaceField> ones("ones", params.nmaxfaces,
+//   ekat::units::Units::nondimensional()); ko::deep_copy(ones.hview, 1.0);
 //
-//   VectorField<SphereGeometry, VertexField> twos("twos", params.nmaxverts, ekat::units::Units::nondimensional());
-//   ko::deep_copy(twos.hview, 2.0);
+//   VectorField<SphereGeometry, VertexField> twos("twos", params.nmaxverts,
+//   ekat::units::Units::nondimensional()); ko::deep_copy(twos.hview, 2.0);
 //
 //   REQUIRE(FloatingPoint<Real>::equiv(quadsphere.faces.surface_area_host(),
 //     4*constants::PI, 20*constants::ZERO_TOL));
@@ -173,8 +174,9 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //     REQUIRE(quadsphere.vertices.n_max() == mesh->vertices.n_max());
 //     REQUIRE(quadsphere.vertices.nh() == mesh->vertices.nh());
 //     for (Index i=0; i<quadsphere.n_vertices_host(); ++i) {
-//       REQUIRE(quadsphere.vertices.host_crd_ind(i) == mesh->vertices.host_crd_ind(i));
-//       for (Index j=0; j<SphereGeometry::ndim; ++j) {
+//       REQUIRE(quadsphere.vertices.host_crd_ind(i) ==
+//       mesh->vertices.host_crd_ind(i)); for (Index j=0;
+//       j<SphereGeometry::ndim; ++j) {
 //         REQUIRE(FloatingPoint<Real>::equiv(quadsphere.vertices.phys_crds->get_crd_component_host(i,j),
 //           mesh->vertices.phys_crds->get_crd_component_host(i,j)));
 //         REQUIRE(FloatingPoint<Real>::equiv(quadsphere.vertices.lag_crds->get_crd_component_host(i,j),
@@ -205,13 +207,15 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //
 //     for (Index i=0; i<quadsphere.n_faces_host(); ++i) {
 //       REQUIRE(quadsphere.faces.parent_host(i) == mesh->faces.parent_host(i));
-//       REQUIRE(quadsphere.faces.crd_idx_host(i) == mesh->faces.crd_idx_host(i));
+//       REQUIRE(quadsphere.faces.crd_idx_host(i) ==
+//       mesh->faces.crd_idx_host(i));
 //       REQUIRE(FloatingPoint<Real>::equiv(quadsphere.faces.area_host(i),
 //         mesh->faces.area_host(i)));
 //       REQUIRE(quadsphere.faces.level_host(i) == mesh->faces.level_host(i));
 //       for (Index j=0; j<seed_type::faceKind::nverts; ++j) {
-//         REQUIRE(quadsphere.faces.vert_host(i,j) == mesh->faces.vert_host(i,j));
-//         REQUIRE(quadsphere.faces.edge_host(i,j) == mesh->faces.edge_host(i,j));
+//         REQUIRE(quadsphere.faces.vert_host(i,j) ==
+//         mesh->faces.vert_host(i,j)); REQUIRE(quadsphere.faces.edge_host(i,j)
+//         == mesh->faces.edge_host(i,j));
 //       }
 //       for (Index j=0; j<4; ++j) {
 //         REQUIRE(quadsphere.faces.kid_host(i,j) == mesh->faces.kid_host(i,j));
@@ -241,11 +245,11 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //   auto quadsphere = std::shared_ptr<PolyMesh2d<seed_type>>(new
 //     PolyMesh2d<seed_type>(params));
 //
-//   ScalarField<FaceField> ones("ones", params.nmaxfaces, ekat::units::Units::nondimensional());
-//   ko::deep_copy(ones.hview, 1.0);
+//   ScalarField<FaceField> ones("ones", params.nmaxfaces,
+//   ekat::units::Units::nondimensional()); ko::deep_copy(ones.hview, 1.0);
 //
-//   VectorField<SphereGeometry, VertexField> twos("twos", params.nmaxverts, ekat::units::Units::nondimensional());
-//   ko::deep_copy(twos.hview, 2.0);
+//   VectorField<SphereGeometry, VertexField> twos("twos", params.nmaxverts,
+//   ekat::units::Units::nondimensional()); ko::deep_copy(twos.hview, 2.0);
 //
 //   REQUIRE(FloatingPoint<Real>::equiv(quadsphere.faces.surface_area_host(),
 //     4*constants::PI, 20*constants::ZERO_TOL));
@@ -275,8 +279,9 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //     REQUIRE(quadsphere.vertices.n_max() == mesh->vertices.n_max());
 //     REQUIRE(quadsphere.vertices.nh() == mesh->vertices.nh());
 //     for (Index i=0; i<quadsphere.n_vertices_host(); ++i) {
-//       REQUIRE(quadsphere.vertices.host_crd_ind(i) == mesh->vertices.host_crd_ind(i));
-//       for (Index j=0; j<SphereGeometry::ndim; ++j) {
+//       REQUIRE(quadsphere.vertices.host_crd_ind(i) ==
+//       mesh->vertices.host_crd_ind(i)); for (Index j=0;
+//       j<SphereGeometry::ndim; ++j) {
 //         REQUIRE(FloatingPoint<Real>::equiv(quadsphere.vertices.phys_crds->get_crd_component_host(i,j),
 //           mesh->vertices.phys_crds->get_crd_component_host(i,j)));
 //         REQUIRE(FloatingPoint<Real>::equiv(quadsphere.vertices.lag_crds->get_crd_component_host(i,j),
@@ -307,13 +312,15 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //
 //     for (Index i=0; i<quadsphere.n_faces_host(); ++i) {
 //       REQUIRE(quadsphere.faces.parent_host(i) == mesh->faces.parent_host(i));
-//       REQUIRE(quadsphere.faces.crd_idx_host(i) == mesh->faces.crd_idx_host(i));
+//       REQUIRE(quadsphere.faces.crd_idx_host(i) ==
+//       mesh->faces.crd_idx_host(i));
 //       REQUIRE(FloatingPoint<Real>::equiv(quadsphere.faces.area_host(i),
 //         mesh->faces.area_host(i)));
 //       REQUIRE(quadsphere.faces.level_host(i) == mesh->faces.level_host(i));
 //       for (Index j=0; j<seed_type::faceKind::nverts; ++j) {
-//         REQUIRE(quadsphere.faces.vert_host(i,j) == mesh->faces.vert_host(i,j));
-//         REQUIRE(quadsphere.faces.edge_host(i,j) == mesh->faces.edge_host(i,j));
+//         REQUIRE(quadsphere.faces.vert_host(i,j) ==
+//         mesh->faces.vert_host(i,j)); REQUIRE(quadsphere.faces.edge_host(i,j)
+//         == mesh->faces.edge_host(i,j));
 //       }
 //       for (Index j=0; j<4; ++j) {
 //         REQUIRE(quadsphere.faces.kid_host(i,j) == mesh->faces.kid_host(i,j));
@@ -328,4 +335,3 @@ TEST_CASE("polymesh2d tests", "[mesh]") {
 //   }
 // }
 #endif
-

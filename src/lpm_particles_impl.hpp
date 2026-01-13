@@ -1,16 +1,14 @@
 #ifndef LPM_PARTICLES_IMPL_HPP
 #define LPM_PARTICLES_IMPL_HPP
 
-#include "lpm_particles.hpp"
 #include "lpm_coords_impl.hpp"
+#include "lpm_particles.hpp"
 #include "util/lpm_string_util.hpp"
 
 namespace Lpm {
 
 template <typename Geo>
-Particles<Geo>::Particles(const Index nmax) :
-  phys_crds(nmax),
-  lag_crds(nmax) {}
+Particles<Geo>::Particles(const Index nmax) : phys_crds(nmax), lag_crds(nmax) {}
 
 template <typename Geo>
 void Particles<Geo>::update_device() const {
@@ -24,7 +22,8 @@ void Particles<Geo>::update_host() const {
   lag_crds.update_host();
 }
 
-template <typename Geo> template <typename CV>
+template <typename Geo>
+template <typename CV>
 void insert_host(const CV& v) {
   phys_crds.insert_host(v);
   lag_crds.insert_host(v);
@@ -50,6 +49,6 @@ void Particles<Geo>::init_random(const Real max_range) {
 
 #endif
 
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif

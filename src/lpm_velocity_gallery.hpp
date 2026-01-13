@@ -17,8 +17,8 @@ using Kokkos::Tuple;
 
 /** Struct to apply a velocity functor
 
-  Any of the velocity functions below can be given as template parameters to this
-  functor and they will be evaluated in parallel at each coordinate.
+  Any of the velocity functions below can be given as template parameters to
+  this functor and they will be evaluated in parallel at each coordinate.
 */
 template <typename VelocityFtor>
 struct VelocityKernel {
@@ -32,13 +32,13 @@ struct VelocityKernel {
       : velocity(u), xcrds(x), t(tt) {}
 
   VelocityKernel(Kokkos::View<Real**> u, const Kokkos::View<Real**> x,
-    const Real tt, const VelocityFtor& vel_fn) :
-      velocity(u), xcrds(x), t(tt), velfn(vel_fn) {}
+                 const Real tt, const VelocityFtor& vel_fn)
+      : velocity(u), xcrds(x), t(tt), velfn(vel_fn) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
     const auto myx = Kokkos::subview(xcrds, i, Kokkos::ALL);
-    auto myu = Kokkos::subview(velocity, i, Kokkos::ALL);
+    auto myu       = Kokkos::subview(velocity, i, Kokkos::ALL);
     Kokkos::Tuple<Real, VelocityFtor::ndim> u = velfn(myx, t);
     for (int j = 0; j < VelocityFtor::ndim; ++j) {
       myu(j) = u[j];
@@ -49,7 +49,7 @@ struct VelocityKernel {
 struct PlanarConstantEastward {
   typedef PlaneGeometry geo;
   static constexpr Int ndim = 2;
-  static constexpr Real u0 = 8;
+  static constexpr Real u0  = 8;
 
   KOKKOS_INLINE_FUNCTION
   PlanarConstantEastward() = default;
@@ -68,10 +68,10 @@ struct PlanarConstantEastward {
 
 struct PlanarRigidRotation {
   typedef PlaneGeometry geo;
-  static constexpr Int ndim = 2;
+  static constexpr Int ndim   = 2;
   static constexpr Real Omega = 2 * constants::PI / 5;
-  static constexpr Real x0 = 0;
-  static constexpr Real y0 = 0;
+  static constexpr Real x0    = 0;
+  static constexpr Real y0    = 0;
 
   KOKKOS_INLINE_FUNCTION
   PlanarRigidRotation() = default;
@@ -91,7 +91,7 @@ struct PlanarRigidRotation {
 struct PlanarDeformationalFlow {
   typedef PlaneGeometry geo;
   static constexpr Int ndim = 2;
-  static constexpr Real TT = 5;
+  static constexpr Real TT  = 5;
 
   KOKKOS_INLINE_FUNCTION
   PlanarDeformationalFlow() = default;
@@ -103,7 +103,7 @@ struct PlanarDeformationalFlow {
                                                    const Real t = 0) const {
     Tuple<Real, 2> result;
     const Real gt = cos(constants::PI * t / TT);
-    result[0] = square(sin(constants::PI * xy[0])) *
+    result[0]     = square(sin(constants::PI * xy[0])) *
                 sin(2 * constants::PI * xy[1]) * gt;
     result[1] = -square(sin(constants::PI * xy[1])) *
                 sin(2 * constants::PI * xy[0]) * gt;
@@ -113,9 +113,9 @@ struct PlanarDeformationalFlow {
 
 struct SphericalRigidRotation {
   typedef SphereGeometry geo;
-  static constexpr Int ndim = 3;
+  static constexpr Int ndim   = 3;
   static constexpr Real alpha = 0;
-  static constexpr Real u0 = 2 * constants::PI / 5;
+  static constexpr Real u0    = 2 * constants::PI / 5;
 
   KOKKOS_INLINE_FUNCTION
   SphericalRigidRotation() = default;
@@ -140,11 +140,11 @@ struct SphericalRigidRotation {
 };
 
 /** Velocity field from the Nair and Jablonowski (2006) moving vortices test.
-*/
+ */
 struct MovingVorticesVelocity {
   typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
-  static constexpr Real u0 = 2 * constants::PI / 12;
+  static constexpr Real u0  = 2 * constants::PI / 12;
 
   KOKKOS_INLINE_FUNCTION
   MovingVorticesVelocity() = default;
@@ -154,8 +154,8 @@ struct MovingVorticesVelocity {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION Tuple<Real, 3> operator()(const CV& x,
                                                    const Real& t) const {
-    const Real lat = SphereGeometry::latitude(x);
-    const Real lon = SphereGeometry::longitude(x);
+    const Real lat       = SphereGeometry::latitude(x);
+    const Real lon       = SphereGeometry::longitude(x);
     const Real lon_prime = lon - u0 * t;
     const Real rho = 3 * sqrt(1 - square(cos(lat)) * square(sin(lon_prime)));
     const Real omg = 1.5 * sqrt(3.0) * u0 * tanh(rho) *
@@ -174,12 +174,12 @@ struct MovingVorticesVelocity {
 };
 
 /** Velocity field from the Lauritzen et al. (2012) test cases.
-*/
+ */
 struct LauritzenEtAlDeformationalFlow {
   typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
-  static constexpr Real RR = 1;
-  static constexpr Real TT = 5;
+  static constexpr Real RR  = 1;
+  static constexpr Real TT  = 5;
 
   KOKKOS_INLINE_FUNCTION
   LauritzenEtAlDeformationalFlow() = default;
@@ -191,7 +191,7 @@ struct LauritzenEtAlDeformationalFlow {
                                                    const Real& t) const {
     const Real lat = SphereGeometry::latitude(x);
     const Real lon = SphereGeometry::longitude(x);
-    const Real u = 10 * RR / TT *
+    const Real u   = 10 * RR / TT *
                        square(sin(lon - 2 * constants::PI * t / TT)) *
                        sin(2 * lat) * cos(constants::PI * t / TT) +
                    2 * constants::PI * RR / TT * cos(lat);
@@ -212,8 +212,8 @@ struct LauritzenEtAlDeformationalFlow {
 struct LauritzenEtAlDivergentFlow {
   typedef SphereGeometry geo;
   static constexpr Int ndim = 3;
-  static constexpr Real RR = 1;
-  static constexpr Real TT = 5;
+  static constexpr Real RR  = 1;
+  static constexpr Real TT  = 5;
 
   KOKKOS_INLINE_FUNCTION
   LauritzenEtAlDivergentFlow() = default;
@@ -223,8 +223,8 @@ struct LauritzenEtAlDivergentFlow {
   template <typename CV>
   KOKKOS_INLINE_FUNCTION Tuple<Real, 3> operator()(const CV x,
                                                    const Real& t) const {
-    const Real lat = SphereGeometry::latitude(x);
-    const Real lon = SphereGeometry::longitude(x);
+    const Real lat          = SphereGeometry::latitude(x);
+    const Real lon          = SphereGeometry::longitude(x);
     const Real lambda_prime = lon - 2 * constants::PI * t / TT;
 
     const Real u = -5 * RR / TT * square(sin(0.5 * lambda_prime)) *
@@ -254,13 +254,13 @@ struct RossbyWave54Velocity {
   Real rh54_amplitude;
 
   KOKKOS_INLINE_FUNCTION
-  RossbyWave54Velocity(const Real u0 = 0, const Real amp=1) :
-    background_rotation(u0), rh54_amplitude(amp) {}
+  RossbyWave54Velocity(const Real u0 = 0, const Real amp = 1)
+      : background_rotation(u0), rh54_amplitude(amp) {}
 
   KOKKOS_INLINE_FUNCTION
-  RossbyWave54Velocity(const RossbyHaurwitz54& rh54_vorticity) :
-    background_rotation(rh54_vorticity.u0),
-    rh54_amplitude(rh54_vorticity.rh54_amplitude) {}
+  RossbyWave54Velocity(const RossbyHaurwitz54& rh54_vorticity)
+      : background_rotation(rh54_vorticity.u0),
+        rh54_amplitude(rh54_vorticity.rh54_amplitude) {}
 
   KOKKOS_INLINE_FUNCTION
   RossbyWave54Velocity(const RossbyWave54Velocity& other) = default;
@@ -273,8 +273,10 @@ struct RossbyWave54Velocity {
     const Real lat = SphereGeometry::latitude(x);
     const Real lon = SphereGeometry::longitude(x);
 
-    const Real u = rh54_amplitude * 0.5 * cos(4 * lon) * cube(cos(lat)) * (5 * cos(2 * lat) - 3);
-    const Real v = rh54_amplitude * 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
+    const Real u = rh54_amplitude * 0.5 * cos(4 * lon) * cube(cos(lat)) *
+                   (5 * cos(2 * lat) - 3);
+    const Real v =
+        rh54_amplitude * 4 * cube(cos(lat)) * sin(lat) * sin(4 * lon);
     Tuple<Real, 3> result;
     result[0] =
         -background_rotation * x(1) - u * sin(lon) - v * sin(lat) * cos(lon);

@@ -1,9 +1,10 @@
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
+
 #include "LpmConfig.h"
-#include "lpm_geometry.hpp"
 #include "lpm_comm.hpp"
+#include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
 #include "mesh/lpm_mesh_seed.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
@@ -14,10 +15,11 @@
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_impl.hpp"
 #endif
+#include <mpi.h>
+
+#include <memory>
 #include <sstream>
 #include <string>
-#include <memory>
-#include <mpi.h>
 
 using namespace Lpm;
 
@@ -58,28 +60,29 @@ int main(int argc, char* argv[]) {
 
   ko::initialize(argc, argv);
   {
-      MeshSeed<seed_type> seed;
+    MeshSeed<seed_type> seed;
 
-      /**
-      Set memory allocations
-      */
-      Index nmaxverts;
-      Index nmaxedges;
-      Index nmaxfaces;
-      seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
+    /**
+    Set memory allocations
+    */
+    Index nmaxverts;
+    Index nmaxedges;
+    Index nmaxfaces;
+    seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
 
-      /** Build the particle/panel mesh
-      */
-      auto sphere = std::make_unique<PolyMesh2d<seed_type>>(nmaxverts, nmaxedges, nmaxfaces);
-      sphere->tree_init(input.init_depth, seed);
-      sphere->update_device();
+    /** Build the particle/panel mesh
+     */
+    auto sphere = std::make_unique<PolyMesh2d<seed_type>>(nmaxverts, nmaxedges,
+                                                          nmaxfaces);
+    sphere->tree_init(input.init_depth, seed);
+    sphere->update_device();
 
-      logger.info(sphere->info_string());
+    logger.info(sphere->info_string());
 
 #ifdef LPM_USE_VTK
-      /** Output mesh to a vtk file */
-      VtkPolymeshInterface<seed_type> vtk(*sphere);
-      vtk.write(input.vtk_fname);
+    /** Output mesh to a vtk file */
+    VtkPolymeshInterface<seed_type> vtk(*sphere);
+    vtk.write(input.vtk_fname);
 #endif
 #ifdef LPM_USE_NETCDF
 // TODO
@@ -92,42 +95,45 @@ int main(int argc, char* argv[]) {
 
   ko::finalize();
   MPI_Finalize();
-return 0;
+  return 0;
 }
 
 Input::Input(int argc, char* argv[]) {
-  init_depth = 2;
-  ofroot = "unif_";
+  init_depth    = 2;
+  ofroot        = "unif_";
   help_and_exit = false;
 
-  for (int i=1; i<argc; ++i) {
+  for (int i = 1; i < argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-o") {
       vtk_fname = argv[++i];
-    }
-    else if (token == "-n") {
+    } else if (token == "-n") {
       init_depth = std::stoi(argv[++i]);
-    }
-    else if (token == "-h") {
+    } else if (token == "-h") {
       std::cout << usage() << "\n";
       help_and_exit = true;
     }
   }
 
-  ofroot += (std::is_same<CubedSphereSeed, seed_type>::value ?
-    "cubed_sphere" : "icos_tri_sphere") + std::to_string(init_depth);
+  ofroot +=
+      (std::is_same<CubedSphereSeed, seed_type>::value ? "cubed_sphere"
+                                                       : "icos_tri_sphere") +
+      std::to_string(init_depth);
 
   vtk_fname = ofroot + ".vtp";
-  nc_fname = ofroot + ".nc";
+  nc_fname  = ofroot + ".nc";
 }
 
 std::string Input::usage() const {
   std::ostringstream ss;
-  ss << "Sphere Mesh Init: This program initializes a uniform spherical mesh \n" <<
-    "and writes the mesh to data files in 2 formats: \n\tVTK's .vtp format and the NetCDF4 .nc format.\n";
+  ss << "Sphere Mesh Init: This program initializes a uniform spherical mesh \n"
+     << "and writes the mesh to data files in 2 formats: \n\tVTK's .vtp format "
+        "and the NetCDF4 .nc format.\n";
   ss << "\t" << "optional arguments:\n";
   ss << "\t   " << "-o [output_filename_root] (default: unif_)\n";
-  ss << "\t   " << "-n [nonnegative integer] (default: 2); defines the initial depth of the uniform mesh's face quadtree.\n";
+  ss << "\t   "
+     << "-n [nonnegative integer] (default: 2); defines the initial depth of "
+        "the uniform mesh's face quadtree.\n";
   return ss.str();
 }
 
@@ -140,4 +146,3 @@ std::string Input::info_string() const {
   ss << "\tnetCDF data saved in file: " << nc_fname << "\n";
   return ss.str();
 }
-

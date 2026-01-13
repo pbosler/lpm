@@ -1,23 +1,22 @@
 #include "LpmConfig.h"
 #include "lpm_comm.hpp"
-#include "lpm_geometry.hpp"
-#include "lpm_logger.hpp"
 #include "lpm_field.hpp"
 #include "lpm_field_impl.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
 #include "util/lpm_floating_point.hpp"
 #ifdef LPM_USE_NETCDF
+#include <netcdf.h>
+
+#include <catch2/catch_test_macros.hpp>
+
 #include "netcdf/lpm_netcdf.hpp"
 #include "netcdf/lpm_netcdf_reader.hpp"
 #include "netcdf/lpm_netcdf_reader_impl.hpp"
-#include <netcdf.h>
-
-
-#include <catch2/catch_test_macros.hpp>
 
 using namespace Lpm;
 
 TEST_CASE("lpm netcdf test", "") {
-
   Comm comm;
   Logger<> logger("netcdf_test", Log::level::debug, comm);
   const bool dump_all = false;
@@ -25,7 +24,7 @@ TEST_CASE("lpm netcdf test", "") {
   const int indent = 0;
 
   SECTION("basic tests") {
-    const std::string bad_fname = "my_ncdata.dat";
+    const std::string bad_fname  = "my_ncdata.dat";
     const std::string good_fname = "my_ncdata.nc";
 
     logger.debug(bad_fname);
@@ -78,4 +77,4 @@ TEST_CASE("lpm netcdf test", "") {
     logger.debug(pcrds.info_string(label, indent, dump_all));
   }
 }
-#endif // use netcdf
+#endif  // use netcdf
