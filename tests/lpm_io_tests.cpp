@@ -1,25 +1,25 @@
+#include <catch2/catch_test_macros.hpp>
+#include <fstream>
+#include <string>
+#include <typeinfo>
+
 #include "LpmConfig.h"
-#include "util/lpm_math.hpp"
-#include "util/lpm_floating_point.hpp"
 #include "lpm_comm.hpp"
 #include "lpm_constants.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
-#include "util/lpm_numpy_io.hpp"
+#include "util/lpm_floating_point.hpp"
+#include "util/lpm_math.hpp"
 #include "util/lpm_matlab_io.hpp"
-#include <catch2/catch_test_macros.hpp>
-#include <typeinfo>
-#include <fstream>
-#include <string>
+#include "util/lpm_numpy_io.hpp"
 
 using namespace Lpm;
 
 TEST_CASE("array/matrixoutput", "") {
-
   constexpr int M = 20;
   constexpr int N = 10;
 
-  scalar_view_type ones("ones",N);
+  scalar_view_type ones("ones", N);
   Kokkos::deep_copy(ones, 1);
   auto h_ones = Kokkos::create_mirror_view(ones);
   Kokkos::deep_copy(h_ones, ones);
@@ -50,4 +50,3 @@ TEST_CASE("array/matrixoutput", "") {
     ofile.close();
   }
 }
-

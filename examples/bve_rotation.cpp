@@ -1,36 +1,37 @@
-#include "LpmConfig.h"
-#include "lpm_assert.hpp"
-#include "lpm_geometry.hpp"
-#include "lpm_comm.hpp"
-#include "lpm_logger.hpp"
-#include "lpm_constants.hpp"
-#include "lpm_sphere_functions.hpp"
-#include "lpm_bve_sphere.hpp"
-#include "lpm_bve_sphere_impl.hpp"
-#include "lpm_bve_sphere_kernels.hpp"
-#include "lpm_vorticity_gallery.hpp"
-#include "lpm_bve_rk4.hpp"
-#include "lpm_bve_rk4_impl.hpp"
-#include "lpm_error.hpp"
-#include "lpm_error_impl.hpp"
-#include "util/lpm_timer.hpp"
-#include "util/lpm_progress_bar.hpp"
-#include "mesh/lpm_mesh_seed.hpp"
-#include "mesh/lpm_polymesh2d.hpp"
-#include "vtk/lpm_vtk_io.hpp"
-#include "vtk/lpm_vtk_io_impl.hpp"
-
-#include "Kokkos_Core.hpp"
-
 #include <iomanip>
 #include <sstream>
 
+#include "Kokkos_Core.hpp"
+#include "LpmConfig.h"
+#include "lpm_assert.hpp"
+#include "lpm_bve_rk4.hpp"
+#include "lpm_bve_rk4_impl.hpp"
+#include "lpm_bve_sphere.hpp"
+#include "lpm_bve_sphere_impl.hpp"
+#include "lpm_bve_sphere_kernels.hpp"
+#include "lpm_comm.hpp"
+#include "lpm_constants.hpp"
+#include "lpm_error.hpp"
+#include "lpm_error_impl.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
+#include "lpm_sphere_functions.hpp"
+#include "lpm_vorticity_gallery.hpp"
+#include "mesh/lpm_mesh_seed.hpp"
+#include "mesh/lpm_polymesh2d.hpp"
+#include "util/lpm_progress_bar.hpp"
+#include "util/lpm_timer.hpp"
+#include "vtk/lpm_vtk_io.hpp"
+#include "vtk/lpm_vtk_io_impl.hpp"
+
 using namespace Lpm;
 
-inline Real courant_number(const Real& dt, const Real& dlam) {return 2*constants::PI * dt / dlam;}
+inline Real courant_number(const Real& dt, const Real& dlam) {
+  return 2 * constants::PI * dt / dlam;
+}
 
 typedef CubedSphereSeed seed_type;
-//typedef IcosTriSphereSeed seed_type;
+// typedef IcosTriSphereSeed seed_type;
 
 struct Input {
   Input(int argc, char* argv[]);
@@ -51,7 +52,7 @@ struct Input {
   std::string nc_froot;
 };
 
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
@@ -66,7 +67,6 @@ int main (int argc, char* argv[]) {
 
   ko::initialize(argc, argv);
   {
-
     ko::Profiling::pushRegion("initialization");
 
     Timer init_timer("initialization");
@@ -84,15 +84,17 @@ int main (int argc, char* argv[]) {
     Index nmaxfaces;
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, input.init_depth);
 
-    logger.debug("max allocations: {}, {}, {}", nmaxverts, nmaxedges, nmaxfaces);
+    logger.debug("max allocations: {}, {}, {}", nmaxverts, nmaxedges,
+                 nmaxfaces);
 
     /**
     Build the particle/panel mesh
     */
     const std::vector<std::string> tracer_names = {"u_dot_x",
-      "vorticity_error"};
+                                                   "vorticity_error"};
 
-    auto sphere = std::make_unique<BVESphere<seed_type>>(nmaxverts, nmaxedges, nmaxfaces, tracer_names);
+    auto sphere = std::make_unique<BVESphere<seed_type>>(
+        nmaxverts, nmaxedges, nmaxfaces, tracer_names);
     sphere->tree_init(input.init_depth, seed);
     sphere->update_device();
 
@@ -105,66 +107,74 @@ int main (int argc, char* argv[]) {
     sphere->init_stream_fn();
     logger.info(sphere->info_string());
     const Real cr = courant_number(input.dt, sphere->appx_mesh_size());
-    if (cr > 1.0 ) {
+    if (cr > 1.0) {
       logger.error("courant number {} exceeds 1", cr);
       LPM_REQUIRE(cr < 1);
-    }
-    else {
+    } else {
       logger.info("courant number: {}", cr);
     }
-
 
     /**
     Compute initial error
     */
-    ko::View<Real*[3]> vert_velocity_error("vertex_velocity_error", sphere->n_vertices_host());
-    ko::View<Real*[3]> face_velocity_error("face_velocity_error", sphere->n_faces_host());
-    ko::View<Real*[3]> vert_position_error("vertex_position_error", sphere->n_vertices_host());
-    ko::View<Real*[3]> face_position_error("face_position_error", sphere->n_faces_host());
-    ko::View<Real*> vert_stream_fn_error("vertex_streamfn_error", sphere->n_vertices_host());
-    ko::View<Real*> face_stream_fn_error("face_streamfn_error", sphere->n_faces_host());
+    ko::View<Real* [3]> vert_velocity_error("vertex_velocity_error",
+                                            sphere->n_vertices_host());
+    ko::View<Real* [3]> face_velocity_error("face_velocity_error",
+                                            sphere->n_faces_host());
+    ko::View<Real* [3]> vert_position_error("vertex_position_error",
+                                            sphere->n_vertices_host());
+    ko::View<Real* [3]> face_position_error("face_position_error",
+                                            sphere->n_faces_host());
+    ko::View<Real*> vert_stream_fn_error("vertex_streamfn_error",
+                                         sphere->n_vertices_host());
+    ko::View<Real*> face_stream_fn_error("face_streamfn_error",
+                                         sphere->n_faces_host());
 
-    const auto vertx = sphere->vertices.phys_crds.view;
-    const auto facex = sphere->faces.phys_crds.view;
-    const auto vert_vel = sphere->velocity_verts.view;
-    const auto face_vel = sphere->velocity_faces.view;
-    const auto OMG = SolidBodyRotation::OMEGA;
-    const auto vert_absvort = sphere->abs_vort_verts.view;
-    const auto face_absvort = sphere->abs_vort_faces.view;
-    const auto vert_relvort = sphere->rel_vort_verts.view;
-    const auto face_relvort = sphere->rel_vort_faces.view;
+    const auto vertx          = sphere->vertices.phys_crds.view;
+    const auto facex          = sphere->faces.phys_crds.view;
+    const auto vert_vel       = sphere->velocity_verts.view;
+    const auto face_vel       = sphere->velocity_faces.view;
+    const auto OMG            = SolidBodyRotation::OMEGA;
+    const auto vert_absvort   = sphere->abs_vort_verts.view;
+    const auto face_absvort   = sphere->abs_vort_faces.view;
+    const auto vert_relvort   = sphere->rel_vort_verts.view;
+    const auto face_relvort   = sphere->rel_vort_faces.view;
     const auto vert_stream_fn = sphere->stream_fn_verts.view;
     const auto face_stream_fn = sphere->stream_fn_faces.view;
-    const auto verta = sphere->vertices.lag_crds.view;
-    const auto facea = sphere->faces.lag_crds.view;
+    const auto verta          = sphere->vertices.lag_crds.view;
+    const auto facea          = sphere->faces.lag_crds.view;
 
-    Kokkos::parallel_for(sphere->n_vertices_host(), KOKKOS_LAMBDA (const Index i) {
-      const auto mxyz = Kokkos::subview(vertx, i, Kokkos::ALL);
-      const auto muvw = Kokkos::subview(vert_vel, i, Kokkos::ALL);
-      vert_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
-      vert_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
-      vert_velocity_error(i, 2) = -muvw(2);
-      vert_stream_fn_error(i) = vert_stream_fn(i) - 2*constants::PI*mxyz(2);
-    });
+    Kokkos::parallel_for(
+        sphere->n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
+          const auto mxyz           = Kokkos::subview(vertx, i, Kokkos::ALL);
+          const auto muvw           = Kokkos::subview(vert_vel, i, Kokkos::ALL);
+          vert_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
+          vert_velocity_error(i, 1) = OMG * mxyz(0) - muvw(1);
+          vert_velocity_error(i, 2) = -muvw(2);
+          vert_stream_fn_error(i) =
+              vert_stream_fn(i) - 2 * constants::PI * mxyz(2);
+        });
 
-    Kokkos::parallel_for(sphere->n_faces_host(), KOKKOS_LAMBDA (const Index i) {
-      const auto mxyz = Kokkos::subview(facex, i, Kokkos::ALL);
-      const auto muvw = Kokkos::subview(face_vel, i, Kokkos::ALL);
-      face_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
-      face_velocity_error(i, 1) =  OMG * mxyz(0) - muvw(1);
-      face_velocity_error(i, 2) = -muvw(2);
-      face_stream_fn_error(i) = face_stream_fn(i) - 2*constants::PI*mxyz(2);
-    });
+    Kokkos::parallel_for(
+        sphere->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
+          const auto mxyz           = Kokkos::subview(facex, i, Kokkos::ALL);
+          const auto muvw           = Kokkos::subview(face_vel, i, Kokkos::ALL);
+          face_velocity_error(i, 0) = -OMG * mxyz(1) - muvw(0);
+          face_velocity_error(i, 1) = OMG * mxyz(0) - muvw(1);
+          face_velocity_error(i, 2) = -muvw(2);
+          face_stream_fn_error(i) =
+              face_stream_fn(i) - 2 * constants::PI * mxyz(2);
+        });
 
     Kokkos::parallel_for(sphere->n_vertices_host(),
-       SphereTangentFunctor(sphere->tracer_verts[0].view,
-        sphere->vertices.phys_crds.view,
-        sphere->velocity_verts.view));
+                         SphereTangentFunctor(sphere->tracer_verts[0].view,
+                                              sphere->vertices.phys_crds.view,
+                                              sphere->velocity_verts.view));
 
     Kokkos::parallel_for(sphere->n_faces_host(),
-      SphereTangentFunctor(sphere->tracer_faces[0].view,
-        sphere->faces.phys_crds.view,
-        sphere->velocity_faces.view));
+                         SphereTangentFunctor(sphere->tracer_faces[0].view,
+                                              sphere->faces.phys_crds.view,
+                                              sphere->velocity_faces.view));
 
     std::ostringstream ss;
     ss << input.case_name << "_" << seed_type::id_string() << input.init_depth
@@ -177,8 +187,10 @@ int main (int argc, char* argv[]) {
       /**
       Output initial data
       */
-      const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
-      logger.info("Initialization complete. Writing initial data to file {}.", vtkfname);
+      const std::string vtkfname =
+          basefname + zero_fill_str(frame++) + vtp_suffix();
+      logger.info("Initialization complete. Writing initial data to file {}.",
+                  vtkfname);
       VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
       vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
       vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
@@ -202,77 +214,94 @@ int main (int argc, char* argv[]) {
     ko::TeamPolicy<> vertex_policy(sphere->n_vertices_host(), ko::AUTO());
     ko::TeamPolicy<> face_policy(sphere->n_faces_host(), ko::AUTO());
 
-    const Real tfinal = input.tfinal;
-    const Int ntimesteps = std::floor(tfinal/input.dt);
-    const Real dt = tfinal/ntimesteps;
+    const Real tfinal    = input.tfinal;
+    const Int ntimesteps = std::floor(tfinal / input.dt);
+    const Real dt        = tfinal / ntimesteps;
     BVERK4 solver(dt, *sphere);
 
     ko::Profiling::pushRegion("main loop");
     ProgressBar progress("SolidBodyRotation test", ntimesteps);
-    for (Int time_ind = 0; time_ind<ntimesteps; ++time_ind) {
+    for (Int time_ind = 0; time_ind < ntimesteps; ++time_ind) {
       solver.advance_timestep(*sphere);
-       sphere->t = (time_ind+1)*dt;
-       const Real t = sphere->t;
+      sphere->t    = (time_ind + 1) * dt;
+      const Real t = sphere->t;
       ko::Profiling::pushRegion("post-timestep solve");
 
-      ko::parallel_for("BVETest: vertex stream function", vertex_policy,
-        BVEVertexStreamFn(sphere->stream_fn_verts.view, sphere->vertices.phys_crds.view,
-        sphere->faces.phys_crds.view, face_relvort, sphere->faces.area, sphere->faces.mask, sphere->n_faces_host()));
-      ko::parallel_for("BVETest: face stream function", face_policy,
-        BVEFaceStreamFn(sphere->stream_fn_faces.view, sphere->faces.phys_crds.view,
-        face_relvort, sphere->faces.area, sphere->faces.mask,sphere->n_faces_host()));
-      ko::parallel_for("BVETest: vertex velocity tangent", sphere->n_vertices_host(),
-        SphereTangentFunctor(sphere->tracer_verts[0].view, sphere->vertices.phys_crds.view, vert_vel));
-      ko::parallel_for("BVETest: face velocity tangent", sphere->n_faces_host(),
-        SphereTangentFunctor(sphere->tracer_faces[0].view, sphere->faces.phys_crds.view, face_vel));
+      ko::parallel_for(
+          "BVETest: vertex stream function", vertex_policy,
+          BVEVertexStreamFn(
+              sphere->stream_fn_verts.view, sphere->vertices.phys_crds.view,
+              sphere->faces.phys_crds.view, face_relvort, sphere->faces.area,
+              sphere->faces.mask, sphere->n_faces_host()));
+      ko::parallel_for(
+          "BVETest: face stream function", face_policy,
+          BVEFaceStreamFn(sphere->stream_fn_faces.view,
+                          sphere->faces.phys_crds.view, face_relvort,
+                          sphere->faces.area, sphere->faces.mask,
+                          sphere->n_faces_host()));
+      ko::parallel_for(
+          "BVETest: vertex velocity tangent", sphere->n_vertices_host(),
+          SphereTangentFunctor(sphere->tracer_verts[0].view,
+                               sphere->vertices.phys_crds.view, vert_vel));
+      ko::parallel_for(
+          "BVETest: face velocity tangent", sphere->n_faces_host(),
+          SphereTangentFunctor(sphere->tracer_faces[0].view,
+                               sphere->faces.phys_crds.view, face_vel));
 
       ko::Profiling::popRegion();
-
 
       ko::Profiling::pushRegion("error computation");
 
       const auto vort_err_verts = sphere->tracer_verts[1].view;
-      ko::parallel_for("vertex error", sphere->n_vertices_host(), KOKKOS_LAMBDA (const Index& i) {
-        vort_err_verts(i) = vert_relvort(i) - vert_absvort(i);
-        const auto myx = ko::subview(vertx, i, ko::ALL());
-        vert_velocity_error(i,0) = vert_vel(i,0) - (- OMG * myx(1));
-        vert_velocity_error(i,1) = vert_vel(i,1) - (  OMG * myx(0));
-        vert_velocity_error(i,2) = vert_vel(i,2);
-        const auto mya = ko::subview(verta, i, ko::ALL());
-        const Real cosomgt = std::cos(OMG*t);
-        const Real sinomgt = std::sin(OMG*t);
-        Real exactpos[3] = {mya(0)*cosomgt - mya(1)*sinomgt, mya(1)*cosomgt + mya(0)*sinomgt, mya(2)};
-        for (Int j=0; j<3; ++j) {
-          vert_position_error(i,j) = myx(j) - exactpos[j];
-        }
-        vert_stream_fn_error(i) = vert_stream_fn(i) - 2*constants::PI*myx(2);
-      });
-
+      ko::parallel_for(
+          "vertex error", sphere->n_vertices_host(),
+          KOKKOS_LAMBDA(const Index& i) {
+            vort_err_verts(i)         = vert_relvort(i) - vert_absvort(i);
+            const auto myx            = ko::subview(vertx, i, ko::ALL());
+            vert_velocity_error(i, 0) = vert_vel(i, 0) - (-OMG * myx(1));
+            vert_velocity_error(i, 1) = vert_vel(i, 1) - (OMG * myx(0));
+            vert_velocity_error(i, 2) = vert_vel(i, 2);
+            const auto mya            = ko::subview(verta, i, ko::ALL());
+            const Real cosomgt        = std::cos(OMG * t);
+            const Real sinomgt        = std::sin(OMG * t);
+            Real exactpos[3]          = {mya(0) * cosomgt - mya(1) * sinomgt,
+                                         mya(1) * cosomgt + mya(0) * sinomgt, mya(2)};
+            for (Int j = 0; j < 3; ++j) {
+              vert_position_error(i, j) = myx(j) - exactpos[j];
+            }
+            vert_stream_fn_error(i) =
+                vert_stream_fn(i) - 2 * constants::PI * myx(2);
+          });
 
       const auto vort_err_faces = sphere->tracer_faces[1].view;
-      ko::parallel_for("face error", sphere->n_faces_host(), KOKKOS_LAMBDA (const Index& i) {
-        vort_err_faces(i) = face_relvort(i) - face_absvort(i);
-        const auto myx = ko::subview(facex, i, ko::ALL());
-        face_velocity_error(i,0) = face_vel(i,0) - (- OMG * myx(1));
-        face_velocity_error(i,1) = face_vel(i,1) - (  OMG * myx(0));
-        face_velocity_error(i,2) = face_vel(i,2);
-        const auto mya = ko::subview(facea, i, ko::ALL());
-        const Real cosomgt = std::cos(OMG*t);
-        const Real sinomgt = std::sin(OMG*t);
-        Real exactpos[3] = {mya(0)*cosomgt - mya(1)*sinomgt, mya(1)*cosomgt + mya(0)*sinomgt, mya(2)};
-        for (Int j=0; j<3; ++j) {
-          face_position_error(i,j) = myx(j) - exactpos[j];
-        }
-        face_stream_fn_error(i) = face_stream_fn(i) - 2*constants::PI*myx(2);
-      });
+      ko::parallel_for(
+          "face error", sphere->n_faces_host(), KOKKOS_LAMBDA(const Index& i) {
+            vort_err_faces(i)         = face_relvort(i) - face_absvort(i);
+            const auto myx            = ko::subview(facex, i, ko::ALL());
+            face_velocity_error(i, 0) = face_vel(i, 0) - (-OMG * myx(1));
+            face_velocity_error(i, 1) = face_vel(i, 1) - (OMG * myx(0));
+            face_velocity_error(i, 2) = face_vel(i, 2);
+            const auto mya            = ko::subview(facea, i, ko::ALL());
+            const Real cosomgt        = std::cos(OMG * t);
+            const Real sinomgt        = std::sin(OMG * t);
+            Real exactpos[3]          = {mya(0) * cosomgt - mya(1) * sinomgt,
+                                         mya(1) * cosomgt + mya(0) * sinomgt, mya(2)};
+            for (Int j = 0; j < 3; ++j) {
+              face_position_error(i, j) = myx(j) - exactpos[j];
+            }
+            face_stream_fn_error(i) =
+                face_stream_fn(i) - 2 * constants::PI * myx(2);
+          });
 
       ko::Profiling::popRegion();
 
 #ifdef LPM_USE_VTK
       if (input.output_interval > 0) {
-        if ( (time_ind+1)%input.output_interval == 0 || time_ind+1 == ntimesteps) {
+        if ((time_ind + 1) % input.output_interval == 0 ||
+            time_ind + 1 == ntimesteps) {
           ko::Profiling::pushRegion("vtk output");
-          const std::string vtkfname = basefname + zero_fill_str(frame++) + vtp_suffix();
+          const std::string vtkfname =
+              basefname + zero_fill_str(frame++) + vtp_suffix();
           VtkPolymeshInterface<seed_type> vtk = vtk_interface(*sphere);
           vtk.add_scalar_point_data(vert_stream_fn_error, "stream_fn_error");
           vtk.add_scalar_cell_data(face_stream_fn_error, "stream_fn_error");
@@ -286,22 +315,26 @@ int main (int argc, char* argv[]) {
       }
 #endif
 
-        progress.update();
-
+      progress.update();
     }
 
-    Kokkos::View<Real*> fexactpsi("face_exact_stream_fn", sphere->n_faces_host());
-    Kokkos::View<Real*[3]> fexactvel("face_exact_velocity", sphere->n_faces_host());
-    Kokkos::parallel_for(sphere->n_faces_host(), KOKKOS_LAMBDA (const Index i) {
-      const auto myx = Kokkos::subview(facex, i, Kokkos::ALL);
-      fexactvel(i, 0) = - OMG * myx(1);
-      fexactvel(i, 1) =   OMG * myx(0);
-      fexactvel(i, 2) = 0;
-      fexactpsi(i) = 2*constants::PI*myx(2);
-    });
+    Kokkos::View<Real*> fexactpsi("face_exact_stream_fn",
+                                  sphere->n_faces_host());
+    Kokkos::View<Real* [3]> fexactvel("face_exact_velocity",
+                                      sphere->n_faces_host());
+    Kokkos::parallel_for(
+        sphere->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
+          const auto myx  = Kokkos::subview(facex, i, Kokkos::ALL);
+          fexactvel(i, 0) = -OMG * myx(1);
+          fexactvel(i, 1) = OMG * myx(0);
+          fexactvel(i, 2) = 0;
+          fexactpsi(i)    = 2 * constants::PI * myx(2);
+        });
 
-    ErrNorms facevort_err(sphere->tracer_faces[1].view, face_absvort, sphere->faces.area);
-    ErrNorms facevel_err(face_velocity_error, face_vel, fexactvel, sphere->faces.area);
+    ErrNorms facevort_err(sphere->tracer_faces[1].view, face_absvort,
+                          sphere->faces.area);
+    ErrNorms facevel_err(face_velocity_error, face_vel, fexactvel,
+                         sphere->faces.area);
     ErrNorms facepos_err(face_position_error, facex, facea, sphere->faces.area);
     ErrNorms facepsi_err(face_stream_fn_error, fexactpsi, sphere->faces.area);
 
@@ -312,40 +345,34 @@ int main (int argc, char* argv[]) {
 
     total_timer.stop();
     logger.info(total_timer.info_string());
-
   }
   ko::finalize();
   MPI_Finalize();
-return 0;
+  return 0;
 }
 
 Input::Input(int argc, char* argv[]) {
-  dt = 0.01;
-  tfinal = 0.03;
-  case_name = "bve_test";
-  init_depth = 3;
+  dt              = 0.01;
+  tfinal          = 0.03;
+  case_name       = "bve_test";
+  init_depth      = 3;
   output_interval = 0;
-  help_and_exit = false;
-  for (Int i=1; i<argc; ++i) {
+  help_and_exit   = false;
+  for (Int i = 1; i < argc; ++i) {
     const std::string& token = argv[i];
     if (token == "-d") {
       init_depth = std::stoi(argv[++i]);
       LPM_REQUIRE(init_depth >= 0);
-    }
-    else if (token == "-o") {
+    } else if (token == "-o") {
       case_name = argv[++i];
-    }
-    else if (token == "-dt") {
+    } else if (token == "-dt") {
       dt = std::stod(argv[++i]);
       LPM_REQUIRE(dt > 0);
-    }
-    else if (token == "-tf") {
+    } else if (token == "-tf") {
       tfinal = std::stod(argv[++i]);
-    }
-    else if (token == "-f") {
+    } else if (token == "-f") {
       output_interval = std::stoi(argv[++i]);
-    }
-    else if (token == "-h") {
+    } else if (token == "-h") {
       help_and_exit = true;
     }
   }
@@ -353,16 +380,25 @@ Input::Input(int argc, char* argv[]) {
 
 std::string Input::usage() const {
   std::ostringstream ss;
-  ss << "BVE Test: This program initializes a uniform spherical mesh \n" <<
-    "and solves the barotropic vortcity equation (BVE) on that mesh for a problem\n" <<
-    "whose exact solution is known, then computes error.\n" <<
-    "output is written the mesh to data files in 2 formats: \n\tVTK's .vtp format and the NetCDF4 .nc format.\n";
+  ss << "BVE Test: This program initializes a uniform spherical mesh \n"
+     << "and solves the barotropic vortcity equation (BVE) on that mesh for a "
+        "problem\n"
+     << "whose exact solution is known, then computes error.\n"
+     << "output is written the mesh to data files in 2 formats: \n\tVTK's .vtp "
+        "format and the NetCDF4 .nc format.\n";
   ss << "\t" << "optional arguments:\n";
   ss << "\t   " << "-o [output_filename_root] (default: bve_test)\n";
-  ss << "\t   " << "-d [nonnegative integer] (default: 3); defines the initial depth of the uniform mesh's face quadtree.\n";
-  ss << "\t   " << "-dt [positive real number] (default: 0.01) time step size.\n";
-  ss << "\t   " << "-tf [positive real number] (default: 0.03) final time of simulation.\n";
-  ss << "\t   " << "-f  [positive integer] (default: 1) output i/o interval in units of time steps.\n";
+  ss << "\t   "
+     << "-d [nonnegative integer] (default: 3); defines the initial depth of "
+        "the uniform mesh's face quadtree.\n";
+  ss << "\t   "
+     << "-dt [positive real number] (default: 0.01) time step size.\n";
+  ss << "\t   "
+     << "-tf [positive real number] (default: 0.03) final time of "
+        "simulation.\n";
+  ss << "\t   "
+     << "-f  [positive integer] (default: 1) output i/o interval in units of "
+        "time steps.\n";
   ss << "\t   " << "-h  Print help message and exit.\n";
   return ss.str();
 }
