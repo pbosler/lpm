@@ -17,8 +17,8 @@ void Coords<SphereGeometry>::init_random(const Real max_range, const Int ss) {
       uu = randDist(generator);
       vv = randDist(generator);
     }
-    const Real uv2 = uu * uu + vv * vv;
-    const Real uvr = std::sqrt(1 - uv2);
+    const Real uv2     = uu * uu + vv * vv;
+    const Real uvr     = std::sqrt(1 - uv2);
     const Real cvec[3] = {2 * uu * uvr * max_range, 2 * vv * uvr * max_range,
                           (1 - 2 * uv2) * max_range};
     insert_host(cvec);

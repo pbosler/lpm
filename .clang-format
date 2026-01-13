@@ -1,0 +1,14 @@
+BasedOnStyle: Google
+
+Language: Cpp
+DerivePointerAlignment: false
+PointerAlignment: Left
+AlignArrayOfStructures: Left
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false

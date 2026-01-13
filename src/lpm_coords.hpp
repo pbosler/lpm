@@ -162,8 +162,9 @@ class Coords {
 
   \param label name of instance
   */
-  std::string info_string(const std::string& label="", const short& tab_level = 0,
-                          const bool& dump_all = false) const;
+  std::string info_string(const std::string& label = "",
+                          const short& tab_level   = 0,
+                          const bool& dump_all     = false) const;
 
   /** \brief Initializes a random set of coordinates.
 
@@ -205,7 +206,9 @@ class Coords {
   */
   typename crd_view_type::HostMirror get_host_crd_view() { return _hostview; }
 
-  typename crd_view_type::HostMirror get_const_host_crd_view() const {return _hostview; }
+  typename crd_view_type::HostMirror get_const_host_crd_view() const {
+    return _hostview;
+  }
 
   Kokkos::MinMaxScalar<Real> min_max_extent(const int dim) const;
 

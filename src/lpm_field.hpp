@@ -12,10 +12,10 @@ namespace Lpm {
 
 // define the locations where field data "live" in the sense of numerical
 // methods
-// ParticleField and VertexField imply that field data (e.g., velocity and vorticity) are
-// colocated with grid points.
-// EdgeFields are collocated with edge midpoints.
-// FaceField can be used for cell-based quantities or for staggering.
+// ParticleField and VertexField imply that field data (e.g., velocity and
+// vorticity) are colocated with grid points. EdgeFields are collocated with
+// edge midpoints. FaceField can be used for cell-based quantities or for
+// staggering.
 enum FieldLocation { ParticleField, VertexField, EdgeField, FaceField };
 
 // repeat the enums here to facilitate range-based iteration over the enum
@@ -31,7 +31,7 @@ template <FieldLocation FL>
 struct ScalarField {
   typedef scalar_view_type view_type;
   static constexpr FieldLocation field_loc = FL;
-  static constexpr int ndim = 1;
+  static constexpr int ndim                = 1;
   scalar_view_type view;
   typename scalar_view_type::HostMirror hview;
 
@@ -42,10 +42,9 @@ struct ScalarField {
     @param [in] u unit string for scalar values
     @param [in] mdata additional metadata (key, value) string pairs
   */
-  ScalarField(
-      const std::string& mname, const Index nmax,
-      const std::string& u = "null_unit",
-      const metadata_type& mdata = metadata_type())
+  ScalarField(const std::string& mname, const Index nmax,
+              const std::string& u       = "null_unit",
+              const metadata_type& mdata = metadata_type())
       : name(mname), view(mname, nmax), units(u), metadata(mdata) {
     metadata.emplace("name", mname);
     metadata.emplace("location", field_loc_string(FL));
@@ -71,8 +70,7 @@ struct ScalarField {
 
     @param [in] n number of values to check
   */
-  std::pair<Real,Real> range(const Index n) const;
-
+  std::pair<Real, Real> range(const Index n) const;
 
   /** Count the number of INF or NAN values
     between indices (0, n-1).
@@ -84,7 +82,6 @@ struct ScalarField {
   bool has_nan(const Index n) const;
 };
 
-
 /**  Wraps vector field views with metadata to define vector fields on
   particle sets and particle/panel meshes.
 */
@@ -92,7 +89,7 @@ template <typename Geo, FieldLocation FL>
 struct VectorField {
   typedef typename Geo::vec_view_type view_type;
   static constexpr FieldLocation field_loc = FL;
-  static constexpr int ndim = Geo::ndim;
+  static constexpr int ndim                = Geo::ndim;
   typename Geo::vec_view_type view;
   typename Geo::vec_view_type::HostMirror hview;
 
@@ -103,10 +100,9 @@ struct VectorField {
     @param [in] u unit string for vector values
     @param [in] mdata additional metadata (key, value) string pairs
   */
-  VectorField(
-      const std::string& mname, const Index nmax,
-      const std::string& u = "null_unit",
-      const metadata_type& mdata = metadata_type())
+  VectorField(const std::string& mname, const Index nmax,
+              const std::string& u       = "null_unit",
+              const metadata_type& mdata = metadata_type())
       : name(mname), view(mname, nmax), units(u), metadata(mdata) {
     metadata.emplace("name", mname);
     metadata.emplace("location", field_loc_string(FL));

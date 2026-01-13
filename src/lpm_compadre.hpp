@@ -1,14 +1,14 @@
 #ifndef LPM_COMPADRE_HPP
 #define LPM_COMPADRE_HPP
 
+#include <Compadre_Evaluator.hpp>
+#include <Compadre_GMLS.hpp>
+#include <Compadre_Operators.hpp>
+
 #include "LpmConfig.h"
 #include "lpm_coords.hpp"
 #include "lpm_geometry.hpp"
 #include "lpm_logger.hpp"
-
-#include <Compadre_Evaluator.hpp>
-#include <Compadre_GMLS.hpp>
-#include <Compadre_Operators.hpp>
 
 namespace Lpm {
 namespace gmls {
@@ -73,7 +73,8 @@ struct Neighborhoods {
 
   /** Constructor.  Collocated source and target points.
 
-    Used when the target requires an operation (e.g., differentiation) on the source data.
+    Used when the target requires an operation (e.g., differentiation) on the
+    source data.
 
     @param [in] host_colloc_src_tgt_crds source and target points, on host
   */
@@ -93,12 +94,11 @@ struct Neighborhoods {
   Int max_neighbors() const { return n_max; }
 
   void update_neighbors(const host_crd_view host_src_crds,
-                const host_crd_view host_tgt_crds, const Params& params,
-                const bool verbose=false);
+                        const host_crd_view host_tgt_crds, const Params& params,
+                        const bool verbose = false);
 
   void update_neighbors(const host_crd_view host_colloc_src_tgt_crds,
-                const Params& params,
-                const bool verbose=false);
+                        const Params& params, const bool verbose = false);
 
   struct RadiusReducer {
     Kokkos::View<Real*> radii;
@@ -127,9 +127,9 @@ struct Neighborhoods {
   std::string info_string(const int tab_lev = 0) const;
   void compute_bds();
 
-  protected:
-    typename Kokkos::View<Index**>::HostMirror h_neighbors;
-    typename Kokkos::View<Real*>::HostMirror h_radii;
+ protected:
+  typename Kokkos::View<Index**>::HostMirror h_neighbors;
+  typename Kokkos::View<Real*>::HostMirror h_radii;
 };
 
 template <typename SrcCrdViewType, typename TgtCrdViewType>
@@ -139,11 +139,11 @@ Compadre::GMLS plane_scalar_gmls(
     const std::vector<Compadre::TargetOperation>& ops) {
   constexpr auto reconstruction_space =
       Compadre::ReconstructionSpace::ScalarTaylorPolynomial;
-  constexpr auto problem_type = Compadre::ProblemType::STANDARD;
-  constexpr auto solver_type = Compadre::DenseSolverType::QR;
-  constexpr auto constraint_type = Compadre::ConstraintType::NO_CONSTRAINT;
+  constexpr auto problem_type        = Compadre::ProblemType::STANDARD;
+  constexpr auto solver_type         = Compadre::DenseSolverType::QR;
+  constexpr auto constraint_type     = Compadre::ConstraintType::NO_CONSTRAINT;
   constexpr auto sampling_functional = Compadre::PointSample;
-  constexpr auto data_functional = sampling_functional;
+  constexpr auto data_functional     = sampling_functional;
 
   Compadre::GMLS result(reconstruction_space, sampling_functional,
                         data_functional, params.samples_order,
@@ -171,11 +171,11 @@ Compadre::GMLS sphere_scalar_gmls(
     const std::vector<Compadre::TargetOperation>& ops) {
   constexpr auto reconstruction_space =
       Compadre::ReconstructionSpace::ScalarTaylorPolynomial;
-  constexpr auto problem_type = Compadre::ProblemType::MANIFOLD;
-  constexpr auto solver_type = Compadre::DenseSolverType::QR;
-  constexpr auto constraint_type = Compadre::ConstraintType::NO_CONSTRAINT;
+  constexpr auto problem_type        = Compadre::ProblemType::MANIFOLD;
+  constexpr auto solver_type         = Compadre::DenseSolverType::QR;
+  constexpr auto constraint_type     = Compadre::ConstraintType::NO_CONSTRAINT;
   constexpr auto sampling_functional = Compadre::PointSample;
-  constexpr auto data_functional = sampling_functional;
+  constexpr auto data_functional     = sampling_functional;
 
   Compadre::GMLS result(reconstruction_space, sampling_functional,
                         data_functional, params.samples_order,
@@ -209,12 +209,12 @@ Compadre::GMLS sphere_vector_gmls(
     const std::vector<Compadre::TargetOperation>& ops) {
   constexpr auto reconstruction_space =
       Compadre::ReconstructionSpace::VectorOfScalarClonesTaylorPolynomial;
-  constexpr auto problem_type = Compadre::ProblemType::MANIFOLD;
-  constexpr auto solver_type = Compadre::DenseSolverType::QR;
-  constexpr auto constraint_type = Compadre::ConstraintType::NO_CONSTRAINT;
+  constexpr auto problem_type        = Compadre::ProblemType::MANIFOLD;
+  constexpr auto solver_type         = Compadre::DenseSolverType::QR;
+  constexpr auto constraint_type     = Compadre::ConstraintType::NO_CONSTRAINT;
   constexpr auto sampling_functional = Compadre::ManifoldVectorPointSample;
-  constexpr auto data_functional = sampling_functional;
-  constexpr auto weighting_type = Compadre::WeightingFunctionType::Power;
+  constexpr auto data_functional     = sampling_functional;
+  constexpr auto weighting_type      = Compadre::WeightingFunctionType::Power;
 
   Compadre::GMLS result(reconstruction_space, sampling_functional,
                         data_functional, params.samples_order,

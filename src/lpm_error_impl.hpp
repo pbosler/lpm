@@ -70,17 +70,17 @@ struct ReduceErrorFtor {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i, ENormScalar& ll) const {
-    const auto my_err = Kokkos::subview(err, i, Kokkos::ALL);
-    const auto my_exact = Kokkos::subview(exact, i, Kokkos::ALL);
-    const Real err_mag = (err.extent(1) == 2 ? PlaneGeometry::mag(my_err)
-                                             : SphereGeometry::mag(my_err));
+    const auto my_err    = Kokkos::subview(err, i, Kokkos::ALL);
+    const auto my_exact  = Kokkos::subview(exact, i, Kokkos::ALL);
+    const Real err_mag   = (err.extent(1) == 2 ? PlaneGeometry::mag(my_err)
+                                               : SphereGeometry::mag(my_err));
     const Real exact_mag = (err.extent(1) == 2 ? PlaneGeometry::mag(my_exact)
                                                : SphereGeometry::mag(my_exact));
     ll.l1num += err_mag * weight(i);
     ll.l1denom += exact_mag * weight(i);
     ll.l2num += square(err_mag) * weight(i);
     ll.l2denom += square(exact_mag) * weight(i);
-    ll.linfnum = (err_mag > ll.linfnum ? err_mag : ll.linfnum);
+    ll.linfnum   = (err_mag > ll.linfnum ? err_mag : ll.linfnum);
     ll.linfdenom = (exact_mag > ll.linfdenom ? exact_mag : ll.linfdenom);
   }
 };
@@ -109,7 +109,8 @@ struct ReduceErrorFtor<V1, V2, 1> {
 
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact) {
-  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank) and static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
+  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank) and
+                    static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
                 "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and
               appx.extent(0) == exact.extent(0));
@@ -123,8 +124,8 @@ void compute_error(const V1 err, const V2 appx, const V3 exact) {
 template <typename V1, typename V2, typename V3>
 void compute_error(const V1 err, const V2 appx, const V3 exact,
                    const mask_view_type m) {
-  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank)
-            and static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
+  static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank) and
+                    static_cast<int>(V2::rank) == static_cast<int>(V3::rank),
                 "view ranks must match");
   LPM_REQUIRE(err.extent(0) == appx.extent(0) and
               appx.extent(0) == exact.extent(0));
@@ -140,7 +141,7 @@ ENormScalar reduce_error(const V1 err, const V2 exact,
                          const scalar_view_type wt) {
   ENormScalar rval;
   static_assert(static_cast<int>(V1::rank) == static_cast<int>(V2::rank),
-      "view ranks must match");
+                "view ranks must match");
   LPM_REQUIRE(err.extent(0) == exact.extent(0) and
               exact.extent(0) == wt.extent(0));
   LPM_REQUIRE(err.extent(1) == exact.extent(1));
@@ -155,8 +156,8 @@ ErrNorms::ErrNorms(const V1 err, const V2 appx, const V3 exact,
                    const scalar_view_type wt) {
   compute_error(err, appx, exact);
   const auto rval = reduce_error(err, exact, wt);
-  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
-  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  l1   = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2   = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
   linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
 }
 
@@ -165,16 +166,16 @@ ErrNorms::ErrNorms(const V1 err, const V2 appx, const V3 exact,
                    const scalar_view_type wt, const mask_view_type m) {
   compute_error(err, appx, exact, m);
   const auto rval = reduce_error(err, exact, wt);
-  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
-  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  l1   = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2   = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
   linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
 }
 
 template <typename V1, typename V2>
 ErrNorms::ErrNorms(const V1 err, const V2 exact, const scalar_view_type wt) {
   const auto rval = reduce_error(err, exact, wt);
-  l1 = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
-  l2 = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
+  l1   = rval.l1num * FloatingPoint<Real>::safe_denominator(rval.l1denom);
+  l2   = sqrt(rval.l2num * FloatingPoint<Real>::safe_denominator(rval.l2denom));
   linf = rval.linfnum * FloatingPoint<Real>::safe_denominator(rval.linfdenom);
 }
 

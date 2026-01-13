@@ -2,8 +2,8 @@
 #define LPM_CORIOLIS_HPP
 
 #include "LpmConfig.h"
-#include "lpm_geometry.hpp"
 #include "lpm_constants.hpp"
+#include "lpm_geometry.hpp"
 
 namespace Lpm {
 
@@ -22,8 +22,8 @@ namespace Lpm {
  */
 template <typename Geo>
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if<std::is_same<Geo,PlaneGeometry>::value, Real>::type
-coriolis_f(const Real f0, const Real beta, const Real y) {
+    typename std::enable_if<std::is_same<Geo, PlaneGeometry>::value, Real>::type
+    coriolis_f(const Real f0, const Real beta, const Real y) {
   return f0 + beta * y;
 }
 
@@ -42,8 +42,8 @@ coriolis_f(const Real f0, const Real beta, const Real y) {
 */
 template <typename Geo>
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if<std::is_same<Geo,PlaneGeometry>::value, Real>::type
-coriolis_dfdt(const Real beta, const Real v) {
+    typename std::enable_if<std::is_same<Geo, PlaneGeometry>::value, Real>::type
+    coriolis_dfdt(const Real beta, const Real v) {
   return beta * v;
 }
 
@@ -61,8 +61,9 @@ coriolis_dfdt(const Real beta, const Real v) {
 */
 template <typename Geo>
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if<std::is_same<Geo,SphereGeometry>::value, Real>::type
-coriolis_f(const Real Omega, const Real z) {
+    typename std::enable_if<std::is_same<Geo, SphereGeometry>::value,
+                            Real>::type
+    coriolis_f(const Real Omega, const Real z) {
   return 2 * Omega * z;
 }
 
@@ -79,8 +80,9 @@ coriolis_f(const Real Omega, const Real z) {
 */
 template <typename Geo>
 KOKKOS_INLINE_FUNCTION
-typename std::enable_if<std::is_same<Geo,SphereGeometry>::value, Real>::type
-coriolis_dfdt(const Real Omega, const Real w) {
+    typename std::enable_if<std::is_same<Geo, SphereGeometry>::value,
+                            Real>::type
+    coriolis_dfdt(const Real Omega, const Real w) {
   return 2 * Omega * w;
 }
 
@@ -98,7 +100,7 @@ struct CoriolisBetaPlane {
   /// beta parameter
   Real beta;
   /// reference rotation to relate f0 and beta to a base latitude
-  static constexpr Real Omega = 2*constants::PI;
+  static constexpr Real Omega = 2 * constants::PI;
 
   /// default constructor disables Coriolis
   KOKKOS_INLINE_FUNCTION
@@ -109,15 +111,13 @@ struct CoriolisBetaPlane {
     @param [in] phi0 base latitude (radians)
   */
   KOKKOS_INLINE_FUNCTION
-  explicit CoriolisBetaPlane(const Real phi0) :
-    f0(2*Omega*sin(phi0)),
-    beta(2*Omega*cos(phi0)) {}
+  explicit CoriolisBetaPlane(const Real phi0)
+      : f0(2 * Omega * sin(phi0)), beta(2 * Omega * cos(phi0)) {}
 
   /** constructor with explicit values for f0 and beta.
-  */
+   */
   KOKKOS_INLINE_FUNCTION
-  CoriolisBetaPlane(const Real f0, const Real beta) :
-    f0(f0), beta(beta) {}
+  CoriolisBetaPlane(const Real f0, const Real beta) : f0(f0), beta(beta) {}
 
   /// helpful for GPU (makes copy constructor available on device).
   KOKKOS_INLINE_FUNCTION
@@ -128,25 +128,25 @@ struct CoriolisBetaPlane {
     @param [in] xy position
   */
   template <typename PtType>
-  KOKKOS_INLINE_FUNCTION
-  Real f(const PtType& xy) const {return f0 + beta*xy[1];}
-
+  KOKKOS_INLINE_FUNCTION Real f(const PtType& xy) const {
+    return f0 + beta * xy[1];
+  }
 
   /** Evaluate Coriolis parameter time derivative for a  given velocity
 
     @param [in] uv velocity
   */
   template <typename PtType>
-  KOKKOS_INLINE_FUNCTION
-  Real dfdt(const PtType& uv) const {return beta * uv[1];}
+  KOKKOS_INLINE_FUNCTION Real dfdt(const PtType& uv) const {
+    return beta * uv[1];
+  }
 
   template <typename XType, typename UType>
-  KOKKOS_INLINE_FUNCTION
-  Real grad_f_cross_u(const XType& x, const UType& u) const {
+  KOKKOS_INLINE_FUNCTION Real grad_f_cross_u(const XType& x,
+                                             const UType& u) const {
     return -beta * u[1];
   }
 };
-
 
 /**  Coriolis evaluation for a sphere with constant background
   rotation about the positive z-axis.
@@ -161,8 +161,7 @@ struct CoriolisSphere {
     @param [in] Omg constant angular velocity
   */
   KOKKOS_INLINE_FUNCTION
-  explicit CoriolisSphere(const Real Omg=2*constants::PI) :
-    Omega(Omg) {}
+  explicit CoriolisSphere(const Real Omg = 2 * constants::PI) : Omega(Omg) {}
 
   /// helpful for GPU (makes copy constructor available on device).
   KOKKOS_INLINE_FUNCTION
@@ -173,29 +172,28 @@ struct CoriolisSphere {
     @param [in] xyz position
   */
   template <typename PtType>
-  KOKKOS_INLINE_FUNCTION
-  Real f (const PtType& xyz) const {return 2*Omega*xyz[2];}
+  KOKKOS_INLINE_FUNCTION Real f(const PtType& xyz) const {
+    return 2 * Omega * xyz[2];
+  }
 
   /** Evaluate Coriolis parameter material derivative
-  */
+   */
   template <typename UType>
-  KOKKOS_INLINE_FUNCTION
-  Real dfdt(const UType& u) const {return 2*Omega*u[2];}
+  KOKKOS_INLINE_FUNCTION Real dfdt(const UType& u) const {
+    return 2 * Omega * u[2];
+  }
 
   /** Evaluate Coriolis parameter time derivative for a given velocity
 
     @param [in] uvw velocity
   */
   template <typename XType, typename UType>
-  KOKKOS_INLINE_FUNCTION
-  Real grad_f_cross_u(const XType& x, const UType& u) const {
-    return -2*Omega * (- u[0]*x[1] + u[1]*x[0]);
+  KOKKOS_INLINE_FUNCTION Real grad_f_cross_u(const XType& x,
+                                             const UType& u) const {
+    return -2 * Omega * (-u[0] * x[1] + u[1] * x[0]);
   }
 };
 
-
-
-
-} // namespace Lpm
+}  // namespace Lpm
 
 #endif
