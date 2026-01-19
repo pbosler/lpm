@@ -37,9 +37,9 @@ struct SWEInitializeProblem {
   void operator()(const Index i) const {
     const auto mcrd   = Kokkos::subview(lag_crds, i, Kokkos::ALL);
     const auto mvel   = Kokkos::subview(velocity, i, Kokkos::ALL);
-    rel_vort(i)       = initial.zeta0(mcrd);
-    divergence(i)     = initial.sigma0(mcrd);
-    const Real s      = initial.sfc0(mcrd);
+    rel_vort(i)       = initial.vorticity(mcrd);
+    divergence(i)     = initial.divergence(mcrd);
+    const Real s      = initial.surface_height(mcrd);
     surface_height(i) = s;
     depth(i)          = s - initial.bottom_height(mcrd);
     if constexpr (std::is_same<typename InitialCondition::geo,
@@ -52,7 +52,7 @@ struct SWEInitializeProblem {
                                        initial.Omega, mcrd[2])) /
                     depth(i);
     }
-    initial.u0(mvel, mcrd);
+    initial.velocity(mvel, mcrd);
   }
 };
 
@@ -106,87 +106,87 @@ void SWE<SeedType>::set_kernel_parameters(const Real vel_eps,
   }
 }
 
-template <typename SeedType>
-SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
-                   const Real Omg)
-    : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
-      rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
-      pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
-      pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
-      div_passive("divergence", mesh_params.nmaxverts),
-      div_active("divergence", mesh_params.nmaxfaces),
-      surf_passive("surface_height", mesh_params.nmaxverts),
-      surf_active("surface_height", mesh_params.nmaxfaces),
-      surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
-      surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
-      bottom_passive("bottom_height", mesh_params.nmaxverts),
-      bottom_active("bottom_height", mesh_params.nmaxfaces),
-      stream_fn_passive("stream_function", mesh_params.nmaxverts),
-      stream_fn_active("stream_function", mesh_params.nmaxfaces),
-      potential_passive("potential", mesh_params.nmaxverts),
-      potential_active("potential", mesh_params.nmaxfaces),
-      depth_passive("depth", mesh_params.nmaxverts),
-      depth_active("depth", mesh_params.nmaxfaces),
-      velocity_passive("velocity", mesh_params.nmaxverts),
-      velocity_active("velocity", mesh_params.nmaxfaces),
-      double_dot_passive("double_dot", mesh_params.nmaxverts),
-      double_dot_active("double_dot", mesh_params.nmaxfaces),
-      du1dx1_passive("du1dx1", mesh_params.nmaxverts),
-      du1dx1_active("du1dx1", mesh_params.nmaxfaces),
-      du1dx2_passive("du1dx2", mesh_params.nmaxverts),
-      du1dx2_active("du1dx2", mesh_params.nmaxfaces),
-      du2dx1_passive("du2dx1", mesh_params.nmaxverts),
-      du2dx1_active("du2dx1", mesh_params.nmaxfaces),
-      du2dx2_passive("du2dx2", mesh_params.nmaxverts),
-      du2dx2_active("du2dx2", mesh_params.nmaxfaces),
-      mass_active("mass", mesh_params.nmaxfaces),
-      mesh(mesh_params),
-      g(1),
-      t(0) {
-  static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
-                "spherical geometry required");
-}
+// template <typename SeedType>
+// SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
+//                    const Real Omg)
+//     : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
+//       rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
+//       pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
+//       pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
+//       div_passive("divergence", mesh_params.nmaxverts),
+//       div_active("divergence", mesh_params.nmaxfaces),
+//       surf_passive("surface_height", mesh_params.nmaxverts),
+//       surf_active("surface_height", mesh_params.nmaxfaces),
+//       surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
+//       surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
+//       bottom_passive("bottom_height", mesh_params.nmaxverts),
+//       bottom_active("bottom_height", mesh_params.nmaxfaces),
+//       stream_fn_passive("stream_function", mesh_params.nmaxverts),
+//       stream_fn_active("stream_function", mesh_params.nmaxfaces),
+//       potential_passive("potential", mesh_params.nmaxverts),
+//       potential_active("potential", mesh_params.nmaxfaces),
+//       depth_passive("depth", mesh_params.nmaxverts),
+//       depth_active("depth", mesh_params.nmaxfaces),
+//       velocity_passive("velocity", mesh_params.nmaxverts),
+//       velocity_active("velocity", mesh_params.nmaxfaces),
+//       double_dot_passive("double_dot", mesh_params.nmaxverts),
+//       double_dot_active("double_dot", mesh_params.nmaxfaces),
+//       du1dx1_passive("du1dx1", mesh_params.nmaxverts),
+//       du1dx1_active("du1dx1", mesh_params.nmaxfaces),
+//       du1dx2_passive("du1dx2", mesh_params.nmaxverts),
+//       du1dx2_active("du1dx2", mesh_params.nmaxfaces),
+//       du2dx1_passive("du2dx1", mesh_params.nmaxverts),
+//       du2dx1_active("du2dx1", mesh_params.nmaxfaces),
+//       du2dx2_passive("du2dx2", mesh_params.nmaxverts),
+//       du2dx2_active("du2dx2", mesh_params.nmaxfaces),
+//       mass_active("mass", mesh_params.nmaxfaces),
+//       mesh(mesh_params),
+//       g(1),
+//       t(0) {
+//   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
+//                 "spherical geometry required");
+// }
 
-template <typename SeedType>
-SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
-                   const Real f, const Real b)
-    : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
-      rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
-      pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
-      pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
-      div_passive("divergence", mesh_params.nmaxverts),
-      div_active("divergence", mesh_params.nmaxfaces),
-      surf_passive("surface_height", mesh_params.nmaxverts),
-      surf_active("surface_height", mesh_params.nmaxfaces),
-      surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
-      surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
-      bottom_passive("bottom_height", mesh_params.nmaxverts),
-      bottom_active("bottom_height", mesh_params.nmaxfaces),
-      depth_passive("depth", mesh_params.nmaxverts),
-      depth_active("depth", mesh_params.nmaxfaces),
-      stream_fn_passive("stream_function", mesh_params.nmaxverts),
-      stream_fn_active("stream_function", mesh_params.nmaxfaces),
-      potential_passive("potential", mesh_params.nmaxverts),
-      potential_active("potential", mesh_params.nmaxfaces),
-      velocity_passive("velocity", mesh_params.nmaxverts),
-      velocity_active("velocity", mesh_params.nmaxfaces),
-      double_dot_passive("double_dot", mesh_params.nmaxverts),
-      double_dot_active("double_dot", mesh_params.nmaxfaces),
-      du1dx1_passive("du1dx1", mesh_params.nmaxverts),
-      du1dx1_active("du1dx1", mesh_params.nmaxfaces),
-      du1dx2_passive("du1dx2", mesh_params.nmaxverts),
-      du1dx2_active("du1dx2", mesh_params.nmaxfaces),
-      du2dx1_passive("du2dx1", mesh_params.nmaxverts),
-      du2dx1_active("du2dx1", mesh_params.nmaxfaces),
-      du2dx2_passive("du2dx2", mesh_params.nmaxverts),
-      du2dx2_active("du2dx2", mesh_params.nmaxfaces),
-      mass_active("mass", mesh_params.nmaxfaces),
-      mesh(mesh_params),
-      g(1),
-      t(0) {
-  static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
-                "planar geometry required");
-}
+// template <typename SeedType>
+// SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
+//                    const Real f, const Real b)
+//     : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
+//       rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
+//       pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
+//       pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
+//       div_passive("divergence", mesh_params.nmaxverts),
+//       div_active("divergence", mesh_params.nmaxfaces),
+//       surf_passive("surface_height", mesh_params.nmaxverts),
+//       surf_active("surface_height", mesh_params.nmaxfaces),
+//       surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
+//       surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
+//       bottom_passive("bottom_height", mesh_params.nmaxverts),
+//       bottom_active("bottom_height", mesh_params.nmaxfaces),
+//       depth_passive("depth", mesh_params.nmaxverts),
+//       depth_active("depth", mesh_params.nmaxfaces),
+//       stream_fn_passive("stream_function", mesh_params.nmaxverts),
+//       stream_fn_active("stream_function", mesh_params.nmaxfaces),
+//       potential_passive("potential", mesh_params.nmaxverts),
+//       potential_active("potential", mesh_params.nmaxfaces),
+//       velocity_passive("velocity", mesh_params.nmaxverts),
+//       velocity_active("velocity", mesh_params.nmaxfaces),
+//       double_dot_passive("double_dot", mesh_params.nmaxverts),
+//       double_dot_active("double_dot", mesh_params.nmaxfaces),
+//       du1dx1_passive("du1dx1", mesh_params.nmaxverts),
+//       du1dx1_active("du1dx1", mesh_params.nmaxfaces),
+//       du1dx2_passive("du1dx2", mesh_params.nmaxverts),
+//       du1dx2_active("du1dx2", mesh_params.nmaxfaces),
+//       du2dx1_passive("du2dx1", mesh_params.nmaxverts),
+//       du2dx1_active("du2dx1", mesh_params.nmaxfaces),
+//       du2dx2_passive("du2dx2", mesh_params.nmaxverts),
+//       du2dx2_active("du2dx2", mesh_params.nmaxfaces),
+//       mass_active("mass", mesh_params.nmaxfaces),
+//       mesh(mesh_params),
+//       g(1),
+//       t(0) {
+//   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
+//                 "planar geometry required");
+// }
 
 template <typename SeedType>
 void SWE<SeedType>::update_host() {

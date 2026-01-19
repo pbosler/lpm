@@ -6,9 +6,7 @@
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
-#endif
 
 namespace Lpm {
 
@@ -164,22 +162,13 @@ class SWE {
   template <typename SolverType>
   void advance_timestep(SolverType& solver);
 
-  /// constructor for spherical problems @deprecated
-  SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real Omg);
-
-  /// constructor for planar problems @deprecated
-  SWE(const PolyMeshParameters<SeedType>& mesh_params, const Real f,
-      const Real b);
-
   ///  primary constructor
   SWE(const PolyMeshParameters<SeedType>& mesh_params,
       const Coriolis& coriolis);
 };
 
-#ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe);
-#endif
 
 }  // namespace Lpm
 

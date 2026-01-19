@@ -97,5 +97,5 @@ jobs:
 
     - name: Test lpm ${{ matrix.build-type }} DFS ${{ matrix.dfs-option }}
       working-directory: ${{github.workspace}}/build
-      run: ctest -V -C ${{ matrix.build-type }} --no-tests=error
+      run: ctest -j 4 -V -C ${{ matrix.build-type }} --no-tests=error
 

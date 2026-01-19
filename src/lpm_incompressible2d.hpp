@@ -107,11 +107,9 @@ class Incompressible2D {
   std::shared_ptr<spdlog::logger> logger;
 };
 
-#ifdef LPM_USE_VTK
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_mesh_interface(
     const Incompressible2D<SeedType>& ic2d);
-#endif
 
 template <typename SeedType>
 BivarRemesh<SeedType> bivar_remesh(Incompressible2D<SeedType>& new_ic2d,

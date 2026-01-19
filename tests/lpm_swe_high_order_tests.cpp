@@ -7,7 +7,7 @@
 #include "lpm_logger.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_impl.hpp"
-#include "lpm_swe_problem_gallery.hpp"
+#include "lpm_swe_gallery.hpp"
 #include "util/lpm_floating_point.hpp"
 #include "util/lpm_math.hpp"
 #ifdef LPM_USE_VTK
