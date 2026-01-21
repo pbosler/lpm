@@ -7,6 +7,14 @@
 
 namespace Lpm {
 
+Real rossby_number(const Real u, const Real f, const Real L) {
+  return u / (f * L);
+}
+
+Real froude_number(const Real u, const Real g, const Real H) {
+  return u / sqrt(g * H);
+}
+
 struct PlanarGaussian {
   typedef PlaneGeometry geo;
   Real strength;
@@ -330,6 +338,12 @@ struct SWETestCase2 {
   template <typename PtType>
   KOKKOS_INLINE_FUNCTION Real bottom_height(const PtType& xyz) const {
     return 0;
+  }
+
+  inline std::string info_string() const {
+    std::ostringstream ss;
+    ss << "SWETestCase2 info: h0 = " << h0 << ", Omega = " << Omega << ", u0 = " << u0 << ",  g = " << g;
+    return ss.str();
   }
 };
 

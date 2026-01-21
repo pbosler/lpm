@@ -87,6 +87,7 @@ target_link_libraries(lpm PUBLIC
                           Compadre::compadre
                           compose
                           spdlog::spdlog
+                          MPI::MPI_C stdc++
                           )
 if (LPM_USE_NETCDF)
   target_link_libraries(lpm PUBLIC NetCDF::NetCDF)
@@ -177,7 +178,7 @@ install(TARGETS lpm lpm_fortran DESTINATION lib)
 # unit test don't have to all rebuild the same file.
 add_library(lpm_test_main util/lpm_catch_main.cpp)
 #add_dependencies(lpm_test_main catch2)
-target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS} PRIVATE Catch2::Catch2 )
+target_link_libraries(lpm_test_main PUBLIC lpm ${CMAKE_DL_LIBS} PRIVATE Catch2::Catch2 MPI::MPI_C ${MPI_C_LIBRARIES} stdc++)
 install(TARGETS lpm_test_main
         EXPORT LpmTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

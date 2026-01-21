@@ -77,16 +77,16 @@ ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 
-add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
-target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} MPI::MPI_C stdc++)
-target_include_directories(sphere_swe_test_case2 PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}
-        ${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
- ${VTK_INCLUDE_DIRS}
- ${lpmtest_INCLUDE_DIRS}
-)
+#add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
+#target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS} MPI::MPI_C stdc++)
+#target_include_directories(sphere_swe_test_case2 PUBLIC
+#${CMAKE_CURRENT_SOURCE_DIR}
+#        ${PROJECT_BINARY_DIR}
+#        ${PROJECT_SOURCE_DIR}/src
+#        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+# ${VTK_INCLUDE_DIRS}
+# ${lpmtest_INCLUDE_DIRS}
+#)
 
 #add_executable(sphere_staggered_swe_tc2 sphere_staggered_swe_tc2.cpp)
 #target_link_libraries(sphere_staggered_swe_tc2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})

@@ -13,6 +13,8 @@ namespace Lpm {
 template <typename InitialCondition>
 struct SWEInitializeProblem;
 
+struct ComputeMassFunctor;
+
 template <typename SeedType>
 class SWE {
  public:  // members

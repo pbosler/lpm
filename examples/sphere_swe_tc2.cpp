@@ -7,25 +7,23 @@
 #include "lpm_pse.hpp"
 #include "lpm_surface_gallery.hpp"
 #include "lpm_swe.hpp"
-// #include "lpm_swe_problem_gallery.hpp"
+#include "lpm_swe_gallery.hpp"
 #include "lpm_swe_impl.hpp"
-#include "lpm_swe_rk2.hpp"
-#include "lpm_swe_rk2_impl.hpp"
-#include "lpm_vorticity_gallery.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
-#endif
+
 
 using namespace Lpm;
 
-template <typename SeedType>
-void tc2_setup_tracers(SWE<SeedType>& swe);
+// template <typename SeedType>
+// void tc2_setup_tracers(SWE<SeedType>& swe);
+//
+// template <typename SeedType>
+// void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis);
 
-template <typename SeedType>
-void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis);
+void init_input(user::Input& input);
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
@@ -38,52 +36,11 @@ int main(int argc, char* argv[]) {
   //   using seed_type = IcosTriSphereSeed;
 
   // sphere test case 2 problem setup
-  using topography_type = ZeroFunctor;
-  using init_sfc_type   = SphereTestCase2InitialSurface;
-  using coriolis_type   = CoriolisSphere;
-  using vorticity_type  = SphereTestCase2Vorticity;
-  using geo             = SphereGeometry;
+  using Coriolis = CoriolisSphere;
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
     user::Input input("sphere_tc2");
-    {
-      // define user parameters
-      user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final",
-                                 0.5);
-      input.add_option(tfinal_option);
-
-      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps",
-                                 5);
-      input.add_option(nsteps_option);
-
-      user::Option tree_depth_option("tree_depth", "-d", "--depth",
-                                     "mesh tree depth", 4);
-      input.add_option(tree_depth_option);
-
-      user::Option amr_refinement_buffer_option(
-          "amr_buffer", "-ab", "--amr-buffer", "amr memory buffer", 0);
-      input.add_option(amr_refinement_buffer_option);
-
-      user::Option amr_refinement_limit_option(
-          "amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
-      input.add_option(amr_refinement_limit_option);
-
-      user::Option output_file_root_option(
-          "output_file_root", "-o", "--output-file-root", "output file root",
-          std::string("sphere_tc2"));
-      input.add_option(output_file_root_option);
-
-      user::Option output_write_frequency_option("output_write_frequency",
-                                                 "-of", "--output-frequency",
-                                                 "output write frequency", 1);
-      input.add_option(output_write_frequency_option);
-
-      user::Option kernel_smoothing_parameter_option(
-          "kernel_smoothing_parameter", "-eps", "--velocity-epsilon",
-          "velocity kernel smoothing parameter", 0.0);
-      input.add_option(kernel_smoothing_parameter_option);
-    }
     input.parse_args(argc, argv);
     if (input.help_and_exit) {
       std::cout << input.usage();
@@ -91,31 +48,38 @@ int main(int argc, char* argv[]) {
       MPI_Finalize();
       return 1;
     }
-
-    const int nsteps = input.get_option("nsteps").get_int();
-    const Real dt    = input.get_option("tfinal").get_real() / nsteps;
-
-    int frame_counter = 0;
-    const int write_frequency =
-        input.get_option("output_write_frequency").get_int();
     logger.info(input.info_string());
 
     Timer total_time("total_time");
 
-    // initialize planar particle/panel mesh
+    /**
+      Set up the problem
+    */
     constexpr Real sphere_radius = 1.0;
-    constexpr Real gravity       = init_sfc_type::g;
-    constexpr Real omega         = 2 * constants::PI;
-    PolyMeshParameters<seed_type> mesh_params(
-        input.get_option("tree_depth").get_int(), sphere_radius,
-        input.get_option("amr_limit").get_int());
+    const Real h0 = input.get_option("h0").get_real();
+    const Real Omega = input.get_option("Omega").get_real();
+    const Real u0 = input.get_option("u0").get_real();
+    const Real g = input.get_option("gravity").get_real();
+    SWETestCase2 test_case2(h0, Omega, u0, g);
+    Coriolis coriolis(Omega);
 
-    coriolis_type coriolis(omega);
+    const Real Ro = rossby_number(u0, 2*Omega, sphere_radius);
+    const Real Fr = froude_number(u0, g, h0);
+    logger.info("SWETestCase2 initialized with Rossby number = {}, Froude number = {}", Ro, Fr);
+
+    /**
+      initialize particle/panel mesh
+    */
+    const Int mesh_depth = input.get_option("tree_depth").get_int();
+    PolyMeshParameters<seed_type> mesh_params(mesh_depth);
 
     auto sphere   = std::make_unique<SWE<seed_type>>(mesh_params, coriolis);
-    sphere->g     = gravity;
-    const Real cr = constants::PI / 6 * dt / sphere->mesh.appx_mesh_size();
-    logger.info("Courant number for this problem is appx. {}", cr);
+    sphere->g     = g;
+    const Real tfinal = input.get_option("tfinal").get_real();
+    const Int nsteps = input.get_option("nsteps").get_int();
+    const Real dt = tfinal / nsteps;
+    const Real Cr = u0 * dt / sphere->mesh.appx_mesh_size();
+    logger.info("Courant number for this problem is appx. {}", Cr);
 
     // set problem initial conditions
     topography_type topo;
@@ -295,3 +259,45 @@ void tc2_exact_sol(SWE<SeedType>& swe, const CoriolisSphere& coriolis) {
                             SphereGeometry::norm2(vel_exact);
       });
 }
+
+void init_input(user::Input& input) {
+// define user parameters
+      user::Option tfinal_option("tfinal", "-tf", "--time_final", "time final",
+                                 0.5);
+      input.add_option(tfinal_option);
+
+      user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of steps",
+                                 5);
+      input.add_option(nsteps_option);
+
+      user::Option tree_depth_option("tree_depth", "-d", "--mesh-depth",
+                                     "mesh tree depth", 4);
+      input.add_option(tree_depth_option);
+
+      user::Option h0_option("h0", "-h0", "--max-depth", "fluid depth max", 5.0);
+      input.add_option(h0_option);
+
+      user::Option omega_option("Omega", "-omg", "--omega", "background rotation rate", 2*constants::PI);
+      input.add_option(omega_option);
+
+      user::Option u0_option("u0", "-u0", "--velocity-max", "windspeed max", 2*constants::PI/12);
+      input.add_option(u0_option);
+
+      user::Option gravity_option("g", "-g", "--gravity", "constant gravity", 1.0);
+      input.add_option(gravity_option);
+
+      user::Option output_file_root_option(
+          "output_file_root", "-o", "--output-file-root", "output file root",
+          std::string("sphere_tc2"));
+      input.add_option(output_file_root_option);
+
+      user::Option output_write_frequency_option("output_write_frequency",
+                                                 "-of", "--output-frequency",
+                                                 "output write frequency", 1);
+      input.add_option(output_write_frequency_option);
+
+      user::Option kernel_smoothing_parameter_option(
+          "kernel_smoothing_parameter", "-eps", "--velocity-epsilon",
+          "velocity kernel smoothing parameter", 0.0);
+      input.add_option(kernel_smoothing_parameter_option);
+    }

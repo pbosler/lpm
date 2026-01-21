@@ -10,15 +10,14 @@
 #include "lpm_surface_gallery.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_impl.hpp"
-#include "lpm_swe_problem_gallery.hpp"
+#include "lpm_swe_gallery.hpp"
 #include "lpm_swe_rk4.hpp"
 #include "lpm_swe_rk4_impl.hpp"
 #include "util/lpm_string_util.hpp"
 #include "util/lpm_timer.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
-#endif
+
 
 using namespace Lpm;
 

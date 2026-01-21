@@ -11,6 +11,10 @@ namespace Lpm {
 
 template <typename InitialCondition>
 struct SWEInitializeProblem {
+  using Coriolis =
+      typename std::conditional<std::is_same<typename InitialCondition::geo, PlaneGeometry>::value,
+                                CoriolisBetaPlane, CoriolisSphere>::type;
+
   view_2d<Real> lag_crds;
   scalar_view_type rel_vort;
   scalar_view_type pot_vort;
@@ -19,39 +23,36 @@ struct SWEInitializeProblem {
   scalar_view_type depth;
   view_2d<Real> velocity;
   InitialCondition initial;
+  Coriolis coriolis;
+
 
   SWEInitializeProblem(view_2d<Real> lx, scalar_view_type zeta,
-                       scalar_view_type Q, scalar_view_type sigma,
+                       scalar_view_type Q, scalar_view_type delta,
                        scalar_view_type s, scalar_view_type h, view_2d<Real> u,
-                       const InitialCondition ic)
+                       const InitialCondition ic,
+                       const Coriolis& coriolis)
       : lag_crds(lx),
         rel_vort(zeta),
         pot_vort(Q),
-        divergence(sigma),
+        divergence(delta),
         surface_height(s),
         depth(h),
         velocity(u),
-        initial(ic) {}
+        initial(ic),
+        coriolis(coriolis) {}
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index i) const {
     const auto mcrd   = Kokkos::subview(lag_crds, i, Kokkos::ALL);
     const auto mvel   = Kokkos::subview(velocity, i, Kokkos::ALL);
-    rel_vort(i)       = initial.vorticity(mcrd);
+    const Real zeta   = initial.vorticity(mcrd);
     divergence(i)     = initial.divergence(mcrd);
     const Real s      = initial.surface_height(mcrd);
     surface_height(i) = s;
-    depth(i)          = s - initial.bottom_height(mcrd);
-    if constexpr (std::is_same<typename InitialCondition::geo,
-                               PlaneGeometry>::value) {
-      pot_vort(i) = (rel_vort(i) + coriolis_f<typename InitialCondition::geo>(
-                                       initial.f0, initial.beta, mcrd[1])) /
-                    depth(i);
-    } else {
-      pot_vort(i) = (rel_vort(i) + coriolis_f<typename InitialCondition::geo>(
-                                       initial.Omega, mcrd[2])) /
-                    depth(i);
-    }
+    const Real h      = s - initial.bottom_height(mcrd);
+    depth(i) = h;
+    rel_vort(i) = zeta;
+    pot_vort(i) = (zeta + coriolis.f(mcrd)) / h;
     initial.velocity(mvel, mcrd);
   }
 };
@@ -105,88 +106,6 @@ void SWE<SeedType>::set_kernel_parameters(const Real vel_eps,
     this->pse_eps = pse_eps;
   }
 }
-
-// template <typename SeedType>
-// SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
-//                    const Real Omg)
-//     : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
-//       rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
-//       pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
-//       pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
-//       div_passive("divergence", mesh_params.nmaxverts),
-//       div_active("divergence", mesh_params.nmaxfaces),
-//       surf_passive("surface_height", mesh_params.nmaxverts),
-//       surf_active("surface_height", mesh_params.nmaxfaces),
-//       surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
-//       surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
-//       bottom_passive("bottom_height", mesh_params.nmaxverts),
-//       bottom_active("bottom_height", mesh_params.nmaxfaces),
-//       stream_fn_passive("stream_function", mesh_params.nmaxverts),
-//       stream_fn_active("stream_function", mesh_params.nmaxfaces),
-//       potential_passive("potential", mesh_params.nmaxverts),
-//       potential_active("potential", mesh_params.nmaxfaces),
-//       depth_passive("depth", mesh_params.nmaxverts),
-//       depth_active("depth", mesh_params.nmaxfaces),
-//       velocity_passive("velocity", mesh_params.nmaxverts),
-//       velocity_active("velocity", mesh_params.nmaxfaces),
-//       double_dot_passive("double_dot", mesh_params.nmaxverts),
-//       double_dot_active("double_dot", mesh_params.nmaxfaces),
-//       du1dx1_passive("du1dx1", mesh_params.nmaxverts),
-//       du1dx1_active("du1dx1", mesh_params.nmaxfaces),
-//       du1dx2_passive("du1dx2", mesh_params.nmaxverts),
-//       du1dx2_active("du1dx2", mesh_params.nmaxfaces),
-//       du2dx1_passive("du2dx1", mesh_params.nmaxverts),
-//       du2dx1_active("du2dx1", mesh_params.nmaxfaces),
-//       du2dx2_passive("du2dx2", mesh_params.nmaxverts),
-//       du2dx2_active("du2dx2", mesh_params.nmaxfaces),
-//       mass_active("mass", mesh_params.nmaxfaces),
-//       mesh(mesh_params),
-//       g(1),
-//       t(0) {
-//   static_assert(std::is_same<typename SeedType::geo, SphereGeometry>::value,
-//                 "spherical geometry required");
-// }
-
-// template <typename SeedType>
-// SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& mesh_params,
-//                    const Real f, const Real b)
-//     : rel_vort_passive("relative_vorticity", mesh_params.nmaxverts),
-//       rel_vort_active("relative_vorticity", mesh_params.nmaxfaces),
-//       pot_vort_passive("potential_vorticity", mesh_params.nmaxverts),
-//       pot_vort_active("potential_vorticity", mesh_params.nmaxfaces),
-//       div_passive("divergence", mesh_params.nmaxverts),
-//       div_active("divergence", mesh_params.nmaxfaces),
-//       surf_passive("surface_height", mesh_params.nmaxverts),
-//       surf_active("surface_height", mesh_params.nmaxfaces),
-//       surf_lap_passive("surface_laplacian", mesh_params.nmaxverts),
-//       surf_lap_active("surface_laplaican", mesh_params.nmaxfaces),
-//       bottom_passive("bottom_height", mesh_params.nmaxverts),
-//       bottom_active("bottom_height", mesh_params.nmaxfaces),
-//       depth_passive("depth", mesh_params.nmaxverts),
-//       depth_active("depth", mesh_params.nmaxfaces),
-//       stream_fn_passive("stream_function", mesh_params.nmaxverts),
-//       stream_fn_active("stream_function", mesh_params.nmaxfaces),
-//       potential_passive("potential", mesh_params.nmaxverts),
-//       potential_active("potential", mesh_params.nmaxfaces),
-//       velocity_passive("velocity", mesh_params.nmaxverts),
-//       velocity_active("velocity", mesh_params.nmaxfaces),
-//       double_dot_passive("double_dot", mesh_params.nmaxverts),
-//       double_dot_active("double_dot", mesh_params.nmaxfaces),
-//       du1dx1_passive("du1dx1", mesh_params.nmaxverts),
-//       du1dx1_active("du1dx1", mesh_params.nmaxfaces),
-//       du1dx2_passive("du1dx2", mesh_params.nmaxverts),
-//       du1dx2_active("du1dx2", mesh_params.nmaxfaces),
-//       du2dx1_passive("du2dx1", mesh_params.nmaxverts),
-//       du2dx1_active("du2dx1", mesh_params.nmaxfaces),
-//       du2dx2_passive("du2dx2", mesh_params.nmaxverts),
-//       du2dx2_active("du2dx2", mesh_params.nmaxfaces),
-//       mass_active("mass", mesh_params.nmaxfaces),
-//       mesh(mesh_params),
-//       g(1),
-//       t(0) {
-//   static_assert(std::is_same<typename SeedType::geo, PlaneGeometry>::value,
-//                 "planar geometry required");
-// }
 
 template <typename SeedType>
 void SWE<SeedType>::update_host() {
@@ -268,14 +187,24 @@ void SWE<SeedType>::init_swe_problem(const InitialCondition& ic) {
       SWEInitializeProblem(mesh.vertices.lag_crds.view, rel_vort_passive.view,
                            pot_vort_passive.view, div_passive.view,
                            surf_passive.view, depth_passive.view,
-                           velocity_passive.view, ic));
+                           velocity_passive.view, ic, coriolis));
 
   Kokkos::parallel_for(
       "init_swe_problem (active)", mesh.n_faces_host(),
       SWEInitializeProblem(mesh.faces.lag_crds.view, rel_vort_active.view,
                            pot_vort_active.view, div_active.view,
                            surf_active.view, depth_active.view,
-                           velocity_active.view, ic));
+                           velocity_active.view, ic, coriolis));
+  auto mass = this->mass_active.view;
+  auto depth = this->depth_active.view;
+  auto area = this->mesh.faces.area;
+  auto mask = this->mesh.faces.mask;
+
+  Kokkos::parallel_for("ComputeMass", this->mesh.n_faces_host(),
+    KOKKOS_LAMBDA(const int i) {
+      mass(i) = (mask(i) ? 0.0 : depth(i) * area(i));
+    }
+  );
 }
 
 template <typename SeedType>
@@ -373,21 +302,21 @@ template <typename SeedType>
 template <typename DivergenceType>
 void SWE<SeedType>::init_divergence(const DivergenceType& divergence) {
   auto crds       = mesh.vertices.lag_crds.view;
-  auto sigma_view = div_passive.view;
+  auto delta_view = div_passive.view;
   Kokkos::parallel_for(
       "SWE::init_divergence (passive)", mesh.n_vertices_host(),
       KOKKOS_LAMBDA(const Index i) {
         const auto xi = Kokkos::subview(crds, i, Kokkos::ALL);
-        sigma_view(i) = divergence(xi);
+        delta_view(i) = divergence(xi);
       });
 
   crds       = mesh.faces.lag_crds.view;
-  sigma_view = div_active.view;
+  delta_view = div_active.view;
   Kokkos::parallel_for(
       "SWE::init_divergence (active)", mesh.n_faces_host(),
       KOKKOS_LAMBDA(const Index i) {
         const auto xi = Kokkos::subview(crds, i, Kokkos::ALL);
-        sigma_view(i) = divergence(xi);
+        delta_view(i) = divergence(xi);
       });
 }
 
@@ -485,7 +414,7 @@ void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {
       name, ScalarField<FaceField>(name, this->rel_vort_active.view.extent(0)));
 }
 
-#ifdef LPM_USE_VTK
+
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe) {
   //   VtkPolymeshInterface<SeedType> vtk(swe.mesh, swe.surf_passive.hview);
@@ -528,7 +457,7 @@ VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe) {
   }
   return vtk;
 }
-#endif
+
 
 }  // namespace Lpm
 

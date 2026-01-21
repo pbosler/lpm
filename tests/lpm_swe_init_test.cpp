@@ -4,18 +4,19 @@
 #include "lpm_swe.hpp"
 #include "lpm_swe_impl.hpp"
 #include "lpm_swe_gallery.hpp"
+#include "mesh/lpm_mesh_seed.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 
-
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 
 using namespace Lpm;
 
-TEST_CASE("planar_swe", "[swe]") {
+TEMPLATE_TEST_CASE("planar_swe", "[swe]", QuadRectSeed, TriHexSeed) {
   // typedef PlanarGravityWaveFreeBoundaries ic_type;
   using ic_type = NitscheStricklandVortex;
-  using seed_type = QuadRectSeed;
+  using seed_type = TestType;
   using Coriolis = CoriolisBetaPlane;
 
   int tree_init_depth = 4;
@@ -42,9 +43,9 @@ TEST_CASE("planar_swe", "[swe]") {
 
 }
 
-TEST_CASE("sphere swe", "[swe]") {
+TEMPLATE_TEST_CASE("sphere swe", "[swe]", CubedSphereSeed, IcosTriSphereSeed) {
   using ic_type = SWETestCase2;
-  using seed_type = CubedSphereSeed;
+  using seed_type = TestType;
   using Coriolis = CoriolisSphere;
 
   int tree_init_depth = 5;

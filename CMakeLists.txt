@@ -28,7 +28,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR CMAKE_CXX_COMPILER_ID STREQUAL "In
     message("The C++ compiler is an Intel compiler.")
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
       # Commands here run only if the configure-time build type is "Debug"
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -traceback")
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -traceback -O0 -fsanitize=address -fno-omit-frame-pointer")
     endif()
     if(MPI_FOUND)
         message(STATUS "----------------------------------------")
