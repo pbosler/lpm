@@ -182,6 +182,7 @@ int main(int argc, char* argv[]) {
   int rm_counter = 0;
   Real tref = 0;
   Real max_ftle = 0;
+  logger.debug("starting timestep loop.");
   for (int t_idx = 0; t_idx <nsteps; ++t_idx) {
 
     /**
@@ -241,7 +242,9 @@ int main(int argc, char* argv[]) {
     /**
       step forward
     */
+    logger.debug("step forward");
     sphere->advance_timestep(*solver);
+    logger.debug("step completed.");
 
     time[t_idx+1] = (t_idx+1) * dt;
     ftle_max[t_idx+1] = max_ftle;
@@ -349,7 +352,7 @@ void init_input(user::Input& input) {
   user::Option ftle_space_tolerance_option("ftle_space_tol", "-fs", "--ftle-space-tol", "spatial amr ftle tolerance remesh", std::numeric_limits<Real>::max());
   input.add_option(ftle_space_tolerance_option);
 
-  user::Option vortex_strength_option("vortex_strength", "-vs", "--vortex-strength", "maximum strength of initial relative vorticity", 2*constants::PI);
+  user::Option vortex_strength_option("vortex_strength", "-vs", "--vortex-strength", "maximum strength of initial relative vorticity", 4*constants::PI);
   input.add_option(vortex_strength_option);
 
   user::Option vortex_shape_option("vortex_shape_parameter", "-vb", "--vortex-b", "shape parameter for initial vorticity", 2.0);

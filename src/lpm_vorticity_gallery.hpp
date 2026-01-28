@@ -140,9 +140,9 @@ struct JM86PolarVortex {
     b(params.vortex_shape_b) {}
 
   KOKKOS_INLINE_FUNCTION
-  JM86PolarVortex(const Real str = 2*constants::PI, const Real b = 2.0) :
+  JM86PolarVortex(const Real strength = 4*constants::PI, const Real b = 2.0) :
     gauss_const(0),
-    strength(str),
+    strength(strength),
     b(b) {}
 
   KOKKOS_INLINE_FUNCTION
@@ -176,10 +176,8 @@ struct JM86PolarVortex {
 
 struct JM86Forcing {
   typedef SphereGeometry geo;
-  static constexpr Real b0 = 0.5*constants::PI;
-  static constexpr Real b1 = 0.25*constants::PI;
-  static constexpr Real b2 = constants::PI/3;
-  static constexpr Real b3 = 8;
+  static constexpr Real b0 = constants::PI/3;
+
   Real tfull;
   Real tend;
   Real tstar;
@@ -237,13 +235,17 @@ struct JM86Forcing {
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_b(const Real theta) const {
-    return -2*constants::PI*(theta-b0)*(theta-b1)*exp(-b3*square(theta - b2));
+     const Real tan_ratio = square(tan(b0))/square(tan(theta));
+     const Real exp_factor = exp(1-tan_ratio);
+     return theta >= 0 ? tan_ratio * exp_factor : 0;
   };
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_bprime(const Real theta) const {
-    const Real polyfac = 2*constants::PI * (2*b3*(theta-b0)*(theta-b1)*(theta-b2) - (theta-b1) - (theta-b0));
-    return polyfac * exp(-b3*square(theta-b2));
+    const Real tan_ratio = square(tan(b0))/square(tan(theta));
+    const Real expfac = -2*exp(1-tan_ratio) * (1-tan_ratio);
+    const Real prefac = square(tan(b0)) * FloatingPoint<Real>::safe_denominator(square(cos(theta))) / tan(theta);
+    return prefac * expfac;
   }
 
 

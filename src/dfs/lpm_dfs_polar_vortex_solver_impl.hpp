@@ -1,10 +1,11 @@
 #ifndef LPM_DFS_POLAR_VORTEX_SOLVER_IMPL_HPP
 #define LPM_DFS_POLAR_VORTEX_SOLVER_IMPL_HPP
 
-#include "lpm_dfs_polar_vortex_solver.hpp"
-#include "lpm_vorticity_gallery.hpp"
 #include "lpm_bve_sphere_kernels.hpp"
+#include "lpm_dfs_polar_vortex_solver.hpp"
 #include "lpm_geometry.hpp"
+#include "lpm_logger.hpp"
+#include "lpm_vorticity_gallery.hpp"
 
 #include <KokkosBlas.hpp>
 
@@ -42,6 +43,8 @@ struct RK4Update {
 template <typename SeedType>
 void DFSPolarVortexRK4<SeedType>::advance_timestep() {
 
+  auto logger = lpm_logger();
+  logger->debug("advance_timestep: entering");
   // rk stage 1 vorticity
   //  rel_vort_particles1 = dt * d\zeta / dt
   Kokkos::parallel_for("rk4 stage 1 vorticity", rel_vort_particles.extent(0),
@@ -50,6 +53,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   // rk stage 1 positions
   //    xyz_particles1 = dt * velocity_particles
   KokkosBlas::axpby(dt, velocity_particles, 0, xyz_particles1);
+  logger->debug("advance_timestep: stage 1 ready");
 
   // input for stage 2
   //    rel_vort_particles_work = rel_vort_particles + 0.5 * rel_vort_particles1
@@ -68,6 +72,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
     BVEPolarVortexVorticityTendency(rel_vort_particles2, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega, forcing));
   // rk stage 2: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles2);
+  logger->debug("advance_timestep: stage 2 ready");
 
   // input for stage 3
   KokkosBlas::update(1.0, rel_vort_particles, 0.5, rel_vort_particles2, 0.0, rel_vort_particles_work);
@@ -84,27 +89,35 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
     BVEPolarVortexVorticityTendency(rel_vort_particles3, xyz_particles_work, vel_particles, t+0.5*dt, dt, Omega, forcing));
   // rk stage 3: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles3);
+  logger->debug("advance_timestep: stage 3 ready");
+  Kokkos::fence();
 
   // input for stage 4
   KokkosBlas::update(1.0, rel_vort_particles, 1.0, rel_vort_particles3, 0.0, rel_vort_particles_work);
   KokkosBlas::update(1.0, xyz_particles, 1.0, xyz_particles3, 0.0, xyz_particles_work);
   normalize_coordinates(xyz_particles_work);
+  logger->debug("advance_timestep: stage 4 input ready");
 
+  Kokkos::fence();
   // rk stage 4: update vorticity on dfs grid
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
     xyz_grid, rel_vort_particles_work);
+  logger->debug("advance_timestep: stage 4 grid vorticity ready");
   // rk stage 4: solve for velocity update at particles
   dfs_vort_2_velocity(xyz_particles_work, rel_vort_grid, vel_particles);
+  logger->debug("advance_timestep: stage 4 velocity ready");
   // rk stage 4: vorticity
   Kokkos::parallel_for("rk4 stage 4 vorticity", rel_vort_particles.extent(0),
     BVEPolarVortexVorticityTendency(rel_vort_particles4, xyz_particles_work, vel_particles, t + dt, dt, Omega, forcing));
+  logger->debug("advance_timestep: stage 4 particle vorticity ready");
   // rk stage 4: positions
   KokkosBlas::axpby(dt, vel_particles, 0.0, xyz_particles4);
-
+  logger->debug("advance_timestep: stage 4 ready");
 
   Kokkos::parallel_for("rk4 update", rel_vort_particles.extent(0),
     impl::RK4Update(xyz_particles, xyz_particles1, xyz_particles2, xyz_particles3, xyz_particles4, rel_vort_particles, rel_vort_particles1, rel_vort_particles2, rel_vort_particles3, rel_vort_particles4));
 
+  logger->debug("advance_timestep: rk4 update ready");
   Kokkos::fence();
 
   // set up for next time step
@@ -114,6 +127,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   sphere.rel_vort_grid.view = rel_vort_grid;
 
   t = (t_idx++) * dt;
+  logger->debug("advance_timestep: exiting");
 }
 
 template <typename SeedType>
@@ -123,12 +137,15 @@ void DFSPolarVortexRK4<SeedType>::normalize_coordinates(crd_view xyz) {
 
 template <typename SeedType>
 void DFSPolarVortexRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
+  auto logger = lpm_logger();
+  logger->debug("interpolate_vorticity_from_mesh_to_grid: gmls setup.");
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
-
+  logger->debug("interpolate_vorticity_from_mesh_to_grid: gmls solve ready.");
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
   rel_vort_grid = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
     rel_vort_mesh, Compadre::ScalarPointEvaluation, Compadre::PointSample);
+  logger->debug("interpolate_vorticity_from_mesh_to_grid: gmls evaluation complete.");
 }
 
 } // namespace DFS
