@@ -33,10 +33,13 @@ TEST_CASE("dfs_bve_unit_tests", "[dfs]") {
   DFS::DFSBVE<seed_type> dfs_bve(mesh_params, nlon, gmls_params);
   dfs_bve.init_vorticity(vorticity_fn);
   dfs_bve.init_velocity(velocity_fn);
+  logger.debug("vorticity and velocity initialized.");
+  dfs_bve.finalize_mesh_to_grid_coupling();
 
   // mesh to grid
   ScalarField<VertexField> rel_vort_grid_gmls("relative_vorticity_gmls",
     dfs_bve.vtk_grid_size());
+  logger.debug("interpolating vorticity from mesh to grid.");
   dfs_bve.interpolate_vorticity_from_mesh_to_grid(rel_vort_grid_gmls);
 
   logger.info(dfs_bve.info_string());
