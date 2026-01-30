@@ -105,7 +105,11 @@ int main(int argc, char* argv[]) {
     using Coriolis = CoriolisSphere;
     using Lat0 = LatitudeTracer;
     Coriolis coriolis(input.get_option("omega").get_real());
-    GaussianVortexSphere gauss_vort;
+    constexpr Real vortex_strength = 4 * constants::PI;
+    constexpr Real vortex_shape_param = 4.0;
+    constexpr Real vortex_init_lon = constants::PI;
+    constexpr Real vortex_init_lat = constants::PI/10;
+    GaussianVortexSphere gauss_vort(vortex_strength, vortex_shape_param, vortex_init_lon, vortex_init_lat);
 
     //  particle/panel/grid initialization
     using SeedType = CubedSphereSeed;

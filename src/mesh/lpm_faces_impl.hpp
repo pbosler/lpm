@@ -128,6 +128,8 @@ void Faces<FaceKind, Geo>::insert_host(const Index ctr_ind,
                                        ko::View<Index*, Host> vertinds,
                                        ko::View<Index*, Host> edgeinds,
                                        const Index prt, const Real ar) {
+
+  LPM_ASSERT(prt >= 0);
   LPM_REQUIRE_MSG(_nh() + 1 <= _nmax,
                   "Faces::insert error: not enough memory.");
   const Index ins = _nh();
@@ -141,7 +143,7 @@ void Faces<FaceKind, Geo>::insert_host(const Index ctr_ind,
   _host_crd_inds(ins) = ctr_ind;
   _hostparent(ins) = prt;
   _hostarea(ins) = ar;
-  _hlevel(ins) = _hlevel(prt) + 1;
+  _hlevel(ins) = (prt >= 0 ? _hlevel(prt) + 1 : 0);
   _hmask(ins) = false;
   _nh() += 1;
   _hn_leaves() += 1;
@@ -154,6 +156,7 @@ void Faces<FaceKind, Geo>::insert_host(
     const Kokkos::View<Index*, Host> vertinds,
     const Kokkos::View<Index*, Host> edgeinds, const Index parent_idx,
     const Real ar) {
+  LPM_ASSERT(parent_idx < _nh());
   LPM_REQUIRE(_nh() + 1 <= _nmax);
 
   const Index insert_idx = _nh();
@@ -169,7 +172,7 @@ void Faces<FaceKind, Geo>::insert_host(
   _host_crd_inds(insert_idx) = ctr_idx;
   _hostparent(insert_idx) = parent_idx;
   _hostarea(insert_idx) = ar;
-  _hlevel(insert_idx) = _hlevel(parent_idx) + 1;
+  _hlevel(insert_idx) = (parent_idx >= 0 ? _hlevel(parent_idx) + 1 : 0);
   _hmask(insert_idx) = false;
   ++_nh();
   ++_hn_leaves();
@@ -480,7 +483,7 @@ void FaceDivider<Geo, QuadFace>::divide(const Index faceInd,
                                         Vertices<Coords<Geo>>& verts,
                                         Edges& edges,
                                         Faces<QuadFace, Geo>& faces) {
-  LPM_ASSERT(faceInd < faces.nh());
+  LPM_ASSERT((faceInd >= 0 and faceInd < faces.nh()));
   LPM_REQUIRE_MSG(faces.n_max() >= faces.nh() + 4,
                   "Faces::divide error: not enough memory.");
   LPM_REQUIRE_MSG(!faces.has_kids_host(faceInd),

@@ -87,8 +87,14 @@ int main(int argc, char* argv[]) {
   const Real tend = input.get_option("forcing_tend").get_real();
   const Real F0 = input.get_option("forcing_F0").get_real();
   const PolarVortexParams pv_params(zeta0_max, zeta0_b, tfull, tend, F0);
+//   JM86PolarVortex vorticity(pv_params);
 
-  JM86PolarVortex vorticity(pv_params);
+  constexpr Real vorticity_strength = 4*constants::PI;
+  constexpr Real vorticity_b = 4.0;
+  constexpr Real vorticity_lon = 0;
+  constexpr Real vorticity_lat = 0.5*constants::PI;
+  GaussianVortexSphere vorticity(vorticity_strength, vorticity_b, vorticity_lon, vorticity_lat);
+
   sphere->init_vorticity(vorticity);
   const Real total_vort_0 = sphere->total_vorticity();
   /**

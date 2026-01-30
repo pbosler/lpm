@@ -230,7 +230,7 @@ struct ComputeFTLE {
 //       LPM_KERNEL_ASSERT(FloatingPoint<Real>::equiv(lambda1*lambda2, 1, 1e-2));
 
       eigs_product(face_idx) = eigs[0]*eigs[1];
-      ftle(face_idx) = log(lambda1) * FloatingPoint<Real>::safe_denominator(2*time_delta);
+      ftle(face_idx) = log(lambda1);// * FloatingPoint<Real>::safe_denominator(2*time_delta);
     }
   }
 
