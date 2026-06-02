@@ -57,11 +57,11 @@ DFS tests (`dfs_grid_test`, `dfs_bve_test`) and `netcdf_test` only register when
 
 ### Two file-naming generations
 
-The codebase is mid-transition between conventions. Both are present and both compile in.
-- **Newer (`lpm_*` snake_case)** — the active layer. New code goes here. Header is `lpm_foo.hpp`, source is `lpm_foo.cpp`, templated definitions go in `lpm_foo_impl.hpp` and are included by headers that need them.
-- **Older (`Lpm*` PascalCase)** — `LpmOctree*`, `LpmNodeArray*`, `LpmBVEKernels`, `LpmSWE*`, `LpmShallowWater*`, etc. Mostly headers; many are not in the current `LPM_SOURCES` list and aren't built into `liblpm`. Treat them as legacy/reference unless you confirm otherwise via `src/CMakeLists.txt`.
+The codebase is mid-transition between conventions.
+- **`lpm_*` snake_case** — the current convention; new code uses this. Header is `lpm_foo.hpp`, source is `lpm_foo.cpp`, templated definitions go in `lpm_foo_impl.hpp` and are included by headers that need them.
+- **`Lpm*` PascalCase** — the older convention (`LpmOctree*`, `LpmNodeArray*`, `LpmBVEKernels`, `LpmSWE*`, `LpmShallowWater*`, etc.). Many are out of `LPM_SOURCES` and don't build into `liblpm`; cross-check `src/CMakeLists.txt` before assuming a file is live.
 
-When adding files, follow the new convention and register sources in `src/CMakeLists.txt`.
+When adding files, follow the snake_case convention and register sources in `src/CMakeLists.txt`. Open work items, including the rest of the snake_case migration, live in `TODO.md`.
 
 ### Source layout (`src/`)
 
