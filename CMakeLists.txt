@@ -19,6 +19,16 @@ CMAKE_POLICY(SET CMP0074 NEW)
 
 set(CMAKE_CXX_EXTENSIONS OFF) # required by Kokkos
 
+if (APPLE)
+  # Apple's security protocol (SIP) doesn't pass env variables through to ctest.
+  # have to use rpath instead.
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  if (LPM_TPL_DIR)
+    list(APPEND CMAKE_BUILD_RPATH   "${LPM_TPL_DIR}/lib")
+    list(APPEND CMAKE_INSTALL_RPATH "${LPM_TPL_DIR}/lib")
+  endif()
+endif()
+
 # Tools for CMake repetitive tasks & debugging
 include(cmake_helpers)
 
