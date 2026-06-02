@@ -26,6 +26,14 @@ find_package(MPI REQUIRED COMPONENTS C)
 if (NOT MPI_C_FOUND)
   message(FATAL_ERROR "Error: cannot find MPI-C")
 endif()
+find_package(OpenMP)
+
+set(LPM_USE_OPENMP OFF)
+if(OpenMP_CXX_FOUND)
+    set(LPM_USE_OPENMP ON)
+endif()
+
+message(STATUS "LPM_USE_OPENMP=${LPM_USE_OPENMP}")
 
 # Write basic configure info to console
 message(STATUS "LPM: Configuring with build type: ${CMAKE_BUILD_TYPE}")
