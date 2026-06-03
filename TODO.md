@@ -1,12 +1,22 @@
 # LPM open work items
 
 Living list of in-progress / outstanding work that isn't documented elsewhere.
-Items are intentionally ordered by priority — the segfault is the blocker.
+Items are intentionally ordered by priority.
 
-## 1. Segfault in the polar vortex example (highest priority)
+## 1. Numerical blow-up in the polar vortex example (highest priority)
 
-The polar vortex example problem crashes somewhere inside `src/dfs/`. Root
-cause not yet identified. Diagnosing this is the highest-priority open task.
+The earlier segfault is fixed (it was a NaN from the unguarded `tan(theta)`
+singularity in `JM86Forcing::forcing_b`/`forcing_bprime` at the equator). With
+the NaN gone, the polar vortex example now exposes a numerical instability: the
+relative vorticity explodes from O(1) to O(1e6) in a single timestep, the
+particles disperse, and the next step's mesh->grid GMLS stalls.
+
+Plan: change the time integrator so that at each RK stage the relative vorticity
+is computed directly from the (invariant) absolute vorticity — i.e. carry/advect
+absolute vorticity and recover relative vorticity as
+`rel_vort = abs_vort - coriolis` each stage — rather than time-integrating the
+relative vorticity tendency as the current `DFSPolarVortexRK4` does
+(`src/dfs/lpm_dfs_polar_vortex_solver_impl.hpp`).
 
 ## 2. Refactor `src/dfs/` view allocations
 

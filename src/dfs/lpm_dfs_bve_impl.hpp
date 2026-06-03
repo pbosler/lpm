@@ -89,6 +89,7 @@ void DFSBVE<SeedType>::finalize_mesh_to_grid_coupling() {
   Kokkos::deep_copy(ref_crds_active.view, mesh.faces.phys_crds.view);
 
   gathered_mesh->gather_scalar_fields(passive_scalar_fields, active_scalar_fields);
+  gathered_mesh->gather_vector_fields(passive_vector_fields, active_vector_fields);
 }
 
 template <typename SeedType>

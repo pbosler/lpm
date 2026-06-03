@@ -246,16 +246,24 @@ struct JM86Forcing {
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_b(const Real theta) const {
-     const Real tan_ratio = square(tan(b0))/square(tan(theta));
+     // safe_denominator gives a finite (~1/tan^2) factor away from the equator
+     // and -> 0 as theta -> 0, so tan_ratio -> 0 and b -> 0 there (the correct
+     // limit), avoiding the tan(0)=0 division that produced NaN at equatorial
+     // mesh points.
+     const Real tan_ratio = square(tan(b0)) *
+       FloatingPoint<Real>::safe_denominator(square(tan(theta)));
      const Real exp_factor = exp(1-tan_ratio);
      return theta >= 0 ? tan_ratio * exp_factor : 0;
   };
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_bprime(const Real theta) const {
-    const Real tan_ratio = square(tan(b0))/square(tan(theta));
+    const Real tan_ratio = square(tan(b0)) *
+      FloatingPoint<Real>::safe_denominator(square(tan(theta)));
     const Real expfac = -2*exp(1-tan_ratio) * (1-tan_ratio);
-    const Real prefac = square(tan(b0)) * FloatingPoint<Real>::safe_denominator(square(cos(theta))) / tan(theta);
+    const Real prefac = square(tan(b0)) *
+      FloatingPoint<Real>::safe_denominator(square(cos(theta))) *
+      FloatingPoint<Real>::safe_denominator(tan(theta));
     return prefac * expfac;
   }
 
