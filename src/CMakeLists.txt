@@ -95,7 +95,12 @@ if (LPM_USE_VTK)
   target_link_libraries(lpm PUBLIC ${VTK_LIBRARIES})
 endif()
 if (LPM_ENABLE_DFS)
-  target_link_libraries(lpm PUBLIC FFTW3::Double FFTW3::Float FFTW3::DoubleOpenMP FFTW3::FloatOpenMP finufft::finufft)
+  target_link_libraries(lpm PUBLIC FFTW3::Double FFTW3::Float  finufft::finufft)
+  if (LPM_USE_OPENMP)
+    target_link_libraries(lpm PUBLIC FFTW3::DoubleOpenMP FFTW3::FloatOpenMP)
+  elseif(APPLE)
+    target_link_libraries(lpm PUBLIC FFTW3::DoubleThreads FFTW3::FloatThreads)
+  endif()
 endif()
 
 set(LPM_HEADERS ${PROJECT_BINARY_DIR}/LpmConfig.h

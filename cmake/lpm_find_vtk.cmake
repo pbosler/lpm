@@ -16,10 +16,6 @@ find_package(VTK 9 REQUIRED COMPONENTS
 )
 
 message(STATUS "LPM: Found VTK Version: ${VTK_VERSION}")
+set(LPM_USE_VTK TRUE CACHE BOOL "")
 
-if (VTK_VERSION VERSION_LESS "9.0.0")
-    set(LPM_USE_VTK TRUE)
-else ()
-    message("lpm is not compatible with this version of VTK.")
-endif()
 
