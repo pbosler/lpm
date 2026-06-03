@@ -110,8 +110,7 @@ class BVESphere : public PolyMesh2d<SeedType> {
 
 #ifdef LPM_USE_VTK
 template <typename SeedType>
-VtkPolymeshInterface<SeedType> vtk_interface(
-    const BVESphere<SeedType>& bve);
+VtkPolymeshInterface<SeedType> vtk_interface(const BVESphere<SeedType>& bve);
 #endif
 
 }  // namespace Lpm

@@ -20,11 +20,11 @@ struct ENormScalar {
 
   KOKKOS_INLINE_FUNCTION
   void init() {
-    l1num = ko::reduction_identity<Real>::sum();
-    l1denom = ko::reduction_identity<Real>::sum();
-    l2num = ko::reduction_identity<Real>::sum();
-    l2denom = ko::reduction_identity<Real>::sum();
-    linfnum = ko::reduction_identity<Real>::max();
+    l1num     = ko::reduction_identity<Real>::sum();
+    l1denom   = ko::reduction_identity<Real>::sum();
+    l2num     = ko::reduction_identity<Real>::sum();
+    l2denom   = ko::reduction_identity<Real>::sum();
+    linfnum   = ko::reduction_identity<Real>::max();
     linfdenom = ko::reduction_identity<Real>::max();
   }
 };
@@ -98,7 +98,7 @@ struct ErrNorms {
       : l1(l_1), l2(l_2), linf(l_i) {}
 
   std::string info_string(const std::string& label = "",
-                          const int tab_level = 0) const;
+                          const int tab_level      = 0) const;
 
   /**
     constructor; assumes reductions have been pre-computed and stored in an

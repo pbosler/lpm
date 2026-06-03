@@ -1,8 +1,4 @@
 #include "LpmConfig.h"
-#include "lpm_comm.hpp"
-#include "lpm_constants.hpp"
-#include "lpm_compadre.hpp"
-#include "lpm_coriolis.hpp"
 #include "dfs/lpm_compadre_dfs_remesh.hpp"
 #include "dfs/lpm_compadre_dfs_remesh_impl.hpp"
 #include "dfs/lpm_dfs_bve.hpp"
@@ -10,6 +6,10 @@
 #include "dfs/lpm_dfs_bve_solver.hpp"
 #include "dfs/lpm_dfs_bve_solver_impl.hpp"
 #include "dfs/lpm_dfs_grid.hpp"
+#include "lpm_comm.hpp"
+#include "lpm_compadre.hpp"
+#include "lpm_constants.hpp"
+#include "lpm_coriolis.hpp"
 #include "lpm_error.hpp"
 #include "lpm_error_impl.hpp"
 #include "lpm_geometry.hpp"
@@ -34,44 +34,47 @@ using namespace Lpm;
 using namespace Lpm::DFS;
 
 /** Computes vorticity error at each particle and panel.
-*/
+ */
 template <typename SeedType>
-void compute_vorticity_error(scalar_view_type vert_err, scalar_view_type face_err,
-  const DFS::DFSBVE<SeedType>& sph) {
-  Kokkos::parallel_for("relative vorticity error (vertices)",
-    sph.mesh.n_vertices_host(),
-    RelVortError(vert_err,
-      sph.abs_vort_passive.view, sph.rel_vort_passive.view,
-      sph.mesh.vertices.phys_crds.view, sph.Omega));
-  Kokkos::parallel_for("relative vorticity error (faces)",
-    sph.mesh.n_faces_host(),
-    RelVortError(face_err,
-      sph.abs_vort_active.view, sph.rel_vort_active.view,
-      sph.mesh.faces.phys_crds.view, sph.Omega));
+void compute_vorticity_error(scalar_view_type vert_err,
+                             scalar_view_type face_err,
+                             const DFS::DFSBVE<SeedType>& sph) {
+  Kokkos::parallel_for(
+      "relative vorticity error (vertices)", sph.mesh.n_vertices_host(),
+      RelVortError(vert_err, sph.abs_vort_passive.view,
+                   sph.rel_vort_passive.view, sph.mesh.vertices.phys_crds.view,
+                   sph.Omega));
+  Kokkos::parallel_for(
+      "relative vorticity error (faces)", sph.mesh.n_faces_host(),
+      RelVortError(face_err, sph.abs_vort_active.view, sph.rel_vort_active.view,
+                   sph.mesh.faces.phys_crds.view, sph.Omega));
 }
 
 /** Compute kernel for relative vorticity error.
-*/
+ */
 struct RelVortError {
-  scalar_view_type rel_vort_error; /// relative vorticity error [output]
-  scalar_view_type abs_vort; /// absolute vorticity [input]
-  scalar_view_type rel_vort; /// computed relative vorticity [input]
-  typename SphereGeometry::crd_view_type phys_crds_view; /// particle positions [input]
+  scalar_view_type rel_vort_error;  /// relative vorticity error [output]
+  scalar_view_type abs_vort;        /// absolute vorticity [input]
+  scalar_view_type rel_vort;        /// computed relative vorticity [input]
+  typename SphereGeometry::crd_view_type
+      phys_crds_view;  /// particle positions [input]
   Real Omega;
 
   /// constructor
   RelVortError(scalar_view_type err, const scalar_view_type omega,
-    const scalar_view_type zeta, const typename SphereGeometry::crd_view_type pcrds,
-    const Real Omg) :
-    rel_vort_error(err),
-    abs_vort(omega),
-    rel_vort(zeta),
-    phys_crds_view(pcrds),
-    Omega(Omg) {}
+               const scalar_view_type zeta,
+               const typename SphereGeometry::crd_view_type pcrds,
+               const Real Omg)
+      : rel_vort_error(err),
+        abs_vort(omega),
+        rel_vort(zeta),
+        phys_crds_view(pcrds),
+        Omega(Omg) {}
 
   KOKKOS_INLINE_FUNCTION
-  void operator() (const Index i) const {
-    rel_vort_error(i) = abs_vort(i) - 2*Omega*phys_crds_view(i,2) - rel_vort(i);
+  void operator()(const Index i) const {
+    rel_vort_error(i) =
+        abs_vort(i) - 2 * Omega * phys_crds_view(i, 2) - rel_vort(i);
   }
 };
 
@@ -103,34 +106,39 @@ int main(int argc, char* argv[]) {
     logger.info(input.info_string());
     // problem types: velocity and vorticity
     using Coriolis = CoriolisSphere;
-    using Lat0 = LatitudeTracer;
+    using Lat0     = LatitudeTracer;
     Coriolis coriolis(input.get_option("omega").get_real());
-    constexpr Real vortex_strength = 4 * constants::PI;
+    constexpr Real vortex_strength    = 4 * constants::PI;
     constexpr Real vortex_shape_param = 4.0;
-    constexpr Real vortex_init_lon = constants::PI;
-    constexpr Real vortex_init_lat = constants::PI/10;
-    GaussianVortexSphere gauss_vort(vortex_strength, vortex_shape_param, vortex_init_lon, vortex_init_lat);
+    constexpr Real vortex_init_lon    = constants::PI;
+    constexpr Real vortex_init_lat    = constants::PI / 10;
+    GaussianVortexSphere gauss_vort(vortex_strength, vortex_shape_param,
+                                    vortex_init_lon, vortex_init_lat);
 
     //  particle/panel/grid initialization
-    using SeedType = CubedSphereSeed;
+    using SeedType       = CubedSphereSeed;
     const Int mesh_depth = input.get_option("tree_depth").get_int();
     constexpr Real sphere_radius = 1;
-    Int amr_buffer = input.get_option("amr_buffer").get_int();
-    Int amr_limit = input.get_option("amr_limit").get_int();
+    Int amr_buffer               = input.get_option("amr_buffer").get_int();
+    Int amr_limit                = input.get_option("amr_limit").get_int();
     if (input.get_option("amr_both").get_int() > 0) {
       amr_buffer = input.get_option("amr_both").get_int();
-      amr_limit = input.get_option("amr_both").get_int();
+      amr_limit  = input.get_option("amr_both").get_int();
     }
     const bool amr = (amr_buffer > 0 and amr_limit > 0);
     /**
       Build the Lagrangian particle/panel mesh and DFS grid
     */
-    PolyMeshParameters<SeedType> mesh_params(mesh_depth, sphere_radius, amr_buffer, amr_limit);
+    PolyMeshParameters<SeedType> mesh_params(mesh_depth, sphere_radius,
+                                             amr_buffer, amr_limit);
     const Int nlon = input.get_option("nlon").get_int();
-    const Int gmls_order = input.get_option("gmls_interpolation_order").get_int();
+    const Int gmls_order =
+        input.get_option("gmls_interpolation_order").get_int();
     gmls::Params gmls_params(gmls_order);
 
-    auto sphere = std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
+    // DFS initialization
+    auto sphere =
+        std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
 
     /**
       initial vorticity values (a) : a Gaussian distribution about a center point
@@ -142,13 +150,17 @@ int main(int argc, char* argv[]) {
     */
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
-    auto rel_vort_range = sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
-    logger.info("uniform mesh has (min, max) vorticity (active) = ({}, {}), max. circ. appx {}",
-      rel_vort_range.first, rel_vort_range.second,
-      rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
-    rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
+    auto rel_vort_range =
+        sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
+    logger.info(
+        "uniform mesh has (min, max) vorticity (active) = ({}, {}), max. circ. "
+        "appx {}",
+        rel_vort_range.first, rel_vort_range.second,
+        rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
+    rel_vort_range =
+        sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
     logger.debug("uniform mesh has (min, max) vorticity (passive) = ({}, {})",
-      rel_vort_range.first, rel_vort_range.second);
+                 rel_vort_range.first, rel_vort_range.second);
 
     /**
       Initial adaptive refinement
@@ -211,47 +223,52 @@ int main(int argc, char* argv[]) {
     logger.info(sphere->info_string());
 
     // Solver initialization
-//     using SolverType = DFS::DFSRK2<SeedType>;
-//      using SolverType = DFS::DFSRK3<SeedType>;
-    using SolverType = DFS::DFSRK4<SeedType>;
-    const Real ftle_tol = input.get_option("ftle_tol").get_real();
+    //     using SolverType = DFS::DFSRK2<SeedType>;
+    //      using SolverType = DFS::DFSRK3<SeedType>;
+    using SolverType          = DFS::DFSRK4<SeedType>;
+    const Real ftle_tol       = input.get_option("ftle_tol").get_real();
     const Real ftle_space_tol = input.get_option("ftle_space_tol").get_real();
     const Real tfinal = input.get_option("tfinal").get_real();
-    const auto vel_range = sphere->velocity_active.range(sphere->mesh.n_faces_host());
+    const auto vel_range =
+        sphere->velocity_active.range(sphere->mesh.n_faces_host());
     Real dt;
     Int nsteps;
     if (input.get_option("use_dt").get_bool()) {
       if (input.get_option("use_nsteps").get_bool()) {
-        logger.error("cannot use both dt and nsteps to determine time step size; choose one.  Defaulting to dt.");
+        logger.error(
+            "cannot use both dt and nsteps to determine time step size; choose "
+            "one.  Defaulting to dt.");
       }
-      dt = input.get_option("dt").get_real();
+      dt     = input.get_option("dt").get_real();
       nsteps = int(tfinal / dt);
-    }
-    else {
+    } else {
       nsteps = input.get_option("nsteps").get_int();
-      dt = tfinal / nsteps;
+      dt     = tfinal / nsteps;
     }
 
     const Real cr = vel_range.second * dt / sphere->mesh.appx_mesh_size();
     logger.info("dt = {}, max cr = {}", dt, cr);
 
     const Int remesh_interval = input.get_option("remesh_interval").get_int();
-    const std::string remesh_strategy = input.get_option("remesh_strategy").get_str();
-    const bool use_ftle = (input.get_option("remesh_trigger").get_str() == "ftle");
+    const std::string remesh_strategy =
+        input.get_option("remesh_strategy").get_str();
+    const bool use_ftle =
+        (input.get_option("remesh_trigger").get_str() == "ftle");
 
     auto solver = std::make_unique<SolverType>(dt, *sphere);
-    std::vector<Real> total_vorticity(nsteps+1);
-    std::vector<Real> total_kinetic_energy(nsteps+1);
-    std::vector<Real> total_enstrophy(nsteps+1);
-    std::vector<Real> ftle_max(nsteps+1);
-    std::vector<Real> time(nsteps+1);
-    ftle_max[0] = 0;
-    total_vorticity[0] = sphere->total_vorticity();
+    std::vector<Real> total_vorticity(nsteps + 1);
+    std::vector<Real> total_kinetic_energy(nsteps + 1);
+    std::vector<Real> total_enstrophy(nsteps + 1);
+    std::vector<Real> ftle_max(nsteps + 1);
+    std::vector<Real> time(nsteps + 1);
+    ftle_max[0]             = 0;
+    total_vorticity[0]      = sphere->total_vorticity();
     total_kinetic_energy[0] = sphere->total_kinetic_energy();
-    total_enstrophy[0] = sphere->total_enstrophy();
+    total_enstrophy[0]      = sphere->total_enstrophy();
 
-    logger.info("initial total vorticity, kinetic energy, and enstrophy = ({}, {}, {})",
-      total_vorticity[0], total_kinetic_energy[0], total_enstrophy[0]);
+    logger.info(
+        "initial total vorticity, kinetic energy, and enstrophy = ({}, {}, {})",
+        total_vorticity[0], total_kinetic_energy[0], total_enstrophy[0]);
 
     std::string amr_str = "_";
     if (amr) {
@@ -259,26 +276,34 @@ int main(int argc, char* argv[]) {
       ss << "_amr_d" << mesh_depth << "+" << amr_limit << "_circtol" << std::setprecision(6) << circ_tol << "_";
       amr_str = ss.str();
     }
-    const std::string resolution_str =  std::to_string(mesh_depth) + dt_str(dt);
+    const std::string resolution_str = std::to_string(mesh_depth) + dt_str(dt);
     std::string remesh_str;
     if (use_ftle) {
-      remesh_str = remesh_strategy + "ftle" + float_str(ftle_tol,3);
+      remesh_str = remesh_strategy + "ftle" + float_str(ftle_tol, 3);
+    } else {
+      remesh_str =
+          (remesh_interval < nsteps
+               ? remesh_strategy + "rm" + std::to_string(remesh_interval)
+               : "no_rm");
     }
-    else {
-      remesh_str = (remesh_interval < nsteps ? remesh_strategy + "rm" + std::to_string(remesh_interval) : "no_rm");
-    }
-    const std::string ofile_root = input.get_option("output_file_root").get_str() + "_" + SeedType::id_string() + resolution_str+"_nlon"+std::to_string(nlon) + "_" + remesh_str + amr_str;
+    const std::string ofile_root =
+        input.get_option("output_file_root").get_str() + "_" +
+        SeedType::id_string() + resolution_str + "_nlon" +
+        std::to_string(nlon) + "_" + remesh_str + amr_str;
     const std::string vtk_file_root = ofile_root;
-    int vtk_counter = 0;
-    const int write_frequency = input.get_option("output_write_frequency").get_int();
+    int vtk_counter           = 0;
+    const int write_frequency =
+        input.get_option("output_write_frequency").get_int();
 
     logger.info("output will be written to files beginning: {}", ofile_root);
     {
       /** output initial conditions to mesh/grid files */
       auto vtk_mesh = vtk_mesh_interface(*sphere);
       auto vtk_grid = vtk_grid_interface(*sphere);
-      const std::string mesh_vtk_file = vtk_file_root + zero_fill_str(vtk_counter) + vtp_suffix();
-      const std::string grid_vtk_file = vtk_file_root + zero_fill_str(vtk_counter) + vts_suffix();
+      const std::string mesh_vtk_file =
+          vtk_file_root + zero_fill_str(vtk_counter) + vtp_suffix();
+      const std::string grid_vtk_file =
+          vtk_file_root + zero_fill_str(vtk_counter) + vts_suffix();
       vtk_mesh.write(mesh_vtk_file);
       vtk_grid.write(grid_vtk_file);
       ++vtk_counter;
@@ -291,16 +316,16 @@ int main(int argc, char* argv[]) {
       rel_vort_range.first, rel_vort_range.second,
       rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
     int rm_counter = 0;
-    Real tref = 0;
+    Real tref     = 0;
     Real max_ftle = 0;
-    for (int t_idx=0; t_idx<nsteps; ++t_idx) {
-
-      max_ftle = get_max_ftle(sphere->ftle_active.view, sphere->mesh.faces.mask, sphere->mesh.n_faces_host());
+    for (int t_idx = 0; t_idx < nsteps; ++t_idx) {
+      max_ftle = get_max_ftle(sphere->ftle_active.view, sphere->mesh.faces.mask,
+                              sphere->mesh.n_faces_host());
       logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
-      const bool ftle_trigger = (use_ftle and max_ftle > ftle_tol);
-      const bool interval_trigger = ((t_idx+1)%remesh_interval == 0);
-      const bool do_remesh = (ftle_trigger or interval_trigger);
+      const bool ftle_trigger     = (use_ftle and max_ftle > ftle_tol);
+      const bool interval_trigger = ((t_idx + 1) % remesh_interval == 0);
+      const bool do_remesh        = (ftle_trigger or interval_trigger);
       if (do_remesh) {
         /**
           do remesh before time step
@@ -308,12 +333,12 @@ int main(int argc, char* argv[]) {
         ++rm_counter;
         if (interval_trigger) {
           logger.debug("remesh {} triggered by remesh interval", rm_counter);
-        }
-        else {
+        } else {
           logger.info("remesh {} triggered by ftle", rm_counter);
         }
 
-        auto new_sphere = std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
+        auto new_sphere =
+            std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
         new_sphere->allocate_tracer(lat0);
         new_sphere->t = sphere->t;
 
@@ -321,28 +346,25 @@ int main(int argc, char* argv[]) {
         if (amr) {
           Refinement<SeedType> refiner(new_sphere->mesh);
 
-          ScalarIntegralFlag circ_flag(refiner.flags,
-            new_sphere->rel_vort_active.view,
-            new_sphere->mesh.faces.area,
-            new_sphere->mesh.faces.mask,
-            new_sphere->mesh.n_faces_host(),
-            rel_circ_tol);
+          ScalarIntegralFlag circ_flag(
+              refiner.flags, new_sphere->rel_vort_active.view,
+              new_sphere->mesh.faces.area, new_sphere->mesh.faces.mask,
+              new_sphere->mesh.n_faces_host(), rel_circ_tol);
           circ_flag.tol = circ_tol;
 
-          ScalarMaxFlag ftle_flag(refiner.flags,
-            new_sphere->ftle_active.view,
-            new_sphere->mesh.faces.mask,
-            new_sphere->mesh.n_faces_host(),
-            ftle_space_tol);
+          ScalarMaxFlag ftle_flag(
+              refiner.flags, new_sphere->ftle_active.view,
+              new_sphere->mesh.faces.mask, new_sphere->mesh.n_faces_host(),
+              ftle_space_tol);
 
           remesh.adaptive_direct_remesh(refiner, circ_flag, ftle_flag);
-        }
-        else {
+        } else {
           if (remesh_strategy == "direct") {
             remesh.uniform_direct_remesh();
-          }
-          else {
-            logger.error("indirect remesh not implemented for DFS; skipping remesh step.");
+          } else {
+            logger.error(
+                "indirect remesh not implemented for DFS; skipping remesh "
+                "step.");
           }
         }
         logger.info(remesh.info_string());
@@ -362,35 +384,40 @@ int main(int argc, char* argv[]) {
 
       sphere->advance_timestep(*solver);
 
-//       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-//         ComputeFTLE<SeedType>(sphere->ftle.view,
-//           sphere->mesh.vertices.phys_crds.view,
-//           sphere->ref_crds_passive.view,
-//           sphere->mesh.faces.phys_crds.view,
-//           sphere->ref_crds_active.view,
-//           sphere->mesh.faces.verts,
-//           sphere->mesh.faces.mask,
-//           sphere->t - sphere->t_ref));
-//       sphere->mesh.average_face_field_to_vertex_field(sphere->ftle_passive, sphere->ftle_active);
-//       sphere->interpolate_ftle_from_mesh_to_grid();
+      //       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+      //         ComputeFTLE<SeedType>(sphere->ftle.view,
+      //           sphere->mesh.vertices.phys_crds.view,
+      //           sphere->ref_crds_passive.view,
+      //           sphere->mesh.faces.phys_crds.view,
+      //           sphere->ref_crds_active.view,
+      //           sphere->mesh.faces.verts,
+      //           sphere->mesh.faces.mask,
+      //           sphere->t - sphere->t_ref));
+      //       sphere->mesh.average_face_field_to_vertex_field(sphere->ftle_passive,
+      //       sphere->ftle_active); sphere->interpolate_ftle_from_mesh_to_grid();
 
-      time[t_idx+1] = (t_idx+1) * dt;
-      ftle_max[t_idx+1] = max_ftle;
-      total_vorticity[t_idx+1] = sphere->total_vorticity();
-      total_kinetic_energy[t_idx+1] = sphere->total_kinetic_energy();
-      total_enstrophy[t_idx+1] = sphere->total_enstrophy();
+      time[t_idx + 1]                 = (t_idx + 1) * dt;
+      ftle_max[t_idx + 1]             = max_ftle;
+      total_vorticity[t_idx + 1]      = sphere->total_vorticity();
+      total_kinetic_energy[t_idx + 1] = sphere->total_kinetic_energy();
+      total_enstrophy[t_idx + 1]      = sphere->total_enstrophy();
 
-      if ((t_idx+1)%write_frequency == 0) {
+      if ((t_idx + 1) % write_frequency == 0) {
         auto vtk_mesh = vtk_mesh_interface(*sphere);
         auto vtk_grid = vtk_grid_interface(*sphere);
-        const std::string mesh_vtk_file = vtk_file_root + zero_fill_str(vtk_counter) + vtp_suffix();
-        const std::string grid_vtk_file = vtk_file_root + zero_fill_str(vtk_counter) + vts_suffix();
+        const std::string mesh_vtk_file =
+            vtk_file_root + zero_fill_str(vtk_counter) + vtp_suffix();
+        const std::string grid_vtk_file =
+            vtk_file_root + zero_fill_str(vtk_counter) + vts_suffix();
         vtk_mesh.write(mesh_vtk_file);
         vtk_grid.write(grid_vtk_file);
         ++vtk_counter;
       }
-      const auto rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.vertices.nh());
-      logger.info("t = {}, rel. vort passive range : ({}, {})", (t_idx+1)*dt, rel_vort_range.first, rel_vort_range.second);
+      const auto rel_vort_range =
+          sphere->rel_vort_passive.range(sphere->mesh.vertices.nh());
+      logger.info("t = {}, rel. vort passive range : ({}, {})",
+                  (t_idx + 1) * dt, rel_vort_range.first,
+                  rel_vort_range.second);
     }
     const std::string matlab_file = ofile_root + ".m";
     std::ofstream ofile(matlab_file);
@@ -408,66 +435,94 @@ int main(int argc, char* argv[]) {
   MPI_Finalize();
 }
 
-
 void init_input(user::Input& input) {
-  user::Option nlon_option("nlon", "-nlon", "--n_lon", "number of longitude points in DFS grid", 20);
+  user::Option nlon_option("nlon", "-nlon", "--n_lon",
+                           "number of longitude points in DFS grid", 20);
   input.add_option(nlon_option);
 
-  user::Option omega_option("omega", "-omg", "--omega", "background rotation rate of the sphere", 2*constants::PI);
+  user::Option omega_option("omega", "-omg", "--omega",
+                            "background rotation rate of the sphere",
+                            2 * constants::PI);
   input.add_option(omega_option);
 
-  user::Option tfinal_option("tfinal", "-tf", "--time-final", "time final", 0.025);
+  user::Option tfinal_option("tfinal", "-tf", "--time-final", "time final",
+                             0.025);
   input.add_option(tfinal_option);
 
-  user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of time steps", 1);
+  user::Option nsteps_option("nsteps", "-n", "--nsteps", "number of time steps",
+                             1);
   input.add_option(nsteps_option);
 
   user::Option dt_option("dt", "-dt", "--time-step", "time step size", 0.025);
   input.add_option(dt_option);
 
-  user::Option use_dt_option("use_dt", "-udt", "--use-dt", "use dt for time step size", true);
+  user::Option use_dt_option("use_dt", "-udt", "--use-dt",
+                             "use dt for time step size", true);
   input.add_option(use_dt_option);
 
-  user::Option use_nsteps_option("use_nsteps", "-un", "--use-nsteps", "use nsteps for time step size", false);
+  user::Option use_nsteps_option("use_nsteps", "-un", "--use-nsteps",
+                                 "use nsteps for time step size", false);
   input.add_option(use_nsteps_option);
 
-  user::Option tree_depth_option("tree_depth", "-d", "--depth", "mesh tree initial uniform depth", 4);
+  user::Option tree_depth_option("tree_depth", "-d", "--depth",
+                                 "mesh tree initial uniform depth", 4);
   input.add_option(tree_depth_option);
 
-  user::Option amr_refinement_buffer_option("amr_buffer", "-ab", "--amr-buffer", "amr memory buffer", 0);
+  user::Option amr_refinement_buffer_option("amr_buffer", "-ab", "--amr-buffer",
+                                            "amr memory buffer", 0);
   input.add_option(amr_refinement_buffer_option);
 
-  user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit", "amr refinement limit", 0);
+  user::Option amr_refinement_limit_option("amr_limit", "-al", "--amr-limit",
+                                           "amr refinement limit", 0);
   input.add_option(amr_refinement_limit_option);
 
-  user::Option max_circulation_option("max_circulation_tol", "-c", "--circuluation-max", "amr max circulation tolerance", std::numeric_limits<Real>::max());
+  user::Option max_circulation_option(
+      "max_circulation_tol", "-c", "--circuluation-max",
+      "amr max circulation tolerance", std::numeric_limits<Real>::max());
   input.add_option(max_circulation_option);
 
-  user::Option amr_both_option("amr_both", "-amr", "--amr-both", "both amr buffer and limit values", LPM_NULL_IDX);
+  user::Option amr_both_option("amr_both", "-amr", "--amr-both",
+                               "both amr buffer and limit values",
+                               LPM_NULL_IDX);
   input.add_option(amr_both_option);
 
-  user::Option output_write_frequency_option("output_write_frequency", "-of", "--output-frequency", "output write frequency", 1);
+  user::Option output_write_frequency_option("output_write_frequency", "-of",
+                                             "--output-frequency",
+                                             "output write frequency", 1);
   input.add_option(output_write_frequency_option);
 
-  user::Option output_file_root_option("output_file_root", "-o", "--output-file-root", "output file root", std::string("dfs_gauss"));
+  user::Option output_file_root_option("output_file_root", "-o",
+                                       "--output-file-root", "output file root",
+                                       std::string("dfs_gauss"));
   input.add_option(output_file_root_option);
 
-  user::Option remesh_interval_option("remesh_interval", "-rm", "--remesh-interval", "number of timesteps allowed between remesh interpolations", std::numeric_limits<int>::max());
+  user::Option remesh_interval_option(
+      "remesh_interval", "-rm", "--remesh-interval",
+      "number of timesteps allowed between remesh interpolations",
+      std::numeric_limits<int>::max());
   input.add_option(remesh_interval_option);
 
-  user::Option remesh_strategy_option("remesh_strategy", "-rs", "--remesh-strategy", "direct or indirect remeshing strategy", std::string("direct"), std::set<std::string>({"direct", "indirect"}));
+  user::Option remesh_strategy_option(
+      "remesh_strategy", "-rs", "--remesh-strategy",
+      "direct or indirect remeshing strategy", std::string("direct"),
+      std::set<std::string>({"direct", "indirect"}));
   input.add_option(remesh_strategy_option);
 
-  user::Option gmls_interpolation_order("gmls_interpolation_order", "-g", "--gmls-order", "polynomial order for gmls-based interpolation", 6);
+  user::Option gmls_interpolation_order(
+      "gmls_interpolation_order", "-g", "--gmls-order",
+      "polynomial order for gmls-based interpolation", 6);
   input.add_option(gmls_interpolation_order);
 
-  user::Option remesh_trigger_option("remesh_trigger", "-rt", "--remesh-trigger", "trigger for a remeshing : ftle or an interval", std::string("interval"), std::set<std::string>({"interval", "ftle"}));
+  user::Option remesh_trigger_option(
+      "remesh_trigger", "-rt", "--remesh-trigger",
+      "trigger for a remeshing : ftle or an interval", std::string("interval"),
+      std::set<std::string>({"interval", "ftle"}));
   input.add_option(remesh_trigger_option);
 
-  user::Option ftle_tolerance_option("ftle_tol", "-ft", "--ftle-tol", "max value for ftle before remesh", 2.0);
+  user::Option ftle_tolerance_option(
+      "ftle_tol", "-ft", "--ftle-tol", "max value for ftle before remesh", 2.0);
   input.add_option(ftle_tolerance_option);
 
   user::Option ftle_space_tolerance_option("ftle_space_tol", "-fs", "--ftle-space-tol", "spatial amr ftle tolerance remesh", 2.0);
   input.add_option(ftle_space_tolerance_option);
 }
-

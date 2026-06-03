@@ -24,7 +24,7 @@ KOKKOS_INLINE_FUNCTION void greens_fn(Real& psi, const VecType& tgt_x,
                                       const Real& src_vort,
                                       const Real src_area) {
   const Real circ = -src_vort * src_area;
-  psi = std::log(1 - SphereGeometry::dot(tgt_x, src_x)) * circ /
+  psi             = std::log(1 - SphereGeometry::dot(tgt_x, src_x)) * circ /
         (4 * constants::PI);
 }
 
@@ -73,7 +73,7 @@ struct SphereTangentFunctor {
   void operator()(const Index& i) const {
     const auto myx = ko::subview(x, i, ko::ALL());
     const auto myu = ko::subview(u, i, ko::ALL());
-    udotx(i) = SphereGeometry::dot(myx, myu);
+    udotx(i)       = SphereGeometry::dot(myx, myu);
   }
 };
 

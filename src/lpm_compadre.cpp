@@ -46,7 +46,7 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
 
   neighborhood_radii =
       Kokkos::View<Real*>("neighborhood_radii", host_tgt_crds.extent(0));
-  h_radii = Kokkos::create_mirror_view(neighborhood_radii);
+  h_radii             = Kokkos::create_mirror_view(neighborhood_radii);
   Index max_neighbors = 0;
 
   bool dry_run = true;
@@ -75,26 +75,27 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
 
 Neighborhoods::Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
                              const Params& params) {
-
-  auto point_cloud_search = Compadre::PointCloudSearch(host_colloc_src_tgt_crds);
+  auto point_cloud_search =
+      Compadre::PointCloudSearch(host_colloc_src_tgt_crds);
 
   Int est_max_neighbors =
       point_cloud_search.getEstimatedNumberNeighborsUpperBound(
           params.min_neighbors, params.topo_dim, params.eps_multiplier);
 
-  neighbor_lists = Kokkos::View<Index**>(
-      "neighbor_lists", host_colloc_src_tgt_crds.extent(0), 4 * est_max_neighbors);
-  h_neighbors = Kokkos::create_mirror_view(neighbor_lists);
+  neighbor_lists = Kokkos::View<Index**>("neighbor_lists",
+                                         host_colloc_src_tgt_crds.extent(0),
+                                         4 * est_max_neighbors);
+  h_neighbors    = Kokkos::create_mirror_view(neighbor_lists);
 
-  neighborhood_radii =
-      Kokkos::View<Real*>("neighborhood_radii", host_colloc_src_tgt_crds.extent(0));
-  h_radii = Kokkos::create_mirror_view(neighborhood_radii);
+  neighborhood_radii  = Kokkos::View<Real*>("neighborhood_radii",
+                                            host_colloc_src_tgt_crds.extent(0));
+  h_radii             = Kokkos::create_mirror_view(neighborhood_radii);
   Index max_neighbors = 0;
 
   bool dry_run = true;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(
-      dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
-      params.eps_multiplier);
+      dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii,
+      params.min_neighbors, params.eps_multiplier);
 
   /// todo: this can be a parallel_reduce on host
   Index max_n = 0;
@@ -106,8 +107,8 @@ Neighborhoods::Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
 
   dry_run = false;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(
-      dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
-      params.eps_multiplier);
+      dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii,
+      params.min_neighbors, params.eps_multiplier);
 
   Kokkos::deep_copy(neighbor_lists, h_neighbors);
   Kokkos::deep_copy(neighborhood_radii, h_radii);
@@ -115,14 +116,13 @@ Neighborhoods::Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,
 }
 
 void Neighborhoods::update_neighbors(const host_crd_view host_src_crds,
-                const host_crd_view host_tgt_crds,
-                const Params& params,
-                const bool verbose) {
+                                     const host_crd_view host_tgt_crds,
+                                     const Params& params, const bool verbose) {
   auto point_cloud_search = Compadre::PointCloudSearch(host_src_crds);
-  const bool dry_run = false;
+  const bool dry_run      = false;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(
-    dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
-    params.eps_multiplier);
+      dry_run, host_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
+      params.eps_multiplier);
   if (verbose) {
     std::cout << info_string();
   }
@@ -149,13 +149,15 @@ void Neighborhoods::compute_bds() {
   LPM_ASSERT(n_min > 0);
 }
 
-void Neighborhoods::update_neighbors(const host_crd_view host_colloc_src_tgt_crds,
-  const Params& params, const bool verbose) {
-  auto point_cloud_search = Compadre::PointCloudSearch(host_colloc_src_tgt_crds);
+void Neighborhoods::update_neighbors(
+    const host_crd_view host_colloc_src_tgt_crds, const Params& params,
+    const bool verbose) {
+  auto point_cloud_search =
+      Compadre::PointCloudSearch(host_colloc_src_tgt_crds);
   const bool dry_run = false;
   point_cloud_search.generate2DNeighborListsFromKNNSearch(
-    dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii, params.min_neighbors,
-    params.eps_multiplier);
+      dry_run, host_colloc_src_tgt_crds, h_neighbors, h_radii,
+      params.min_neighbors, params.eps_multiplier);
   if (verbose) {
     std::cout << info_string();
   }

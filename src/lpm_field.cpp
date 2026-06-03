@@ -1,4 +1,5 @@
 #include "lpm_field.hpp"
+
 #include "lpm_field_impl.hpp"
 
 namespace Lpm {
@@ -29,10 +30,9 @@ std::string field_loc_string(const FieldLocation& floc) {
 // ETI
 template struct ScalarField<VertexField>;
 template struct ScalarField<FaceField>;
-template struct VectorField<PlaneGeometry,VertexField>;
-template struct VectorField<SphereGeometry,VertexField>;
-template struct VectorField<PlaneGeometry,FaceField>;
-template struct VectorField<SphereGeometry,FaceField>;
-
+template struct VectorField<PlaneGeometry, VertexField>;
+template struct VectorField<SphereGeometry, VertexField>;
+template struct VectorField<PlaneGeometry, FaceField>;
+template struct VectorField<SphereGeometry, FaceField>;
 
 }  // namespace Lpm

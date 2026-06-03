@@ -44,11 +44,14 @@ class TransportMesh2d {
         t_idx(0) {}
 
   template <typename ICType>
-  void initialize_tracer(const ICType& tracer_ic, const std::string& = std::string());
+  void initialize_tracer(const ICType& tracer_ic,
+                         const std::string& = std::string());
 
   template <typename ICType>
-  void set_tracer_from_lag_crds(const ICType& tracer_ic, const Index vert_start_idx=0,
-                         const Index face_start_idx=0, const std::string& name="");
+  void set_tracer_from_lag_crds(const ICType& tracer_ic,
+                                const Index vert_start_idx = 0,
+                                const Index face_start_idx = 0,
+                                const std::string& name    = "");
 
   void allocate_scalar_tracer(const std::string name);
 

@@ -23,9 +23,8 @@ struct PSEKernel {
   }
 
   template <typename CV>
-  KOKKOS_INLINE_FUNCTION
-  static Real kernel_input(const CV& x, const Real eps) {
-    return Geo::mag(x)/eps;
+  KOKKOS_INLINE_FUNCTION static Real kernel_input(const CV& x, const Real eps) {
+    return Geo::mag(x) / eps;
   }
 
   template <typename CV, typename CV2>
@@ -36,17 +35,19 @@ struct PSEKernel {
 };
 
 struct BivariateOrder8 {
-  using geo = PlaneGeometry;
+  using geo                 = PlaneGeometry;
   static constexpr Int ndim = geo::ndim;
 
-  template <typename VecType1, typename VecType2> KOKKOS_INLINE_FUNCTION
-  static Real kernel_input(const VecType1& x1, const VecType2& x2, const Real& eps) {
+  template <typename VecType1, typename VecType2>
+  KOKKOS_INLINE_FUNCTION static Real kernel_input(const VecType1& x1,
+                                                  const VecType2& x2,
+                                                  const Real& eps) {
     return PSEKernel<geo>::kernel_input(x1, x2, eps);
   }
 
   KOKKOS_INLINE_FUNCTION
   static Real delta(const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = exp(-rsq) / constants::PI;
     const Real pre_fac = 4 - 6 * rsq + 2 * square(rsq) - rsq * square(rsq) / 6;
     return pre_fac * exp_fac;
@@ -55,14 +56,15 @@ struct BivariateOrder8 {
   KOKKOS_INLINE_FUNCTION
   static Real first_derivative(const Real xi, const Real r) {
     const Real rsq = square(r);
-    const Real pre_fac = 20 * (rsq - 1) - 5 * square(rsq) + rsq*square(rsq)/3;
+    const Real pre_fac =
+        20 * (rsq - 1) - 5 * square(rsq) + rsq * square(rsq) / 3;
     const Real exp_fac = xi * exp(-rsq) / constants::PI;
     return pre_fac * exp_fac;
   }
 
   KOKKOS_INLINE_FUNCTION
   static Real laplacian(const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = exp(-rsq) / constants::PI;
     const Real pre_fac =
         40 * (1 - rsq) + 10 * square(rsq) - 2 * rsq * square(rsq) / 3;
@@ -72,12 +74,12 @@ struct BivariateOrder8 {
 
 template <typename Geo>
 struct BivariateOrder2 {
-  using geo = PlaneGeometry;
+  using geo                 = PlaneGeometry;
   static constexpr Int ndim = geo::ndim;
 
   KOKKOS_INLINE_FUNCTION
   static Real delta(const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = exp(-rsq) / constants::PI;
     const Real pre_fac = 1;
     return pre_fac * exp_fac;
@@ -85,7 +87,7 @@ struct BivariateOrder2 {
 
   KOKKOS_INLINE_FUNCTION
   static Real first_derivative(const Real xi, const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = xi * exp(-rsq) / constants::PI;
     const Real pre_fac = -2;
     return pre_fac * exp_fac;
@@ -93,7 +95,7 @@ struct BivariateOrder2 {
 
   KOKKOS_INLINE_FUNCTION
   static Real left_first_derivative(const Real xi, const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = xi * exp(-rsq) / constants::PI;
     const Real pre_fac = -20 + 8 * rsq;
     return pre_fac * exp_fac;
@@ -101,7 +103,7 @@ struct BivariateOrder2 {
 
   KOKKOS_INLINE_FUNCTION
   static Real laplacian(const Real r) {
-    const Real rsq = square(r);
+    const Real rsq     = square(r);
     const Real exp_fac = exp(-rsq) / constants::PI;
     const Real pre_fac = 4;
     return pre_fac * exp_fac;
@@ -111,9 +113,9 @@ struct BivariateOrder2 {
 template <typename PSEKind>
 struct DeltaReducer {
   typedef Real value_type;
-  using geo = typename PSEKind::geo;
+  using geo                 = typename PSEKind::geo;
   static constexpr Int ndim = PSEKind::ndim;
-  using crd_view = typename geo::crd_view_type;
+  using crd_view            = typename geo::crd_view_type;
   Index tgt_idx;
   crd_view tgtx;
   crd_view srcx;
@@ -140,13 +142,14 @@ struct DeltaReducer {
     if constexpr (std::is_same<geo, SphereGeometry>::value) {
       if (geo::dot(mtgt, msrc) > 0) {
         const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
-        val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
+        val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) /
+               square(epsilon);
       }
-    }
-    else {
+    } else {
       const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
-      val += src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
-  //            (ndim == 2 ? square(epsilon) : cube(epsilon));
+      val +=
+          src_data(j) * src_area(j) * PSEKind::delta(rscaled) / square(epsilon);
+      //            (ndim == 2 ? square(epsilon) : cube(epsilon));
     }
   }
 };
@@ -155,8 +158,8 @@ template <typename PSEKind>
 struct LaplacianReducer {
   typedef Real value_type;
   static constexpr Int ndim = PSEKind::ndim;
-  using geo = typename PSEKind::geo;
-  using crd_view = typename geo::crd_view_type;
+  using geo                 = typename PSEKind::geo;
+  using crd_view            = typename geo::crd_view_type;
   Index tgt_idx;
   crd_view tgtx;
   crd_view srcx;
@@ -182,19 +185,18 @@ struct LaplacianReducer {
 
   KOKKOS_INLINE_FUNCTION
   void operator()(const Index j, Real& val) const {
-    const auto mtgt = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
-    const auto msrc = Kokkos::subview(srcx, j, Kokkos::ALL);
+    const auto mtgt    = Kokkos::subview(tgtx, tgt_idx, Kokkos::ALL);
+    const auto msrc    = Kokkos::subview(srcx, j, Kokkos::ALL);
     const auto rscaled = PSEKernel<geo>::kernel_input(mtgt, msrc, epsilon);
     if constexpr (std::is_same<geo, SphereGeometry>::value) {
       if (geo::dot(mtgt, msrc) > 0) {
-        const auto kern =
-          PSEKind::laplacian(rscaled) / eps_sq; //(ndim == 2 ? eps_sq : cube(epsilon));
-          val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
+        const auto kern = PSEKind::laplacian(rscaled) /
+                          eps_sq;  //(ndim == 2 ? eps_sq : cube(epsilon));
+        val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
       }
-    }
-    else {
-      const auto kern =
-          PSEKind::laplacian(rscaled) / eps_sq; //(ndim == 2 ? eps_sq : cube(epsilon));
+    } else {
+      const auto kern = PSEKind::laplacian(rscaled) /
+                        eps_sq;  //(ndim == 2 ? eps_sq : cube(epsilon));
       val += (src_data(j) - tgt_data(tgt_idx)) * src_area(j) * kern / eps_sq;
     }
   }
@@ -203,7 +205,7 @@ struct LaplacianReducer {
 template <typename PSEKind>
 struct ScalarInterpolation {
   scalar_view_type finterp;
-  using geo = typename PSEKind::geo;
+  using geo      = typename PSEKind::geo;
   using crd_view = typename geo::crd_view_type;
   crd_view tgtx;
   crd_view srcx;
@@ -212,9 +214,7 @@ struct ScalarInterpolation {
   Real epsilon;
   Index nsrc;
 
-  ScalarInterpolation(scalar_view_type fout,
-                      crd_view tx,
-                      crd_view sx,
+  ScalarInterpolation(scalar_view_type fout, crd_view tx, crd_view sx,
                       scalar_view_type srcf, scalar_view_type srca, Real eps,
                       Index ns)
       : finterp(fout),
@@ -238,7 +238,7 @@ struct ScalarInterpolation {
 
 template <typename PSEKind>
 struct ScalarLaplacian {
-  using geo = typename PSEKind::geo;
+  using geo      = typename PSEKind::geo;
   using crd_view = typename geo::crd_view_type;
   scalar_view_type flaplacian;
   crd_view tgtx;
@@ -249,10 +249,9 @@ struct ScalarLaplacian {
   Real epsilon;
   Index nsrc;
 
-  ScalarLaplacian(scalar_view_type flap,
-                  crd_view tx,
-                  crd_view sx, scalar_view_type tf,
-                  scalar_view_type sf, scalar_view_type sa, Real eps, Index ns)
+  ScalarLaplacian(scalar_view_type flap, crd_view tx, crd_view sx,
+                  scalar_view_type tf, scalar_view_type sf, scalar_view_type sa,
+                  Real eps, Index ns)
       : flaplacian(flap),
         tgtx(tx),
         srcx(sx),

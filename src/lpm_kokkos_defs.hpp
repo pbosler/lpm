@@ -45,7 +45,7 @@ template <typename T>
 using view_2d = Kokkos::View<T**>;
 
 template <typename T>
-using view_r3pts = Kokkos::View<T*[3]>;
+using view_r3pts = Kokkos::View<T* [3]>;
 
 template <typename T>
 using view_3d = Kokkos::View<T***>;

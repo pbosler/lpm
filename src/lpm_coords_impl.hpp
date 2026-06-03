@@ -9,11 +9,10 @@
 namespace Lpm {
 
 template <typename Geo>
-Coords<Geo>::Coords(const Coords<Geo>& other) :
-  view("coords_view", other.view.extent(0)),
-  _nmax(other.view.extent(0)),
-  n("n")
-{
+Coords<Geo>::Coords(const Coords<Geo>& other)
+    : view("coords_view", other.view.extent(0)),
+      _nmax(other.view.extent(0)),
+      n("n") {
   _hostview = ko::create_mirror_view(view);
   Kokkos::deep_copy(view, other.view);
   Kokkos::deep_copy(n, other.n);
@@ -25,19 +24,19 @@ template <typename Geo>
 Coords<Geo>::Coords(const Index nmax)
     : view("coords_view", nmax), _nmax(nmax), n("n") {
   _hostview = ko::create_mirror_view(view);
-  _nh = ko::create_mirror_view(n);
-  _nh() = 0;
+  _nh       = ko::create_mirror_view(n);
+  _nh()     = 0;
 }
 
 template <typename Geo>
 Coords<Geo>::Coords(const ko::View<Real**> cv)
-      : view(cv), _nmax(cv.extent(0)), n("n") {
-    _hostview = ko::create_mirror_view(view);
-    _nh = ko::create_mirror_view(n);
-    _nh() = cv.extent(0);
-    ko::deep_copy(n, _nh);
-    ko::deep_copy(_hostview, view);
-  }
+    : view(cv), _nmax(cv.extent(0)), n("n") {
+  _hostview = ko::create_mirror_view(view);
+  _nh       = ko::create_mirror_view(n);
+  _nh()     = cv.extent(0);
+  ko::deep_copy(n, _nh);
+  ko::deep_copy(_hostview, view);
+}
 
 template <typename Geo>
 std::string Coords<Geo>::info_string(const std::string& label,
@@ -89,13 +88,13 @@ void Coords<Geo>::init_random(const Real max_range, const Int ss) {
 
 template <typename Geo>
 Real Coords<Geo>::max_radius() const {
-  Real result = 0;
+  Real result           = 0;
   const auto local_crds = this->view;
   Kokkos::parallel_reduce(
       _nh(),
       KOKKOS_LAMBDA(const Index i, Real& m) {
         const auto mcrd = Kokkos::subview(local_crds, i, Kokkos::ALL);
-        const Real r = Geo::mag(mcrd);
+        const Real r    = Geo::mag(mcrd);
         if (r > m) m = r;
       },
       Kokkos::Max<Real>(result));

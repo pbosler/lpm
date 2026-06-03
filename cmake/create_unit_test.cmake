@@ -189,7 +189,7 @@ function(CreateUnitTest target_name target_sources)
       set (lpmtest_MPI_EXEC_NAME "mpiexec")
     endif()
     if ("${lpmtest_MPI_NP_FLAG}" STREQUAL "")
-      set (lpmtest_MPI_NP_FLAG "${mpi_allow_root} -n")
+      set (lpmtest_MPI_NP_FLAG "-n")
     endif()
   endif()
 
@@ -197,10 +197,16 @@ function(CreateUnitTest target_name target_sources)
   # Loop over MPI/OpenMP configs, and create tests #
   #------------------------------------------------#
 
-  if (lpmtest_EXE_ARGS)
-    set(invokeExec "./${target_name} ${lpmtest_EXE_ARGS}")
-  else()
-    set(invokeExec "./${target_name}")
+  # MPI_NP_FLAG may arrive as a multi-token string (e.g. "-np"); CMake list
+  # semantics need it split before it goes into add_test().
+  separate_arguments(MPI_NP_FLAG_LIST UNIX_COMMAND "${lpmtest_MPI_NP_FLAG}")
+
+  # Optional pre-flags that go between the mpiexec name and the -n/-np flag.
+  # --allow-run-as-root is added only when the CI Docker container's
+  # DOCKER_ALLOW_MPI_RUN_AS_ROOT[_CONFIRM] env vars opted in above.
+  set(MPI_PRE_NP_FLAGS "")
+  if (mpi_allow_root)
+    list(APPEND MPI_PRE_NP_FLAGS ${mpi_allow_root})
   endif()
 
   foreach (NRANKS RANGE ${MPI_START_RANK} ${MPI_END_RANK} ${MPI_INCREMENT})
@@ -213,13 +219,18 @@ function(CreateUnitTest target_name target_sources)
         set(USE_MPI TRUE)
       endif()
 
-      # Create the test
+      # Invoke the test binary directly (no `sh -c` wrapper). On macOS,
+      # System Integrity Protection strips DYLD_* env vars from /bin/sh,
+      # which breaks DYLD_LIBRARY_PATH-based runtime library discovery.
       if (USE_MPI)
         add_test(NAME ${FULL_TEST_NAME}
-                 COMMAND sh -c "${lpmtest_MPI_EXEC_NAME} ${lpmtest_MPI_NP_FLAG} ${NRANKS} ${lpmtest_MPI_EXTRA_ARGS} ${invokeExec}")
+                 COMMAND ${lpmtest_MPI_EXEC_NAME} ${MPI_PRE_NP_FLAGS}
+                         ${MPI_NP_FLAG_LIST} ${NRANKS}
+                         ${lpmtest_MPI_EXTRA_ARGS}
+                         $<TARGET_FILE:${target_name}> ${lpmtest_EXE_ARGS})
       else()
         add_test(NAME ${FULL_TEST_NAME}
-                 COMMAND sh -c "${invokeExec}")
+                 COMMAND $<TARGET_FILE:${target_name}> ${lpmtest_EXE_ARGS})
       endif()
 
       # Set test properties
@@ -259,5 +270,9 @@ function(CreateUnitTest target_name target_sources)
     endforeach()
     set_tests_properties (${tests_names} PROPERTIES RESOURCE_LOCK ${target_name}_serial)
   endif ()
+
+  if (APPLE)
+    set_tests_properties( ${tests_names} PROPERTIES ENVIRONMENT "DYLD_LIBRARY_PATH=$ENV{DYLD_LIBRARY_PATH}")
+  endif()
 
 endfunction()

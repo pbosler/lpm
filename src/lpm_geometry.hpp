@@ -70,10 +70,10 @@ struct PlaneGeometry {
   KOKKOS_INLINE_FUNCTION static Real tri_area(const CV& va, const CV2& vb,
                                               const CV3& vc) {
     Real bma[2], cma[2];
-    bma[0] = vb[0] - va[0];
-    bma[1] = vb[1] - va[1];
-    cma[0] = vc[0] - va[0];
-    cma[1] = vc[1] - va[1];
+    bma[0]        = vb[0] - va[0];
+    bma[1]        = vb[1] - va[1];
+    cma[0]        = vc[0] - va[0];
+    cma[1]        = vc[1] - va[1];
     const Real ar = bma[0] * cma[1] - bma[1] * cma[0];
     return 0.5 * std::abs(ar);
   }
@@ -111,12 +111,15 @@ struct PlaneGeometry {
     scale(1.0 / n, v);
   }
 
-  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
-  KOKKOS_INLINE_FUNCTION
-  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+  template <typename VecType, typename PtType, typename VectorsType,
+            typename Poly>
+  KOKKOS_INLINE_FUNCTION static void vector_average(VecType& v, const PtType& x,
+                                                    const VectorsType& vview,
+                                                    const Poly& poly,
+                                                    const Int n) {
     set_zero(v);
-    for (int i=0; i<n; ++i) {
-      for (int j=0; j<2; ++j) {
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < 2; ++j) {
         v[j] += vview(poly[i], j);
       }
     }
@@ -186,7 +189,7 @@ struct CircularPlaneGeometry : public PlaneGeometry {
    */
   template <typename V1, typename V2>
   KOKKOS_INLINE_FUNCTION static Real dtheta(const V1& a, const V2& b) {
-    const Real dp = dot(a, b);
+    const Real dp   = dot(a, b);
     const Real alen = mag(a);
     const Real blen = mag(b);
     return std::acos(dp / (alen * blen));
@@ -195,15 +198,15 @@ struct CircularPlaneGeometry : public PlaneGeometry {
   template <typename V, typename CV>
   KOKKOS_INLINE_FUNCTION static void barycenter(V v, const CV cv,
                                                 const Int n = 4) {
-    const auto v0 = ko::subview(cv, 0, ko::ALL());
-    const auto v2 = ko::subview(cv, 2, ko::ALL());
+    const auto v0     = ko::subview(cv, 0, ko::ALL());
+    const auto v2     = ko::subview(cv, 2, ko::ALL());
     const Real router = mag(v0);
     const Real rinner = mag(v2);
-    const Real rmid = 0.5 * (router + rinner);
+    const Real rmid   = 0.5 * (router + rinner);
     const Real theta0 = theta(v0);
-    const Real dth = 0.5 * dtheta(v0, v2);
-    v[0] = rmid * std::cos(theta0 - dth);
-    v[1] = rmid * std::sin(theta0 - dth);
+    const Real dth    = 0.5 * dtheta(v0, v2);
+    v[0]              = rmid * std::cos(theta0 - dth);
+    v[1]              = rmid * std::sin(theta0 - dth);
   }
 
   /** @brief Computes the area of the circular sector defined by a polar
@@ -219,13 +222,13 @@ rectangle.
   template <typename V1, typename V2>
   KOKKOS_INLINE_FUNCTION static Real quad_sector_area(const V1& outer_ccw,
                                                       const V2& inner_cw) {
-    Real result = 0.0;
+    Real result   = 0.0;
     const Real r0 = mag(inner_cw);
     const Real r1 = mag(outer_ccw);
     //     assert(r1 > r0);
 
     const Real dth = dtheta(outer_ccw, inner_cw);
-    result = 0.5 * dth * (square(r1) - square(r0));
+    result         = 0.5 * dth * (square(r1) - square(r0));
     return result;
   }
 
@@ -303,29 +306,34 @@ struct SphereGeometry {
     return std::atan2(v[1], v[0]);
   }
 
-  /** \brief Returns Cartesian coordiantes of a point with given latitude and longitude
+  /** \brief Returns Cartesian coordiantes of a point with given latitude and
+    longitude
 
     \param xyz [out] Cartesian coordinates
     \param lon [in] longitude
     \param lat [in] latitude
   */
   template <typename VT>
-  KOKKOS_INLINE_FUNCTION static void xyz_from_lon_lat(VT& xyz, const Real lon, const Real lat) {
-    xyz[0] = cos(lat)*cos(lon);
-    xyz[1] = cos(lat)*sin(lon);
+  KOKKOS_INLINE_FUNCTION static void xyz_from_lon_lat(VT& xyz, const Real lon,
+                                                      const Real lat) {
+    xyz[0] = cos(lat) * cos(lon);
+    xyz[1] = cos(lat) * sin(lon);
     xyz[2] = sin(lat);
   }
 
-  /** \brief Returns Cartesian coordiantes of a point with given colatitude and azimuth
+  /** \brief Returns Cartesian coordiantes of a point with given colatitude and
+    azimuth
 
     \param xyz [out] Cartesian coordinates
     \param az [in] azimuth
     \param colat [in] colatitude
   */
   template <typename VT>
-  KOKKOS_INLINE_FUNCTION static void xyz_from_azimuth_colat(VT& xyz, const Real az, const Real colat) {
-    xyz[0] = sin(colat)*cos(az);
-    xyz[1] = sin(colat)*sin(az);
+  KOKKOS_INLINE_FUNCTION static void xyz_from_azimuth_colat(VT& xyz,
+                                                            const Real az,
+                                                            const Real colat) {
+    xyz[0] = sin(colat) * cos(az);
+    xyz[1] = sin(colat) * sin(az);
     xyz[2] = cos(colat);
   }
 
@@ -486,13 +494,13 @@ struct SphereGeometry {
     plane of the sphere at x.
   */
   template <typename RowType, typename XType>
-  KOKKOS_INLINE_FUNCTION static void proj_row(RowType& r, const XType& x, const int row) {
-    for (Short j=0; j<3; ++j) {
-      r[j] = -x[row]*x[j];
+  KOKKOS_INLINE_FUNCTION static void proj_row(RowType& r, const XType& x,
+                                              const int row) {
+    for (Short j = 0; j < 3; ++j) {
+      r[j] = -x[row] * x[j];
     }
     r[row] += 1;
   }
-
 
   /** \brief copies the content of one vector view to another
 
@@ -539,21 +547,25 @@ struct SphereGeometry {
     normalize(v);
   }
 
-  template <typename VecType, typename PtType, typename VectorsType, typename Poly>
-  KOKKOS_INLINE_FUNCTION
-  static void vector_average(VecType& v, const PtType& x, const VectorsType& vview, const Poly& poly, const Int n) {
+  template <typename VecType, typename PtType, typename VectorsType,
+            typename Poly>
+  KOKKOS_INLINE_FUNCTION static void vector_average(VecType& v, const PtType& x,
+                                                    const VectorsType& vview,
+                                                    const Poly& poly,
+                                                    const Int n) {
     set_zero(v);
     Real v_avg[3];
     set_zero(v_avg);
-    for (int i=0; i<n; ++i) {
-      for (int j=0; j<3; ++j) {
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < 3; ++j) {
         v_avg[j] += vview(poly[i], j);
       }
     }
-    for (int i=0; i<3; ++i) {
+    for (int i = 0; i < 3; ++i) {
       v_avg[i] /= n;
     }
-    const Kokkos::Tuple<Real,9> proj_mat = spherical_tangent_projection_matrix(x);
+    const Kokkos::Tuple<Real, 9> proj_mat =
+        spherical_tangent_projection_matrix(x);
     apply_3by3(v, proj_mat, v_avg);
   }
 
@@ -581,9 +593,9 @@ struct SphereGeometry {
   template <typename CV, typename CV2>
   KOKKOS_INLINE_FUNCTION static Real tri_area(const CV& a, const CV2& b,
                                               const CV2& c) {
-    const Real s1 = distance(a, b);
-    const Real s2 = distance(b, c);
-    const Real s3 = distance(c, a);
+    const Real s1         = distance(a, b);
+    const Real s2         = distance(b, c);
+    const Real s3         = distance(c, a);
     const Real half_perim = 0.5 * (s1 + s2 + s3);
     Real zz = std::tan(0.5 * half_perim) * std::tan(0.5 * (half_perim - s1)) *
               std::tan(0.5 * (half_perim - s2)) *

@@ -12,25 +12,26 @@
 using namespace Lpm;
 
 TEST_CASE("lpm stub test", "") {
-// This is a stub test case
-Comm comm;
-Logger<> logger("logger_name", Log::level::debug, comm);
+  // This is a stub test case
+  Comm comm;
+  Logger<> logger("logger_name", Log::level::debug, comm);
 
-logger.info("you can write info, like numbers, e.g., {}, with logger messages like this one.", 42);
+  logger.info(
+      "you can write info, like numbers, e.g., {}, with logger messages like "
+      "this one.",
+      42);
 
-// write test code here
-// you can test things, and crash the program, with REQUIRE statements
-REQUIRE( 0 == 0 );
+  // write test code here
+  // you can test things, and crash the program, with REQUIRE statements
+  REQUIRE(0 == 0);
 
-// a test will fail, but not crash, with a CHECK statements
-CHECK( FloatingPoint<Real>::zero(0.5*std::numeric_limits<Real>::epsilon()));
-
+  // a test will fail, but not crash, with a CHECK statements
+  CHECK(FloatingPoint<Real>::zero(0.5 * std::numeric_limits<Real>::epsilon()));
 
 #ifdef LPM_USE_VTK
 // put vtk stuff here, if you need it.
 #endif
 
-// if we got here, tests pass
-logger.info("tests pass.");
-
+  // if we got here, tests pass
+  logger.info("tests pass.");
 }

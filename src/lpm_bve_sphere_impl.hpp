@@ -27,8 +27,8 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges,
       Omega(2 * constants::PI),
       omg_set(false),
       t(0) {
-  ntracers() = nq;
-  _host_ntracers = ko::create_mirror_view(ntracers);
+  ntracers()       = nq;
+  _host_ntracers   = ko::create_mirror_view(ntracers);
   _host_ntracers() = nq;
 
   std::ostringstream ss;
@@ -57,8 +57,8 @@ BVESphere<SeedType>::BVESphere(const Index nmaxverts, const Index nmaxedges,
       Omega(2 * constants::PI),
       omg_set(false),
       t(0) {
-  const int nq = tracers.size();
-  _host_ntracers = ko::create_mirror_view(ntracers);
+  const int nq     = tracers.size();
+  _host_ntracers   = ko::create_mirror_view(ntracers);
   _host_ntracers() = nq;
 
   for (int k = 0; k < tracers.size(); ++k) {
@@ -103,8 +103,7 @@ void BVESphere<SeedType>::update_host() const {
 
 #ifdef LPM_USE_VTK
 template <typename SeedType>
-VtkPolymeshInterface<SeedType> vtk_interface(
-    const BVESphere<SeedType>& bve) {
+VtkPolymeshInterface<SeedType> vtk_interface(const BVESphere<SeedType>& bve) {
   VtkPolymeshInterface<SeedType> vtk(bve);
   vtk.add_scalar_point_data(bve.rel_vort_verts.view, "rel_vort");
   vtk.add_scalar_point_data(bve.abs_vort_verts.view, "abs_vort");
@@ -131,7 +130,7 @@ void BVESphere<SeedType>::set_omega(const Real& omg) {
   if (omg_set) {
     Log::warn("BVESphere::set_omega warning: omega = {} already set.", Omega);
   } else {
-    Omega = omg;
+    Omega   = omg;
     omg_set = true;
   }
 }
@@ -150,27 +149,27 @@ template <typename SeedType>
 template <typename VorticityInitialCondition>
 void BVESphere<SeedType>::init_vorticity(
     const VorticityInitialCondition& vorticity_fn) {
-  auto zeta_verts = this->rel_vort_verts.view;
+  auto zeta_verts  = this->rel_vort_verts.view;
   auto omega_verts = this->abs_vort_verts.view;
-  auto vert_crds = this->vertices.phys_crds.view;
-  Real Omg = this->Omega;
+  auto vert_crds   = this->vertices.phys_crds.view;
+  Real Omg         = this->Omega;
   Kokkos::parallel_for(
       this->n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
         const auto mxyz = Kokkos::subview(vert_crds, i, Kokkos::ALL);
         const Real zeta = vorticity_fn(mxyz(0), mxyz(1), mxyz(2));
-        zeta_verts(i) = zeta;
-        omega_verts(i) = zeta + 2 * Omg * mxyz(2);
+        zeta_verts(i)   = zeta;
+        omega_verts(i)  = zeta + 2 * Omg * mxyz(2);
       });
 
-  auto zeta_faces = this->rel_vort_faces.view;
+  auto zeta_faces  = this->rel_vort_faces.view;
   auto omega_faces = this->abs_vort_faces.view;
-  auto face_crds = this->faces.phys_crds.view;
+  auto face_crds   = this->faces.phys_crds.view;
   Kokkos::parallel_for(
       this->n_faces_host(), KOKKOS_LAMBDA(const Index i) {
         const auto mxyz = Kokkos::subview(face_crds, i, Kokkos::ALL);
         const Real zeta = vorticity_fn(mxyz(0), mxyz(1), mxyz(2));
-        zeta_faces(i) = zeta;
-        omega_faces(i) = zeta + 2 * Omg * mxyz(2);
+        zeta_faces(i)   = zeta;
+        omega_faces(i)  = zeta + 2 * Omg * mxyz(2);
       });
 
   this->rel_vort_verts.update_host();

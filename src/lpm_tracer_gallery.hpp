@@ -21,21 +21,19 @@ struct LagrangianTracerKernel {
   TracerType tracer;
 
   LagrangianTracerKernel(scalar_view_type vals, const crd_view& lcrds,
-    const TracerType& tr) :
-    tracer_vals(vals),
-    lag_crds(lcrds),
-    tracer(tr) {}
+                         const TracerType& tr)
+      : tracer_vals(vals), lag_crds(lcrds), tracer(tr) {}
 
-    KOKKOS_INLINE_FUNCTION
-    void operator() (const Index i) const {
-      const auto mcrd = Kokkos::subview(lag_crds, i, Kokkos::ALL);
-      tracer_vals(i) = tracer(mcrd);
-    }
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const Index i) const {
+    const auto mcrd = Kokkos::subview(lag_crds, i, Kokkos::ALL);
+    tracer_vals(i)  = tracer(mcrd);
+  }
 };
 
 struct PlanarGaussian {
   typedef PlaneGeometry geo;
-  static constexpr Real b = 1;
+  static constexpr Real b           = 1;
   static constexpr bool IsVorticity = false;
 
   KOKKOS_INLINE_FUNCTION
@@ -52,7 +50,7 @@ struct PlanarGaussian {
   template <typename CVT>
   KOKKOS_INLINE_FUNCTION Real laplacian(const CVT xy) const {
     const Real rsq = PlaneGeometry::norm2(xy);
-    const Real b = PlanarGaussian::b;
+    const Real b   = PlanarGaussian::b;
     return 4 * b * exp(-b * rsq) * (square(b) * rsq - 1);
   }
 };
@@ -87,10 +85,10 @@ struct PlanarRings {
 struct PlanarHump {
   typedef PlaneGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real x0 = 0.25;
-  static constexpr Real y0 = 0.5;
-  static constexpr Real r0 = 0.15;
-  static constexpr Real h0 = 0.25;
+  static constexpr Real x0          = 0.25;
+  static constexpr Real y0          = 0.5;
+  static constexpr Real r0          = 0.15;
+  static constexpr Real h0          = 0.25;
 
   KOKKOS_INLINE_FUNCTION
   PlanarHump() = default;
@@ -99,10 +97,10 @@ struct PlanarHump {
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xy) const {
-    const Real rr0 = PlanarHump::r0;
+    const Real rr0    = PlanarHump::r0;
     const Real xy0[2] = {PlanarHump::x0, PlanarHump::y0};
-    const Real dist = PlaneGeometry::distance(xy, xy0);
-    const Real r = min(dist, rr0) / rr0;
+    const Real dist   = PlaneGeometry::distance(xy, xy0);
+    const Real r      = min(dist, rr0) / rr0;
     return h0 * (1 + cos(constants::PI * r));
   }
 };
@@ -110,10 +108,10 @@ struct PlanarHump {
 struct PlanarSlottedDisk {
   typedef PlaneGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real x0 = 0.5;
-  static constexpr Real y0 = 0.75;
-  static constexpr Real r0 = 0.15;
-  static constexpr Real h0 = 1;
+  static constexpr Real x0          = 0.5;
+  static constexpr Real y0          = 0.75;
+  static constexpr Real r0          = 0.15;
+  static constexpr Real h0          = 1;
 
   KOKKOS_INLINE_FUNCTION
   PlanarSlottedDisk() = default;
@@ -122,9 +120,9 @@ struct PlanarSlottedDisk {
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xy) const {
-    Real result = 0;
+    Real result       = 0;
     const Real xy0[2] = {PlanarSlottedDisk::x0, PlanarSlottedDisk::y0};
-    const Real dist = PlaneGeometry::distance(xy, xy0);
+    const Real dist   = PlaneGeometry::distance(xy, xy0);
     if (dist <= PlanarSlottedDisk::r0) {
       if (abs(xy(1) - y0) > PlanarSlottedDisk::r0 / 6) {
         result = h0;
@@ -139,10 +137,10 @@ struct PlanarSlottedDisk {
 struct PlanarCone {
   typedef PlaneGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real x0 = 0.5;
-  static constexpr Real y0 = 0.25;
-  static constexpr Real r0 = 0.15;
-  static constexpr Real h0 = 1;
+  static constexpr Real x0          = 0.5;
+  static constexpr Real y0          = 0.25;
+  static constexpr Real r0          = 0.15;
+  static constexpr Real h0          = 1;
 
   KOKKOS_INLINE_FUNCTION
   PlanarCone() = default;
@@ -151,9 +149,9 @@ struct PlanarCone {
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xy) const {
-    Real result = 0;
+    Real result       = 0;
     const Real xy0[2] = {PlanarCone::x0, PlanarCone::y0};
-    const Real dist = PlaneGeometry::distance(xy, xy0);
+    const Real dist   = PlaneGeometry::distance(xy, xy0);
     if (dist <= PlanarCone::r0) {
       result = 1 - dist / PlanarCone::r0;
     }
@@ -164,13 +162,13 @@ struct PlanarCone {
 struct SphericalSlottedCylinders {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real lat1 = 0;
-  static constexpr Real lon1 = 5 * constants::PI / 6;
-  static constexpr Real lat2 = 0;
-  static constexpr Real lon2 = 7 * constants::PI / 6;
-  static constexpr Real RR = 0.5;
-  static constexpr Real b = 0.1;
-  static constexpr Real c = 1;
+  static constexpr Real lat1        = 0;
+  static constexpr Real lon1        = 5 * constants::PI / 6;
+  static constexpr Real lat2        = 0;
+  static constexpr Real lon2        = 7 * constants::PI / 6;
+  static constexpr Real RR          = 0.5;
+  static constexpr Real b           = 0.1;
+  static constexpr Real c           = 1;
 
   KOKKOS_INLINE_FUNCTION
   SphericalSlottedCylinders() = default;
@@ -179,15 +177,15 @@ struct SphericalSlottedCylinders {
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xyz) const {
-    Real result = b;
+    Real result            = b;
     const Real xyz_ctr1[3] = {std::cos(lon1) * std::cos(lat1),
                               std::sin(lon1) * std::cos(lat1), std::sin(lat1)};
     const Real xyz_ctr2[3] = {std::cos(lon2) * std::cos(lat2),
                               std::sin(lon2) * std::cos(lat2), std::sin(lat2)};
-    const Real lat = SphereGeometry::latitude(xyz);
-    const Real lon = SphereGeometry::longitude(xyz);
-    const Real r1 = SphereGeometry::distance(xyz, xyz_ctr1);
-    const Real r2 = SphereGeometry::distance(xyz, xyz_ctr2);
+    const Real lat         = SphereGeometry::latitude(xyz);
+    const Real lon         = SphereGeometry::longitude(xyz);
+    const Real r1          = SphereGeometry::distance(xyz, xyz_ctr1);
+    const Real r2          = SphereGeometry::distance(xyz, xyz_ctr2);
 
     if (r1 <= RR) {
       if (abs(lon - lon1) >= RR / 6) {
@@ -210,16 +208,16 @@ struct SphericalSlottedCylinders {
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    Real result = b;
-    const Real xyz[3] = {x, y, z};
+    Real result            = b;
+    const Real xyz[3]      = {x, y, z};
     const Real xyz_ctr1[3] = {std::cos(lon1) * std::cos(lat1),
                               std::sin(lon1) * std::cos(lat1), std::sin(lat1)};
     const Real xyz_ctr2[3] = {std::cos(lon2) * std::cos(lat2),
                               std::sin(lon2) * std::cos(lat2), std::sin(lat2)};
-    const Real lat = SphereGeometry::latitude(xyz);
-    const Real lon = SphereGeometry::longitude(xyz);
-    const Real r1 = SphereGeometry::distance(xyz, xyz_ctr1);
-    const Real r2 = SphereGeometry::distance(xyz, xyz_ctr2);
+    const Real lat         = SphereGeometry::latitude(xyz);
+    const Real lon         = SphereGeometry::longitude(xyz);
+    const Real r1          = SphereGeometry::distance(xyz, xyz_ctr1);
+    const Real r2          = SphereGeometry::distance(xyz, xyz_ctr2);
 
     if (r1 <= RR) {
       if (abs(lon - lon1) >= RR / 6) {
@@ -244,14 +242,14 @@ struct SphericalSlottedCylinders {
 struct SphericalCosineBells {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real lat1 = 0;
-  static constexpr Real lon1 = 5 * constants::PI / 6;
-  static constexpr Real lat2 = 0;
-  static constexpr Real lon2 = 7 * constants::PI / 6;
-  static constexpr Real RR = 0.5;
-  static constexpr Real b = 0.1;
-  static constexpr Real c = 0.9;
-  static constexpr Real hmax = 1;
+  static constexpr Real lat1        = 0;
+  static constexpr Real lon1        = 5 * constants::PI / 6;
+  static constexpr Real lat2        = 0;
+  static constexpr Real lon2        = 7 * constants::PI / 6;
+  static constexpr Real RR          = 0.5;
+  static constexpr Real b           = 0.1;
+  static constexpr Real c           = 0.9;
+  static constexpr Real hmax        = 1;
 
   KOKKOS_INLINE_FUNCTION
   SphericalCosineBells() = default;
@@ -260,13 +258,13 @@ struct SphericalCosineBells {
 
   template <typename CVType>
   KOKKOS_INLINE_FUNCTION Real operator()(const CVType xyz) const {
-    Real result = 0;
+    Real result            = 0;
     const Real xyz_ctr1[3] = {std::cos(lon1) * std::cos(lat1),
                               std::sin(lon1) * std::cos(lat1), std::sin(lat1)};
     const Real xyz_ctr2[3] = {std::cos(lon2) * std::cos(lat2),
                               std::sin(lon2) * std::cos(lat2), std::sin(lat2)};
-    const Real r1 = SphereGeometry::distance(xyz, xyz_ctr1);
-    const Real r2 = SphereGeometry::distance(xyz, xyz_ctr2);
+    const Real r1          = SphereGeometry::distance(xyz, xyz_ctr1);
+    const Real r2          = SphereGeometry::distance(xyz, xyz_ctr2);
 
     const Real h1 = 0.5 * hmax * (1 + cos(constants::PI * r1 / RR));
     const Real h2 = 0.5 * hmax * (1 + cos(constants::PI * r2 / RR));
@@ -284,14 +282,14 @@ struct SphericalCosineBells {
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    Real result = b;
-    const Real xyz[3] = {x, y, z};
+    Real result            = b;
+    const Real xyz[3]      = {x, y, z};
     const Real xyz_ctr1[3] = {std::cos(lon1) * std::cos(lat1),
                               std::sin(lon1) * std::cos(lat1), std::sin(lat1)};
     const Real xyz_ctr2[3] = {std::cos(lon2) * std::cos(lat2),
                               std::sin(lon2) * std::cos(lat2), std::sin(lat2)};
-    const Real r1 = SphereGeometry::distance(xyz, xyz_ctr1);
-    const Real r2 = SphereGeometry::distance(xyz, xyz_ctr2);
+    const Real r1          = SphereGeometry::distance(xyz, xyz_ctr1);
+    const Real r2          = SphereGeometry::distance(xyz, xyz_ctr2);
 
     const Real h1 = 0.5 * hmax * (1 + cos(constants::PI * r1 / RR));
     const Real h2 = 0.5 * hmax * (1 + cos(constants::PI * r2 / RR));
@@ -311,12 +309,12 @@ struct SphericalCosineBells {
 struct SphericalGaussianHills {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real lat1 = 0;
-  static constexpr Real lon1 = 5 * constants::PI / 6;
-  static constexpr Real lat2 = 0;
-  static constexpr Real lon2 = 7 * constants::PI / 6;
-  static constexpr Real beta = 5;
-  static constexpr Real hmax = 0.95;
+  static constexpr Real lat1        = 0;
+  static constexpr Real lon1        = 5 * constants::PI / 6;
+  static constexpr Real lat2        = 0;
+  static constexpr Real lon2        = 7 * constants::PI / 6;
+  static constexpr Real beta        = 5;
+  static constexpr Real hmax        = 0.95;
 
   KOKKOS_INLINE_FUNCTION
   SphericalGaussianHills() = default;
@@ -343,7 +341,7 @@ struct SphericalGaussianHills {
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
-    const Real xyz[3] = {x, y, z};
+    const Real xyz[3]      = {x, y, z};
     const Real xyz_ctr1[3] = {std::cos(lon1) * std::cos(lat1),
                               std::sin(lon1) * std::cos(lat1), std::sin(lat1)};
     const Real xyz_ctr2[3] = {std::cos(lon2) * std::cos(lat2),
@@ -364,7 +362,7 @@ struct SphericalGaussianHills {
 struct MovingVorticesTracer {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = false;
-  static constexpr Real u0 = 2 * constants::PI / 12;
+  static constexpr Real u0          = 2 * constants::PI / 12;
 
   KOKKOS_INLINE_FUNCTION
   MovingVorticesTracer() = default;
@@ -390,8 +388,8 @@ struct MovingVorticesTracer {
   Real operator()(const Real& x, const Real& y, const Real& z,
                   const Real& t = 0) const {
     const Real xyz[3] = {x, y, z};
-    const Real lat = SphereGeometry::latitude(xyz);
-    const Real lon = SphereGeometry::longitude(xyz);
+    const Real lat    = SphereGeometry::latitude(xyz);
+    const Real lon    = SphereGeometry::longitude(xyz);
 
     const Real lambda_prime = atan4(-std::cos(lon - u0 * t), std::tan(lat));
 
@@ -431,11 +429,12 @@ struct FtleTracer {
   KOKKOS_INLINE_FUNCTION
   FtleTracer() = default;
 
-  inline std::string name() const {return "ftle";}
+  inline std::string name() const { return "ftle"; }
 
   template <typename PtType>
-  KOKKOS_INLINE_FUNCTION
-  Real operator() (const PtType& x) const {return 0;}
+  KOKKOS_INLINE_FUNCTION Real operator()(const PtType& x) const {
+    return 0;
+  }
 };
 
 struct SphereXYZTrigTracer {
@@ -454,8 +453,16 @@ struct SphereXYZTrigTracer {
 
   template <typename CVT>
   KOKKOS_INLINE_FUNCTION Real laplacian(const CVT xyz) const {
-    return -3*xyz[1]*cos(3*xyz[1])*(4*xyz[2]*cos(4*xyz[2])*sin(3*xyz[0]) + (3*xyz[0]*cos(3*xyz[0]) + sin(3*xyz[0]))*sin(4*xyz[2])) - 0.5*sin(3*xyz[1])*(6*xyz[0]*cos(3*xyz[0])*(4*xyz[2]*cos(4*xyz[2]) + sin(4*xyz[2])) +
-sin(3*xyz[0])*(8*xyz[2]*cos(4*xyz[2]) + (25 - 7*square(xyz[2]))*sin(4*xyz[2])));
+    return -3 * xyz[1] * cos(3 * xyz[1]) *
+               (4 * xyz[2] * cos(4 * xyz[2]) * sin(3 * xyz[0]) +
+                (3 * xyz[0] * cos(3 * xyz[0]) + sin(3 * xyz[0])) *
+                    sin(4 * xyz[2])) -
+           0.5 * sin(3 * xyz[1]) *
+               (6 * xyz[0] * cos(3 * xyz[0]) *
+                    (4 * xyz[2] * cos(4 * xyz[2]) + sin(4 * xyz[2])) +
+                sin(3 * xyz[0]) *
+                    (8 * xyz[2] * cos(4 * xyz[2]) +
+                     (25 - 7 * square(xyz[2])) * sin(4 * xyz[2])));
   }
 };
 

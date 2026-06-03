@@ -53,9 +53,9 @@ struct LogBasicFile {
 template <spdlog::level::level_enum FileLogLevel = spdlog::level::debug>
 struct LogBigFiles {
   static constexpr bool has_filename = true;
-  static constexpr int one_mb = 1048576;
-  static constexpr int n_files = LPM_LOG_N_FILES;
-  static constexpr int mb_per_file = LPM_LOG_MAX_FILE_SIZE_MB;
+  static constexpr int one_mb        = 1048576;
+  static constexpr int n_files       = LPM_LOG_N_FILES;
+  static constexpr int mb_per_file   = LPM_LOG_MAX_FILE_SIZE_MB;
   static std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> get_file_sink(
       const std::string& logfilename) {
     auto result = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(

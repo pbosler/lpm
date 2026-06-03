@@ -28,25 +28,25 @@ struct RK4Update {
 
 template <typename SeedType>
 void Transport2dRK4<SeedType>::init() {
-  vertx = Kokkos::subview(tmesh.mesh.vertices.phys_crds.view,
-                          std::make_pair(0, nverts), Kokkos::ALL);
+  vertx   = Kokkos::subview(tmesh.mesh.vertices.phys_crds.view,
+                            std::make_pair(0, nverts), Kokkos::ALL);
   vertvel = Kokkos::subview(tmesh.velocity_verts.view,
                             std::make_pair(0, nverts), Kokkos::ALL);
-  facex = Kokkos::subview(tmesh.mesh.faces.phys_crds.view, std::make_pair(0, nfaces),
-                          Kokkos::ALL);
+  facex   = Kokkos::subview(tmesh.mesh.faces.phys_crds.view,
+                            std::make_pair(0, nfaces), Kokkos::ALL);
   facevel = Kokkos::subview(tmesh.velocity_faces.view,
                             std::make_pair(0, nfaces), Kokkos::ALL);
 
-  vertx1 = crd_view("vertx1", nverts);
-  vertx2 = crd_view("vertx2", nverts);
-  vertx3 = crd_view("vertx3", nverts);
-  vertx4 = crd_view("vertx4", nverts);
+  vertx1    = crd_view("vertx1", nverts);
+  vertx2    = crd_view("vertx2", nverts);
+  vertx3    = crd_view("vertx3", nverts);
+  vertx4    = crd_view("vertx4", nverts);
   vertxwork = crd_view("vertex_work", nverts);
 
-  facex1 = crd_view("facex1", nfaces);
-  facex2 = crd_view("facex2", nfaces);
-  facex3 = crd_view("facex3", nfaces);
-  facex4 = crd_view("facex4", nfaces);
+  facex1    = crd_view("facex1", nfaces);
+  facex2    = crd_view("facex2", nfaces);
+  facex3    = crd_view("facex3", nfaces);
+  facex4    = crd_view("facex4", nfaces);
   facexwork = crd_view("facexwork", nfaces);
 }
 

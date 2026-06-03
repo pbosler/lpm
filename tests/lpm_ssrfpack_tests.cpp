@@ -1,42 +1,41 @@
 #include "LpmConfig.h"
-#include "lpm_constants.hpp"
-#include "lpm_geometry.hpp"
-#include "lpm_comm.hpp"
-#include "lpm_logger.hpp"
-#include "lpm_tracer_gallery.hpp"
-#include "lpm_error.hpp"
-#include "lpm_error_impl.hpp"
-#include "lpm_2d_transport_mesh.hpp"
-#include "lpm_2d_transport_mesh_impl.hpp"
-#include "lpm_lat_lon_pts.hpp"
-#include "util/lpm_timer.hpp"
-#include "util/lpm_test_utils.hpp"
-#include "util/lpm_matlab_io.hpp"
-#include "lpm_constants.hpp"
-#include "lpm_velocity_gallery.hpp"
 #include "fortran/lpm_ssrfpack_interface.hpp"
 #include "fortran/lpm_ssrfpack_interface_impl.hpp"
+#include "lpm_2d_transport_mesh.hpp"
+#include "lpm_2d_transport_mesh_impl.hpp"
+#include "lpm_comm.hpp"
+#include "lpm_constants.hpp"
+#include "lpm_error.hpp"
+#include "lpm_error_impl.hpp"
+#include "lpm_geometry.hpp"
+#include "lpm_lat_lon_pts.hpp"
+#include "lpm_logger.hpp"
+#include "lpm_tracer_gallery.hpp"
+#include "lpm_velocity_gallery.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_gather_mesh_data_impl.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
 #include "mesh/lpm_scatter_mesh_data_impl.hpp"
+#include "util/lpm_matlab_io.hpp"
+#include "util/lpm_test_utils.hpp"
+#include "util/lpm_timer.hpp"
 #ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "vtk/lpm_vtk_io_impl.hpp"
 #endif
 #include <catch2/catch_test_macros.hpp>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <iomanip>
 
 using namespace Lpm;
 
 template <typename VelocityType, typename SeedType>
 struct SSRFPackConvergenceTest {
-  typedef typename std::conditional<
-    std::is_same<SeedType, CubedSphereSeed>::value,
-    IcosTriSphereSeed,
-    CubedSphereSeed>::type OtherSeedType;
+  typedef
+      typename std::conditional<std::is_same<SeedType, CubedSphereSeed>::value,
+                                IcosTriSphereSeed, CubedSphereSeed>::type
+          OtherSeedType;
   int start_depth;
   int end_depth;
   std::vector<Real> dxs;
@@ -50,9 +49,8 @@ struct SSRFPackConvergenceTest {
   std::vector<Real> face_l2;
   std::vector<Real> face_linf;
 
-  SSRFPackConvergenceTest(const int sd, const int ed) :
-    start_depth(sd),
-    end_depth(ed) {}
+  SSRFPackConvergenceTest(const int sd, const int ed)
+      : start_depth(sd), end_depth(ed) {}
 
   void run() {
     Comm comm;
@@ -77,11 +75,11 @@ struct SSRFPackConvergenceTest {
     scalar_view_type ll_tracer_interp("tracer_interp", ll.size());
     scalar_view_type ll_error("error", ll.size());
 
-    Kokkos::parallel_for("init_tracer_exact", ll.size(),
-      KOKKOS_LAMBDA (const Index i) {
-        const auto xyz = Kokkos::subview(ll.pts, i, Kokkos::ALL);
-        ll_tracer(i) = tracer(xyz);
-      });
+    Kokkos::parallel_for(
+        "init_tracer_exact", ll.size(), KOKKOS_LAMBDA(const Index i) {
+          const auto xyz = Kokkos::subview(ll.pts, i, Kokkos::ALL);
+          ll_tracer(i)   = tracer(xyz);
+        });
 
     /*
 
@@ -96,7 +94,7 @@ struct SSRFPackConvergenceTest {
     opm.allocate_scalar_tracer("tracer_interp");
     opm.allocate_scalar_tracer("tracer_error");
 
-    for (int i=0; i<(end_depth - start_depth) + 1; ++i ) {
+    for (int i = 0; i < (end_depth - start_depth) + 1; ++i) {
       const int depth = start_depth + i;
       std::ostringstream ss;
       ss << "ssrfpack_conv_" << SeedType::id_string() << depth;
@@ -151,18 +149,20 @@ struct SSRFPackConvergenceTest {
       ErrNorms ll_err_norms(ll_error, ll_tracer_interp, ll_tracer, ll.wts);
 
       ErrNorms self_face_interp_err(pm.tracer_faces.at("tracer_error").view,
-        pm.tracer_faces.at("tracer_interp").view,
-        pm.tracer_faces.at(tracer.name()).view,
-        pm.mesh.faces.area);
+                                    pm.tracer_faces.at("tracer_interp").view,
+                                    pm.tracer_faces.at(tracer.name()).view,
+                                    pm.mesh.faces.area);
 
       ErrNorms other_face_interp_err(opm.tracer_faces.at("tracer_error").view,
-        opm.tracer_faces.at("tracer_interp").view,
-        opm.tracer_faces.at(tracer.name()).view,
-        opm.mesh.faces.area);
+                                     opm.tracer_faces.at("tracer_interp").view,
+                                     opm.tracer_faces.at(tracer.name()).view,
+                                     opm.mesh.faces.area);
 
       logger.info("ll interp error: {}", ll_err_norms.info_string());
-      logger.info("self face interp error: {}", self_face_interp_err.info_string());
-      logger.info("other face interp error: {}", other_face_interp_err.info_string());
+      logger.info("self face interp error: {}",
+                  self_face_interp_err.info_string());
+      logger.info("other face interp error: {}",
+                  other_face_interp_err.info_string());
 
       ll_l1.push_back(ll_err_norms.l1);
       ll_l2.push_back(ll_err_norms.l2);
@@ -200,62 +200,60 @@ struct SSRFPackConvergenceTest {
       logger.info("{} complete : {}", test_name, itimer.info_string());
     }
 
-    const auto ll_l1_rate = convergence_rates(dxs, ll_l1);
-    const auto ll_l2_rate = convergence_rates(dxs, ll_l2);
+    const auto ll_l1_rate   = convergence_rates(dxs, ll_l1);
+    const auto ll_l2_rate   = convergence_rates(dxs, ll_l2);
     const auto ll_linf_rate = convergence_rates(dxs, ll_linf);
 
-    const auto self_l1_rate = convergence_rates(dxs, self_l1);
-    const auto self_l2_rate = convergence_rates(dxs, self_l2);
+    const auto self_l1_rate   = convergence_rates(dxs, self_l1);
+    const auto self_l2_rate   = convergence_rates(dxs, self_l2);
     const auto self_linf_rate = convergence_rates(dxs, self_linf);
 
-    const auto face_l1_rate = convergence_rates(dxs, face_l1);
-    const auto face_l2_rate = convergence_rates(dxs, face_l2);
+    const auto face_l1_rate   = convergence_rates(dxs, face_l1);
+    const auto face_l2_rate   = convergence_rates(dxs, face_l2);
     const auto face_linf_rate = convergence_rates(dxs, face_linf);
 
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "latlon_l1", ll_l1, ll_l1_rate));
+                                  "latlon_l1", ll_l1, ll_l1_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "latlon_l2", ll_l2, ll_l2_rate));
+                                  "latlon_l2", ll_l2, ll_l2_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "latlon_linf", ll_linf, ll_linf_rate));
+                                  "latlon_linf", ll_linf, ll_linf_rate));
 
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "self_l1",
+                                  self_l1, self_l1_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "self_l2",
+                                  self_l2, self_l2_rate));
     logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "self_l1", self_l1, self_l1_rate));
-    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "self_l2", self_l2, self_l2_rate));
-    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
-      "self_linf", self_linf, self_linf_rate));
+                                  "self_linf", self_linf, self_linf_rate));
 
-    logger.info(convergence_table(SeedType::id_string() +"_dx", dxs,
-      "face_l1", face_l1, face_l1_rate));
-    logger.info(convergence_table(SeedType::id_string() +"_dx", dxs,
-      "face_l2", face_l2, face_l2_rate));
-    logger.info(convergence_table(SeedType::id_string() +"_dx", dxs,
-      "face_linf", face_linf, face_linf_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_l1",
+                                  face_l1, face_l1_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs, "face_l2",
+                                  face_l2, face_l2_rate));
+    logger.info(convergence_table(SeedType::id_string() + "_dx", dxs,
+                                  "face_linf", face_linf, face_linf_rate));
 
     run_timer.stop();
     logger.info("tests complete : {}", run_timer.info_string());
   }
 };
 
-
 TEST_CASE("planar_bivar", "") {
   const int start_depth = 2;
-  int end_depth = 5;
+  int end_depth         = 5;
 
   typedef SphericalRigidRotation velocity_type;
   SECTION("icostri_sphere") {
     typedef IcosTriSphereSeed seed_type;
 
-    SSRFPackConvergenceTest<velocity_type,seed_type>
-      ssrfpack_test(start_depth, end_depth);
+    SSRFPackConvergenceTest<velocity_type, seed_type> ssrfpack_test(start_depth,
+                                                                    end_depth);
     ssrfpack_test.run();
-
   }
   SECTION("cubed_sphere") {
     typedef CubedSphereSeed seed_type;
-    SSRFPackConvergenceTest<velocity_type,seed_type>
-      ssrfpack_test(start_depth, end_depth);
+    SSRFPackConvergenceTest<velocity_type, seed_type> ssrfpack_test(start_depth,
+                                                                    end_depth);
     ssrfpack_test.run();
   }
 }
