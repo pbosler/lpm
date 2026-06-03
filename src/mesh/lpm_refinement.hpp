@@ -6,6 +6,7 @@
 #include "util/lpm_string_util.hpp"
 
 #include <algorithm>
+#include <numeric>
 
 namespace Lpm {
 
