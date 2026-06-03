@@ -208,6 +208,11 @@ TEST_CASE("lpm_geometry", "") {
       LPM_KERNEL_REQUIRE(FloatingPoint<Real>::equiv(res(), 2*constants::PI/3, constants::ZERO_TOL));
     });
 
+    Real ones[3] = {1.0, 1.0, 1.0};
+    SphereGeometry::normalize(ones);
+    REQUIRE( SphereGeometry::norm2(ones) == Approx(1.0));
+    REQUIRE( SphereGeometry::mag(ones) == Approx(1.0) );
+
 
   } // END SPHERICAL TESTS
 
