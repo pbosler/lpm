@@ -177,15 +177,20 @@ Compadre::GMLS sphere_scalar_gmls(
   constexpr auto sampling_functional = Compadre::PointSample;
   constexpr auto data_functional = sampling_functional;
 
+  auto logger = lpm_logger();
+
   Compadre::GMLS result(reconstruction_space, sampling_functional,
                         data_functional, params.samples_order,
                         SphereGeometry::ndim, solver_type, problem_type,
                         constraint_type, params.manifold_order);
+//   logger->debug("GMLS constructor returned.");
 
   result.setProblemData(nn.neighbor_lists, src_crds, tgt_crds,
                         nn.neighborhood_radii);
+//   logger->debug("GMLS setProblemData returned.");
 
   result.addTargets(ops);
+//   logger->debug("GMLS addTargets returned.");
 
   constexpr auto weighting_type = Compadre::WeightingFunctionType::Power;
   result.setWeightingType(weighting_type);
@@ -193,11 +198,14 @@ Compadre::GMLS sphere_scalar_gmls(
 
   constexpr bool use_to_orient = true;
   result.setReferenceOutwardNormalDirection(tgt_crds, use_to_orient);
+//   logger->debug("GMLS setReferenceOutwardNormalDirection returned.");
 
   result.setCurvatureWeightingType(weighting_type);
   result.setCurvatureWeightingParameter(params.manifold_weight_pwr);
 
   result.generateAlphas();
+  Kokkos::fence();
+//   logger->debug("GMLS generateAlphas returned.");
 
   return result;
 }

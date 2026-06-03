@@ -74,6 +74,8 @@ int main(int argc, char* argv[]) {
   const Int nlon = input.get_option("nlon").get_int();
   const Int gmls_order = input.get_option("gmls_interpolation_order").get_int();
   gmls::Params gmls_params(gmls_order);
+  gmls_params.manifold_order = 2;
+  gmls_params.eps_multiplier = 2.2;
   const Real Omega = input.get_option("omega").get_real();
 
   auto sphere = std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params, Omega);
@@ -88,12 +90,14 @@ int main(int argc, char* argv[]) {
   const Real F0 = input.get_option("forcing_F0").get_real();
   const PolarVortexParams pv_params(zeta0_max, zeta0_b, tfull, tend, F0);
 //   JM86PolarVortex vorticity(pv_params);
+  JM86PolarVortex vorticity;
 
-  constexpr Real vorticity_strength = 4*constants::PI;
-  constexpr Real vorticity_b = 4.0;
-  constexpr Real vorticity_lon = 0;
-  constexpr Real vorticity_lat = 0.5*constants::PI;
-  GaussianVortexSphere vorticity(vorticity_strength, vorticity_b, vorticity_lon, vorticity_lat);
+//   constexpr Real vorticity_strength = 4*constants::PI;
+//   constexpr Real vorticity_b = 4.0;
+//   constexpr Real vorticity_lon = 0;
+//   constexpr Real vorticity_lat = 0.5*constants::PI;
+//   GaussianVortexSphere vorticity(vorticity_strength, vorticity_b, vorticity_lon, vorticity_lat);
+
 
   sphere->init_vorticity(vorticity);
   const Real total_vort_0 = sphere->total_vorticity();
@@ -105,7 +109,7 @@ int main(int argc, char* argv[]) {
   auto rel_vort_range = sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
   logger.info("uniform mesh has active vorticity (min, max) = ({}, {}), for max. circulation of appx. {}, gauss.const = {}",
     rel_vort_range.first, rel_vort_range.second, rel_vort_range.second * sphere->mesh.avg_face_area(), vorticity.gauss_const);
-  rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.n_faces_host());
+  rel_vort_range = sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
   logger.debug("uniform mesh has passive vorticity (min, max) = ({}, {})",
     rel_vort_range.first, rel_vort_range.second);
 
@@ -248,9 +252,7 @@ int main(int argc, char* argv[]) {
     /**
       step forward
     */
-    logger.debug("step forward");
     sphere->advance_timestep(*solver);
-    logger.debug("step completed.");
 
     time[t_idx+1] = (t_idx+1) * dt;
     ftle_max[t_idx+1] = max_ftle;

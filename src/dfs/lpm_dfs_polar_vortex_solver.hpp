@@ -71,8 +71,8 @@ class DFSPolarVortexRK4 {
       rel_vort_particles4("rel_vort_particels_stage4", sph.gathered_mesh->n()),
       rel_vort_particles_work("rel_vort_particles_work", sph.gathered_mesh->n()),
       vel_particles("velocity_particles_stage2", sph.gathered_mesh->n()),
-      sphere(sph),
-      forcing(pv_params)
+      sphere(sph)
+//       forcing(pv_params)
       {}
 
     void advance_timestep();

@@ -346,7 +346,7 @@ struct SphereGeometry {
   \param v view of a position vector v = [v0,v1,v2]
   */
   template <typename V>
-  KOKKOS_INLINE_FUNCTION static void scale(const Real& a, V v) {
+  KOKKOS_INLINE_FUNCTION static void scale(const Real& a, V& v) {
     v[0] *= a;
     v[1] *= a;
     v[2] *= a;
@@ -449,7 +449,7 @@ struct SphereGeometry {
     \param v view of a position vector v = [v0,v1,v2]
   */
   template <typename V>
-  KOKKOS_INLINE_FUNCTION static void normalize(V v) {
+  KOKKOS_INLINE_FUNCTION static void normalize(V& v) {
     scale(1.0 / mag(v), v);
   }
 
