@@ -258,13 +258,12 @@ struct JM86Forcing {
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_bprime(const Real theta) const {
+    // b = r exp(1-r), r = tan^2(b0)/tan^2(theta); dr/dtheta = -2 r / (sin cos).
+    // Zero for theta < 0, consistent with forcing_b.
     const Real tan_ratio = square(tan(b0)) *
       FloatingPoint<Real>::safe_denominator(square(tan(theta)));
-    const Real expfac = -2*exp(1-tan_ratio) * (1-tan_ratio);
-    const Real prefac = square(tan(b0)) *
-      FloatingPoint<Real>::safe_denominator(square(cos(theta))) *
-      FloatingPoint<Real>::safe_denominator(tan(theta));
-    return prefac * expfac;
+    return theta >= 0 ? -2 * tan_ratio * (1 - tan_ratio) * exp(1 - tan_ratio) *
+      FloatingPoint<Real>::safe_denominator(sin(theta) * cos(theta)) : 0;
   }
 
 
