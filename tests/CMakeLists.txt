@@ -99,6 +99,8 @@ CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp )
 
 CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp LIBS FFTW3::Double FFTW3::Float finufft::finufft)
 
+CreateUnitTest(dfs_polar_vortex_stability_test lpm_dfs_polar_vortex_stability_test.cpp LIBS FFTW3::Double FFTW3::Float finufft::finufft)
+
 endif()
 
 #ADD_EXECUTABLE(lpmKernelTest LpmKernelTest.cpp)
