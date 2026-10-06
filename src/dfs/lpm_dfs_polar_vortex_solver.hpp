@@ -54,6 +54,7 @@ class DFSPolarVortexRK4 {
     DFSPolarVortexRK4(const Real timestep, DFSBVE<SeedType>& sph, const Int t_idx, const PolarVortexParams& pv_params) :
       dt(timestep),
       Omega(sph.Omega()),
+      t(t_idx * timestep),
       t_idx(t_idx),
       xyz_particles(sph.gathered_mesh->phys_crds),
       rel_vort_particles(sph.gathered_mesh->scalar_fields.at("relative_vorticity")),

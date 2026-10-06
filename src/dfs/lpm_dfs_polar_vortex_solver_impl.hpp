@@ -57,7 +57,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
 
   // input for stage 2
   //    rel_vort_particles_work = rel_vort_particles + 0.5 * rel_vort_particles1
-  KokkosBlas::update(1.0, rel_vort_particles, 0.5, rel_vort_particles, 0, rel_vort_particles_work);
+  KokkosBlas::update(1.0, rel_vort_particles, 0.5, rel_vort_particles1, 0, rel_vort_particles_work);
   //    xyz_particles_work = xyz_particles + 0.5 * xyz_particles1
   KokkosBlas::update(1.0, xyz_particles, 0.5, xyz_particles1, 0, xyz_particles_work);
   normalize_coordinates(xyz_particles_work);
@@ -139,7 +139,7 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
   sphere.rel_vort_grid.view = rel_vort_grid;
 
-  t = (t_idx++) * dt;
+  t = (++t_idx) * dt;
 //   logger->debug("advance_timestep: exiting");
 }
 
