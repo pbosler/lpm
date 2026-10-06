@@ -241,6 +241,9 @@ void DFSPolarVortexRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
 //   logger->debug("interpolate_vorticity_from_mesh_to_grid: gmls solve ready.");
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
+  // This in-place Compadre overload appears to accumulate into its output view
+  // (the allocating overload used elsewhere starts from zero), so clear it first.
+  Kokkos::deep_copy(rel_vort_grid, 0.0);
   rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<scalar_view_type, scalar_view_type>(
     rel_vort_grid, null_view,
     rel_vort_mesh, Compadre::ScalarPointEvaluation, Compadre::PointSample);
