@@ -29,7 +29,7 @@ using namespace Lpm::DFS;
   and then crashes in the GMLS vorticity-to-grid interpolation, so this test is
   EXPECTED TO FAIL until that instability is fixed.
 */
-TEST_CASE("dfs_polar_vortex_stability", "[dfs]") {
+static void run_polar_vortex_stability(const bool use_invariant) {
   Comm comm;
   Logger<> logger("dfs_polar_vortex_stability", Log::level::info, comm);
 
@@ -58,15 +58,32 @@ TEST_CASE("dfs_polar_vortex_stability", "[dfs]") {
   sphere->init_velocity_from_vorticity();
 
   DFSPolarVortexRK4<SeedType> solver(dt, *sphere, 0, pv_params);
+  solver.use_invariant_vorticity = use_invariant;
+  solver.record_invariant();
 
   for (Int n = 0; n < nsteps; ++n) {
     sphere->advance_timestep(solver);
     const auto range = sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
-    INFO("step " << n + 1 << ", t = " << (n + 1) * dt << ", rel. vort. range = (" << range.first
-                 << ", " << range.second << ")");
+    // q = zeta + 2 Omega z + F should be conserved; its drift and max |u| separate
+    // a tendency/ODE problem (q drifts) from a velocity blow-up (|u| grows, q does not).
+    const Real q_drift = solver.max_invariant_drift();
+    const Real umax = solver.max_velocity();
+    logger.info("invariant={} step {} t={} zeta range=({}, {}) max|u|={} max|q-q0|={}",
+      use_invariant, n + 1, (n + 1) * dt, range.first, range.second, umax, q_drift);
+    INFO("invariant = " << use_invariant << ", step " << n + 1 << ", t = " << (n + 1) * dt
+                        << ", rel. vort. range = (" << range.first << ", " << range.second
+                        << "), max|u| = " << umax << ", max|q - q0| = " << q_drift);
     REQUIRE(std::isfinite(range.first));
     REQUIRE(std::isfinite(range.second));
     REQUIRE(std::abs(range.first) < vorticity_bound);
     REQUIRE(std::abs(range.second) < vorticity_bound);
   }
+}
+
+TEST_CASE("dfs_polar_vortex_stability", "[dfs]") {
+  run_polar_vortex_stability(false);
+}
+
+TEST_CASE("dfs_polar_vortex_stability_invariant_pv", "[dfs]") {
+  run_polar_vortex_stability(true);
 }
