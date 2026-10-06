@@ -78,7 +78,26 @@ class DFSPolarVortexRK4 {
 
     void advance_timestep();
 
+    /** Invariant potential vorticity formulation (as in the Fortran thesis code).
+
+      q = zeta + 2*Omega*z + F(x,t) is materially conserved. When enabled, zeta at
+      every RK stage and after every step is set to q - 2*Omega*z - F(x,t) instead of
+      being time-integrated with dzeta/dt = -(2*Omega*w + DF/Dt).
+    */
+    bool use_invariant_vorticity = false;
+
+    /// Store q from the current particle state; call once before the first step.
+    void record_invariant();
+
+    /// max_i |zeta_i + 2*Omega*z_i + F(x_i,t) - q_i| (needs record_invariant()).
+    Real max_invariant_drift() const;
+
+    /// max_i |velocity_i|
+    Real max_velocity() const;
+
   protected:
+    scalar_view_type pv_invariant;
+
     crd_view xyz_particles1;
     crd_view xyz_particles2;
     crd_view xyz_particles3;

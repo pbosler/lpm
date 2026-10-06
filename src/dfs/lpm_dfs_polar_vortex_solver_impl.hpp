@@ -38,7 +38,78 @@ struct RK4Update {
     vort(i) += sixth*(vort1(i)+vort4(i)) + third*(vort2(i) + vort3(i));
   }
 };
+
+/// zeta = q - 2*Omega*z - F(x,t)
+struct InvariantVorticity {
+  using crd_view = typename SphereGeometry::crd_view_type;
+
+  scalar_view_type zeta;
+  scalar_view_type q;
+  crd_view x;
+  Real Omega;
+  Real t;
+  JM86Forcing forcing;
+
+  InvariantVorticity(scalar_view_type zeta_out, const scalar_view_type& q_in,
+    const crd_view& xyz, const Real omega, const Real time, const JM86Forcing& f) :
+    zeta(zeta_out), q(q_in), x(xyz), Omega(omega), t(time), forcing(f) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator() (const Index& i) const {
+    const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+    zeta(i) = q(i) - 2 * Omega * x(i,2) - forcing(xi, t);
+  }
+};
 } // namespace impl
+
+template <typename SeedType>
+void DFSPolarVortexRK4<SeedType>::record_invariant() {
+  if (pv_invariant.extent(0) != rel_vort_particles.extent(0)) {
+    pv_invariant = scalar_view_type("pv_invariant", rel_vort_particles.extent(0));
+  }
+  auto q = pv_invariant;
+  const auto zeta = rel_vort_particles;
+  const auto x = xyz_particles;
+  const Real om = Omega;
+  const Real time = t;
+  const JM86Forcing f = forcing;
+  Kokkos::parallel_for("record invariant", rel_vort_particles.extent(0),
+    KOKKOS_LAMBDA (const Index i) {
+      const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+      q(i) = zeta(i) + 2 * om * x(i,2) + f(xi, time);
+    });
+  Kokkos::fence();
+}
+
+template <typename SeedType>
+Real DFSPolarVortexRK4<SeedType>::max_invariant_drift() const {
+  Real result = 0;
+  const auto q = pv_invariant;
+  const auto zeta = rel_vort_particles;
+  const auto x = xyz_particles;
+  const Real om = Omega;
+  const Real time = t;
+  const JM86Forcing f = forcing;
+  Kokkos::parallel_reduce("invariant drift", rel_vort_particles.extent(0),
+    KOKKOS_LAMBDA (const Index i, Real& m) {
+      const auto xi = Kokkos::subview(x, i, Kokkos::ALL);
+      const Real d = fabs(zeta(i) + 2 * om * x(i,2) + f(xi, time) - q(i));
+      m = (d > m ? d : m);
+    }, Kokkos::Max<Real>(result));
+  return result;
+}
+
+template <typename SeedType>
+Real DFSPolarVortexRK4<SeedType>::max_velocity() const {
+  Real result = 0;
+  const auto u = velocity_particles;
+  Kokkos::parallel_reduce("max velocity", velocity_particles.extent(0),
+    KOKKOS_LAMBDA (const Index i, Real& m) {
+      const Real mag = sqrt(u(i,0)*u(i,0) + u(i,1)*u(i,1) + u(i,2)*u(i,2));
+      m = (mag > m ? mag : m);
+    }, Kokkos::Max<Real>(result));
+  return result;
+}
 
 template <typename SeedType>
 void DFSPolarVortexRK4<SeedType>::advance_timestep() {
@@ -85,6 +156,10 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   KokkosBlas::update(1.0, rel_vort_particles, 0.5, rel_vort_particles2, 0.0, rel_vort_particles_work);
   KokkosBlas::update(1.0, xyz_particles, 0.5, xyz_particles2, 0.0, xyz_particles_work);
   normalize_coordinates(xyz_particles_work);
+  if (use_invariant_vorticity) {
+    Kokkos::parallel_for("rk4 stage 3 invariant vorticity", rel_vort_particles.extent(0),
+      impl::InvariantVorticity(rel_vort_particles_work, pv_invariant, xyz_particles_work, Omega, t+0.5*dt, forcing));
+  }
 
   // rk stage 3: update vorticity on dfs grid
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
@@ -102,6 +177,10 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
   KokkosBlas::update(1.0, rel_vort_particles, 1.0, rel_vort_particles3, 0.0, rel_vort_particles_work);
   KokkosBlas::update(1.0, xyz_particles, 1.0, xyz_particles3, 0.0, xyz_particles_work);
   normalize_coordinates(xyz_particles_work);
+  if (use_invariant_vorticity) {
+    Kokkos::parallel_for("rk4 stage 4 invariant vorticity", rel_vort_particles.extent(0),
+      impl::InvariantVorticity(rel_vort_particles_work, pv_invariant, xyz_particles_work, Omega, t+dt, forcing));
+  }
 //   logger->debug("advance_timestep: stage 4 input ready");
 
 //   Kokkos::parallel_reduce(rel_vort_particles_work.extent(0),
@@ -135,6 +214,10 @@ void DFSPolarVortexRK4<SeedType>::advance_timestep() {
 
   // set up for next time step
   normalize_coordinates(xyz_particles);
+  if (use_invariant_vorticity) {
+    Kokkos::parallel_for("invariant vorticity update", rel_vort_particles.extent(0),
+      impl::InvariantVorticity(rel_vort_particles, pv_invariant, xyz_particles, Omega, t+dt, forcing));
+  }
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles, xyz_grid, rel_vort_particles);
   dfs_vort_2_velocity(xyz_particles, rel_vort_grid, velocity_particles);
   sphere.rel_vort_grid.view = rel_vort_grid;
@@ -158,6 +241,9 @@ void DFSPolarVortexRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
 //   logger->debug("interpolate_vorticity_from_mesh_to_grid: gmls solve ready.");
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
+  // This in-place Compadre overload appears to accumulate into its output view
+  // (the allocating overload used elsewhere starts from zero), so clear it first.
+  Kokkos::deep_copy(rel_vort_grid, 0.0);
   rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<scalar_view_type, scalar_view_type>(
     rel_vort_grid, null_view,
     rel_vort_mesh, Compadre::ScalarPointEvaluation, Compadre::PointSample);
