@@ -166,7 +166,9 @@ struct JM86PolarVortex {
     const Real coeff = -constants::PI * (cos(lat) * (-2*square(b) *
       ( cos(theta0)*sin(lat) - sin(theta0)*cos(lat) )) - sin(lat));
     const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(lat)-sin(theta0)*sin(lat));
-    return coeff * exp(exp_arg);
+    // The sphere's Poisson problem requires zero-mean vorticity; the unshifted
+    // field has mean ~ -0.33, so gauss_const (set from the total vorticity) must be removed.
+    return coeff * exp(exp_arg) - gauss_const;
   }
 
   template <typename PtType>
