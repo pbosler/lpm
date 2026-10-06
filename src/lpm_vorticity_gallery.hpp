@@ -189,7 +189,11 @@ struct JM86Forcing {
   static constexpr Real tfull = 4.0;
   static constexpr Real tend = 15.0;
   static constexpr Real tstar = tend - tfull;
-  static constexpr Real F0 = 5*constants::PI/6;
+  /// Nondimensional background rotation rate used by the polar vortex examples.
+  static constexpr Real default_omega = 2 * constants::PI;
+  /// Maximum forcing strength: 0.3 x planetary vorticity at the pole (2 Omega),
+  /// Juckes and McIntyre (1986).
+  static constexpr Real F0 = 0.3 * 2 * default_omega;
 
 //   KOKKOS_INLINE_FUNCTION
 //   JM86Forcing() = delete;
