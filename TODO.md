@@ -47,3 +47,5 @@ new snake_case style (with `lpm_foo.hpp` / `lpm_foo.cpp` / `lpm_foo_impl.hpp`
 split) or deleted if obsolete. See CLAUDE.md's "Two file-naming generations"
 note for context. `src/CMakeLists.txt` is the source of truth for which legacy
 files are still built into `liblpm`.
+
+Signed commits.
