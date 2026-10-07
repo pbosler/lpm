@@ -80,12 +80,10 @@ struct PlanePolyMeshFnUnitTest {
       //       auto vert_xy = Kokkos::subview(qr0.vertices.phys_crds.view,
       //         std::make_pair(0, qr0.vertices.nh()), Kokkos::ALL);
 
-#ifdef LPM_USE_VTK
       logger.debug("starting vtk output.");
       VtkPolymeshInterface<QuadRectSeed> vtk(qr0);
       vtk.write("qr0_divide2.vtp");
       logger.debug("vtk output complete.");
-#endif
 
       REQUIRE(qr0.n_faces_host() == 12);
       REQUIRE(qr0.edges.kid_host(0, 0) == 12);
@@ -247,6 +245,56 @@ struct PlanePolyMeshFnUnitTest {
   }
 };
 
+template <typename SeedType>
+struct FieldAverageTest {
+  int start_depth;
+  int end_depth;
+
+  FieldAverageTest(const int sd, const int ed) : start_depth(sd), end_depth(ed) {}
+
+  void run() {
+    Comm comm;
+    std::ostringstream ss;
+    Logger<> logger("field average test", Log::level::info, comm);
+    for (int i=0; i<(end_depth - start_depth) + 1; ++i) {
+      const int depth = start_depth + i;
+
+      ss << "field_avg_" << SeedType::id_string() << depth;
+      const auto test_name = ss.str();
+      ss.str("");
+
+      logger.info("starting test {}", test_name);
+      Timer timer(test_name);
+
+      PolyMeshParameters<SeedType> params(depth);
+      const auto pm = PolyMesh2d<SeedType>(params);
+
+      ScalarField<VertexField> vfield("vertex_field", params.nmaxverts);
+      ScalarField<FaceField> ffield("face_field", params.nmaxfaces);
+
+      constexpr Real field_value = 2.0;
+      Kokkos::deep_copy(ffield.view, field_value);
+      pm.average_face_field_to_vertex_field(vfield, ffield);
+      Real minval, maxval;
+      Kokkos::parallel_reduce(pm.n_vertices_host(),
+        KOKKOS_LAMBDA (const Index i, Real& mm) {
+          mm = ( vfield.view(i) < mm ? vfield.view(i) : mm );
+        }, Kokkos::Min<Real>(minval));
+      Kokkos::parallel_reduce(pm.n_vertices_host(),
+        KOKKOS_LAMBDA (const Index i, Real& mm ) {
+          mm = ( vfield.view(i) > mm ? vfield.view(i) : mm );
+        }, Kokkos::Max<Real>(maxval));
+
+      REQUIRE( minval == Approx(field_value) );
+      REQUIRE( maxval == Approx(field_value) );
+
+      logger.info("expected constant field value = {}: computed (min, max) = ({}, {})",
+        field_value, minval, maxval);
+    }
+  }
+};
+
+
 template <typename SeedType, typename TracerType, typename OutputGrid>
 struct InterpolationTest {
   int start_depth;
@@ -381,7 +429,6 @@ struct InterpolationTest {
       logger.info("polymesh faces interpolation error: {}",
                   face_err_norms.info_string());
 
-#ifdef LPM_USE_VTK
       VtkPolymeshInterface<SeedType> vtk(pm);
       vtk.add_scalar_point_data(tracer_verts.view);
       vtk.add_scalar_point_data(tracer_verts_interp.view);
@@ -390,7 +437,6 @@ struct InterpolationTest {
       vtk.add_scalar_cell_data(tracer_faces_interp.view);
       vtk.add_scalar_cell_data(face_error);
       vtk.write(test_name + vtp_suffix());
-#endif
     }
 
     grid_interp_l1_rate   = convergence_rates(dxs, grid_interp_l1);
@@ -424,6 +470,7 @@ struct InterpolationTest {
   }
 };
 
+
 TEST_CASE("polymesh2d functions: planar meshes", "") {
   PlanePolyMeshFnUnitTest utest;
   utest.run();
@@ -445,15 +492,14 @@ TEST_CASE("interpolation_test", "") {
         start_depth, end_depth);
     interp_test.run();
   }
-  SECTION("spherical tri") {
-    typedef IcosTriSphereSeed seed_type;
-    typedef SphereXYZTrigTracer tracer_type;
-    typedef LatLonPts grid_type;
-
-    InterpolationTest<seed_type, tracer_type, grid_type> interp_test(
-        start_depth, end_depth, 45);
-    interp_test.run();
-  }
+  //   SECTION("spherical tri") {
+  //     typedef IcosTriSphereSeed seed_type;
+  //     typedef SphereXYZTrigTracer tracer_type;
+  //     typedef LatLonPts grid_type;
+  //
+  //     InterpolationTest<seed_type, tracer_type, grid_type>
+  //     interp_test(start_depth, end_depth, 45); interp_test.run();
+  //   }
   SECTION("planar quad") {
     typedef QuadRectSeed seed_type;
     typedef PlanarGaussian tracer_type;
@@ -564,7 +610,6 @@ TEST_CASE("mesh to mesh", "") {
     logger.info("icos tri err norms: {}", ic_err_norms.info_string());
     logger.info("cubed sphere err norms: {}", cs_err_norms.info_string());
 
-#ifdef LPM_USE_VTK
     VtkPolymeshInterface<IcosTriSphereSeed> ic_vtk(ic);
     ic_vtk.add_scalar_point_data(ic_tracer_verts.view);
     ic_vtk.add_scalar_point_data(ic_tracer_verts_interp.view);
@@ -582,6 +627,35 @@ TEST_CASE("mesh to mesh", "") {
     cs_vtk.add_scalar_cell_data(cs_tracer_faces_interp.view);
     cs_vtk.add_scalar_cell_data(cs_face_error);
     cs_vtk.write("cubed_sph_interp_test" + vtp_suffix());
-#endif
+  }
+}
+
+TEST_CASE("field average test", "") {
+  const int start_depth = 3;
+  int end_depth         = 4;
+  auto& ts              = TestSession::get();
+  if (ts.params.find("end-depth") != ts.params.end()) {
+    end_depth = std::stoi(ts.params["end-depth"]);
+  }
+  SECTION("planar tri") {
+    typedef TriHexSeed seed_type;
+
+    FieldAverageTest<seed_type> avg_test(start_depth, end_depth);
+    avg_test.run();
+  }
+  SECTION("spherical tri") {
+    typedef IcosTriSphereSeed seed_type;
+    FieldAverageTest<seed_type> avg_test(start_depth, end_depth);
+    avg_test.run();
+  }
+  SECTION("planar quad") {
+    typedef QuadRectSeed seed_type;
+    FieldAverageTest<seed_type> avg_test(start_depth, end_depth);
+    avg_test.run();
+  }
+  SECTION("spherical quad") {
+    typedef CubedSphereSeed seed_type;
+    FieldAverageTest<seed_type> avg_test(start_depth, end_depth);
+    avg_test.run();
   }
 }

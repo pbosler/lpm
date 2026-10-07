@@ -119,6 +119,8 @@ TEST_CASE("compadre_unit_tests", "") {
     auto src_crds   = quad_plane.get_leaf_face_crds();
     auto h_src_crds = Kokkos::create_mirror_view(src_crds);
     auto src_data   = quad_plane.faces.leaf_field_vals(gaussian_faces);
+
+    REQUIRE(src_data.extent(0) == src_crds.extent(0));
     Kokkos::deep_copy(h_src_crds, src_crds);
 
     PlanarGrid grid(input.nunif, -radius, radius);
@@ -137,26 +139,31 @@ TEST_CASE("compadre_unit_tests", "") {
         Compadre::ScalarPointEvaluation,
         Compadre::LaplacianOfScalarPointEvaluation};
 
+    logger.debug("setting up faces -> grid GMLS");
     auto scalar_gmls = gmls::plane_scalar_gmls(
         src_crds, grid.pts, face_neighbors, gmls_params, gmls_ops);
 
+    logger.debug("setting up faces -> vertices GMLS");
     auto mesh_gmls = gmls::plane_scalar_gmls(src_crds, vcrds, mesh_neighbors,
                                              gmls_params, gmls_ops);
 
     Compadre::Evaluator gmls_eval_scalar(&scalar_gmls);
     Compadre::Evaluator gmls_mesh_eval(&mesh_gmls);
 
+    logger.debug("evaluating faces -> grid GMLS, interpolation");
     auto gaussian_gmls =
         gmls_eval_scalar
             .applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(
                 src_data, Compadre::ScalarPointEvaluation,
                 Compadre::PointSample);
+    logger.debug("evaluating faces -> grid GMLS, laplacian");
     auto lap_gaussian_gmls =
         gmls_eval_scalar
             .applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(
                 src_data, Compadre::LaplacianOfScalarPointEvaluation,
                 Compadre::PointSample);
 
+    logger.debug("evaluating faces -> verts GMLS");
     auto gaussian_gmls_verts =
         gmls_mesh_eval
             .applyAlphasToDataAllComponentsAllTargetSites<Real*, DevMemory>(

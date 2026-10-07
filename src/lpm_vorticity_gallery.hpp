@@ -101,6 +101,199 @@ struct GaussianVortexSphere {
   inline std::string name() const { return "SphericalGaussianVortex"; }
 };
 
+struct PolarVortexParams {
+  Real vortex_strength; /// maximum strength of polar vortex
+  Real vortex_shape_b; /// vortex shape parameter
+  Real forcing_tfull; /// time of full forcing onset
+  Real forcing_tend; /// end time of forcing
+  Real forcing_F0; /// maximum strength of forcing
+
+  KOKKOS_INLINE_FUNCTION
+  PolarVortexParams(const Real zeta0, const Real zetab, const Real tfull, const Real tend, const Real F0) :
+    vortex_strength(zeta0), vortex_shape_b(zetab),
+    forcing_tfull(tfull), forcing_tend(tend), forcing_F0(F0)
+    {
+      LPM_KERNEL_ASSERT(zeta0 > 0);
+      LPM_KERNEL_ASSERT(zetab >= 1);
+      LPM_KERNEL_ASSERT(tfull >= 0);
+      LPM_KERNEL_ASSERT(tend > tfull);
+      LPM_KERNEL_ASSERT(F0 >= 0);
+    }
+};
+
+struct JM86PolarVortex {
+  typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
+  Real gauss_const;
+  Real strength;
+  Real b;
+  Real theta0;
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex(const JM86PolarVortex& other) = default;
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex(const PolarVortexParams& params) :
+    gauss_const(0),
+    strength(params.vortex_strength),
+    b(params.vortex_shape_b) {}
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex(const Real strength, const Real b, const Real theta0) :
+    gauss_const(0),
+    strength(strength),
+    b(b),
+    theta0(theta0) {}
+
+  KOKKOS_INLINE_FUNCTION
+  JM86PolarVortex() : gauss_const(0), strength(1), b(1.5), theta0(15*constants::PI/32) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void set_gauss_const(const Real vorticity_sum) {
+    gauss_const = vorticity_sum / (4 * constants::PI );
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real operator()(const Real& x, const Real& y, const Real& z) const {
+    const Real xyz[3] = {x,y,z};
+//     const Real theta = SphereGeometry::latitude(xyz);
+//     const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(theta)-sin(theta0)*sin(theta));
+//     const Real exp_mul = cos(theta)*(2*square(b)*(cos(theta0)*sin(theta)-sin(theta0)*cos(theta)) + sin(theta));
+//     const Real zeta = strength*exp_mul*exp(exp_arg) - gauss_const;
+//     return zeta;
+//       return strength * exp(-2*square(b)*(1-z));
+    const Real lat = SphereGeometry::latitude(xyz);
+    const Real coeff = -constants::PI * (cos(lat) * (-2*square(b) *
+      ( cos(theta0)*sin(lat) - sin(theta0)*cos(lat) )) - sin(lat));
+    const Real exp_arg = -2*square(b)*(1-cos(theta0)*cos(lat)-sin(theta0)*sin(lat));
+    // The sphere's Poisson problem requires zero-mean vorticity; the unshifted
+    // field has mean ~ -0.33, so gauss_const (set from the total vorticity) must be removed.
+    return coeff * exp(exp_arg) - gauss_const;
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION
+  Real operator() (const PtType& xyz) const {
+    const Real zeta = this->operator()(xyz[0], xyz[1],xyz[2]);
+    return zeta;
+  }
+
+  Real operator()(const Real& x, const Real& y) const { return 0; }
+
+  inline std::string name() const { return "JM86PolarVortex"; }
+};
+
+
+struct JM86Forcing {
+  typedef SphereGeometry geo;
+  static constexpr Real b0 = constants::PI/3;
+
+  static constexpr Real tfull = 4.0;
+  static constexpr Real tend = 15.0;
+  static constexpr Real tstar = tend - tfull;
+  /// Nondimensional background rotation rate used by the polar vortex examples.
+  static constexpr Real default_omega = 2 * constants::PI;
+  /// Maximum forcing strength: 0.3 x planetary vorticity at the pole (2 Omega),
+  /// Juckes and McIntyre (1986).
+  static constexpr Real F0 = 0.3 * 2 * default_omega;
+
+//   KOKKOS_INLINE_FUNCTION
+//   JM86Forcing() = delete;
+//
+//   KOKKOS_INLINE_FUNCTION
+//   JM86Forcing(const JM86Forcing& other) : tfull(other.tfull), tend(other.tend), tstar(other.tstar), F0(other.F0) {}
+//
+//   KOKKOS_INLINE_FUNCTION
+//   JM86Forcing(const PolarVortexParams& params) :
+//     tfull(params.forcing_tfull),
+//     tend(params.forcing_tend),
+//     tstar(params.forcing_tfull-params.forcing_tend),
+//     F0(params.forcing_F0) {}
+//
+//   KOKKOS_INLINE_FUNCTION
+//   JM86Forcing(const Real tfull = 4, const Real tend = 15,
+//     const Real F0 = 6*constants::PI/5) :
+//     tfull(tfull), tend(tend), tstar(tend-tfull),
+//     F0(F0) {LPM_KERNEL_ASSERT(tend > tfull);}
+
+  KOKKOS_INLINE_FUNCTION
+  Real forcing_a(const Real t) const {
+    Real result = 0.0;
+    if (t < tfull) {
+      result = square(sin(constants::PI * t / (2*tfull)));
+    }
+    else {
+      if (tfull <= t and t < tstar) {
+        result = 1.0;
+      }
+      else {
+        if (tstar <= t and t < tend) {
+          result = square(sin(constants::PI * (tend - t)/(2*tfull)));
+        }
+      }
+    }
+    return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real forcing_aprime(const Real t) const {
+    Real result = 0.0;
+    if (t < tfull) {
+      result = constants::PI * sin(constants::PI*t/tfull)/(2*tfull);
+    }
+    else {
+      if (tstar <= t and t < tend) {
+        const Real sinarg = constants::PI * (t - tstar)/tfull;
+        result = -constants::PI*sin(sinarg)/(2*tfull);
+      }
+    }
+    return result;
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Real forcing_b(const Real theta) const {
+     // safe_denominator gives a finite (~1/tan^2) factor away from the equator
+     // and -> 0 as theta -> 0, so tan_ratio -> 0 and b -> 0 there (the correct
+     // limit), avoiding the tan(0)=0 division that produced NaN at equatorial
+     // mesh points.
+     const Real tan_ratio = square(tan(b0)) *
+       FloatingPoint<Real>::safe_denominator(square(tan(theta)));
+     const Real exp_factor = exp(1-tan_ratio);
+     return theta >= 0 ? tan_ratio * exp_factor : 0;
+  };
+
+  KOKKOS_INLINE_FUNCTION
+  Real forcing_bprime(const Real theta) const {
+    // b = r exp(1-r), r = tan^2(b0)/tan^2(theta); dr/dtheta = -2 r / (sin cos).
+    // Zero for theta < 0, consistent with forcing_b.
+    const Real tan_ratio = square(tan(b0)) *
+      FloatingPoint<Real>::safe_denominator(square(tan(theta)));
+    return theta >= 0 ? -2 * tan_ratio * (1 - tan_ratio) * exp(1 - tan_ratio) *
+      FloatingPoint<Real>::safe_denominator(sin(theta) * cos(theta)) : 0;
+  }
+
+
+  template <typename XYZType> KOKKOS_INLINE_FUNCTION
+  Real operator() (const XYZType& xyz, const Real t) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    return F0 * forcing_a(t) * forcing_b(theta) * cos(lambda);
+  }
+
+  template <typename XyzType, typename VelType> KOKKOS_INLINE_FUNCTION
+  Real derivative(const XyzType& xyz, const VelType& uvw, const Real t) const {
+    const Real theta = SphereGeometry::latitude(xyz);
+    const Real lambda = SphereGeometry::longitude(xyz);
+    const Real uzonal = -sin(lambda)*uvw[0] + cos(lambda)*uvw[1];
+    const Real vmerid = -sin(theta)*cos(lambda)*uvw[0] - sin(theta)*sin(lambda)*uvw[1] + cos(theta)*uvw[2];
+    const Real partial_t = F0*forcing_aprime(t)*forcing_b(theta)*cos(lambda);
+    const Real udotgrad = F0*forcing_a(t) * (vmerid*forcing_bprime(theta)*cos(lambda) -
+      uzonal*forcing_b(theta)*sin(lambda)*FloatingPoint<Real>::safe_denominator(cos(theta)));
+    return partial_t + udotgrad;
+  }
+};
+
+
 struct RossbyHaurwitz54 {
   typedef SphereGeometry geo;
   static constexpr bool IsVorticity = true;

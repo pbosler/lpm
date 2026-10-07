@@ -116,9 +116,7 @@ struct DFSGrid {
 
   std::string info_string(const int tab_level=0) const;
 
-#ifdef LPM_USE_VTK
   vtkSmartPointer<vtkStructuredGrid> vtk_grid() const;
-#endif
 
   private:
   /**  Pack all Cartesian coordinates into an nlat*nlon x 3 view.

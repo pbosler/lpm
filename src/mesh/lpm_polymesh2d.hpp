@@ -69,6 +69,8 @@ struct PolyMeshParameters {
       : init_depth(depth), amr_buffer(amr_buff), amr_limit(amr_lim), seed(r) {
     seed.set_max_allocations(nmaxverts, nmaxedges, nmaxfaces, depth + amr_buff);
   }
+
+  bool is_adaptive() const {return (amr_limit > 0 and amr_buffer > 0); }
 };
 
 /** @brief Class for organizing a topologically 2D mesh of particles and panels
@@ -199,6 +201,8 @@ class PolyMesh2d {
   typename mask_view_type::HostMirror faces_mask_host() const {
     return faces.leaf_mask_host();
   }
+
+  Real avg_face_area() const;
 
   /** @brief Return a subview of all initialized face areas
 
@@ -770,6 +774,8 @@ class PolyMesh2d {
     }
   }
 
+  Real total_area() const;
+
   /** @brief Interpolates a scalar field using "native" interpolation.
 
   "Native" implies the highest order interpolation degree for each face type,
@@ -808,6 +814,13 @@ class PolyMesh2d {
         });
   }
 
+  /**
+    @brief Defines vertex values of a field as the average of
+    that field's values at adjacent faces
+  */
+  void average_face_field_to_vertex_field(ScalarField<VertexField>& vert_vals,
+    const ScalarField<FaceField>& face_vals) const;
+
   /** @brief @return surface area
 
     @hostfn
@@ -843,11 +856,9 @@ class PolyMesh2d {
   template <typename LoggerType>
   void divide_face(const Index face_idx, LoggerType& logger);
 
-#ifdef LPM_USE_VTK
   /// @brief Construct relevant Vtk objects for visualization of a PolyMesh2d
   /// instance
   virtual void output_vtk(const std::string& fname) const;
-#endif
 
   /// @brief Copies data from host to device
   virtual void update_device() const;
@@ -884,6 +895,7 @@ class PolyMesh2d {
     @param [in] seed MeshSeed instance.
   */
   void seed_init(const MeshSeed<SeedType>& seed);
+
 };
 
 /** @brief Resets faces' physical coordinates to the barycenter of the polygon

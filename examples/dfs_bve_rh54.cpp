@@ -134,12 +134,13 @@ int main(int argc, char* argv[]) {
         std::make_unique<DFS::DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
     const Real ftle_tol = input.get_option("ftle_tol").get_real();
     sphere->init_vorticity(vorticity);
+    sphere->finalize_mesh_to_grid_coupling();
     sphere->init_velocity(velocity);
     /**
       Initial adaptive refinement
     */
     if (amr) {
-      logger.warn("AMR not implemented for DFS yet.");
+      logger.warn("AMR not implemented yet.");
     }
     Lat0 lat0;
     sphere->init_tracer(lat0);
@@ -193,7 +194,7 @@ int main(int argc, char* argv[]) {
 
     std::string amr_str = "_";
     if (amr) {
-      logger.warn("AMR not implemented for DFS yet.");
+      logger.warn("AMR not implemented yet.");
     }
     const std::string resolution_str = std::to_string(mesh_depth) + dt_str(dt);
     std::string remesh_str;
@@ -231,7 +232,7 @@ int main(int argc, char* argv[]) {
     Real tref      = 0;
     Real max_ftle  = 0;
     for (int t_idx = 0; t_idx < nsteps; ++t_idx) {
-      max_ftle = get_max_ftle(sphere->ftle.view, sphere->mesh.faces.mask,
+      max_ftle = get_max_ftle(sphere->ftle_active.view, sphere->mesh.faces.mask,
                               sphere->mesh.n_faces_host());
       logger.debug("t = {}, max_ftle = {}", sphere->t, max_ftle);
 
@@ -272,20 +273,23 @@ int main(int argc, char* argv[]) {
 
         tref   = sphere->t;
         sphere = std::move(new_sphere);
-        sphere->sync_solver_views();
+//         sphere->sync_solver_views();
+        sphere->finalize_mesh_to_grid_coupling();
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
       }
 
       sphere->advance_timestep(*solver);
 
-      Kokkos::parallel_for(
-          sphere->mesh.n_faces_host(),
-          ComputeFTLE<SeedType>(
-              sphere->ftle.view, sphere->mesh.vertices.phys_crds.view,
-              sphere->ref_crds_passive.view, sphere->mesh.faces.phys_crds.view,
-              sphere->ref_crds_active.view, sphere->mesh.faces.verts,
-              sphere->mesh.faces.mask, sphere->t - sphere->t_ref));
+      //       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
+      //         ComputeFTLE<SeedType>(sphere->ftle.view,
+      //           sphere->mesh.vertices.phys_crds.view,
+      //           sphere->ref_crds_passive.view,
+      //           sphere->mesh.faces.phys_crds.view,
+      //           sphere->ref_crds_active.view,
+      //           sphere->mesh.faces.verts,
+      //           sphere->mesh.faces.mask,
+      //           sphere->t - sphere->t_ref));
 
       time[t_idx + 1]                 = (t_idx + 1) * dt;
       ftle_max[t_idx + 1]             = max_ftle;

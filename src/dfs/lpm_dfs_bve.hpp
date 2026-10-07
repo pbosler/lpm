@@ -13,10 +13,9 @@
 #include "mesh/lpm_polymesh2d.hpp"
 #include "mesh/lpm_gather_mesh_data.hpp"
 #include "mesh/lpm_scatter_mesh_data.hpp"
-#ifdef LPM_USE_VTK
 #include "vtk/lpm_vtk_io.hpp"
 #include "dfs_vort2velocity.hpp"
-#endif
+
 
 using namespace SpherePoisson;
 namespace Lpm {
@@ -26,6 +25,7 @@ template <typename SeedType> class DFSRK2; // fwd decl
 template <typename SeedType> class DFSRK3;
 template <typename SeedType> class DFSRK4;
 template <typename SeedType> class DFSRK3;
+template <typename SeedType> class DFSPolarVortexRK4;
 /**  Particle/mesh solver for the barotropic vorticity equation (BVE).
 
   Advection and vorticity are computed on Lagrangian particles.
@@ -45,6 +45,7 @@ class DFSBVE {
   friend class DFSRK3<SeedType>;
   friend class DFSRK4<SeedType>;
   friend class DFSRK3<SeedType>;
+  friend class DFSPolarVortexRK4<SeedType>;
 
   public:
     /// Coriolis
@@ -53,7 +54,11 @@ class DFSBVE {
     Coords<geo> ref_crds_passive;
     Coords<geo> ref_crds_active;
     // FTLE
-    ScalarField<FaceField> ftle;
+    ScalarField<VertexField> ftle_passive;
+    ScalarField<FaceField> ftle_active;
+    ScalarField<VertexField> ftle_grid;
+    ScalarField<VertexField> eigs_product_passive;
+    ScalarField<FaceField> eigs_product_active;
     /// Relative vorticity at passive particles
     ScalarField<VertexField> rel_vort_passive;
     /// Relative vorticity at active particles
@@ -67,11 +72,11 @@ class DFSBVE {
     /// Absolute vorticity on the grid
     ScalarField<VertexField> abs_vort_grid;
     /// Stream function at passive particles
-    ScalarField<VertexField> stream_fn_passive;
+//     ScalarField<VertexField> stream_fn_passive;
     /// Stream function at active particles
-    ScalarField<FaceField> stream_fn_active;
+//     ScalarField<FaceField> stream_fn_active;
     /// Stream function on the grid
-    ScalarField<VertexField> stream_fn_grid;
+//     ScalarField<VertexField> stream_fn_grid;
     /// Velocity at passive particles
     VectorField<SphereGeometry,VertexField> velocity_passive;
     /// Velocity at active particles
@@ -116,10 +121,11 @@ class DFSBVE {
     gmls::Params gmls_params;
     /// GMLS neighborhoods
     gmls::Neighborhoods mesh_to_grid_neighborhoods;
+//     gmls::Neighborhoods face_to_grid_neighborhoods;
 
-    void update_mesh_to_grid_neighborhoods();
-
-
+//     scalar_view_type leaf_ftle_vals;
+//     crd_view leaf_face_crds;
+//     typename crd_view::HostMirror h_leaf_face_crds;
 
   public:
     /** Constructor.
@@ -136,6 +142,10 @@ class DFSBVE {
     template <typename VorticityInitialCondition>
     void init_vorticity(const VorticityInitialCondition& vorticity_fn);
 
+    template <typename VorticityInitialCondition>
+    void init_vorticity_from_lag_crds(const VorticityInitialCondition& vorticity_fn,
+      const Index vert_start_idx, const Index face_start_idx);
+
     template <typename VelocityType>
     void init_velocity(const VelocityType& vel_fn);
 
@@ -146,6 +156,8 @@ class DFSBVE {
     void interpolate_vorticity_from_mesh_to_grid();
     void interpolate_vorticity_from_mesh_to_grid(ScalarField<VertexField>& target);
     void interpolate_velocity_from_grid_to_mesh();
+    void interpolate_ftle_from_mesh_to_grid();
+    void interpolate_ftle_from_mesh_to_grid(ScalarField<VertexField>& target);
 
     void update_grid_absolute_vorticity();
 
@@ -169,16 +181,21 @@ class DFSBVE {
     template <typename SolverType>
     void advance_timestep(SolverType& solver);
 
-    void sync_solver_views();
+//     void sync_solver_views();
 
-#ifdef LPM_USE_VTK
-  void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
+    void update_mesh_to_grid_neighborhoods();
 
-  inline Index vtk_grid_size() {return grid.vtk_size(); }
-#endif
+//     void reset_gather_scatter();
+
+    void write_vtk(const std::string mesh_fname, const std::string grid_fname) const;
+
+    inline Index vtk_grid_size() {return grid.vtk_size(); }
+
+    void finalize_mesh_to_grid_coupling();
+
+    void reset_ftle();
 };
 
-#ifdef LPM_USE_VTK
   /** Return a vtk interface for the DFSBVE's Lagrangian particle/panel mesh
   */
   template <typename SeedType>
@@ -188,10 +205,10 @@ class DFSBVE {
   */
   template <typename SeedType>
   VtkGridInterface vtk_grid_interface(const DFSBVE<SeedType>& dfs_bve);
-#endif
 
-template <typename SeedType>
-CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve, const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
+  template <typename SeedType>
+  CompadreDfsRemesh<SeedType> compadre_dfs_remesh(DFSBVE<SeedType>& new_dfs_bve,
+    const DFSBVE<SeedType>& old_dfs_bve, const gmls::Params& gmls_params);
 
 } // namespace DFS
 } // namespace Lpm
