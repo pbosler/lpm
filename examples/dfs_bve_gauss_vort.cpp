@@ -404,6 +404,7 @@ int main(int argc, char* argv[]) {
 
       if ((t_idx + 1) % write_frequency == 0) {
         auto vtk_mesh = vtk_mesh_interface(*sphere);
+        sphere->update_grid_velocity();
         auto vtk_grid = vtk_grid_interface(*sphere);
         const std::string mesh_vtk_file =
             vtk_file_root + zero_fill_str(vtk_counter) + vtp_suffix();

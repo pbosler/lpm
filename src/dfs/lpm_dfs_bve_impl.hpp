@@ -428,6 +428,11 @@ void DFSBVE<SeedType>::interpolate_velocity_from_grid_to_mesh() {
 }
 
 template <typename SeedType>
+void DFSBVE<SeedType>::update_grid_velocity() {
+  dfs_vort_2_velocity(grid_crds.view, rel_vort_grid.view, velocity_grid.view);
+}
+
+template <typename SeedType>
 void DFSBVE<SeedType>::init_velocity_from_vorticity() {
   const auto rel_vort_dfs = rel_vort_grid.view;
   auto velocity_out = gathered_mesh->vector_fields.at("velocity");
@@ -488,7 +493,6 @@ void DFSBVE<SeedType>::reset_ftle() {
 template <typename SeedType> template <typename SolverType>
 void DFSBVE<SeedType>::advance_timestep(SolverType& solver) {
   solver.advance_timestep();
-  dfs_vort_2_velocity(grid_crds.view, rel_vort_grid.view, velocity_grid.view);
   scatter_mesh->scatter_fields(passive_scalar_fields, active_scalar_fields,
     passive_vector_fields, active_vector_fields);
   scatter_mesh->scatter_phys_crds();

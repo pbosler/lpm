@@ -186,6 +186,7 @@ int main(int argc, char* argv[]) {
         const std::string grid_vtk_file =
             input.vtk_froot + "_" + zero_fill_str(output_ctr) + ".vts";
         auto vtk_mesh = vtk_mesh_interface(sphere);
+        sphere.update_grid_velocity();
         auto vtk_grid = vtk_grid_interface(sphere);
         vtk_mesh.add_scalar_point_data(vert_rel_vort_error.view);
         vtk_mesh.add_scalar_cell_data(face_rel_vort_error.view);
