@@ -186,7 +186,10 @@ struct JM86PolarVortex {
 
 struct JM86Forcing {
   typedef SphereGeometry geo;
-  static constexpr Real b0 = constants::PI/3;
+//   static constexpr Real b0 = constants::PI/3;
+  static constexpr Real b0 = constants::PI/2;
+  static constexpr Real b1 = constants::PI/4;
+  static constexpr Real b2 = constants::PI/3;
 
   static constexpr Real tfull = 4.0;
   static constexpr Real tend = 15.0;
@@ -256,20 +259,28 @@ struct JM86Forcing {
      // and -> 0 as theta -> 0, so tan_ratio -> 0 and b -> 0 there (the correct
      // limit), avoiding the tan(0)=0 division that produced NaN at equatorial
      // mesh points.
-     const Real tan_ratio = square(tan(b0)) *
-       FloatingPoint<Real>::safe_denominator(square(tan(theta)));
-     const Real exp_factor = exp(1-tan_ratio);
-     return theta >= 0 ? tan_ratio * exp_factor : 0;
+//      const Real tan_ratio = square(tan(b0)) *
+//        FloatingPoint<Real>::safe_denominator(square(tan(theta)));
+//      const Real exp_factor = exp(1-tan_ratio);
+//      return theta >= 0 ? tan_ratio * exp_factor : 0;
+      return -2*constants::PI*(theta-b0)*(theta-b1)*exp(-8*square(theta-b2));
   };
 
   KOKKOS_INLINE_FUNCTION
   Real forcing_bprime(const Real theta) const {
-    // b = r exp(1-r), r = tan^2(b0)/tan^2(theta); dr/dtheta = -2 r / (sin cos).
-    // Zero for theta < 0, consistent with forcing_b.
-    const Real tan_ratio = square(tan(b0)) *
-      FloatingPoint<Real>::safe_denominator(square(tan(theta)));
-    return theta >= 0 ? -2 * tan_ratio * (1 - tan_ratio) * exp(1 - tan_ratio) *
-      FloatingPoint<Real>::safe_denominator(sin(theta) * cos(theta)) : 0;
+      const Real thetasq = square(theta);
+      const Real expfac =  2*constants::PI*exp(-8*square(theta-b2));
+      const Real term1 = b1*(1+16*b2*theta - 16*thetasq);
+      const Real term2 = b0*(1-16*b1*(b2-theta)+16*b2*theta-16*thetasq);
+      const Real term3 = -2*(theta + 8*b2*thetasq - 8*theta*thetasq);
+      return expfac * (term1 + term2 + term3);
+
+//     // b = r exp(1-r), r = tan^2(b0)/tan^2(theta); dr/dtheta = -2 r / (sin cos).
+//     // Zero for theta < 0, consistent with forcing_b.
+//     const Real tan_ratio = square(tan(b0)) *
+//       FloatingPoint<Real>::safe_denominator(square(tan(theta)));
+//     return theta >= 0 ? -2 * tan_ratio * (1 - tan_ratio) * exp(1 - tan_ratio) *
+//       FloatingPoint<Real>::safe_denominator(sin(theta) * cos(theta)) : 0;
   }
 
 
