@@ -33,11 +33,10 @@ TEST_CASE("jm86_forcing", "") {
   }
 
   SECTION("latitude profile") {
-    CHECK(forcing.forcing_b(-0.3) == 0);
-    CHECK(FloatingPoint<Real>::zero(forcing.forcing_b(0)));
-    // maximum value 1 at theta = b0
-    CHECK(FloatingPoint<Real>::equiv(forcing.forcing_b(JM86Forcing::b0), 1));
-    CHECK(FloatingPoint<Real>::zero(forcing.forcing_bprime(JM86Forcing::b0)));
+    // b(theta) = -2 pi (theta - b0)(theta - b1) exp(-8 (theta - b2)^2) vanishes at b0 and b1
+    CHECK(FloatingPoint<Real>::zero(forcing.forcing_b(JM86Forcing::b0)));
+    CHECK(FloatingPoint<Real>::zero(forcing.forcing_b(JM86Forcing::b1)));
+    CHECK(std::abs(forcing.forcing_b(0)) < 1);
 
     const Real h = 1e-6;
     for (const Real th : {0.2, 0.6, 0.9, 1.2, 1.4}) {

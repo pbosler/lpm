@@ -151,6 +151,9 @@ class DFSBVE {
 
     void init_velocity_from_vorticity();
 
+    /// Recompute grid velocity from the current grid vorticity; call before grid output.
+    void update_grid_velocity();
+
     Index grid_size() const {return grid.size();}
 
     void interpolate_vorticity_from_mesh_to_grid();
