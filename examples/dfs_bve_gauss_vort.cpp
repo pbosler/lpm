@@ -33,58 +33,13 @@
 using namespace Lpm;
 using namespace Lpm::DFS;
 
-/** Computes vorticity error at each particle and panel.
- */
-template <typename SeedType>
-void compute_vorticity_error(scalar_view_type vert_err,
-                             scalar_view_type face_err,
-                             const DFS::DFSBVE<SeedType>& sph) {
-  Kokkos::parallel_for(
-      "relative vorticity error (vertices)", sph.mesh.n_vertices_host(),
-      RelVortError(vert_err, sph.abs_vort_passive.view,
-                   sph.rel_vort_passive.view, sph.mesh.vertices.phys_crds.view,
-                   sph.Omega));
-  Kokkos::parallel_for(
-      "relative vorticity error (faces)", sph.mesh.n_faces_host(),
-      RelVortError(face_err, sph.abs_vort_active.view, sph.rel_vort_active.view,
-                   sph.mesh.faces.phys_crds.view, sph.Omega));
-}
-
-/** Compute kernel for relative vorticity error.
- */
-struct RelVortError {
-  scalar_view_type rel_vort_error;  /// relative vorticity error [output]
-  scalar_view_type abs_vort;        /// absolute vorticity [input]
-  scalar_view_type rel_vort;        /// computed relative vorticity [input]
-  typename SphereGeometry::crd_view_type
-      phys_crds_view;  /// particle positions [input]
-  Real Omega;
-
-  /// constructor
-  RelVortError(scalar_view_type err, const scalar_view_type omega,
-               const scalar_view_type zeta,
-               const typename SphereGeometry::crd_view_type pcrds,
-               const Real Omg)
-      : rel_vort_error(err),
-        abs_vort(omega),
-        rel_vort(zeta),
-        phys_crds_view(pcrds),
-        Omega(Omg) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const Index i) const {
-    rel_vort_error(i) =
-        abs_vort(i) - 2 * Omega * phys_crds_view(i, 2) - rel_vort(i);
-  }
-};
-
 void init_input(user::Input& input);
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
-  Logger<> logger("dfs_bve_gauss", Log::level::info, comm);
+  Logger<> logger("dfs_bve_gauss", Log::level::debug, comm);
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
@@ -144,12 +99,16 @@ int main(int argc, char* argv[]) {
       initial vorticity values (a) : a Gaussian distribution about a center point
     */
     sphere->init_vorticity(gauss_vort);
-    const Real total_vort0 = sphere->total_vorticity();
+    Real total_vort0 = sphere->total_vorticity();
+    logger.debug("total_vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
+
     /**
       initial vorticity values (b) : ensure total vorticity = 0.
     */
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
+    total_vort0 = sphere->total_vorticity();
+    logger.debug("total_vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
     auto rel_vort_range =
         sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
     logger.info(
@@ -207,8 +166,24 @@ int main(int argc, char* argv[]) {
         sphere->init_vorticity(gauss_vort);
         logger.debug("vorticity reinitialized");
       } // amr iterations
-      // TODO: update Courant number, write to log
+      total_vort0 = sphere->total_vorticity();
+      logger.debug("after amr, total vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
+      gauss_vort.set_gauss_const(total_vort0);
+      logger.debug("gauss_const = {}", gauss_vort.gauss_const);
+      sphere->init_vorticity(gauss_vort);
 
+
+      rel_vort_range =
+          sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
+      logger.info(
+          "adaptively refined mesh has (min, max) vorticity (active) = ({}, {}), max. circ. "
+          "appx {}",
+          rel_vort_range.first, rel_vort_range.second,
+          rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
+      rel_vort_range =
+          sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
+      logger.debug("adaptively refined has (min, max) vorticity (passive) = ({}, {})",
+                   rel_vort_range.first, rel_vort_range.second);
     } // if (amr)
 
     /**
@@ -216,7 +191,9 @@ int main(int argc, char* argv[]) {
     */
     sphere->finalize_mesh_to_grid_coupling();
     sphere->init_velocity_from_vorticity();
-
+    logger.debug(
+        "initial total vorticity, kinetic energy, and enstrophy = ({}, {}, {})",
+        sphere->total_vorticity(), sphere->total_kinetic_energy(), sphere->total_enstrophy());
 
     Lat0 lat0;
     sphere->init_tracer(lat0);
@@ -312,7 +289,7 @@ int main(int argc, char* argv[]) {
       time stepping
     */
     rel_vort_range = sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
-    logger.debug("pre-timestepping: uniform mesh has (min, max) vorticity = ({}, {}), max. circ. appx {}",
+    logger.debug("pre-timestepping: mesh has (min, max) vorticity = ({}, {}), max. circ. appx {}",
       rel_vort_range.first, rel_vort_range.second,
       rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
     int rm_counter = 0;
@@ -383,18 +360,6 @@ int main(int argc, char* argv[]) {
       }
 
       sphere->advance_timestep(*solver);
-
-      //       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-      //         ComputeFTLE<SeedType>(sphere->ftle.view,
-      //           sphere->mesh.vertices.phys_crds.view,
-      //           sphere->ref_crds_passive.view,
-      //           sphere->mesh.faces.phys_crds.view,
-      //           sphere->ref_crds_active.view,
-      //           sphere->mesh.faces.verts,
-      //           sphere->mesh.faces.mask,
-      //           sphere->t - sphere->t_ref));
-      //       sphere->mesh.average_face_field_to_vertex_field(sphere->ftle_passive,
-      //       sphere->ftle_active); sphere->interpolate_ftle_from_mesh_to_grid();
 
       time[t_idx + 1]                 = (t_idx + 1) * dt;
       ftle_max[t_idx + 1]             = max_ftle;
