@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
         mesh_params, coriolis,
         input.get_option("kernel_smoothing_parameter").get_real());
     sphere->init_vorticity(gauss_vort);
-    const Real total_vort0 = sphere->total_vorticity();
+    Real total_vort0 = sphere->total_vorticity();
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
     const Real ftle_tol = input.get_option("ftle_tol").get_real();
@@ -113,6 +113,9 @@ int main(int argc, char* argv[]) {
 
         face_start_idx = face_end_idx;
       }
+      total_vort0 = sphere->total_vorticity();
+      gauss_vort.update_gauss_const(total_vort0);
+      sphere->init_vorticity(gauss_vort);
       Kokkos::deep_copy(sphere->ref_crds_passive.view,
                         sphere->mesh.vertices.lag_crds.view);
       Kokkos::deep_copy(sphere->ref_crds_active.view,
