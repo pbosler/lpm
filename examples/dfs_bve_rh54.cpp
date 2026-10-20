@@ -32,58 +32,13 @@
 using namespace Lpm;
 using namespace Lpm::DFS;
 
-/** Computes vorticity error at each particle and panel.
- */
-template <typename SeedType>
-void compute_vorticity_error(scalar_view_type vert_err,
-                             scalar_view_type face_err,
-                             const DFS::DFSBVE<SeedType>& sph) {
-  Kokkos::parallel_for(
-      "relative vorticity error (vertices)", sph.mesh.n_vertices_host(),
-      RelVortError(vert_err, sph.abs_vort_passive.view,
-                   sph.rel_vort_passive.view, sph.mesh.vertices.phys_crds.view,
-                   sph.Omega));
-  Kokkos::parallel_for(
-      "relative vorticity error (faces)", sph.mesh.n_faces_host(),
-      RelVortError(face_err, sph.abs_vort_active.view, sph.rel_vort_active.view,
-                   sph.mesh.faces.phys_crds.view, sph.Omega));
-}
-
-/** Compute kernel for relative vorticity error.
- */
-struct RelVortError {
-  scalar_view_type rel_vort_error;  /// relative vorticity error [output]
-  scalar_view_type abs_vort;        /// absolute vorticity [input]
-  scalar_view_type rel_vort;        /// computed relative vorticity [input]
-  typename SphereGeometry::crd_view_type
-      phys_crds_view;  /// particle positions [input]
-  Real Omega;
-
-  /// constructor
-  RelVortError(scalar_view_type err, const scalar_view_type omega,
-               const scalar_view_type zeta,
-               const typename SphereGeometry::crd_view_type pcrds,
-               const Real Omg)
-      : rel_vort_error(err),
-        abs_vort(omega),
-        rel_vort(zeta),
-        phys_crds_view(pcrds),
-        Omega(Omg) {}
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(const Index i) const {
-    rel_vort_error(i) =
-        abs_vort(i) - 2 * Omega * phys_crds_view(i, 2) - rel_vort(i);
-  }
-};
-
 void init_input(user::Input& input);
 
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
-  Logger<> logger("dfs_bve_rh54", Log::level::debug, comm);
+  Logger<> logger("dfs_bve_rh54", Log::level::info, comm);
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
@@ -140,13 +95,13 @@ int main(int argc, char* argv[]) {
       Initial adaptive refinement
     */
     if (amr) {
-      logger.warn("AMR not implemented yet.");
+      logger.warn("AMR not implemented yet; proceeding with a uniform mesh.");
     }
     Lat0 lat0;
     sphere->init_tracer(lat0);
     logger.info(sphere->info_string());
 
-    // Solver initialization
+    // Solver initialization : choose solver type at compile time
     //     using SolverType = DFS::DFSRK2<SeedType>;
     //     using SolverType = DFS::DFSRK3<SeedType>;
     using SolverType  = DFS::DFSRK4<SeedType>;
@@ -210,6 +165,8 @@ int main(int argc, char* argv[]) {
         input.get_option("output_file_root").get_str() + "_" +
         SeedType::id_string() + resolution_str + "_" + remesh_str + amr_str;
     const std::string vtk_file_root = ofile_root;
+    logger.info("output will be written to files beginning: {}", ofile_root);
+
     int vtk_counter                 = 0;
     const int write_frequency =
         input.get_option("output_write_frequency").get_int();
@@ -258,11 +215,7 @@ int main(int argc, char* argv[]) {
               "AMR not yet implemented for DFS; skipping remesh step.");
         } else {
           if (remesh_strategy == "direct") {
-            remesh.uniform_direct_remesh();  // replace with a custom method
-            /**
-              uniform_direct_remesh(new_sphere, sphere); // rely on deep copies,
-              rather than cute pointer/view stuff.
-            */
+            remesh.uniform_direct_remesh();
           } else {
             logger.error(
                 "indirect remesh not implemented for DFS; skipping remesh "
@@ -273,23 +226,13 @@ int main(int argc, char* argv[]) {
 
         tref   = sphere->t;
         sphere = std::move(new_sphere);
-//         sphere->sync_solver_views();
+
         sphere->finalize_mesh_to_grid_coupling();
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
       }
 
       sphere->advance_timestep(*solver);
-
-      //       Kokkos::parallel_for(sphere->mesh.n_faces_host(),
-      //         ComputeFTLE<SeedType>(sphere->ftle.view,
-      //           sphere->mesh.vertices.phys_crds.view,
-      //           sphere->ref_crds_passive.view,
-      //           sphere->mesh.faces.phys_crds.view,
-      //           sphere->ref_crds_active.view,
-      //           sphere->mesh.faces.verts,
-      //           sphere->mesh.faces.mask,
-      //           sphere->t - sphere->t_ref));
 
       time[t_idx + 1]                 = (t_idx + 1) * dt;
       ftle_max[t_idx + 1]             = max_ftle;
