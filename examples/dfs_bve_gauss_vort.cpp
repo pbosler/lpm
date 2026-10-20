@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
 
-  Logger<> logger("dfs_bve_gauss", Log::level::debug, comm);
+  Logger<> logger("dfs_bve_gauss", Log::level::info, comm);
 
   Kokkos::initialize(argc, argv);
   {  // Kokkos scope
@@ -107,8 +107,10 @@ int main(int argc, char* argv[]) {
     */
     gauss_vort.set_gauss_const(total_vort0);
     sphere->init_vorticity(gauss_vort);
+
     total_vort0 = sphere->total_vorticity();
     logger.debug("total_vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
+
     auto rel_vort_range =
         sphere->rel_vort_active.range(sphere->mesh.n_faces_host());
     logger.info(
@@ -118,6 +120,7 @@ int main(int argc, char* argv[]) {
         rel_vort_range.second * square(sphere->mesh.appx_mesh_size()));
     rel_vort_range =
         sphere->rel_vort_passive.range(sphere->mesh.n_vertices_host());
+
     logger.debug("uniform mesh has (min, max) vorticity (passive) = ({}, {})",
                  rel_vort_range.first, rel_vort_range.second);
 
@@ -164,7 +167,7 @@ int main(int argc, char* argv[]) {
         Kokkos::deep_copy(refiner.flags, false);
         face_start_idx = face_end_idx;
         sphere->init_vorticity(gauss_vort);
-        logger.debug("vorticity reinitialized");
+
       } // amr iterations
       total_vort0 = sphere->total_vorticity();
       logger.debug("after amr, total vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
@@ -199,7 +202,7 @@ int main(int argc, char* argv[]) {
     sphere->init_tracer(lat0);
     logger.info(sphere->info_string());
 
-    // Solver initialization
+    // Solver initialization : choose solver type at compile time
     //     using SolverType = DFS::DFSRK2<SeedType>;
     //      using SolverType = DFS::DFSRK3<SeedType>;
     using SolverType          = DFS::DFSRK4<SeedType>;
