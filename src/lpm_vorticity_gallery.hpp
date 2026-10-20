@@ -80,6 +80,11 @@ struct GaussianVortexSphere {
   }
 
   KOKKOS_INLINE_FUNCTION
+  void update_gauss_const(const Real vorticity_sum) {
+    gauss_const += vorticity_sum / (4 * constants::PI);
+  }
+
+  KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];
     const Real zeta =

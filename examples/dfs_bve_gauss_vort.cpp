@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
       } // amr iterations
       total_vort0 = sphere->total_vorticity();
       logger.debug("after amr, total vorticity = {}, gauss_const = {}", total_vort0, gauss_vort.gauss_const);
-      gauss_vort.set_gauss_const(total_vort0);
+      gauss_vort.update_gauss_const(total_vort0);
       logger.debug("gauss_const = {}", gauss_vort.gauss_const);
       sphere->init_vorticity(gauss_vort);
 
@@ -351,7 +351,6 @@ int main(int argc, char* argv[]) {
         sphere = std::move(new_sphere);
         logger.debug("moved new_sphere to sphere.");
         sphere->finalize_mesh_to_grid_coupling();
-//         sphere->sync_solver_views();
         logger.debug("solver views synced.");
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, t_idx));
