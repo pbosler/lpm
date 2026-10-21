@@ -19,11 +19,14 @@ EXE_RK3="${buildDir}/examples/dfs_bve_rh54_rk3"
 : "${OMP_NUM_THREADS:?ERROR: OMP_NUM_THREADS is not set. Please export OMP_NUM_THREADS before running.}"
 
 # GMLS neighborhood radius multiplier (library default is 2.0); passed via -eps.
+# Order-2 GMLS uses a larger multiplier because eps = 2.0 produced degenerate
+# neighborhoods (infinite loop in Compadre's tangent plane solver).
 EPS_MULTIPLIER="${EPS_MULTIPLIER:-2.0}"
+EPS_MULTIPLIER_G2="${EPS_MULTIPLIER_G2:-2.2}"
 
 # Wall-clock limit for each run (GNU timeout syntax, e.g. 30m, 2h). A run that
 # exceeds it is killed, recorded with exit status 124, and the sweep continues.
-RUN_TIMEOUT="${RUN_TIMEOUT:-2h}"
+RUN_TIMEOUT="${RUN_TIMEOUT:-3h}"
 
 # Optional OpenMP settings
 export OMP_DYNAMIC="${OMP_DYNAMIC:-FALSE}"
@@ -107,9 +110,15 @@ for exe_label in "${EXECUTABLES[@]}"; do
 
           # Use the default use_dt=true path and pass dt directly.
           # This avoids relying on the executable's bool parser for -udt/-un.
+          if [[ "${g}" -eq 2 ]]; then
+            eps="${EPS_MULTIPLIER_G2}"
+          else
+            eps="${EPS_MULTIPLIER}"
+          fi
+
           dt=$(awk -v tf="${TFINAL}" -v n="${nsteps}" 'BEGIN {printf "%.17g", tf/n}')
 
-          run_id="dfs_bve_rh54_${rk_label}_g${g}_eps${EPS_MULTIPLIER}_d${d}_nlon${nlon}_tf${TFINAL}_nsteps${nsteps}_nthr${OMP_NUM_THREADS}"
+          run_id="dfs_bve_rh54_${rk_label}_g${g}_eps${eps}_d${d}_nlon${nlon}_tf${TFINAL}_nsteps${nsteps}_nthr${OMP_NUM_THREADS}"
 
           output_root="${OUTDIR}/${run_id}"
           logfile="${LOGDIR}/${run_id}.log"
@@ -122,7 +131,7 @@ for exe_label in "${EXECUTABLES[@]}"; do
           echo "target nsteps:       ${nsteps}"
           echo "dt:                  ${dt}"
           echo "GMLS order:          ${g}"
-          echo "GMLS eps multiplier: ${EPS_MULTIPLIER}"
+          echo "GMLS eps multiplier: ${eps}"
           echo "tree depth:          ${d}"
           echo "Run timeout:         ${RUN_TIMEOUT}"
           echo "nlon:                ${nlon}"
@@ -138,7 +147,7 @@ for exe_label in "${EXECUTABLES[@]}"; do
                 -tf "${TFINAL}" \
                 -dt "${dt}" \
                 -g "${g}" \
-                -eps "${EPS_MULTIPLIER}" \
+                -eps "${eps}" \
                 -d "${d}" \
                 -nlon "${nlon}" \
                 -of "${nsteps}" \
@@ -158,7 +167,7 @@ for exe_label in "${EXECUTABLES[@]}"; do
             "${exe}" \
             "${rk_label}" \
             "${g}" \
-            "${EPS_MULTIPLIER}" \
+            "${eps}" \
             "${d}" \
             "${nlon}" \
             "${TFINAL}" \
