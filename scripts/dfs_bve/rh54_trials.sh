@@ -22,7 +22,7 @@ EXE_RK3="${buildDir}/examples/dfs_bve_rh54_rk3"
 # Order-2 GMLS uses a larger multiplier because eps = 2.0 produced degenerate
 # neighborhoods (infinite loop in Compadre's tangent plane solver).
 EPS_MULTIPLIER="${EPS_MULTIPLIER:-2.0}"
-EPS_MULTIPLIER_G2="${EPS_MULTIPLIER_G2:-2.2}"
+EPS_MULTIPLIER_G2="${EPS_MULTIPLIER_G2:-3.0}"
 
 # Wall-clock limit for each run (GNU timeout syntax, e.g. 30m, 2h). A run that
 # exceeds it is killed, recorded with exit status 124, and the sweep continues.
@@ -44,6 +44,7 @@ mkdir -p "${OUTDIR}"
 mkdir -p "${LOGDIR}"
 
 TIMING_FILE="${OUTDIR}/timing_summary.csv"
+FAILURE_FILE="${OUTDIR}/failed_runs.log"
 
 # ---------------------------------------------------------------------------
 # Executables and labels
@@ -192,10 +193,20 @@ for exe_label in "${EXECUTABLES[@]}"; do
             echo "See log file: ${logfile}" >&2
           else
             failed_runs=$((failed_runs + 1))
-            echo "ERROR: ${run_id} failed with exit status ${exit_status} after ${elapsed_seconds} seconds." >&2
+            # crash or other failure: log it and continue with the next run
+            sig=""
+            if [[ "${exit_status}" -gt 128 ]]; then
+              sig=" (signal $(kill -l $((exit_status - 128)) 2>/dev/null || echo unknown))"
+            fi
+            echo "ERROR: ${run_id} failed with exit status ${exit_status}${sig} after ${elapsed_seconds} seconds; continuing with next run." >&2
             echo "See log file: ${logfile}" >&2
-            echo "Timing record written to: ${TIMING_FILE}" >&2
-            exit "${exit_status}"
+          fi
+
+          if [[ "${exit_status}" -ne 0 ]]; then
+            {
+              echo "${timestamp} ${run_id} exit_status=${exit_status}${sig:-} elapsed=${elapsed_seconds}s logfile=${logfile}"
+              tail -n 3 "${logfile}" | cut -c1-300 | sed 's/^/    /'
+            } >> "${FAILURE_FILE}"
           fi
 
         done
@@ -217,4 +228,5 @@ echo "OMP_NUM_THREADS:  ${OMP_NUM_THREADS}"
 echo "Output directory: ${OUTDIR}"
 echo "Log directory:    ${LOGDIR}"
 echo "Timing file:      ${TIMING_FILE}"
+echo "Failure log:      ${FAILURE_FILE}"
 echo "================================================================"
