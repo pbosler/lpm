@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
 
 
   sphere->init_vorticity(vorticity);
-  const Real total_vort_0 = sphere->total_vorticity();
+  Real total_vort_0 = sphere->total_vorticity();
   /**
       initialize vorticity, step 1 of 2
   */
@@ -119,6 +119,9 @@ int main(int argc, char* argv[]) {
   Real circ_tol = std::numeric_limits<Real>::max();
   if (amr) {
     initial_refinement(*sphere, circ_tol, vorticity, input, logger);
+    total_vort_0 = sphere->total_vorticity();
+    vorticity.update_gauss_const(total_vort_0);
+    sphere->init_vorticity(vorticity);
     logger.info("relative max. circulation tol (from input, {}) converts to absolute circ_tol = {}",
       input.get_option("max_circulation_tol").get_real(), circ_tol);
   }

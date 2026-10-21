@@ -158,6 +158,10 @@ struct JM86PolarVortex {
     gauss_const = vorticity_sum / (4 * constants::PI );
   }
 
+  void update_gauss_const(const Real vorticity_sum) {
+    gauss_const += vorticity_sum / (4 * constants::PI );
+  }
+
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     const Real xyz[3] = {x,y,z};
