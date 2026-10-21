@@ -173,8 +173,8 @@ class DFSBVE {
 
     void allocate_tracer(const std::string& name);
 
-    template <typename TracerType>
-    void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
+//     template <typename TracerType>
+//     void allocate_tracer(const TracerType& tracer, const std::string& tname = std::string());
 
     template <typename TracerType>
     void init_tracer(const TracerType& tracer, const std::string& tname = std::string());

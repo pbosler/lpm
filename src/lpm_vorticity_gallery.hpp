@@ -353,6 +353,9 @@ struct RossbyHaurwitz54 {
                                   cos(4 * SphereGeometry::longitude(xyz)) *
                                   legendreP54(xyz[2]);
   }
+
+  KOKKOS_INLINE_FUNCTION
+  bool is_stationary() const {return FloatingPoint<Real>::equiv(u0, constants::PI/7);}
 };
 
 //

@@ -309,17 +309,17 @@ void DFSBVE<SeedType>::allocate_tracer(const std::string& name) {
   tracer_active.emplace(name, ScalarField<FaceField>(name, velocity_active.view.extent(0)));
 }
 
-template <typename SeedType> template <typename TracerType>
-void DFSBVE<SeedType>::allocate_tracer(const TracerType& tracer, const std::string& tname) {
-static_assert(std::is_same<typename SeedType::geo,
-      typename TracerType::geo>::value, "Geometry types must match.");
-
-  const std::string name = (tname.empty() ? tracer.name() : tname);
-  tracer_passive.emplace(name,
-    ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
-  tracer_active.emplace(name,
-    ScalarField<FaceField>(name, velocity_active.view.extent(0)));
-}
+// template <typename SeedType> template <typename TracerType>
+// void DFSBVE<SeedType>::allocate_tracer(const TracerType& tracer, const std::string& tname) {
+// static_assert(std::is_same<typename SeedType::geo,
+//       typename TracerType::geo>::value, "Geometry types must match.");
+//
+//   const std::string name = (tname.empty() ? tracer.name() : tname);
+//   tracer_passive.emplace(name,
+//     ScalarField<VertexField>(name, velocity_passive.view.extent(0)));
+//   tracer_active.emplace(name,
+//     ScalarField<FaceField>(name, velocity_active.view.extent(0)));
+// }
 
 template <typename SeedType>
 std::string DFSBVE<SeedType>::info_string(const int tab_level) const {

@@ -285,6 +285,9 @@ struct RossbyWave54Velocity {
     result[2] = v * cos(lat);
     return result;
   }
+
+  KOKKOS_INLINE_FUNCTION
+  bool is_stationary() const {return FloatingPoint<Real>::equiv(background_rotation, constants::PI/7);}
 };
 
 }  // namespace Lpm

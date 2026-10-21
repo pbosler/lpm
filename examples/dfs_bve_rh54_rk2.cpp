@@ -34,6 +34,8 @@ using namespace Lpm::DFS;
 
 void init_input(user::Input& input);
 
+void set_exact_vorticity(DFS::DFSBVE<CubedSphereSeed>& sphere, const RossbyHaurwitz54& vorticity);
+
 int main(int argc, char* argv[]) {
   MPI_Init(&argc, &argv);
   Comm comm(MPI_COMM_WORLD);
@@ -64,6 +66,17 @@ int main(int argc, char* argv[]) {
     Coriolis coriolis(input.get_option("omega").get_real());
     RossbyWave54Velocity velocity(constants::PI / 7);
     RossbyHaurwitz54 vorticity(constants::PI / 7);
+    if (vorticity.is_stationary()) {
+      logger.info("stationary wave speed selected; RH54 u0 = {}, rh54_amplitude = {}", vorticity.u0, vorticity.rh54_amplitude);
+      if (!velocity.is_stationary()) {
+        logger.error("velocity parameters do not match vorticity parameters.");
+      }
+    }
+    else {
+      logger.info("non-stationary wave speed selected; RH54 u0 = {}, wave_amp = {}", vorticity.u0, vorticity.rh54_amplitude);
+      logger.warn("non-stationary vorticity error not implemented yet.");
+      // TODO: check for mismatch between general velocity/vorticity parameters
+    }
 
     //  particle/panel/grid initialization
     using SeedType               = CubedSphereSeed;
@@ -99,6 +112,8 @@ int main(int argc, char* argv[]) {
     }
     Lat0 lat0;
     sphere->init_tracer(lat0);
+    sphere->init_tracer(vorticity, "exact_vorticity");
+    sphere->allocate_tracer("vorticity_error");
     logger.info(sphere->info_string());
 
     // Solver initialization : choose solver type at compile time
@@ -133,12 +148,14 @@ int main(int argc, char* argv[]) {
         (input.get_option("remesh_trigger").get_str() == "ftle");
 
     auto solver = std::make_unique<SolverType>(dt, *sphere);
+    std::vector<Real> zeta_l1err(nsteps+1);
+    std::vector<Real> zeta_l2err(nsteps+1);
+    std::vector<Real> zeta_linferr(nsteps+1);
     std::vector<Real> total_vorticity(nsteps + 1);
     std::vector<Real> total_kinetic_energy(nsteps + 1);
     std::vector<Real> total_enstrophy(nsteps + 1);
     std::vector<Real> ftle_max(nsteps + 1);
     std::vector<Real> time(nsteps + 1);
-    ftle_max[0]             = 0;
     total_vorticity[0]      = sphere->total_vorticity();
     total_kinetic_energy[0] = sphere->total_kinetic_energy();
     total_enstrophy[0]      = sphere->total_enstrophy();
@@ -207,7 +224,7 @@ int main(int argc, char* argv[]) {
 
         auto new_sphere =
             std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
-        new_sphere->allocate_tracer(lat0);
+        new_sphere->allocate_tracer(lat0.name());
         new_sphere->t = sphere->t;
 
         auto remesh = compadre_dfs_remesh(*new_sphere, *sphere, gmls_params);
@@ -234,8 +251,18 @@ int main(int argc, char* argv[]) {
       }
 
       sphere->advance_timestep(*solver);
+      set_exact_vorticity(*sphere, vorticity);
+      compute_error(sphere->tracer_passive.at("vorticity_error").view, sphere->rel_vort_passive.view, sphere->tracer_passive.at("exact_vorticity").view);
+      compute_error(sphere->tracer_active.at("vorticity_error").view, sphere->rel_vort_active.view, sphere->tracer_active.at("exact_vorticity").view);
+      const auto zeta_error_scalars = reduce_error(sphere->tracer_active.at("vorticity_error").view,
+                                     sphere->tracer_active.at("exact_vorticity").view,
+                                     sphere->mesh.faces.area);
+      const ErrNorms zeta_error(zeta_error_scalars);
 
       time[t_idx + 1]                 = (t_idx + 1) * dt;
+      zeta_l1err[t_idx+1]             = zeta_error.l1;
+      zeta_l2err[t_idx+1]             = zeta_error.l2;
+      zeta_linferr[t_idx+1]           = zeta_error.linf;
       ftle_max[t_idx + 1]             = max_ftle;
       total_vorticity[t_idx + 1]      = sphere->total_vorticity();
       total_kinetic_energy[t_idx + 1] = sphere->total_kinetic_energy();
@@ -262,6 +289,9 @@ int main(int argc, char* argv[]) {
     const std::string matlab_file = ofile_root + ".m";
     std::ofstream ofile(matlab_file);
     write_vector_matlab(ofile, "time", time);
+    write_vector_matlab(ofile, "zeta_l1err", zeta_l1err);
+    write_vector_matlab(ofile, "zeta_l2err", zeta_l2err);
+    write_vector_matlab(ofile, "zeta_linferr", zeta_linferr);
     write_vector_matlab(ofile, "total_vorticity", total_vorticity);
     write_vector_matlab(ofile, "total_kinetic_energy", total_kinetic_energy);
     write_vector_matlab(ofile, "total_enstrophy", total_enstrophy);
@@ -274,6 +304,27 @@ int main(int argc, char* argv[]) {
   */
   Kokkos::finalize();
   MPI_Finalize();
+}
+
+void set_exact_vorticity(DFS::DFSBVE<CubedSphereSeed>& sphere, const RossbyHaurwitz54& vorticity) {
+
+    LPM_REQUIRE_MSG(vorticity.is_stationary(), "Vorticity error assumes stationary RH wave");
+
+    const auto vert_crds = sphere.mesh.vertices.phys_crds.view;
+    const auto vert_exact_zeta = sphere.tracer_passive.at("exact_vorticity").view;
+    const auto face_crds = sphere.mesh.faces.phys_crds.view;
+    const auto face_exact_zeta = sphere.tracer_active.at("exact_vorticity").view;
+
+    Kokkos::parallel_for(sphere.mesh.n_vertices_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto mcrd = Kokkos::subview(vert_crds, i, Kokkos::ALL);
+        vert_exact_zeta(i) = vorticity(mcrd[0], mcrd[1], mcrd[2]);
+      });
+    Kokkos::parallel_for(sphere.mesh.n_faces_host(),
+      KOKKOS_LAMBDA (const Index i) {
+        const auto mcrd = Kokkos::subview(face_crds, i, Kokkos::ALL);
+        face_exact_zeta(i) = vorticity(mcrd[0], mcrd[1], mcrd[2]);
+      });
 }
 
 void init_input(user::Input& input) {

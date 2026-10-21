@@ -319,7 +319,7 @@ int main(int argc, char* argv[]) {
 
         auto new_sphere =
             std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon, gmls_params);
-        new_sphere->allocate_tracer(lat0);
+        new_sphere->allocate_tracer(lat0.name());
         new_sphere->t = sphere->t;
 
         auto remesh = compadre_dfs_remesh(*new_sphere, *sphere, gmls_params);
