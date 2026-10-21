@@ -18,6 +18,13 @@ EXE_RK3="${buildDir}/examples/dfs_bve_rh54_rk3"
 
 : "${OMP_NUM_THREADS:?ERROR: OMP_NUM_THREADS is not set. Please export OMP_NUM_THREADS before running.}"
 
+# GMLS neighborhood radius multiplier (library default is 2.0); passed via -eps.
+EPS_MULTIPLIER="${EPS_MULTIPLIER:-2.0}"
+
+# Wall-clock limit for each run (GNU timeout syntax, e.g. 30m, 2h). A run that
+# exceeds it is killed, recorded with exit status 124, and the sweep continues.
+RUN_TIMEOUT="${RUN_TIMEOUT:-2h}"
+
 # Optional OpenMP settings
 export OMP_DYNAMIC="${OMP_DYNAMIC:-FALSE}"
 export OMP_PROC_BIND="${OMP_PROC_BIND:-spread}"
@@ -78,7 +85,7 @@ done
 # ---------------------------------------------------------------------------
 
 cat > "${TIMING_FILE}" << EOF
-timestamp,executable,rk,gmls_order,tree_depth,nlon,tfinal,target_nsteps,dt,omp_num_threads,output_root,logfile,exit_status,elapsed_seconds
+timestamp,executable,rk,gmls_order,eps_multiplier,tree_depth,nlon,tfinal,target_nsteps,dt,omp_num_threads,output_root,logfile,exit_status,elapsed_seconds
 EOF
 
 # ---------------------------------------------------------------------------
@@ -102,7 +109,7 @@ for exe_label in "${EXECUTABLES[@]}"; do
           # This avoids relying on the executable's bool parser for -udt/-un.
           dt=$(awk -v tf="${TFINAL}" -v n="${nsteps}" 'BEGIN {printf "%.17g", tf/n}')
 
-          run_id="dfs_bve_rh54_${rk_label}_g${g}_d${d}_nlon${nlon}_tf${TFINAL}_nsteps${nsteps}_nthr${OMP_NUM_THREADS}"
+          run_id="dfs_bve_rh54_${rk_label}_g${g}_eps${EPS_MULTIPLIER}_d${d}_nlon${nlon}_tf${TFINAL}_nsteps${nsteps}_nthr${OMP_NUM_THREADS}"
 
           output_root="${OUTDIR}/${run_id}"
           logfile="${LOGDIR}/${run_id}.log"
@@ -115,7 +122,9 @@ for exe_label in "${EXECUTABLES[@]}"; do
           echo "target nsteps:       ${nsteps}"
           echo "dt:                  ${dt}"
           echo "GMLS order:          ${g}"
+          echo "GMLS eps multiplier: ${EPS_MULTIPLIER}"
           echo "tree depth:          ${d}"
+          echo "Run timeout:         ${RUN_TIMEOUT}"
           echo "nlon:                ${nlon}"
           echo "Output root:         ${output_root}"
           echo "Log file:            ${logfile}"
@@ -125,10 +134,11 @@ for exe_label in "${EXECUTABLES[@]}"; do
 
           elapsed_seconds=$(
             {
-              time "${exe}" \
+              time timeout --kill-after=30s "${RUN_TIMEOUT}" "${exe}" \
                 -tf "${TFINAL}" \
                 -dt "${dt}" \
                 -g "${g}" \
+                -eps "${EPS_MULTIPLIER}" \
                 -d "${d}" \
                 -nlon "${nlon}" \
                 -of "${nsteps}" \
@@ -143,11 +153,12 @@ for exe_label in "${EXECUTABLES[@]}"; do
 
           timestamp=$(date +"%Y-%m-%dT%H:%M:%S%z")
 
-          printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
+          printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" \
             "${timestamp}" \
             "${exe}" \
             "${rk_label}" \
             "${g}" \
+            "${EPS_MULTIPLIER}" \
             "${d}" \
             "${nlon}" \
             "${TFINAL}" \
@@ -165,6 +176,11 @@ for exe_label in "${EXECUTABLES[@]}"; do
           if [[ "${exit_status}" -eq 0 ]]; then
             successful_runs=$((successful_runs + 1))
             echo "Completed ${run_id} in ${elapsed_seconds} seconds."
+          elif [[ "${exit_status}" -eq 124 || "${exit_status}" -eq 137 ]]; then
+            # timed out (124) or killed after the grace period (137): record it and move on
+            failed_runs=$((failed_runs + 1))
+            echo "TIMEOUT: ${run_id} exceeded ${RUN_TIMEOUT}; continuing with next run." >&2
+            echo "See log file: ${logfile}" >&2
           else
             failed_runs=$((failed_runs + 1))
             echo "ERROR: ${run_id} failed with exit status ${exit_status} after ${elapsed_seconds} seconds." >&2

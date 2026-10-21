@@ -96,6 +96,8 @@ int main(int argc, char* argv[]) {
     const Int gmls_order =
         input.get_option("gmls_interpolation_order").get_int();
     gmls::Params gmls_params(gmls_order);
+    gmls_params.eps_multiplier =
+        input.get_option("gmls_eps_multiplier").get_real();
 
     // DFS initialization
     auto sphere =
@@ -404,6 +406,11 @@ void init_input(user::Input& input) {
       "gmls_interpolation_order", "-g", "--gmls-order",
       "polynomial order for gmls-based interpolation", 6);
   input.add_option(gmls_interpolation_order);
+
+  user::Option gmls_eps_multiplier(
+      "gmls_eps_multiplier", "-eps", "--gmls-eps-multiplier",
+      "gmls neighborhood radius multiplier (default 2)", 2.0);
+  input.add_option(gmls_eps_multiplier);
 
   user::Option remesh_trigger_option(
       "remesh_trigger", "-rt", "--remesh-trigger",
