@@ -32,12 +32,29 @@ void check_mesh_to_grid_gmls(const gmls::Neighborhoods& nn, const gmls::Params& 
   }
 }
 
+/** Neighborhoods for the coordinates GMLS will actually use.
+
+  The neighborhoods stored in the DFSBVE object are built from the particle
+  positions at the start of the step; RK stages evaluate GMLS at displaced
+  positions (several mesh spacings, if the Courant number is > 1), so reusing
+  the stored neighbor lists and radii can leave targets with no weighted neighbors.
+*/
+template <typename CrdView>
+gmls::Neighborhoods stage_neighborhoods(const gmls::Params& params,
+                                        const CrdView& xyz_mesh,
+                                        const CrdView& xyz_grid) {
+  auto h_src = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), xyz_mesh);
+  auto h_tgt = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), xyz_grid);
+  return gmls::Neighborhoods(h_src, h_tgt, params);
+}
+
 // DFSRK2 class methods
 template <typename SeedType>
 void DFSRK2<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
-  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
-  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
+  const auto stage_nn = stage_neighborhoods(sphere.gmls_params, xyz_mesh, xyz_grid);
+  check_mesh_to_grid_gmls(stage_nn, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
+  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, stage_nn, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
   rel_vort_grid = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
@@ -88,8 +105,9 @@ void DFSRK2<SeedType>::advance_timestep()  {
 template <typename SeedType>
 void DFSRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
-  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
-  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
+  const auto stage_nn = stage_neighborhoods(sphere.gmls_params, xyz_mesh, xyz_grid);
+  check_mesh_to_grid_gmls(stage_nn, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
+  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, stage_nn, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
   rel_vort_grid = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
@@ -197,8 +215,9 @@ void DFSRK4<SeedType>::advance_timestep() {
 template <typename SeedType>
 void DFSRK3<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
-  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
-  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
+  const auto stage_nn = stage_neighborhoods(sphere.gmls_params, xyz_mesh, xyz_grid);
+  check_mesh_to_grid_gmls(stage_nn, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
+  auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, stage_nn, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
   rel_vort_grid = rel_vort_eval.applyAlphasToDataAllComponentsAllTargetSites<Real*,DevMemory>(
