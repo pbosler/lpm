@@ -163,7 +163,8 @@ int main(int argc, char* argv[]) {
     }
     const std::string ofile_root =
         input.get_option("output_file_root").get_str() + "_" +
-        SeedType::id_string() + resolution_str + "_" + remesh_str + amr_str;
+        SeedType::id_string() + resolution_str + "_nlon" +
+        std::to_string(nlon) + "_" + remesh_str + amr_str;
     const std::string vtk_file_root = ofile_root;
     logger.info("output will be written to files beginning: {}", ofile_root);
 
@@ -266,6 +267,7 @@ int main(int argc, char* argv[]) {
     write_vector_matlab(ofile, "total_enstrophy", total_enstrophy);
     write_vector_matlab(ofile, "max_ftle", ftle_max);
     ofile.close();
+    logger.info("output can be found in files beginning: {}", ofile_root);
   }  // Kokkos scope
   /**
     program finalize
