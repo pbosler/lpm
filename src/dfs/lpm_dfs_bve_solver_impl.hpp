@@ -6,15 +6,37 @@
 #include "lpm_compadre.hpp"
 #include <KokkosBlas.hpp>
 #include <chrono>
+#include <cstdlib>
 
 using namespace std::chrono;
 namespace Lpm {
 namespace DFS {
 
+/** Diagnostic: if LPM_GMLS_CHECK is set in the environment, test the neighborhoods
+  against the coordinates actually passed to GMLS (RK stage positions, which differ
+  from the positions used to build the neighborhoods) and warn about degenerate ones.
+*/
+template <typename CrdView>
+void check_mesh_to_grid_gmls(const gmls::Neighborhoods& nn, const gmls::Params& params,
+                             const Real t, const CrdView& xyz_mesh,
+                             const CrdView& xyz_grid, const char* where) {
+  static const bool enabled = (std::getenv("LPM_GMLS_CHECK") != nullptr);
+  if (not enabled) return;
+  auto h_src = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), xyz_mesh);
+  auto h_tgt = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), xyz_grid);
+  const auto q = gmls::check_neighborhoods(h_src, h_tgt, nn, params);
+  if (not q.ok()) {
+    auto logger = lpm_logger();
+    logger->warn("t = {}: degenerate GMLS neighborhoods at {}\n{}", t, where,
+                 q.info_string(1));
+  }
+}
+
 // DFSRK2 class methods
 template <typename SeedType>
 void DFSRK2<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
@@ -66,6 +88,7 @@ void DFSRK2<SeedType>::advance_timestep()  {
 template <typename SeedType>
 void DFSRK4<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);
@@ -174,6 +197,7 @@ void DFSRK4<SeedType>::advance_timestep() {
 template <typename SeedType>
 void DFSRK3<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh) const {
   const auto gmls_ops = std::vector<Compadre::TargetOperation>({Compadre::ScalarPointEvaluation});
+  check_mesh_to_grid_gmls(sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, sphere.t, xyz_mesh, xyz_grid, __func__);
   auto rel_vort_gmls = gmls::sphere_scalar_gmls(xyz_mesh, xyz_grid, sphere.mesh_to_grid_neighborhoods, sphere.gmls_params, gmls_ops);
 
   Compadre::Evaluator rel_vort_eval(&rel_vort_gmls);

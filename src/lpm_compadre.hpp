@@ -132,6 +132,40 @@ struct Neighborhoods {
   typename Kokkos::View<Real*>::HostMirror h_radii;
 };
 
+/** Conditioning of the neighborhoods that Compadre's MANIFOLD GMLS will see.
+
+  Compadre estimates a coarse tangent plane at each target from the
+  eigenvectors of sum_j w_j d_j d_j^T, where d_j is the offset from target to
+  neighbor j and w_j = (1 - r_j/h)^p is the (compactly supported) curvature
+  weight.  If this 3x3 matrix is rank 1 (e.g., because source points moved
+  outside the radius h that was computed from earlier positions, or points are
+  collinear), its power iteration for the second eigenvector never converges.
+  This check reproduces the weights for the coordinates actually passed to GMLS.
+*/
+struct NeighborhoodQuality {
+  Index n_targets      = 0;
+  Index n_degenerate   = 0;  /// targets that fail any test below
+  Index n_nonfinite    = 0;  /// targets with non-finite offsets or weights
+  Index worst_target   = LPM_NULL_IDX;
+  Real min_eig_ratio   = 1;  /// min over targets of lambda_2 / lambda_1
+  Int min_active       = 0;  /// min number of neighbors with w > 0
+  Real max_r_over_h    = 0;  /// max neighbor distance / radius (> 1 means stale)
+
+  bool ok() const { return n_degenerate == 0; }
+  std::string info_string(const int tab_lev = 0) const;
+};
+
+/** @param [in] src_crds source coordinates (host), as passed to GMLS
+    @param [in] tgt_crds target coordinates (host)
+    @param [in] nn neighborhoods (neighbor lists + radii)
+    @param [in] params GMLS parameters; manifold_weight_pwr is used
+    @param [in] ratio_tol targets with lambda_2/lambda_1 below this are degenerate
+*/
+NeighborhoodQuality check_neighborhoods(
+    const Kokkos::View<Real**>::HostMirror& src_crds,
+    const Kokkos::View<Real**>::HostMirror& tgt_crds, const Neighborhoods& nn,
+    const Params& params, const Real ratio_tol = 1e-6);
+
 template <typename SrcCrdViewType, typename TgtCrdViewType>
 Compadre::GMLS plane_scalar_gmls(
     const SrcCrdViewType& src_crds, const TgtCrdViewType& tgt_crds,

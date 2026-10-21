@@ -1,6 +1,9 @@
 #include "lpm_compadre.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 #include "Compadre_PointCloudSearch.hpp"
@@ -163,6 +166,109 @@ void Neighborhoods::update_neighbors(
   }
   Kokkos::deep_copy(neighbor_lists, h_neighbors);
   Kokkos::deep_copy(neighborhood_radii, h_radii);
+}
+
+std::string NeighborhoodQuality::info_string(const int tab_lev) const {
+  std::ostringstream ss;
+  const auto tab_str = indent_string(tab_lev);
+  ss << tab_str << "NeighborhoodQuality:\n";
+  ss << tab_str << "\tdegenerate targets = " << n_degenerate << " of "
+     << n_targets << " (nonfinite " << n_nonfinite << ")\n";
+  ss << tab_str << "\tworst target = " << worst_target
+     << ", min lambda2/lambda1 = " << min_eig_ratio << "\n";
+  ss << tab_str << "\tmin active neighbors = " << min_active
+     << ", max r/h = " << max_r_over_h << "\n";
+  return ss.str();
+}
+
+namespace {
+/// eigenvalues (descending) of a symmetric 3x3 matrix, closed form
+void sym3_eigenvalues(const Real a[3][3], Real ev[3]) {
+  const Real p1 = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
+  const Real q  = (a[0][0] + a[1][1] + a[2][2]) / 3;
+  if (p1 == 0) {
+    ev[0] = a[0][0];
+    ev[1] = a[1][1];
+    ev[2] = a[2][2];
+  } else {
+    const Real p2 = (a[0][0] - q) * (a[0][0] - q) +
+                    (a[1][1] - q) * (a[1][1] - q) +
+                    (a[2][2] - q) * (a[2][2] - q) + 2 * p1;
+    const Real p  = std::sqrt(p2 / 6);
+    Real b[3][3];
+    for (int i = 0; i < 3; ++i)
+      for (int j = 0; j < 3; ++j)
+        b[i][j] = (a[i][j] - (i == j ? q : 0)) / p;
+    const Real detb = b[0][0] * (b[1][1] * b[2][2] - b[1][2] * b[2][1]) -
+                      b[0][1] * (b[1][0] * b[2][2] - b[1][2] * b[2][0]) +
+                      b[0][2] * (b[1][0] * b[2][1] - b[1][1] * b[2][0]);
+    Real r = detb / 2;
+    r      = std::max(Real(-1), std::min(Real(1), r));
+    const Real phi = std::acos(r) / 3;
+    ev[0]          = q + 2 * p * std::cos(phi);
+    ev[2]          = q + 2 * p * std::cos(phi + 2 * M_PI / 3);
+    ev[1]          = 3 * q - ev[0] - ev[2];
+  }
+  if (ev[0] < ev[1]) std::swap(ev[0], ev[1]);
+  if (ev[1] < ev[2]) std::swap(ev[1], ev[2]);
+  if (ev[0] < ev[1]) std::swap(ev[0], ev[1]);
+}
+}  // namespace
+
+NeighborhoodQuality check_neighborhoods(
+    const Kokkos::View<Real**>::HostMirror& src_crds,
+    const Kokkos::View<Real**>::HostMirror& tgt_crds, const Neighborhoods& nn,
+    const Params& params, const Real ratio_tol) {
+  auto h_nl    = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
+                                                   nn.neighbor_lists);
+  auto h_radii = Kokkos::create_mirror_view_and_copy(
+      Kokkos::HostSpace(), nn.neighborhood_radii);
+
+  NeighborhoodQuality result;
+  result.n_targets  = tgt_crds.extent(0);
+  result.min_active = std::numeric_limits<Int>::max();
+  const int pwr     = params.manifold_weight_pwr;
+  for (Index i = 0; i < result.n_targets; ++i) {
+    const Int nnbrs = h_nl(i, 0);
+    const Real h    = h_radii(i);
+    Real cov[3][3]  = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    Int active      = 0;
+    bool finite     = std::isfinite(h);
+    for (Int j = 0; j < nnbrs; ++j) {
+      const Index s = h_nl(i, j + 1);
+      Real d[3];
+      Real r2 = 0;
+      for (int k = 0; k < 3; ++k) {
+        d[k] = src_crds(s, k) - tgt_crds(i, k);
+        r2 += d[k] * d[k];
+      }
+      const Real r = std::sqrt(r2);
+      finite       = finite and std::isfinite(r);
+      result.max_r_over_h = std::max(result.max_r_over_h, r / h);
+      const Real x = r / h;
+      const Real w = (1 - x > 0) ? std::pow(1 - x, pwr) : 0;
+      if (w > 0) ++active;
+      for (int a = 0; a < 3; ++a)
+        for (int b = 0; b < 3; ++b) cov[a][b] += w * d[a] * d[b];
+    }
+    Real ratio = 0;
+    if (finite) {
+      Real ev[3];
+      sym3_eigenvalues(cov, ev);
+      ratio = (ev[0] > 0) ? ev[1] / ev[0] : 0;
+    }
+    result.min_active = std::min(result.min_active, active);
+    const bool bad    = (not finite) or active < 3 or ratio < ratio_tol;
+    if (not finite) ++result.n_nonfinite;
+    if (bad) ++result.n_degenerate;
+    if (ratio < result.min_eig_ratio or result.worst_target == LPM_NULL_IDX) {
+      if (ratio <= result.min_eig_ratio) {
+        result.min_eig_ratio = ratio;
+        result.worst_target  = i;
+      }
+    }
+  }
+  return result;
 }
 
 std::string Neighborhoods::info_string(const int tab_lev) const {
