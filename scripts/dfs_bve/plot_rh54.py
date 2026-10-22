@@ -3,8 +3,9 @@
 
 Reads the data written by scripts/dfs_bve/rh54_trials.sh:
 
-  <outdir>/timing_summary.csv   one row per run; exit_status != 0 means the
-                                run crashed or timed out (124/137)
+  <outdir>/timing_summary*.csv  one row per run (rh54_sweep.sh writes one file
+                                per machine); exit_status != 0 means the run
+                                crashed or timed out (124/137)
   <outdir>/failed_runs.log      human-readable record of failed runs (unused)
   <outdir>/<run_id>_<seed><depth>dt<dt>_nlon<nlon>_<remesh>_.m
                                 MATLAB-style vectors written at the END of a
@@ -98,20 +99,19 @@ def read_matlab_vectors(path):
 
 
 def failed_run_ids(outdir):
-    """Run ids (basename of output_root) with a non-zero exit status."""
-    bad = set()
-    csv_path = outdir / "timing_summary.csv"
-    if not csv_path.exists():
-        return bad
-    with open(csv_path, newline="") as f:
-        for row in csv.DictReader(f):
-            try:
-                status = int(row["exit_status"])
-            except (KeyError, ValueError):
-                continue
-            if status != 0:
-                bad.add(Path(row["output_root"]).name)
-    return bad
+    """Run ids (basename of output_root) with a non-zero exit status and no
+    successful record, across every timing_summary*.csv (one per machine)."""
+    bad, good = set(), set()
+    for csv_path in sorted(outdir.glob("timing_summary*.csv")):
+        with open(csv_path, newline="") as f:
+            for row in csv.DictReader(f):
+                try:
+                    status = int(row["exit_status"])
+                except (KeyError, ValueError):
+                    continue
+                name = Path(row["output_root"]).name
+                (good if status == 0 else bad).add(name)
+    return bad - good
 
 
 def discover_runs(outdir):
