@@ -194,10 +194,13 @@ def pick_nlon(runs, requested):
 
 def add_slope(ax, order, x0, y0, xs):
     """Dashed grey reference line y = y0 (x/x0)^order, labelled."""
+    xlim, ylim = ax.get_xlim(), ax.get_ylim()
     ax.plot(xs, y0 * (xs / x0) ** order, color="0.5", lw=1, ls=(0, (4, 3)),
-            zorder=0, scalex=False, scaley=False)
-    ax.annotate(f"$O(\\Delta t^{order})$", (xs[0], y0 * (xs[0] / x0) ** order),
-                color="0.4", fontsize=8, annotation_clip=True)
+            zorder=0)
+    ax.text(xs[-1], y0, f" $O(\\Delta t^{order})$", color="0.4", fontsize=8,
+            va="bottom", ha="right")
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
 
 
 def group(items, keyfn):
@@ -232,6 +235,8 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
             ax.loglog([p[0].dt for p in pts], [p[1] for p in pts],
                       color=gcol[g], marker=dmark[d], ls=dls[d], ms=4, lw=1.2)
 
+    pending = []  # reference slopes are added after all panels are drawn
+
     def decorate(ax, rk, sub):
         dts = np.array(sorted({r.dt for r, _ in sub}))
         es = np.array([e for _, e in sub])
@@ -239,7 +244,7 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
             xs = np.array([dts.min(), dts.max()])
             # anchor the reference slope at the median error at the largest dt
             big = [e for r, e in sub if r.dt == xs[1]]
-            add_slope(ax, RK_ORDER[rk], xs[1], float(np.median(big)), xs)
+            pending.append((ax, RK_ORDER[rk], xs[1], float(np.median(big)), xs))
         ax.set_title(RK_LABEL[rk])
         ax.set_xlabel(r"time step $\Delta t$")
         ax.grid(True, which="both", alpha=0.25)
@@ -252,6 +257,9 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
         draw(ax, sub)
         decorate(ax, rk, sub)
     axes[0][0].set_ylabel(ylabel)
+    for args in pending:
+        add_slope(*args)
+    pending.clear()
     fig.suptitle(f"RH54 convergence, nlon = {nlon}", y=1.0)
     fig.legend(handles=legend_handles(gcol, dmark, dls), loc="lower center",
                ncol=min(len(gcol) + len(dmark), 7), frameon=False)
@@ -273,6 +281,8 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
             if i < len(ds) - 1:
                 ax.set_xlabel("")
         axes[i][0].set_ylabel(ylabel)
+    for args in pending:
+        add_slope(*args)
     fig.suptitle(f"RH54 convergence, nlon = {nlon}", y=1.0)
     hs = [h for h in legend_handles(gcol, dmark, dls) if h.get_label().startswith("GMLS")]
     fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
