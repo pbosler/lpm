@@ -71,9 +71,6 @@ Neighborhoods::Neighborhoods(const host_crd_view host_src_crds,
   Kokkos::deep_copy(neighbor_lists, h_neighbors);
   Kokkos::deep_copy(neighborhood_radii, h_radii);
   compute_bds();
-#ifndef NDEBUG
-  std::cout << info_string();
-#endif
 }
 
 Neighborhoods::Neighborhoods(const host_crd_view host_colloc_src_tgt_crds,

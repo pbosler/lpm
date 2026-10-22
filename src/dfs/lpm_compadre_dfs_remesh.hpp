@@ -63,7 +63,14 @@ struct CompadreDfsRemesh {
     const gmls::Params& params,
     const std::shared_ptr<spdlog::logger> logger_in = nullptr);
 
+  void direct_remesh();
   void uniform_direct_remesh();
+
+  template <typename FlagType>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType& flag);
+
+  template <typename FlagType1, typename FlagType2>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType1& flag1, const FlagType2& flag2);
 
   std::string info_string(const int tab_lev=0) const;
 
@@ -91,6 +98,8 @@ struct CompadreDfsRemesh {
     void interpolate_lag_crds();
 
     std::shared_ptr<spdlog::logger> logger;
+
+    void gmls_setup();
 };
 
 } // namespace DFS

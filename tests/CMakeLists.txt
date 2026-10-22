@@ -41,6 +41,8 @@ CreateUnitTest(coords_test lpm_coords_test.cpp)
 
 CreateUnitTest(math_test lpm_math_tests.cpp)
 
+CreateUnitTest(jm86_forcing_test lpm_jm86_forcing_tests.cpp)
+
 CreateUnitTest(vertices_test lpm_vertices_tests.cpp)
 
 CreateUnitTest(edges_test lpm_edges_tests.cpp)
@@ -99,7 +101,9 @@ if (LPM_ENABLE_DFS)
 
 CreateUnitTest(dfs_grid_test lpm_dfs_grid_tests.cpp )
 
-CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp LIBS FFTW3::Double FFTW3::Float FFTW3::DoubleOpenMP FFTW3::FloatOpenMP finufft::finufft)
+CreateUnitTest(dfs_bve_test lpm_dfs_bve_test.cpp LIBS FFTW3::Double FFTW3::Float finufft::finufft)
+
+CreateUnitTest(dfs_polar_vortex_stability_test lpm_dfs_polar_vortex_stability_test.cpp LIBS FFTW3::Double FFTW3::Float finufft::finufft)
 
 endif()
 

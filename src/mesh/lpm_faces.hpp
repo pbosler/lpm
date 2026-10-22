@@ -422,6 +422,11 @@ class Faces {
 
   Real appx_min_mesh_size() const;
 
+  Real max_face_area() const;
+  Real min_face_area() const;
+  Real avg_face_area() const;
+  Real total_leaf_area() const;
+
   Coords<Geo> phys_crds;
 
   Coords<Geo> lag_crds;

@@ -92,7 +92,7 @@ TEMPLATE_TEST_CASE ("sphere_test_case2_init", "[swe]", CubedSphereSeed, IcosTriS
       Real u_exact[3];
       test_case2.velocity(u_exact, m_x);
       for (int j=0; j<SphereGeometry::ndim; ++j) {
-        velocity_error_passive(i,j) = m_u(j) - u_exact[j];
+        velocity_error_active(i,j) = m_u(j) - u_exact[j];
       }
       laplacian_error_active(i) = lap_view(i) - test_case2.surface_laplacian(m_x);
     });

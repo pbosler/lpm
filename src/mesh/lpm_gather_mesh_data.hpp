@@ -105,6 +105,9 @@ class GatherMeshData final {
   void gather_coordinates(typename SeedType::geo::crd_view_type passive_x,
                           typename SeedType::geo::crd_view_type active_x);
 
+  void gather_scalar_field(const ScalarField<VertexField>& vert_field,
+        const ScalarField<FaceField>& face_field);
+
  private:
   void gather_coordinates();
   bool _host_initialized;

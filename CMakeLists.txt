@@ -19,37 +19,26 @@ CMAKE_POLICY(SET CMP0074 NEW)
 
 set(CMAKE_CXX_EXTENSIONS OFF) # required by Kokkos
 
+if (APPLE)
+  # Apple's security protocol (SIP) doesn't pass env variables through to ctest.
+  # have to use rpath instead.
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  if (LPM_TPL_DIR)
+    list(APPEND CMAKE_BUILD_RPATH   "${LPM_TPL_DIR}/lib")
+    list(APPEND CMAKE_INSTALL_RPATH "${LPM_TPL_DIR}/lib")
+  endif()
+endif()
+
 # Tools for CMake repetitive tasks & debugging
 include(cmake_helpers)
 
 find_package(MPI REQUIRED COMPONENTS C)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
-    message("The C++ compiler is an Intel compiler.")
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-      # Commands here run only if the configure-time build type is "Debug"
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -traceback -O0 -fsanitize=address -fno-omit-frame-pointer")
-    endif()
-    if(MPI_FOUND)
-        message(STATUS "----------------------------------------")
-        message(STATUS "MPI found:")
-        message(STATUS "  MPI_FOUND: ${MPI_FOUND}")
-        message(STATUS "  MPI_C_FOUND: ${MPI_C_FOUND}")
-        message(STATUS "  MPI_CXX_FOUND: ${MPI_CXX_FOUND}")
-        message(STATUS "  MPI_INCLUDE_PATH: ${MPI_INCLUDE_PATH}")
-        message(STATUS "  MPI_LIBRARIES: ${MPI_LIBRARIES}")
-        message(STATUS "  MPI_C_LIBRARIES: ${MPI_C_LIBRARIES}")
-        message(STATUS "  MPI_CXX_LIBRARIES: ${MPI_CXX_LIBRARIES}")
-        message(STATUS "  MPI_VERSION_STRING: ${MPI_VERSION_STRING}")
-        message(STATUS "  MPIEXEC_EXECUTABLE: ${MPIEXEC_EXECUTABLE}")
-        message(STATUS "----------------------------------------")
-    else()
-        message(FATAL_ERROR "MPI not found.")
-    endif()
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU") 
-  message("The C++ compiler is a GNU compiler.")
-else()
-  message("The C++ compiler ${CMAKE_CXX_COMPILER_ID} is unknown.")
+  message(STATUS "LPM: C++ compiler is an Intel compiler.")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -traceback -O0 -fsanitize=address -fno-omit-frame-pointer")
+  endif()
 endif()
 
 # Write basic configure info to console
