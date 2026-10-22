@@ -2,10 +2,13 @@
 #define LPM_SWE_HPP
 
 #include "LpmConfig.h"
+#include "lpm_compadre.hpp"
 #include "lpm_coords.hpp"
 #include "lpm_coriolis.hpp"
 #include "lpm_field.hpp"
 #include "mesh/lpm_polymesh2d.hpp"
+#include "mesh/lpm_gather_mesh_data.hpp"
+#include "mesh/lpm_scatter_mesh_data.hpp"
 #include "vtk/lpm_vtk_io.hpp"
 
 namespace Lpm {
@@ -87,6 +90,31 @@ class SWE {
   /// PSE kernel width parameter
   Real pse_eps;
 
+  void initialize_gmls(const int gmls_order, const Real gmls_radius_multiplier);
+
+ private:
+  std::unique_ptr<GatherMeshData<SeedType>> gathered_mesh;
+  std::unique_ptr<ScatterMeshData<SeedType>> scatter_mesh;
+
+  gmls::Params gmls_params;
+  gmls::Neighborhoods gmls_neighborhoods;
+
+  std::map<std::string, ScalarField<VertexField>> passive_gmls_input_scalar_fields;
+  std::map<std::string, ScalarField<FaceField>> active_gmls_input_scalar_fields;
+  std::map<std::string, ScalarField<VertexField>> passive_gmls_output_scalar_fields;
+  std::map<std::string, ScalarField<FaceField>> active_gmls_output_scalar_fields;
+
+  std::map<std::string, VectorField<typename SeedType::geo, VertexField>> passive_gmls_input_vector_fields;
+  std::map<std::string, VectorField<typename SeedType::geo, FaceField>> active_gmls_input_vector_fields;
+
+  std::unique_ptr<Compadre::GMLS> scalar_gmls;
+  std::unique_ptr<Compadre::GMLS> vector_gmls;
+
+  std::vector<Compadre::TargetOperation> scalar_gmls_ops;
+  std::vector<Compadre::TargetOperation> vector_gmls_ops;
+
+  scalar_view_type gathered_surface_laplacian;
+
  public:  // functions
   /** Set kernel widths.
 
@@ -120,6 +148,11 @@ class SWE {
   template <typename VelocityType>
   void init_velocity_from_function();
 
+  /** @brief Computes velocity from vorticity and divergence using direct summation.
+
+  */
+  void compute_velocity_direct_sum();
+
   /** @brief Sets initial vorticity on all particles.
 
     If depth_set = true, also sets potential voricity.
@@ -145,12 +178,21 @@ class SWE {
   template <typename BottomType, typename SurfaceType>
   void init_surface(const BottomType& topo, const SurfaceType& surf);
 
+  /** @brief Calls Compadre to compute the Laplacian of the fluid surface using
+    GMLS.
+
+    Requires gmls to have been previously set up by ::initialize_gmls.
+  */
+  void compute_surface_laplacian_gmls();
+
   /** @brief initializes fields that must be computed, i.e.,
     velocity (optionally)
     the double dot product, and the surfaace Laplacian,
     using direct summation.
   */
   void init_direct_sums(const bool do_velocity = true);
+
+
 
   Real total_mass() const;
   Real total_energy() const;

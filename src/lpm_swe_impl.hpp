@@ -6,6 +6,8 @@
 #include "lpm_kokkos_defs.hpp"
 #include "lpm_swe.hpp"
 #include "lpm_swe_kernels.hpp"
+#include "mesh/lpm_gather_mesh_data_impl.hpp"
+#include "mesh/lpm_scatter_mesh_data_impl.hpp"
 
 namespace Lpm {
 
@@ -94,7 +96,21 @@ SWE<SeedType>::SWE(const PolyMeshParameters<SeedType>& params,
       mesh(params),
       g(1),
       t(0),
-      coriolis(coriolis) {}
+      coriolis(coriolis) {
+          passive_gmls_input_scalar_fields.emplace("surface_height", surf_passive);
+          active_gmls_input_scalar_fields.emplace("surface_height", surf_active);
+          passive_gmls_output_scalar_fields.emplace("surface_laplacian", surf_lap_passive);
+          active_gmls_output_scalar_fields.emplace("surface_laplacian", surf_lap_active);
+
+          passive_gmls_input_vector_fields.emplace("velocity", velocity_passive);
+          active_gmls_input_vector_fields.emplace("velocity", velocity_active);
+
+          scalar_gmls_ops = {Compadre::ScalarPointEvaluation,
+              Compadre::GradientOfScalarPointEvaluation,
+              Compadre::LaplacianOfScalarPointEvaluation};
+          vector_gmls_ops = {Compadre::VectorPointEvaluation,
+              Compadre::GradientOfVectorPointEvaluation};
+      }
 
 template <typename SeedType>
 void SWE<SeedType>::set_kernel_parameters(const Real vel_eps,
@@ -328,6 +344,146 @@ void SWE<SeedType>::advance_timestep(SolverType& solver) {
 }
 
 template <typename SeedType>
+void SWE<SeedType>::compute_velocity_direct_sum() {
+  Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
+  Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
+
+  Kokkos::parallel_for(vertex_policy,
+    VelocityVertexSums<typename SeedType::geo>(
+      velocity_passive.view,
+      mesh.vertices.phys_crds.view,
+      mesh.faces.phys_crds.view,
+      rel_vort_active.view,
+      div_active.view,
+      mesh.faces.area,
+      mesh.faces.mask,
+      mesh.n_faces_host()));
+
+
+  Kokkos::parallel_for(face_policy,
+    VelocityFaceSums<typename SeedType::geo>(
+      velocity_active.view,
+      mesh.faces.phys_crds.view,
+      rel_vort_active.view,
+      div_active.view,
+      mesh.faces.area,
+      mesh.faces.mask,
+      mesh.n_faces_host()));
+
+}
+
+template <typename SeedType>
+void SWE<SeedType>::initialize_gmls(const int gmls_order, const Real gmls_radius_multiplier) {
+  gmls_params = gmls::Params(gmls_order);
+  gmls_params.eps_multiplier = gmls_radius_multiplier;
+  gmls_params.manifold_order = 2;
+
+  gathered_mesh = std::make_unique<GatherMeshData<SeedType>>(mesh);
+  scatter_mesh = std::make_unique<ScatterMeshData<SeedType>>(*gathered_mesh, mesh);
+  gathered_mesh->init_scalar_fields(passive_gmls_input_scalar_fields, active_gmls_input_scalar_fields);
+  gathered_surface_laplacian = scalar_view_type("surface_laplacian", gathered_mesh->n());
+  gathered_mesh->scalar_fields.emplace("surface_laplacian", gathered_surface_laplacian);
+
+  mesh.vertices.phys_crds.update_host();
+  mesh.faces.phys_crds.update_host();
+
+  gmls_neighborhoods = gmls::Neighborhoods(gathered_mesh->h_phys_crds,
+    gathered_mesh->h_phys_crds, gmls_params);
+
+  const auto scalar_reconstruction_space = Compadre::ReconstructionSpace::ScalarTaylorPolynomial;
+  const auto vector_reconstruction_space = Compadre::ReconstructionSpace::VectorTaylorPolynomial;
+  const auto scalar_sampling_functional = Compadre::PointSample;
+  const auto vector_sampling_functional = (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
+    Compadre::ManifoldVectorPointSample : Compadre::VectorPointSample);
+  const auto problem_type = (std::is_same<typename SeedType::geo, SphereGeometry>::value ?
+    Compadre::ProblemType::MANIFOLD : Compadre::ProblemType::STANDARD);
+  const auto scalar_data_functional = scalar_sampling_functional;
+  const auto vector_data_functional = vector_sampling_functional;
+  const auto solver_type = Compadre::DenseSolverType::QR;
+  const auto constraint_type = Compadre::ConstraintType::NO_CONSTRAINT;
+  const auto weight_type = Compadre::WeightingFunctionType::Power;
+
+  if (!scalar_gmls) {
+    scalar_gmls = std::make_unique<Compadre::GMLS>(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+
+    vector_gmls = std::make_unique<Compadre::GMLS>(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order);
+  }
+  else {
+    scalar_gmls.reset(new Compadre::GMLS(
+      scalar_reconstruction_space,
+      scalar_sampling_functional,
+      scalar_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+
+    vector_gmls.reset(new Compadre::GMLS(
+      vector_reconstruction_space,
+      vector_sampling_functional,
+      vector_data_functional,
+      gmls_params.samples_order,
+      SeedType::geo::ndim,
+      solver_type,
+      problem_type,
+      constraint_type,
+      gmls_params.manifold_order));
+  }
+
+  scalar_gmls->setProblemData(gmls_neighborhoods.neighbor_lists,
+    gathered_mesh->phys_crds, gathered_mesh->phys_crds, gmls_neighborhoods.neighborhood_radii);
+  vector_gmls->setProblemData(gmls_neighborhoods.neighbor_lists,
+    gathered_mesh->phys_crds, gathered_mesh->phys_crds, gmls_neighborhoods.neighborhood_radii);
+
+  scalar_gmls->addTargets(scalar_gmls_ops);
+//   vector_gmls->addTargets(vector_gmls_ops);
+
+  scalar_gmls->setWeightingType(weight_type);
+//   vector_gmls->setWeightingType(weight_type);
+
+  scalar_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+//   vector_gmls->setWeightingParameter(gmls_params.samples_weight_pwr);
+
+  if constexpr (std::is_same<typename SeedType::geo, SphereGeometry>::value) {
+    constexpr bool use_to_orient = true;
+    scalar_gmls->setReferenceOutwardNormalDirection(gathered_mesh->phys_crds, use_to_orient);
+    vector_gmls->setReferenceOutwardNormalDirection(gathered_mesh->phys_crds, use_to_orient);
+
+    scalar_gmls->setCurvatureWeightingType(weight_type);
+    vector_gmls->setCurvatureWeightingType(weight_type);
+
+    scalar_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+    vector_gmls->setCurvatureWeightingParameter(gmls_params.manifold_weight_pwr);
+  }
+
+  scalar_gmls->generateAlphas();
+//   vector_gmls->generateAlphas();
+
+  gathered_mesh->gather_scalar_fields(passive_gmls_input_scalar_fields, active_gmls_input_scalar_fields);
+  gathered_mesh->gather_vector_fields(passive_gmls_input_vector_fields, active_gmls_input_vector_fields);
+}
+
+template <typename SeedType>
 void SWE<SeedType>::init_direct_sums(const bool do_velocity) {
   Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
   Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
@@ -414,11 +570,35 @@ void SWE<SeedType>::allocate_scalar_tracer(const std::string& name) {
       name, ScalarField<FaceField>(name, this->rel_vort_active.view.extent(0)));
 }
 
+template <typename SeedType>
+void SWE<SeedType>::compute_surface_laplacian_gmls() {
+
+  auto logger = lpm_logger();
+
+  Compadre::Evaluator eval(scalar_gmls.get());
+  const auto surf_vals = gathered_mesh->scalar_fields.at("surface_height");
+  auto surf_lap = gathered_mesh->scalar_fields.at("surface_laplacian");
+
+  logger->debug("SWE::compute_surface_laplacian_gmls: gathered input/output scalar fields.");
+
+  scalar_view_type null_view;
+  eval.applyAlphasToDataAllComponentsAllTargetSites<scalar_view_type, scalar_view_type>(
+      surf_lap, null_view,
+      surf_vals, Compadre::LaplacianOfScalarPointEvaluation, Compadre::PointSample);
+
+  logger->debug("SWE::compute_surface_laplacian_gmls: GMLS eval complete");
+
+  scatter_mesh->scatter_fields(passive_gmls_output_scalar_fields, active_gmls_output_scalar_fields);
+}
 
 template <typename SeedType>
 VtkPolymeshInterface<SeedType> vtk_mesh_interface(const SWE<SeedType>& swe) {
-  //   VtkPolymeshInterface<SeedType> vtk(swe.mesh, swe.surf_passive.hview);
-  VtkPolymeshInterface<SeedType> vtk(swe.mesh);
+//   if constexpr (std::is_same<typename SeedType::geo, PlaneGeometry>::value) {
+//     VtkPolymeshInterface<SeedType> vtk(swe.mesh, swe.surf_passive.hview);
+//   }
+//   else {
+    VtkPolymeshInterface<SeedType> vtk(swe.mesh);
+//   }
   vtk.add_scalar_point_data(swe.rel_vort_passive.view);
   vtk.add_scalar_point_data(swe.pot_vort_passive.view);
   vtk.add_scalar_point_data(swe.div_passive.view);

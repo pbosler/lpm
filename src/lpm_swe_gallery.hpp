@@ -326,6 +326,11 @@ struct SWETestCase2 {
   }
 
   template <typename PtType>
+  KOKKOS_INLINE_FUNCTION Real surface_laplacian(const PtType& xyz) const {
+    return -2 * (Omega * u0 + 0.5*square(u0)) * ( 1 - 3*square(xyz[2]) );
+  }
+
+  template <typename PtType>
   KOKKOS_INLINE_FUNCTION Real depth(const PtType& xyz) const {
     return surface_height(xyz);
   }
@@ -339,6 +344,8 @@ struct SWETestCase2 {
   KOKKOS_INLINE_FUNCTION Real bottom_height(const PtType& xyz) const {
     return 0;
   }
+
+
 
   inline std::string info_string() const {
     std::ostringstream ss;
