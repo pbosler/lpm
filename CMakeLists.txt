@@ -33,6 +33,17 @@ endif()
 include(cmake_helpers)
 
 find_package(MPI REQUIRED COMPONENTS C)
+if (NOT MPI_C_FOUND)
+  message(FATAL_ERROR "Error: cannot find MPI-C")
+endif()
+find_package(OpenMP)
+
+set(LPM_USE_OPENMP OFF)
+if(OpenMP_CXX_FOUND)
+    set(LPM_USE_OPENMP ON)
+endif()
+
+message(STATUS "LPM_USE_OPENMP=${LPM_USE_OPENMP}")
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel" OR CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
   message(STATUS "LPM: C++ compiler is an Intel compiler.")
