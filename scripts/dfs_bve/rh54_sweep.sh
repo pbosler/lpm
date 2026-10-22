@@ -28,12 +28,16 @@ OUTDIR="${OUTDIR:-/data/pabosle/dfs-bve-paper}"
 
 # Default TAG is <host>, or <host>.s<I>of<N> when --shard I/N is given, so
 # shards sharing a node write separate timing and failure files.
+SHARD_I=""
+SHARD_N=""
 if [[ -z "${TAG:-}" ]]; then
   TAG="$(hostname -s)"
   prev=""
   for arg in "$@"; do
     if [[ "${prev}" == "--shard" && "${arg}" =~ ^([0-9]+)/([0-9]+)$ ]]; then
-      TAG="${TAG}.s${BASH_REMATCH[1]}of${BASH_REMATCH[2]}"
+      SHARD_I="${BASH_REMATCH[1]}"
+      SHARD_N="${BASH_REMATCH[2]}"
+      TAG="${TAG}.s${SHARD_I}of${SHARD_N}"
     fi
     prev="${arg}"
   done
@@ -53,6 +57,34 @@ fi
 export OMP_DYNAMIC="${OMP_DYNAMIC:-FALSE}"
 export OMP_PROC_BIND="${OMP_PROC_BIND:-spread}"
 export OMP_PLACES="${OMP_PLACES:-cores}"
+
+# cee-compute002 (16 NUMA nodes, 28 cores each; hyperthread siblings are
+# cpu+448): give each shard its own NUMA node, using OMP_NUM_THREADS physical
+# cores on it and node-local memory, so shards on the node do not share cores.
+# Shard I (1-based) uses node CEE_NODES[I-1]; nodes 4 5 7 11 had >200 GB free on
+# 2026-10-22, override with e.g. CEE_NODES="1 2 5 6". RH54_NO_PIN=1 disables.
+PIN_CMD=()
+if [[ "$(hostname -s)" == "cee-compute002" && "${RH54_NO_PIN:-0}" != "1" ]]; then
+  if [[ -z "${SHARD_I}" ]]; then
+    echo "WARNING: cee-compute002: no --shard I/N given, running unpinned." >&2
+  else
+    read -r -a cee_nodes <<< "${CEE_NODES:-4 5 7 11}"
+    if (( SHARD_I > ${#cee_nodes[@]} )); then
+      echo "ERROR: shard ${SHARD_I} has no NUMA node in CEE_NODES (${cee_nodes[*]})." >&2
+      exit 1
+    fi
+    if (( OMP_NUM_THREADS > 28 )); then
+      echo "ERROR: OMP_NUM_THREADS=${OMP_NUM_THREADS} exceeds the 28 physical cores per node." >&2
+      exit 1
+    fi
+    node="${cee_nodes[$((SHARD_I - 1))]}"
+    first=$((node * 28))
+    last=$((first + OMP_NUM_THREADS - 1))
+    export OMP_PROC_BIND=close OMP_PLACES=cores
+    PIN_CMD=(numactl --physcpubind="${first}-${last}" --membind="${node}")
+    echo "cee-compute002: shard ${SHARD_I} pinned to cpus ${first}-${last}, NUMA node ${node}"
+  fi
+fi
 
 declare -A EXE=(
   [rk4]="${BUILD_DIR}/examples/dfs_bve_rh54"
@@ -107,7 +139,7 @@ while IFS=$'\t' read -r rk g eps d nlon nsteps est; do
   set +e
   elapsed_seconds=$(
     {
-      time timeout --kill-after=30s "${RUN_TIMEOUT}" "${exe}" \
+      time timeout --kill-after=30s "${RUN_TIMEOUT}" ${PIN_CMD[@]+"${PIN_CMD[@]}"} "${exe}" \
         -tf "${TFINAL}" -dt "${dt}" -g "${g}" -eps "${eps}" -d "${d}" \
         -nlon "${nlon}" -of "${nsteps}" -o "${output_root}" \
         > "${logfile}" 2>&1
