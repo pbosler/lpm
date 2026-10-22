@@ -345,31 +345,8 @@ void SWE<SeedType>::advance_timestep(SolverType& solver) {
 
 template <typename SeedType>
 void SWE<SeedType>::compute_velocity_direct_sum() {
-  Kokkos::TeamPolicy<> vertex_policy(mesh.n_vertices_host(), Kokkos::AUTO());
-  Kokkos::TeamPolicy<> face_policy(mesh.n_faces_host(), Kokkos::AUTO());
-
-  Kokkos::parallel_for(vertex_policy,
-    VelocityVertexSums<typename SeedType::geo>(
-      velocity_passive.view,
-      mesh.vertices.phys_crds.view,
-      mesh.faces.phys_crds.view,
-      rel_vort_active.view,
-      div_active.view,
-      mesh.faces.area,
-      mesh.faces.mask,
-      mesh.n_faces_host()));
-
-
-  Kokkos::parallel_for(face_policy,
-    VelocityFaceSums<typename SeedType::geo>(
-      velocity_active.view,
-      mesh.faces.phys_crds.view,
-      rel_vort_active.view,
-      div_active.view,
-      mesh.faces.area,
-      mesh.faces.mask,
-      mesh.n_faces_host()));
-
+  constexpr bool do_velocity = true;
+  init_direct_sums(do_velocity);
 }
 
 template <typename SeedType>

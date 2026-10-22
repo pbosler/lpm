@@ -52,6 +52,9 @@ TEMPLATE_TEST_CASE ("sphere_test_case2_init", "[swe]", CubedSphereSeed, IcosTriS
   sphere->init_swe_problem(test_case2);
 
   logger.debug("computing velocity.");
+  constexpr Real velocity_eps = 0.1;
+  constexpr Real pse_eps      = 0.1;  // unused on the sphere
+  sphere->set_kernel_parameters(velocity_eps, pse_eps);
   sphere->compute_velocity_direct_sum();
 
   logger.debug("initializing gmls for surface laplacian");
@@ -99,6 +102,65 @@ TEMPLATE_TEST_CASE ("sphere_test_case2_init", "[swe]", CubedSphereSeed, IcosTriS
 
 
 
+
+  // Williamson et al. (1992) test case 2 is a steady state: after summing all
+  // terms, the vorticity, divergence, and depth tendencies must vanish.
+  scalar_view_type dzeta_passive("dzeta_passive", sphere->mesh.n_vertices_host());
+  scalar_view_type ddiv_passive("ddiv_passive", sphere->mesh.n_vertices_host());
+  scalar_view_type ddepth_passive("ddepth_passive", sphere->mesh.n_vertices_host());
+  scalar_view_type dzeta_active("dzeta_active", sphere->mesh.n_faces_host());
+  scalar_view_type ddiv_active("ddiv_active", sphere->mesh.n_faces_host());
+  scalar_view_type darea_active("darea_active", sphere->mesh.n_faces_host());
+
+  constexpr Real unit_dt = 1;
+  Kokkos::parallel_for(
+      "tc2 passive tendencies", sphere->mesh.n_vertices_host(),
+      SWEVorticityDivergenceHeightTendencies<Geometry>(
+          dzeta_passive, ddiv_passive, ddepth_passive,
+          sphere->mesh.vertices.phys_crds.view, sphere->velocity_passive.view,
+          sphere->rel_vort_passive.view, sphere->div_passive.view,
+          sphere->depth_passive.view, sphere->double_dot_passive.view,
+          sphere->surf_lap_passive.view, coriolis, g, unit_dt));
+  Kokkos::parallel_for(
+      "tc2 active tendencies", sphere->mesh.n_faces_host(),
+      SWEVorticityDivergenceAreaTendencies<Geometry>(
+          dzeta_active, ddiv_active, darea_active,
+          sphere->mesh.faces.phys_crds.view, sphere->velocity_active.view,
+          sphere->rel_vort_active.view, sphere->div_active.view,
+          sphere->mesh.faces.area, sphere->double_dot_active.view,
+          sphere->surf_lap_active.view, coriolis, g, unit_dt));
+
+  auto max_abs = [](const scalar_view_type& v) {
+    Real m = 0;
+    Kokkos::parallel_reduce(
+        "max_abs", v.extent(0),
+        KOKKOS_LAMBDA(const Index i, Real& lm) {
+          lm = (Kokkos::abs(v(i)) > lm ? Kokkos::abs(v(i)) : lm);
+        },
+        Kokkos::Max<Real>(m));
+    return m;
+  };
+  const Real max_dzeta_p = max_abs(dzeta_passive);
+  const Real max_ddiv_p  = max_abs(ddiv_passive);
+  const Real max_ddep_p  = max_abs(ddepth_passive);
+  const Real max_dzeta_a = max_abs(dzeta_active);
+  const Real max_ddiv_a  = max_abs(ddiv_active);
+  const Real max_darea_a = max_abs(darea_active);
+  logger.info(
+      "max |tendency|: passive (zeta, delta, depth) = ({}, {}, {}); active "
+      "(zeta, delta, area) = ({}, {}, {})",
+      max_dzeta_p, max_ddiv_p, max_ddep_p, max_dzeta_a, max_ddiv_a,
+      max_darea_a);
+
+  // Direct-sum velocity and GMLS Laplacian carry discretization error, so the
+  // tolerance is a loose bound at this resolution (tree depth 4), not roundoff.
+  constexpr Real tol = 0.1;
+  CHECK(max_dzeta_p < tol);
+  CHECK(max_ddiv_p < tol);
+  CHECK(max_ddep_p < tol);
+  CHECK(max_dzeta_a < tol);
+  CHECK(max_ddiv_a < tol);
+  CHECK(max_darea_a < tol);
 
   auto vtk = vtk_mesh_interface(*sphere);
   vtk.add_scalar_point_data(laplacian_error_passive);
