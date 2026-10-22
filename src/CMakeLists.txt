@@ -161,6 +161,7 @@ if (LPM_ENABLE_DFS)
 	      dfs/dfs_doubling.hpp
 	      dfs/dfs_laplacian_new.hpp
 	      dfs/dfs_rhs_new.hpp
+	      dfs/dfs_threads.hpp
 	      dfs/dfs_solve_new.hpp
 	      dfs/dfs_test_support.hpp
 	      dfs/spectral/dfs_velocity.hpp

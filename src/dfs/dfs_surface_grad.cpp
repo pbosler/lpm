@@ -1,4 +1,5 @@
 #include "dfs_surface_grad.hpp"
+#include "dfs_threads.hpp"
 
 
 namespace SpherePoisson
@@ -235,8 +236,11 @@ namespace SpherePoisson
         int64_t Ns [] = {dnrows, ncols};   
         Int type = 2, dim = 2, ntrans=1;
         finufft_plan plan;
+        finufft_opts nufft_opts;
+        finufft_default_opts(&nufft_opts);
+        nufft_opts.nthreads = nufft_threads();
         Int ier = finufft_makeplan(type, dim, Ns, +1, ntrans, 
-                    1e-15, &plan, NULL);
+                    1e-15, &plan, &nufft_opts);
 
         
         // step 2: send in pointers to M nonuniform points
