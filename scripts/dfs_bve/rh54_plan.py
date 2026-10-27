@@ -26,10 +26,15 @@ Completed runs (exit_status 0 in any <outdir>/timing_summary*.csv, thread count
 ignored) are skipped. Runs that failed or timed out are skipped too unless
 --rerun-failed is given, since a timeout would just repeat.
 
-The cost model is a rough guess: measured seconds/step for rk4, g=2 (from
-timing_summary.csv, 2026-10-22) times assumed multipliers for depth, GMLS order
-and RK stage count. The g>2 multipliers have NOT been measured; use --calibrate
-to see how the model compares with the CSV rows already recorded.
+The cost model, STARTUP + nsteps * STEP_COST[nlon] * DEPTH_FACTOR[d] *
+G_FACTOR[g] * RK_FACTOR[rk], was fit against the 678 successful HPC rows in
+timing_summary*.csv as of 2026-10-27 (Huber loss in log-space). It is a crude
+estimate: thread contention when the four shards share a node inflates elapsed
+time by factors of 2-3x, so per-group RMS log-residual is ~0.8 (model vs
+measured within 2x for the middle 50% of runs). nlon=60 and nlon=100 are the
+most lightly sampled (6 and 3 (rk,g,d) groups with >=3 nsteps points) and the
+non-monotonic shape there could still shift as the sweep fills in. Use
+--calibrate to compare the model with recorded elapsed_seconds.
 """
 import argparse
 import csv
@@ -45,12 +50,12 @@ NLONS = [20, 40, 60, 80, 100, 120]
 NSTEPS = [40, 80, 125, 250, 500, 1000, 2000, 4000]
 TFINAL = "2.0"
 
-# seconds per RK4 step at g=2, depth 4/5 blend (non-monotonic in nlon: measured)
-STEP_COST = {20: 0.22, 40: 0.23, 60: 1.6, 80: 0.28, 100: 3.56, 120: 0.6}
-DEPTH_FACTOR = {4: 1.0, 5: 1.3, 6: 1.7}          # weak depth dependence so far
-G_FACTOR = {2: 1.0, 4: 2.0, 6: 3.0, 8: 5.0}      # assumed, unmeasured
-RK_FACTOR = {"rk4": 1.0, "rk3": 0.75, "rk2": 0.5}
-STARTUP = 10.0
+# seconds per RK4 step at g=2, depth 4, fit from HPC timing_summary*.csv (2026-10-27)
+STEP_COST = {20: 4.0, 40: 8.0, 60: 1.5, 80: 12.0, 100: 0.5, 120: 15.5}
+DEPTH_FACTOR = {4: 1.0, 5: 1.0, 6: 1.1}
+G_FACTOR = {2: 1.0, 4: 0.75, 6: 1.25, 8: 2.0}
+RK_FACTOR = {"rk4": 1.0, "rk3": 0.80, "rk2": 0.65}
+STARTUP = 500.0
 
 
 def eps_for(g):
