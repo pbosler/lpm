@@ -24,7 +24,8 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BUILD_DIR="${BUILD_DIR:-${HOME}/lpm/build-dfs-bve-paper}"
-OUTDIR="${OUTDIR:-/data/pabosle/dfs-bve-paper}"
+# OUTDIR="${OUTDIR:-/data/pabosle/dfs-bve-paper}"
+OUTDIR="${OUTDIR:-/gpfs/pabosle/lpm-dfs-bve-paper}"
 
 # Default TAG is <host>, or <host>.s<I>of<N> when --shard I/N is given, so
 # shards sharing a node write separate timing and failure files.
