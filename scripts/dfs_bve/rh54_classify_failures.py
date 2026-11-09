@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Classify RH54 sweep runs that never succeeded as blow-ups, timeouts or crashes.
 
-Reads every <outdir>/timing_summary*.csv (as rh54_plan.py does). A run that has
-exit_status 0 in any row is done and ignored; for every other run the most
-recent failed row is classified from its log:
+Reads every <outdir>/timing_summary*.csv (as rh54_plan.py does), keeping only
+runs in the current rh54_plan.py cross product (--all-history keeps legacy
+axes such as g=2). A run that has exit_status 0 in any row is done and ignored
+unless --include-ok is given; for every other run the most recent failed row is
+classified from its log:
 
     blowup   max |rel. vort passive| grew by more than --factor over its
              initial value, or went non-finite. The RH54 vorticity is
@@ -11,6 +13,10 @@ recent failed row is classified from its log:
     timeout  exit 124 (timeout) or 137 (killed after --kill-after), no blow-up
     crash    any other nonzero exit, no blow-up
     no_log   log file not found
+
+With --include-ok, completed runs are scanned too and classed ok, or
+ok_blowup when the same growth test fires (the run finished, but its errors
+are not meaningful and it should be dropped from convergence plots).
 
 Prints one tab-separated line per failed run to stdout:
 
@@ -30,6 +36,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rh54_plan  # noqa: E402  (sweep axes)
+
 RUN_RE = re.compile(
     r"dfs_bve_rh54_(rk\d)_g(\d+)_eps[^_]+_d(\d+)_nlon(\d+)_tf[^_]+_nsteps(\d+)_nthr\d+")
 RANGE_RE = re.compile(
@@ -38,9 +47,15 @@ CR_RE = re.compile(r"dt = \S+, cr = (\S+)")
 TIMEOUT_EXITS = {124, 137}
 
 
+def in_plan(key):
+    rk, g, d, nlon, nsteps = key
+    return (rk in rh54_plan.RKS and g in rh54_plan.GS and d in rh54_plan.DEPTHS and
+            nlon in rh54_plan.NLONS and nsteps in rh54_plan.NSTEPS)
+
+
 def latest_rows(outdir):
-    """{key: row} for runs with no successful row, keeping the latest failure."""
-    done, failed = set(), {}
+    """({key: row} failed, {key: row} done), keeping the latest row of each."""
+    done, failed = {}, {}
     for path in glob.glob(os.path.join(outdir, "timing_summary*.csv")):
         with open(path, newline="") as f:
             for row in csv.DictReader(f):
@@ -53,11 +68,10 @@ def latest_rows(outdir):
                     status = int(row["exit_status"])
                 except (KeyError, ValueError):
                     continue
-                if status == 0:
-                    done.add(key)
-                elif key not in failed or row["timestamp"] > failed[key]["timestamp"]:
-                    failed[key] = row
-    return {k: r for k, r in failed.items() if k not in done}
+                rows = done if status == 0 else failed
+                if key not in rows or row["timestamp"] > rows[key]["timestamp"]:
+                    rows[key] = row
+    return {k: r for k, r in failed.items() if k not in done}, done
 
 
 def find_log(row, outdir):
@@ -111,14 +125,23 @@ def main():
     ap.add_argument("--outdir", default=os.environ.get("OUTDIR", "/gpfs/pabosle/lpm-dfs-bve-paper"))
     ap.add_argument("--factor", type=float, default=2.0,
                     help="vorticity growth over its initial max that counts as a blow-up")
+    ap.add_argument("--include-ok", action="store_true",
+                    help="also scan completed runs for blow-ups")
+    ap.add_argument("--all-history", action="store_true",
+                    help="keep runs outside the current rh54_plan.py axes")
     a = ap.parse_args()
 
-    failed = latest_rows(a.outdir)
+    failed, done = latest_rows(a.outdir)
+    runs = dict(failed)
+    if a.include_ok:
+        runs.update(done)
+    if not a.all_history:
+        runs = {k: r for k, r in runs.items() if in_plan(k)}
     counts = collections.Counter()
     print("\t".join(("class", "rk", "g", "d", "nlon", "nsteps", "exit", "elapsed_s",
                      "cr", "t_last", "t_onset", "vort_growth")))
-    for key in sorted(failed, key=lambda k: (k[0], k[1], k[2], k[3], k[4])):
-        row = failed[key]
+    for key in sorted(runs):
+        row = runs[key]
         status = int(row["exit_status"])
         log = find_log(row, a.outdir)
         cr = t_last = t_onset = growth = None
@@ -126,7 +149,9 @@ def main():
             cls = "no_log"
         else:
             cr, t_last, t_onset, growth = scan_log(log, a.factor)
-            if t_onset is not None:
+            if status == 0:
+                cls = "ok" if t_onset is None else "ok_blowup"
+            elif t_onset is not None:
                 cls = "blowup"
             elif status in TIMEOUT_EXITS:
                 cls = "timeout"
@@ -138,8 +163,10 @@ def main():
             fmt(t_last), fmt(t_onset), fmt(growth, "%.3g"))))
 
     classes = ["blowup", "timeout", "crash", "no_log"]
+    if a.include_ok:
+        classes = ["ok", "ok_blowup"] + classes
     rks = sorted({k[0] for k in counts})
-    print("%d failed runs (no successful row) in %s" % (len(failed), a.outdir), file=sys.stderr)
+    print("%d runs in %s" % (len(runs), a.outdir), file=sys.stderr)
     print("rk\t" + "\t".join(classes), file=sys.stderr)
     for rk in rks:
         print(rk + "\t" + "\t".join(str(counts[(rk, c)]) for c in classes), file=sys.stderr)
