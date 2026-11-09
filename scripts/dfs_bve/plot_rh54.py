@@ -17,7 +17,12 @@ with <run_id> = dfs_bve_rh54_{rk2|rk3|rk4}_g{g}_eps{eps}_d{d}_nlon{nlon}_tf{tf}_
 
 Runs without a .m file (crashed, timed out, still running), runs with a
 non-zero exit status in timing_summary.csv, and runs whose error at t_eval is
-NaN/inf are skipped and counted in the summary printed at the end.
+NaN/inf are skipped and counted in the summary printed at the end. With
+--exclude, runs that rh54_classify_failures.py --include-ok classed as blow-ups
+(ok_blowup or blowup) are skipped too: they finish, but their errors are not
+meaningful. With --stale RK@TIME (as in rh54_plan.py), timing rows of RK written
+before TIME are ignored and an RK run is plotted only if a newer row succeeded,
+so .m files left from the stale runs are not used.
 
 Figures (one set per norm):
   convergence_<norm>.png            error vs dt, one panel per solver, color =
@@ -42,6 +47,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import rh54_plan  # noqa: E402  (--stale handling)
 
 DEFAULT_OUTDIR = "/data/pabosle/dfs-bve-paper"
 
@@ -98,9 +106,10 @@ def read_matlab_vectors(path):
     return out
 
 
-def failed_run_ids(outdir):
-    """Run ids (basename of output_root) with a non-zero exit status and no
-    successful record, across every timing_summary*.csv (one per machine)."""
+def run_status(outdir, stale):
+    """(bad, good) run ids (basename of output_root): bad have a non-zero exit
+    status and no successful record, across every timing_summary*.csv (one per
+    machine). Stale rows are ignored."""
     bad, good = set(), set()
     for csv_path in sorted(outdir.glob("timing_summary*.csv")):
         with open(csv_path, newline="") as f:
@@ -110,30 +119,49 @@ def failed_run_ids(outdir):
                 except (KeyError, ValueError):
                     continue
                 name = Path(row["output_root"]).name
+                m = RUN_RE.match(name)
+                if m and rh54_plan.is_stale(stale, m["rk"], row.get("timestamp", "")):
+                    continue
                 (good if status == 0 else bad).add(name)
-    return bad - good
+    return bad - good, good
 
 
-def discover_runs(outdir):
-    """Find one .m file per run; returns (runs, n_failed, n_dupe)."""
-    bad = failed_run_ids(outdir)
+def blowup_keys(tsv_path):
+    """Run keys classed as blow-ups in rh54_classify_failures.py output."""
+    keys = set()
+    with open(tsv_path, newline="") as f:
+        for row in csv.DictReader(f, delimiter="\t"):
+            if row["class"] in ("ok_blowup", "blowup"):
+                keys.add((row["rk"], int(row["g"]), int(row["d"]),
+                          int(row["nlon"]), int(row["nsteps"])))
+    return keys
+
+
+def discover_runs(outdir, exclude=frozenset(), stale=None):
+    """Find one .m file per run, skipping keys in exclude and stale runs;
+    returns (runs, n_failed, n_dupe, n_excluded)."""
+    stale = stale or {}
+    bad, good = run_status(outdir, stale)
     by_key = {}
-    n_failed = n_dupe = 0
+    n_failed = n_dupe = n_excluded = 0
     for path in sorted(outdir.glob("dfs_bve_rh54_*.m")):
         m = RUN_RE.match(path.name)
         if not m:
             continue
-        if m.group(0) in bad:
+        if m.group(0) in bad or (m["rk"] in stale and m.group(0) not in good):
             n_failed += 1
             continue
         run = Run(m, path)
+        if run.key in exclude:
+            n_excluded += 1
+            continue
         old = by_key.get(run.key)
         if old is not None:
             n_dupe += 1
             if old.mtime >= run.mtime:
                 continue
         by_key[run.key] = run
-    return list(by_key.values()), n_failed, n_dupe
+    return list(by_key.values()), n_failed, n_dupe, n_excluded
 
 
 def error_at(run, norm, t_eval):
@@ -371,6 +399,11 @@ def main():
     ap.add_argument("--nsteps", type=int, default=2000,
                     help="nsteps held fixed in the GMLS-order and nlon plots")
     ap.add_argument("--formats", nargs="+", default=["png", "pdf"])
+    ap.add_argument("--exclude", default=None, metavar="TSV",
+                    help="rh54_classify_failures.py --include-ok output; runs "
+                         "classed as blow-ups are skipped")
+    ap.add_argument("--stale", action="append", default=[], metavar="RK@TIME",
+                    help="ignore timing rows of RK written before TIME (repeatable)")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -379,11 +412,14 @@ def main():
     figdir = Path(args.figdir)
     figdir.mkdir(parents=True, exist_ok=True)
 
-    runs, n_failed, n_dupe = discover_runs(outdir)
+    exclude = blowup_keys(args.exclude) if args.exclude else frozenset()
+    runs, n_failed, n_dupe, n_excluded = discover_runs(
+        outdir, exclude, rh54_plan.parse_stale(args.stale))
     if not runs:
         sys.exit(f"no completed runs found in {outdir}")
     nlon = pick_nlon(runs, args.nlon)
     print(f"found {len(runs)} completed runs ({n_failed} failed runs skipped, "
+          f"{n_excluded} blow-ups excluded, "
           f"{n_dupe} duplicate runs resolved to newest); fixed nlon = {nlon}")
 
     for norm in args.norms:

@@ -3,7 +3,8 @@
 
 Reads every <outdir>/timing_summary*.csv (as rh54_plan.py does), keeping only
 runs in the current rh54_plan.py cross product (--all-history keeps legacy
-axes such as g=2). A run that has exit_status 0 in any row is done and ignored
+axes such as g=2) and dropping rows made stale by --stale RK@TIME (as in
+rh54_plan.py). A run that has exit_status 0 in any row is done and ignored
 unless --include-ok is given; for every other run the most recent failed row is
 classified from its log:
 
@@ -53,7 +54,7 @@ def in_plan(key):
             nlon in rh54_plan.NLONS and nsteps in rh54_plan.NSTEPS)
 
 
-def latest_rows(outdir):
+def latest_rows(outdir, stale):
     """({key: row} failed, {key: row} done), keeping the latest row of each."""
     done, failed = {}, {}
     for path in glob.glob(os.path.join(outdir, "timing_summary*.csv")):
@@ -64,6 +65,8 @@ def latest_rows(outdir):
                     continue
                 key = (m.group(1), int(m.group(2)), int(m.group(3)),
                        int(m.group(4)), int(m.group(5)))
+                if rh54_plan.is_stale(stale, key[0], row.get("timestamp", "")):
+                    continue
                 try:
                     status = int(row["exit_status"])
                 except (KeyError, ValueError):
@@ -129,9 +132,11 @@ def main():
                     help="also scan completed runs for blow-ups")
     ap.add_argument("--all-history", action="store_true",
                     help="keep runs outside the current rh54_plan.py axes")
+    ap.add_argument("--stale", action="append", default=[], metavar="RK@TIME",
+                    help="ignore timing rows of RK written before TIME (repeatable)")
     a = ap.parse_args()
 
-    failed, done = latest_rows(a.outdir)
+    failed, done = latest_rows(a.outdir, rh54_plan.parse_stale(a.stale))
     runs = dict(failed)
     if a.include_ok:
         runs.update(done)

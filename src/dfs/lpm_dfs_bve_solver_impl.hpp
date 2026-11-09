@@ -61,6 +61,17 @@ void DFSRK2<SeedType>::interpolate_vorticity_from_mesh_to_grid(scalar_view_type&
     rel_vort_mesh, Compadre::ScalarPointEvaluation, Compadre::PointSample);
 }
 
+// project particles back to the unit sphere (as DFSRK3 and DFSRK4 do)
+template <typename SeedType>
+void DFSRK2<SeedType>::standardize_particles(crd_view xyz_particles){
+  Kokkos::parallel_for(xyz_particles.extent(0), KOKKOS_LAMBDA(Int i){
+    Real magntude_i = sqrt(xyz_particles(i,0)*xyz_particles(i,0)+xyz_particles(i,1)*xyz_particles(i,1)+xyz_particles(i,2)*xyz_particles(i,2));
+    xyz_particles(i,0) = xyz_particles(i,0) / magntude_i;
+    xyz_particles(i,1) = xyz_particles(i,1) / magntude_i;
+    xyz_particles(i,2) = xyz_particles(i,2) / magntude_i;
+  });
+}
+
 template <typename SeedType>
 void DFSRK2<SeedType>::advance_timestep()  {
 
@@ -73,6 +84,7 @@ void DFSRK2<SeedType>::advance_timestep()  {
   // input for stage 2
   KokkosBlas::update(1, rel_vort_particles, 1, rel_vort_particles1, 0, rel_vort_particles_work);
   KokkosBlas::update(1, xyz_particles, 1, xyz_particles1, 0, xyz_particles_work);
+  this->standardize_particles(xyz_particles_work);
 
   // rk stage 2: update vorticity on dfs grid
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles_work,
@@ -89,6 +101,8 @@ void DFSRK2<SeedType>::advance_timestep()  {
   KokkosBlas::update(0.5, xyz_particles1, 0.5, xyz_particles2, 1, xyz_particles);
   // rk update: set new vorticity
   KokkosBlas::update(0.5, rel_vort_particles1, 0.5, rel_vort_particles2, 1, rel_vort_particles);
+  Kokkos::fence();
+  this->standardize_particles(xyz_particles);
 
   // update velocity to the particles
   interpolate_vorticity_from_mesh_to_grid(rel_vort_grid, xyz_particles,

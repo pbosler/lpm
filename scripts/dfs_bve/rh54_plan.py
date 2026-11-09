@@ -26,6 +26,15 @@ Completed runs (exit_status 0 in any <outdir>/timing_summary*.csv, thread count
 ignored) are skipped. Runs that failed or timed out are skipped too unless
 --rerun-failed is given, since a timeout would just repeat.
 
+  --stale RK@TIME                      ignore timing rows of solver RK written
+                                       before TIME (YYYY-MM-DD[THH:MM[:SS]], local
+                                       time of the writing host), so those runs are
+                                       planned again; repeatable. Pair it with
+                                       --rk RK so shards balance over the rerun only:
+                                       ./rh54_sweep.sh --shard 1/8 --rk rk2 --stale rk2@2026-11-10
+                                       rh54_classify_failures.py and plot_rh54.py take
+                                       the same option; pass them the same value.
+
 The cost model, STARTUP + nsteps * STEP_COST[nlon] * DEPTH_FACTOR[d] *
 G_FACTOR[g] * RK_FACTOR[rk], was fit against the 678 successful HPC rows in
 timing_summary*.csv as of 2026-10-27 (Huber loss in log-space). It is a crude
@@ -80,14 +89,40 @@ RUN_RE = re.compile(
     r"dfs_bve_rh54_(rk\d)_g(\d+)_eps[^_]+_d(\d+)_nlon(\d+)_tf[^_]+_nsteps(\d+)_nthr\d+")
 
 
-def recorded(outdir):
-    """(done, failed) sets of (rk,g,d,nlon,nsteps) from every timing CSV."""
+STALE_RE = re.compile(r"(rk\d)@(\d{4}-\d\d-\d\d(?:T\d\d:\d\d(?::\d\d)?)?)")
+
+
+def parse_stale(specs):
+    """{rk: cutoff} from --stale RK@TIME values."""
+    out = {}
+    for s in specs:
+        m = STALE_RE.fullmatch(s)
+        if not m or m[1] not in RKS:
+            sys.exit("bad --stale %r (want RK@YYYY-MM-DD[THH:MM[:SS]])" % s)
+        out[m[1]] = m[2]
+    return out
+
+
+def is_stale(stale, rk, timestamp):
+    """True if a timing row of solver rk written at timestamp predates its cutoff.
+
+    Timestamps are ISO 8601 with a numeric UTC offset; the offset is ignored,
+    so the comparison is in the writing host's local time."""
+    cutoff = stale.get(rk)
+    return cutoff is not None and timestamp[:len(cutoff)] < cutoff
+
+
+def recorded(outdir, stale=None):
+    """(done, failed) sets of (rk,g,d,nlon,nsteps) from every timing CSV,
+    ignoring stale rows."""
     done, failed = set(), set()
     for path in glob.glob(os.path.join(outdir, "timing_summary*.csv")):
         with open(path, newline="") as f:
             for row in csv.DictReader(f):
                 m = RUN_RE.search(row.get("output_root", ""))
                 if not m:
+                    continue
+                if stale and is_stale(stale, m[1], row.get("timestamp", "")):
                     continue
                 key = (m[1], int(m[2]), int(m[3]), int(m[4]), int(m[5]))
                 try:
@@ -113,10 +148,13 @@ def main():
     ap.add_argument("--shard-weights", default=None)
     ap.add_argument("--timeout", default=os.environ.get("RUN_TIMEOUT", "3h"))
     ap.add_argument("--rerun-failed", action="store_true")
+    ap.add_argument("--stale", action="append", default=[], metavar="RK@TIME",
+                    help="ignore timing rows of RK written before TIME (repeatable)")
     ap.add_argument("--calibrate", action="store_true",
                     help="compare modelled and recorded elapsed_seconds, then exit")
     a = ap.parse_args()
     cap = parse_timeout(a.timeout)
+    stale = parse_stale(a.stale)
 
     if a.calibrate:
         for path in sorted(glob.glob(os.path.join(a.outdir, "timing_summary*.csv"))):
@@ -160,7 +198,7 @@ def main():
         if i == shard - 1:
             mine.append(r)
 
-    done, failed = recorded(a.outdir)
+    done, failed = recorded(a.outdir, stale)
     todo, n_done, n_failed = [], 0, 0
     for r in mine:
         key = r[1:]

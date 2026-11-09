@@ -60,6 +60,8 @@ class DFSRK2 {
 
     void interpolate_vorticity_from_mesh_to_grid(scalar_view_type& rel_vort_grid, const crd_view& xyz_mesh, const crd_view& xyz_grid, const scalar_view_type& rel_vort_mesh)const;
 
+    void standardize_particles(crd_view xyz_particles);
+
 };
 
 // Fourth order Runge-Kutta method
