@@ -101,7 +101,7 @@ def recorded(outdir):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--outdir", default=os.environ.get("OUTDIR", "/data/pabosle/dfs-bve-paper"))
+    ap.add_argument("--outdir", default=os.environ.get("OUTDIR", "/gpfs/pabosle/lpm-dfs-bve-paper"))
     ap.add_argument("--rk", nargs="+", choices=RKS, default=RKS)
     ap.add_argument("--g", nargs="+", type=int, choices=GS, default=GS)
     ap.add_argument("--depth", nargs="+", type=int, choices=DEPTHS, default=DEPTHS)
