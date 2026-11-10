@@ -32,11 +32,12 @@ Figures (one set per norm):
   error_vs_nlon_<norm>.png          error vs nlon at fixed nsteps
 
 Example:
-  python3 scripts/dfs_bve/plot_rh54.py --outdir /data/pabosle/dfs-bve-paper \
+  python3 scripts/dfs_bve/plot_rh54.py --outdir /gpfs/pabosle/lpm-dfs-bve-paper \
       --figdir figs --norms l2 linf
 """
 import argparse
 import csv
+import os
 import re
 import sys
 from collections import defaultdict
@@ -51,7 +52,7 @@ import numpy as np  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import rh54_plan  # noqa: E402  (--stale handling)
 
-DEFAULT_OUTDIR = "/data/pabosle/dfs-bve-paper"
+DEFAULT_OUTDIR = os.environ.get("OUTDIR", "/gpfs/pabosle/lpm-dfs-bve-paper")
 
 RK_ORDER = {"rk2": 2, "rk3": 3, "rk4": 4}
 RK_LABEL = {"rk2": "RK2", "rk3": "RK3", "rk4": "RK4"}

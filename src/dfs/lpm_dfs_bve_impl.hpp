@@ -209,6 +209,11 @@ void DFSBVE<SeedType>::init_velocity(const VelocityType& vel_fn) {
   Kokkos::parallel_for("initialize velocity (grid)",
     grid.size(),
     VelocityKernel<VelocityType>(u_grid, gridcrds, 0, vel_fn));
+  // the solvers' first RK stage reads the gathered velocity; refresh it if
+  // finalize_mesh_to_grid_coupling() already gathered (zero) velocities
+  if (gathered_mesh) {
+    gathered_mesh->gather_vector_fields(passive_vector_fields, active_vector_fields);
+  }
 }
 
 
