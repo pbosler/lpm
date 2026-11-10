@@ -99,6 +99,8 @@ class DFSBVE {
     std::map<std::string, ScalarField<FaceField>> tracer_active;
     /// area weights for grid points
     scalar_view_type grid_area;
+    /// spectrally accurate quadrature weights for grid points (DFSGrid::quadrature_weight)
+    scalar_view_type grid_quadrature_weights;
     /// DFS grid coordinates
     Coords<SphereGeometry> grid_crds;
 
@@ -167,6 +169,11 @@ class DFSBVE {
     Real total_vorticity() const;
     Real total_kinetic_energy() const;
     Real total_enstrophy() const;
+    /// Conservation integrals computed on the DFS grid with grid_quadrature_weights;
+    /// total_kinetic_energy_grid() uses velocity_grid, so call update_grid_velocity() first.
+    Real total_vorticity_grid() const;
+    Real total_kinetic_energy_grid() const;
+    Real total_enstrophy_grid() const;
     Real ftle_max() const;
     inline Real Omega() const {return coriolis.Omega;}
     Int n_tracers() const;

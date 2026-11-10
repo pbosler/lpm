@@ -36,6 +36,17 @@ scalar_view_type DFSGrid::weights_view() const {
   return result;
 }
 
+scalar_view_type DFSGrid::quadrature_weights_view() const {
+  scalar_view_type result("grid_quadrature_weights", size());
+  auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0},{nlat,nlon});
+  Kokkos::parallel_for("set_grid_quadrature_weights", policy,
+    KOKKOS_LAMBDA (const Index i, const Index j) {
+      const auto idx = i*nlon + j;
+      result(idx) = quadrature_weight(i,j);
+    });
+  return result;
+}
+
 std::string DFSGrid::info_string(const int tab_level) const {
   std::ostringstream ss;
   auto tabstr = indent_string(tab_level);

@@ -88,6 +88,40 @@ struct DFSGrid {
     return ai * dlambda;
   }
 
+  /** Return the quadrature weight of the point at idx (i,j).
+
+    Clenshaw-Curtis in z = cos(colatitude) (the colatitude rows are
+    Chebyshev-Lobatto points) times the trapezoid rule in longitude, so
+    integrals of smooth fields converge spectrally; area_weight() is
+    second-order.  The weights sum to 4 pi.
+
+    @param [in] i colatitude index
+    @param [in] j longitude index
+    @return quadrature weight of point (i,j)
+  */
+  KOKKOS_INLINE_FUNCTION
+  Real quadrature_weight(const Int i, const Int j) const {
+    LPM_KERNEL_ASSERT( (i>=0 and i<=nlat-1) );
+    LPM_KERNEL_ASSERT( (j>=0 and j<nlon));
+    const Int n = nlat - 1;
+    Real wi;
+    if (i == 0 or i == n) {
+      wi = (n%2 == 0 ? 1.0 / (n*n - 1) : 1.0 / (n*n));
+    }
+    else {
+      const Real theta = colatitude(i);
+      Real v = 1;
+      for (Int k=1; k<=(n-1)/2; ++k) {
+        v -= 2*cos(2*k*theta) / (4*k*k - 1);
+      }
+      if (n%2 == 0) {
+        v -= cos(n*theta) / (n*n - 1);
+      }
+      wi = 2*v/n;
+    }
+    return wi * dlambda;
+  }
+
   /** Given the i, j (row, column) indices of a point, return its Cartesian coordinates.
 
     @param [out] xyz Cartesian coordinates (will be overwritten)
@@ -113,6 +147,7 @@ struct DFSGrid {
   Coords<SphereGeometry> init_coords() const;
 
   scalar_view_type weights_view() const;
+  scalar_view_type quadrature_weights_view() const;
 
   std::string info_string(const int tab_level=0) const;
 

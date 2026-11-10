@@ -161,6 +161,20 @@ int main(int argc, char* argv[]) {
     total_vorticity[0]      = sphere->total_vorticity();
     total_kinetic_energy[0] = sphere->total_kinetic_energy();
     total_enstrophy[0]      = sphere->total_enstrophy();
+    const bool grid_integrals = input.get_option("grid_integrals").get_bool();
+    std::vector<Real> total_vorticity_grid(grid_integrals ? nsteps + 1 : 0);
+    std::vector<Real> total_kinetic_energy_grid(grid_integrals ? nsteps + 1 : 0);
+    std::vector<Real> total_enstrophy_grid(grid_integrals ? nsteps + 1 : 0);
+    if (grid_integrals) {
+      sphere->update_grid_velocity();
+      total_vorticity_grid[0]      = sphere->total_vorticity_grid();
+      total_kinetic_energy_grid[0] = sphere->total_kinetic_energy_grid();
+      total_enstrophy_grid[0]      = sphere->total_enstrophy_grid();
+      logger.info(
+          "initial grid total vorticity, kinetic energy, and enstrophy = ({}, {}, {})",
+          total_vorticity_grid[0], total_kinetic_energy_grid[0],
+          total_enstrophy_grid[0]);
+    }
 
     logger.info(
         "initial total vorticity, kinetic energy, and enstrophy = ({}, {}, {})",
@@ -269,6 +283,12 @@ int main(int argc, char* argv[]) {
       total_vorticity[t_idx + 1]      = sphere->total_vorticity();
       total_kinetic_energy[t_idx + 1] = sphere->total_kinetic_energy();
       total_enstrophy[t_idx + 1]      = sphere->total_enstrophy();
+      if (grid_integrals) {
+        sphere->update_grid_velocity();
+        total_vorticity_grid[t_idx + 1]      = sphere->total_vorticity_grid();
+        total_kinetic_energy_grid[t_idx + 1] = sphere->total_kinetic_energy_grid();
+        total_enstrophy_grid[t_idx + 1]      = sphere->total_enstrophy_grid();
+      }
 
       if ((t_idx + 1) % write_frequency == 0) {
         auto vtk_mesh = vtk_mesh_interface(*sphere);
@@ -290,6 +310,7 @@ int main(int argc, char* argv[]) {
     }
     const std::string matlab_file = ofile_root + ".m";
     std::ofstream ofile(matlab_file);
+    ofile << std::setprecision(17);
     write_vector_matlab(ofile, "time", time);
     write_vector_matlab(ofile, "zeta_l1err", zeta_l1err);
     write_vector_matlab(ofile, "zeta_l2err", zeta_l2err);
@@ -297,6 +318,11 @@ int main(int argc, char* argv[]) {
     write_vector_matlab(ofile, "total_vorticity", total_vorticity);
     write_vector_matlab(ofile, "total_kinetic_energy", total_kinetic_energy);
     write_vector_matlab(ofile, "total_enstrophy", total_enstrophy);
+    if (grid_integrals) {
+      write_vector_matlab(ofile, "total_vorticity_grid", total_vorticity_grid);
+      write_vector_matlab(ofile, "total_kinetic_energy_grid", total_kinetic_energy_grid);
+      write_vector_matlab(ofile, "total_enstrophy_grid", total_enstrophy_grid);
+    }
     write_vector_matlab(ofile, "max_ftle", ftle_max);
     ofile.close();
     logger.info("output can be found in files beginning: {}", ofile_root);
@@ -421,4 +447,9 @@ void init_input(user::Input& input) {
   user::Option ftle_tolerance_option("ftle_tol", "-ftle", "--ftle-tol",
                                      "max value for ftle before remesh", 2.0);
   input.add_option(ftle_tolerance_option);
+
+  user::Option grid_integrals_option(
+      "grid_integrals", "-gi", "--grid-integrals",
+      "also compute conservation integrals on the DFS grid", false);
+  input.add_option(grid_integrals_option);
 }

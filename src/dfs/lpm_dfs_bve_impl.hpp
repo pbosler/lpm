@@ -52,6 +52,7 @@ DFSBVE<SeedType>::DFSBVE(const PolyMeshParameters<SeedType>& mesh_params,
   grid_crds = grid.init_coords();
   grid_crds.update_host();
   grid_area = grid.weights_view();
+  grid_quadrature_weights = grid.quadrature_weights_view();
 
 }
 
@@ -483,6 +484,43 @@ Real DFSBVE<SeedType>::total_kinetic_energy() const {
     KOKKOS_LAMBDA (const Index i, Real& sum) {
       const auto ui = Kokkos::subview(vel_view, i, Kokkos::ALL);
       sum += (mask_view(i) ? 0 : geo::norm2(ui) * area_view(i) );
+    }, total);
+  return 0.5*total;
+}
+
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_vorticity_grid() const {
+  const auto zeta_view = rel_vort_grid.view;
+  const auto wts = grid_quadrature_weights;
+  Real total;
+  Kokkos::parallel_reduce(grid.size(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += zeta_view(i) * wts(i);
+    }, total);
+  return total;
+}
+
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_enstrophy_grid() const {
+  const auto zeta_view = rel_vort_grid.view;
+  const auto wts = grid_quadrature_weights;
+  Real total;
+  Kokkos::parallel_reduce(grid.size(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      sum += square(zeta_view(i)) * wts(i);
+    }, total);
+  return 0.5*total;
+}
+
+template <typename SeedType>
+Real DFSBVE<SeedType>::total_kinetic_energy_grid() const {
+  const auto vel_view = velocity_grid.view;
+  const auto wts = grid_quadrature_weights;
+  Real total;
+  Kokkos::parallel_reduce(grid.size(),
+    KOKKOS_LAMBDA (const Index i, Real& sum) {
+      const auto ui = Kokkos::subview(vel_view, i, Kokkos::ALL);
+      sum += geo::norm2(ui) * wts(i);
     }, total);
   return 0.5*total;
 }

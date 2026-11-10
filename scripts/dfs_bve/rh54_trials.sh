@@ -153,6 +153,7 @@ for exe_label in "${EXECUTABLES[@]}"; do
                 -nlon "${nlon}" \
                 -of "${nsteps}" \
                 -o "${output_root}" \
+                -gi \
                 > "${logfile}" 2>&1
             } 2>&1
           )

@@ -30,6 +30,10 @@ Figures (one set per norm):
   convergence_<norm>_by_depth.png   same data, rows = tree depth, cols = solver
   error_vs_gmls_order_<norm>.png    error vs GMLS order at fixed nsteps
   error_vs_nlon_<norm>.png          error vs nlon at fixed nsteps
+  conservation.png                  relative change of kinetic energy and
+                                    enstrophy, particle vs DFS grid quadrature
+                                    (grid needs runs made with -gi), for one
+                                    solver/GMLS order (--cons-rk, --cons-g)
 
 Example:
   python3 scripts/dfs_bve/plot_rh54.py --outdir /gpfs/pabosle/lpm-dfs-bve-paper \
@@ -377,6 +381,88 @@ def plot_vs_nlon(errs, norm, nsteps, t_eval, figdir, ext):
     save(fig, figdir / f"error_vs_nlon_{norm}", ext)
 
 
+CONSERVED = [("total_kinetic_energy", "kinetic energy"),
+             ("total_enstrophy", "enstrophy")]
+
+
+def relative_change(q):
+    """(q(t) - q(0)) / q(0), or None if q is unusable."""
+    if q is None or len(q) < 2 or not np.isfinite(q).all() or q[0] == 0:
+        return None
+    return (q - q[0]) / q[0]
+
+
+def plot_conservation(runs, rk, g, nlon, nsteps, figdir, ext):
+    """Relative change of the conserved integrals, particles vs DFS grid.
+
+    Top row: (Q(t) - Q(0))/Q(0) vs t, color = tree depth, solid = particle
+    quadrature (panel areas), dashed = DFS grid quadrature (written with -gi).
+    Bottom row: max_t |Q(t) - Q(0)|/Q(0) vs tree depth.
+    """
+    cands = [r for r in runs if r.rk == rk and r.nlon == nlon]
+    if g is None and cands:
+        g = max(r.g for r in cands)
+    cands = [r for r in cands if r.g == g]
+    if not cands:
+        print(f"[conservation] no {rk} runs with g={g}, nlon={nlon}; skipped")
+        return
+    if nsteps not in {r.nsteps for r in cands}:
+        fallback = min(r.nsteps for r in cands)
+        print(f"[conservation] no {rk} g={g} nlon={nlon} runs at nsteps={nsteps}; "
+              f"using nsteps={fallback}")
+        nsteps = fallback
+    sel = sorted((r for r in cands if r.nsteps == nsteps), key=lambda r: r.d)
+    ds = [r.d for r in sel]
+    dcol = {d: plt.get_cmap("viridis")(0.9 * i / max(len(ds) - 1, 1))
+            for i, d in enumerate(ds)}
+
+    fig, axes = plt.subplots(2, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 7.4),
+                             squeeze=False)
+    n_grid = 0
+    for j, (key, label) in enumerate(CONSERVED):
+        ax_t, ax_d = axes[0][j], axes[1][j]
+        peak = {"particles": [], "DFS grid": []}
+        for run in sel:
+            data = read_matlab_vectors(run.path)
+            t = data.get("time")
+            for src, suffix, ls in (("particles", "", "-"), ("DFS grid", "_grid", "--")):
+                rel = relative_change(data.get(key + suffix))
+                if rel is None or t is None or len(rel) != len(t):
+                    continue
+                if suffix:
+                    n_grid += 1
+                ax_t.plot(t, 100 * rel, color=dcol[run.d], ls=ls, lw=1.4)
+                peak[src].append((run.d, float(np.max(np.abs(rel[1:])))))
+        ax_t.axhline(0, color="0.6", lw=0.8, zorder=0)
+        ax_t.set_title(f"{label}")
+        ax_t.set_xlabel("time $t$")
+        ax_t.set_ylabel(f"relative change in {label} (%)")
+        ax_t.grid(True, alpha=0.25)
+
+        for src, ls, mk in (("particles", "-", "o"), ("DFS grid", "--", "s")):
+            pts = [(d, v) for d, v in peak[src] if v > 0]
+            if pts:
+                ax_d.semilogy(*zip(*pts), color="k", ls=ls, marker=mk, ms=5, lw=1.2,
+                              label=src)
+        ax_d.set_xlabel("tree depth")
+        ax_d.set_xticks(ds)
+        ax_d.set_ylabel(f"max relative change in {label}")
+        ax_d.grid(True, which="both", alpha=0.25)
+
+    if n_grid == 0:
+        print("[conservation] no *_grid integrals in these runs (rerun with -gi); "
+              "plotting particle integrals only")
+    from matplotlib.lines import Line2D
+    hs = [Line2D([], [], color=dcol[d], lw=2, label=f"depth {d}") for d in ds]
+    hs += [Line2D([], [], color="k", ls="-", lw=1.4, label="particles"),
+           Line2D([], [], color="k", ls="--", lw=1.4, label="DFS grid")]
+    fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
+    fig.suptitle(f"RH54 conservation, {RK_LABEL[rk]}, GMLS order {g}, "
+                 f"nlon = {nlon}, nsteps = {nsteps}", y=1.0)
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    save(fig, figdir / "conservation", ext)
+
+
 def save(fig, stem, exts):
     for e in exts:
         p = stem.with_suffix("." + e)
@@ -405,6 +491,11 @@ def main():
                          "classed as blow-ups are skipped")
     ap.add_argument("--stale", action="append", default=[], metavar="RK@TIME",
                     help="ignore timing rows of RK written before TIME (repeatable)")
+    ap.add_argument("--cons-rk", default="rk4", choices=sorted(RK_ORDER),
+                    help="solver shown in the conservation figure")
+    ap.add_argument("--cons-g", type=int, default=None,
+                    help="GMLS order shown in the conservation figure "
+                         "(default: largest available)")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -431,6 +522,9 @@ def main():
         plot_vs_gmls_order(errs, norm, nlon, args.nsteps, args.t_eval, figdir,
                            args.formats)
         plot_vs_nlon(errs, norm, args.nsteps, args.t_eval, figdir, args.formats)
+
+    plot_conservation(runs, args.cons_rk, args.cons_g, nlon, args.nsteps, figdir,
+                      args.formats)
 
 
 if __name__ == "__main__":

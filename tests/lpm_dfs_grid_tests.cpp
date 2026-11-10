@@ -44,6 +44,29 @@ TEST_CASE("dfs_grid_tests", "[dfs]") {
 
   CHECK(surf_area == Catch::Approx(4 * constants::PI));
 
+  // quadrature weights integrate low-degree polynomials exactly:
+  // int 1 dA = 4 pi, int (x^4 + z^6) dA = 4 pi (1/5 + 1/7)
+  Real quad_area;
+  Real quad_poly;
+  Kokkos::parallel_reduce(
+      "quadrature area", md_policy,
+      KOKKOS_LAMBDA(const Int i, const Int j, Real& a) {
+        a += dfs_grid.quadrature_weight(i, j);
+      },
+      quad_area);
+  Kokkos::parallel_reduce(
+      "quadrature polynomial", md_policy,
+      KOKKOS_LAMBDA(const Int i, const Int j, Real& a) {
+        Real xyz[3];
+        dfs_grid.sph2xyz(xyz, i, j);
+        a += (pow(xyz[0], 4) + pow(xyz[2], 6)) * dfs_grid.quadrature_weight(i, j);
+      },
+      quad_poly);
+
+  CHECK(quad_area == Catch::Approx(4 * constants::PI).epsilon(1e-13));
+  CHECK(quad_poly ==
+        Catch::Approx(4 * constants::PI * (1.0 / 5 + 1.0 / 7)).epsilon(1e-13));
+
 #ifdef LPM_USE_VTK
   auto vtk_grid = dfs_grid.vtk_grid();
 

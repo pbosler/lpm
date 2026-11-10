@@ -18,6 +18,9 @@
 #
 # Environment: OMP_NUM_THREADS (required), OUTDIR, BUILD_DIR, TAG, RUN_TIMEOUT,
 # EPS_MULTIPLIER, EPS_MULTIPLIER_G2, DRY_RUN.
+#
+# Every run passes -gi, so the .m files also hold the conservation integrals
+# computed on the DFS grid (total_*_grid).
 
 set -euo pipefail
 
@@ -142,7 +145,7 @@ while IFS=$'\t' read -r rk g eps d nlon nsteps est; do
     {
       time timeout --kill-after=30s "${RUN_TIMEOUT}" ${PIN_CMD[@]+"${PIN_CMD[@]}"} "${exe}" \
         -tf "${TFINAL}" -dt "${dt}" -g "${g}" -eps "${eps}" -d "${d}" \
-        -nlon "${nlon}" -of "${nsteps}" -o "${output_root}" \
+        -nlon "${nlon}" -of "${nsteps}" -o "${output_root}" -gi \
         > "${logfile}" 2>&1
     } 2>&1
   )
