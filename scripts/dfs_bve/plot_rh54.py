@@ -525,27 +525,28 @@ def plot_conservation(runs, rk, g, nlon, nsteps, figdir, ext):
               "plotting particle integrals only")
     from matplotlib.lines import Line2D
 
-    # main figure: max relative change vs depth
-    fig, axes = plt.subplots(1, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 3.9),
-                             squeeze=False)
-    for j, (key, label) in enumerate(CONSERVED):
-        ax = axes[0][j]
-        for src, ls, mk in (("particles", "-", "o"), ("DFS grid", "--", "s")):
-            pts = [(d, float(np.max(np.abs(rel[1:])))) for d, _, rel in series[key][src]]
-            pts = [(d, v) for d, v in pts if v > 0]
-            if pts:
-                ax.semilogy(*zip(*pts), color="k", ls=ls, marker=mk, ms=5, lw=1.2)
-        ax.set_title(label)
-        ax.set_xlabel("tree depth")
-        ax.set_xticks(ds)
-        ax.set_ylabel(f"max relative change in {label}")
-        ax.grid(True, which="both", alpha=0.25)
-    hs = [Line2D([], [], color="k", ls="-", marker="o", ms=5, lw=1.2, label="particles"),
-          Line2D([], [], color="k", ls="--", marker="s", ms=5, lw=1.2, label="DFS grid")]
-    fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
-    fig.suptitle(title, y=1.0)
-    fig.tight_layout(rect=(0, 0.07, 1, 1))
-    save(fig, figdir / "conservation", ext)
+    # main figure: max relative change vs depth; paper figure: no title
+    # (solver, GMLS order, nlon, nsteps go in the caption), larger fonts and markers
+    with plt.rc_context(PAPER_RC):
+        fig, axes = plt.subplots(1, len(CONSERVED), figsize=(5.4 * len(CONSERVED), 4.6),
+                                 squeeze=False)
+        for j, (key, label) in enumerate(CONSERVED):
+            ax = axes[0][j]
+            for src, ls, mk in (("particles", "-", "o"), ("DFS grid", "--", "s")):
+                pts = [(d, float(np.max(np.abs(rel[1:])))) for d, _, rel in series[key][src]]
+                pts = [(d, v) for d, v in pts if v > 0]
+                if pts:
+                    ax.semilogy(*zip(*pts), color="k", ls=ls, marker=mk, ms=8, lw=1.6)
+            ax.set_title(label)
+            ax.set_xlabel("tree depth")
+            ax.set_xticks(ds)
+            ax.set_ylabel("max relative change")
+            ax.grid(True, which="both", alpha=0.25)
+        hs = [Line2D([], [], color="k", ls="-", marker="o", ms=8, lw=1.6, label="particles"),
+              Line2D([], [], color="k", ls="--", marker="s", ms=8, lw=1.6, label="DFS grid")]
+        fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
+        fig.tight_layout(rect=(0, 0.09, 1, 1))
+        save(fig, figdir / "conservation", ext)
 
     # supplement: time series
     fig, axes = plt.subplots(2, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 7.4),
