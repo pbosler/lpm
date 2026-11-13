@@ -235,13 +235,17 @@ def pick_nlon(runs, requested):
     return nlons[-1]
 
 
-def add_slope(ax, order, x0, y0, xs):
+def add_slope(ax, order, x0, y0, xs, fontsize=8):
     """Dashed grey reference line y = y0 (x/x0)^order, labelled."""
     xlim, ylim = ax.get_xlim(), ax.get_ylim()
     ax.plot(xs, y0 * (xs / x0) ** order, color="0.5", lw=1, ls=(0, (4, 3)),
             zorder=0)
-    ax.text(xs[-1], y0, f" $O(\\Delta t^{order})$", color="0.4", fontsize=8,
-            va="bottom", ha="right")
+    # label at the line's midpoint (log scale), just below-right of it, which
+    # stays clear of the data at the largest dt
+    xm = float(np.sqrt(xs[0] * xs[-1]))
+    ax.annotate(f"$O(\\Delta t^{order})$", (xm, y0 * (xm / x0) ** order),
+                xytext=(4, -4), textcoords="offset points", color="0.4",
+                fontsize=fontsize, va="top", ha="left")
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
 
@@ -253,13 +257,17 @@ def group(items, keyfn):
     return out
 
 
-def legend_handles(gcol, dmark, dls, g_label="GMLS order"):
+def legend_handles(gcol, dmark, dls, g_label="GMLS order", ms=5, lw=1.2):
     from matplotlib.lines import Line2D
-    hs = [Line2D([], [], color=gcol[g], lw=2, label=f"{g_label} {g}")
+    hs = [Line2D([], [], color=gcol[g], lw=2 * lw / 1.2, label=f"{g_label} {g}")
           for g in sorted(gcol)]
-    hs += [Line2D([], [], color="k", marker=dmark[d], ls=dls[d], lw=1.2,
-                  ms=5, label=f"depth {d}") for d in sorted(dmark)]
+    hs += [Line2D([], [], color="k", marker=dmark[d], ls=dls[d], lw=lw,
+                  ms=ms, label=f"depth {d}") for d in sorted(dmark)]
     return hs
+
+
+PAPER_RC = {"font.size": 13, "axes.titlesize": 15, "axes.labelsize": 14,
+            "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 13}
 
 
 def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
@@ -272,11 +280,11 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
                                   {r.d for r, _ in items})
     ylabel = f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$"
 
-    def draw(ax, sub, color_by_g=True):
+    def draw(ax, sub, ms=4, lw=1.2):
         for (g, d), pts in sorted(group(sub, lambda p: (p[0].g, p[0].d)).items()):
             pts.sort(key=lambda p: p[0].dt)
             ax.loglog([p[0].dt for p in pts], [p[1] for p in pts],
-                      color=gcol[g], marker=dmark[d], ls=dls[d], ms=4, lw=1.2)
+                      color=gcol[g], marker=dmark[d], ls=dls[d], ms=ms, lw=lw)
 
     pending = []  # reference slopes are added after all panels are drawn
 
@@ -292,22 +300,24 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
         ax.set_xlabel(r"time step $\Delta t$")
         ax.grid(True, which="both", alpha=0.25)
 
-    # (1) one panel per solver
-    fig, axes = plt.subplots(1, len(rks), figsize=(4.2 * len(rks), 4.2),
-                             sharey=True, squeeze=False)
-    for ax, rk in zip(axes[0], rks):
-        sub = [p for p in items if p[0].rk == rk]
-        draw(ax, sub)
-        decorate(ax, rk, sub)
-    axes[0][0].set_ylabel(ylabel)
-    for args in pending:
-        add_slope(*args)
-    pending.clear()
-    fig.suptitle(f"RH54 convergence, nlon = {nlon}", y=1.0)
-    fig.legend(handles=legend_handles(gcol, dmark, dls), loc="lower center",
-               ncol=min(len(gcol) + len(dmark), 7), frameon=False)
-    fig.tight_layout(rect=(0, 0.1, 1, 1))
-    save(fig, figdir / f"convergence_{norm}", ext)
+    # (1) one panel per solver; paper figure: no title (nlon goes in the
+    # caption), larger fonts and markers
+    with plt.rc_context(PAPER_RC):
+        fig, axes = plt.subplots(1, len(rks), figsize=(4.8 * len(rks), 4.8),
+                                 sharey=True, squeeze=False)
+        for ax, rk in zip(axes[0], rks):
+            sub = [p for p in items if p[0].rk == rk]
+            draw(ax, sub, ms=7, lw=1.6)
+            decorate(ax, rk, sub)
+        axes[0][0].set_ylabel(ylabel)
+        for args in pending:
+            add_slope(*args, fontsize=12)
+        pending.clear()
+        fig.legend(handles=legend_handles(gcol, dmark, dls, ms=7, lw=1.6),
+                   loc="lower center", ncol=min(len(gcol) + len(dmark), 7),
+                   frameon=False)
+        fig.tight_layout(rect=(0, 0.11, 1, 1))
+        save(fig, figdir / f"convergence_{norm}", ext)
 
     # (2) rows = depth, cols = solver
     ds = sorted({r.d for r, _ in items})
