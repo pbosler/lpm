@@ -28,8 +28,13 @@ Figures (one set per norm):
   convergence_<norm>.png            error vs dt, one panel per solver, color =
                                     GMLS order, marker/linestyle = tree depth
   convergence_<norm>_by_depth.png   same data, rows = tree depth, cols = solver
-  error_vs_gmls_order_<norm>.png    error vs GMLS order at fixed nsteps
-  error_vs_nlon_<norm>.png          error vs nlon at fixed nsteps
+  error_vs_gmls_order_<norm>.png    spatial error floor (--floor-rk, default
+                                    RK4, error at its finest dt) at fixed
+                                    nlon, vs GMLS order and vs tree depth;
+                                    open markers = not converged in dt (the
+                                    error still changes between the two
+                                    finest dt)
+  error_vs_nlon_<norm>.png          same spatial error floor vs nlon
   conservation.png                  relative change of kinetic energy and
                                     enstrophy, particle vs DFS grid quadrature
                                     (grid needs runs made with -gi), for one
@@ -328,61 +333,130 @@ def plot_convergence(errs, norm, nlon, t_eval, figdir, ext):
     save(fig, figdir / f"convergence_{norm}_by_depth", ext)
 
 
-def plot_vs_gmls_order(errs, norm, nlon, nsteps, t_eval, figdir, ext):
-    items = [(r, e) for (r, e) in errs.values()
-             if r.nlon == nlon and r.nsteps == nsteps]
-    if not items:
-        print(f"[gmls order] no data for nlon={nlon}, nsteps={nsteps}; skipped")
+FLOOR_MAX_ORDER = 1.0  # observed order between the two finest dt below this = on the floor
+
+
+def spatial_floor(errs, rk):
+    """Spatial error floor of solver rk: dict (g, d, nlon) -> (err, nsteps, on_floor).
+
+    err is the error at the finest dt (largest nsteps) of that configuration.
+    on_floor is False while the error still changes with dt at an observed
+    order >= FLOOR_MAX_ORDER between the two finest dt. err is then not
+    converged in dt: usually time-limited (an upper bound on the spatial
+    error), but it can also be a cancellation dip below the floor, or a
+    configuration whose error is noisy in dt.
+    """
+    out = {}
+    sub = [(r, e) for r, e in errs.values() if r.rk == rk]
+    for key, pts in group(sub, lambda p: (p[0].g, p[0].d, p[0].nlon)).items():
+        pts.sort(key=lambda p: p[0].nsteps)
+        (r1, e1) = pts[-1]
+        on_floor = True
+        if len(pts) > 1:
+            (r0, e0) = pts[-2]
+            order = np.log(e0 / e1) / np.log(r1.nsteps / r0.nsteps)
+            on_floor = order < FLOOR_MAX_ORDER
+        out[key] = (e1, r1.nsteps, on_floor)
+    return out
+
+
+def plot_floor_points(ax, xs, ys, flags, color, marker, ls, label=None):
+    """Filled markers on the floor, open ones not converged in dt; segments
+    touching an open marker are faded so they don't read as a trend."""
+    ax.semilogy([], [], color=color, ls=ls, lw=1.2, label=label)
+    for i in range(len(xs) - 1):
+        alpha = 1.0 if flags[i] and flags[i + 1] else 0.3
+        ax.semilogy(xs[i:i + 2], ys[i:i + 2], color=color, ls=ls, lw=1.2, alpha=alpha)
+    for x, y, f in zip(xs, ys, flags):
+        ax.semilogy([x], [y], ls="none", marker=marker, ms=6, color=color,
+                    mfc=color if f else "white", mew=1.3)
+
+
+def floor_legend_handles():
+    from matplotlib.lines import Line2D
+    return [Line2D([], [], ls="none", marker="o", color="k", ms=6, label="on spatial floor"),
+            Line2D([], [], ls="none", marker="o", color="k", mfc="white", ms=6, mew=1.3,
+                   label="not converged in $\\Delta t$")]
+
+
+def print_floor_table(floor, rk, nlon, norm):
+    gs = sorted({g for g, _, n in floor if n == nlon})
+    ds = sorted({d for _, d, n in floor if n == nlon})
+    print(f"[{norm}] {RK_LABEL[rk]} spatial floor, nlon = {nlon} "
+          f"(error at finest dt [nsteps]; * = not converged in dt)")
+    print("          " + "".join(f"{'depth ' + str(d):>20s}" for d in ds))
+    for g in gs:
+        cells = []
+        for d in ds:
+            v = floor.get((g, d, nlon))
+            cells.append(f"{'-':>20s}" if v is None else
+                         f"{v[0]:9.2e} [{v[1]:4d}]{' ' if v[2] else '*'}".rjust(20))
+        print(f"  GMLS {g}: " + "".join(cells))
+
+
+def plot_vs_gmls_order(errs, norm, nlon, rk, t_eval, figdir, ext):
+    """Spatial error floor at fixed nlon: vs GMLS order (color = depth) and
+    vs tree depth (color = GMLS order)."""
+    floor = {k: v for k, v in spatial_floor(errs, rk).items() if k[2] == nlon}
+    if not floor:
+        print(f"[gmls order] no {rk} data for nlon={nlon}; skipped")
         return
-    rks = sorted({r.rk for r, _ in items})
-    ds = sorted({r.d for r, _ in items})
-    _, dmark, _ = style_maps(set(), ds)
+    print_floor_table(floor, rk, nlon, norm)
+    gs = sorted({g for g, _, _ in floor})
+    ds = sorted({d for _, d, _ in floor})
+    gcol, dmark, _ = style_maps(gs, ds)
     dcol = {d: plt.get_cmap("viridis")(0.9 * i / max(len(ds) - 1, 1))
             for i, d in enumerate(ds)}
-    fig, axes = plt.subplots(1, len(rks), figsize=(4.2 * len(rks), 4.0),
-                             sharey=True, squeeze=False)
-    for ax, rk in zip(axes[0], rks):
-        for d in ds:
-            pts = sorted([(r.g, e) for r, e in items if r.rk == rk and r.d == d])
-            if pts:
-                ax.semilogy(*zip(*pts), color=dcol[d], marker=dmark[d], lw=1.2,
-                            ms=5, label=f"depth {d}")
-        ax.set_title(RK_LABEL[rk])
-        ax.set_xlabel("GMLS order")
-        ax.set_xticks(sorted({r.g for r, _ in items}))
+    gmark = {g: MARKERS[i % len(MARKERS)] for i, g in enumerate(gs)}
+    fig, (ax_g, ax_d) = plt.subplots(1, 2, figsize=(8.8, 4.0), sharey=True)
+    for d in ds:
+        pts = [(g, *floor[(g, d, nlon)]) for g in gs if (g, d, nlon) in floor]
+        if pts:
+            plot_floor_points(ax_g, [p[0] for p in pts], [p[1] for p in pts],
+                              [p[3] for p in pts], dcol[d], dmark[d], "-",
+                              label=f"depth {d}")
+    for g in gs:
+        pts = [(d, *floor[(g, d, nlon)]) for d in ds if (g, d, nlon) in floor]
+        if pts:
+            plot_floor_points(ax_d, [p[0] for p in pts], [p[1] for p in pts],
+                              [p[3] for p in pts], gcol[g], gmark[g], "-",
+                              label=f"GMLS order {g}")
+    ax_g.set_xlabel("GMLS order")
+    ax_g.set_xticks(gs)
+    ax_d.set_xlabel("tree depth")
+    ax_d.set_xticks(ds)
+    ax_g.set_ylabel(f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$")
+    for ax in (ax_g, ax_d):
         ax.grid(True, which="both", alpha=0.25)
-    axes[0][0].set_ylabel(f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$")
-    axes[0][-1].legend(frameon=False)
-    fig.suptitle(f"RH54 error vs GMLS order, nsteps = {nsteps}, nlon = {nlon}", y=1.0)
-    fig.tight_layout()
+        ax.legend(frameon=False, fontsize=8)
+    fig.legend(handles=floor_legend_handles(), loc="lower center", ncol=2, frameon=False)
+    fig.suptitle(f"RH54 spatial error ({RK_LABEL[rk]} at finest $\\Delta t$), "
+                 f"nlon = {nlon}", y=1.0)
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
     save(fig, figdir / f"error_vs_gmls_order_{norm}", ext)
 
 
-def plot_vs_nlon(errs, norm, nsteps, t_eval, figdir, ext):
-    items = [(r, e) for (r, e) in errs.values() if r.nsteps == nsteps]
-    if not items:
-        print(f"[nlon] no data for nsteps={nsteps}; skipped")
+def plot_vs_nlon(errs, norm, rk, t_eval, figdir, ext):
+    """Spatial error floor vs nlon, color = GMLS order, marker/linestyle = depth."""
+    floor = spatial_floor(errs, rk)
+    if not floor:
+        print(f"[nlon] no {rk} data; skipped")
         return
-    rks = sorted({r.rk for r, _ in items})
-    gcol, dmark, dls = style_maps({r.g for r, _ in items},
-                                  {r.d for r, _ in items})
-    fig, axes = plt.subplots(1, len(rks), figsize=(4.2 * len(rks), 4.2),
-                             sharey=True, squeeze=False)
-    for ax, rk in zip(axes[0], rks):
-        sub = [p for p in items if p[0].rk == rk]
-        for (g, d), pts in sorted(group(sub, lambda p: (p[0].g, p[0].d)).items()):
-            pts.sort(key=lambda p: p[0].nlon)
-            ax.semilogy([p[0].nlon for p in pts], [p[1] for p in pts],
-                        color=gcol[g], marker=dmark[d], ls=dls[d], ms=4, lw=1.2)
-        ax.set_title(RK_LABEL[rk])
-        ax.set_xlabel("nlon")
-        ax.set_xticks(sorted({r.nlon for r, _ in items}))
-        ax.grid(True, which="both", alpha=0.25)
-    axes[0][0].set_ylabel(f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$")
-    fig.suptitle(f"RH54 error vs DFS grid resolution, nsteps = {nsteps}", y=1.0)
-    fig.legend(handles=legend_handles(gcol, dmark, dls), loc="lower center",
-               ncol=min(len(gcol) + len(dmark), 7), frameon=False)
-    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    gcol, dmark, dls = style_maps({g for g, _, _ in floor}, {d for _, d, _ in floor})
+    fig, ax = plt.subplots(figsize=(5.6, 4.4))
+    for (g, d), keys in sorted(group(floor, lambda k: (k[0], k[1])).items()):
+        keys.sort(key=lambda k: k[2])
+        plot_floor_points(ax, [k[2] for k in keys], [floor[k][0] for k in keys],
+                          [floor[k][2] for k in keys], gcol[g], dmark[d], dls[d])
+    ax.set_xlabel("nlon")
+    ax.set_xticks(sorted({n for _, _, n in floor}))
+    ax.set_ylabel(f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$")
+    ax.grid(True, which="both", alpha=0.25)
+    hs = legend_handles(gcol, dmark, dls) + floor_legend_handles()
+    fig.legend(handles=hs, loc="center left", bbox_to_anchor=(1.0, 0.5), frameon=False)
+    fig.suptitle(f"RH54 spatial error vs DFS grid resolution "
+                 f"({RK_LABEL[rk]} at finest $\\Delta t$)", y=1.0)
+    fig.tight_layout()
     save(fig, figdir / f"error_vs_nlon_{norm}", ext)
 
 
@@ -509,7 +583,7 @@ def main():
                     help="nlon held fixed in the convergence and GMLS-order plots "
                          "(default: largest available)")
     ap.add_argument("--nsteps", type=int, default=2000,
-                    help="nsteps held fixed in the GMLS-order and nlon plots")
+                    help="nsteps of the runs shown in the conservation figures")
     ap.add_argument("--formats", nargs="+", default=["png", "pdf"])
     ap.add_argument("--exclude", default=None, metavar="TSV",
                     help="rh54_classify_failures.py --include-ok output; runs "
@@ -518,6 +592,9 @@ def main():
                     help="ignore timing rows of RK written before TIME (repeatable)")
     ap.add_argument("--cons-rk", default="rk4", choices=sorted(RK_ORDER),
                     help="solver shown in the conservation figure")
+    ap.add_argument("--floor-rk", default="rk4", choices=sorted(RK_ORDER),
+                    help="solver used for the spatial-error figures (error at "
+                         "its finest dt)")
     ap.add_argument("--cons-g", type=int, default=None,
                     help="GMLS order shown in the conservation figure "
                          "(default: largest available)")
@@ -545,9 +622,9 @@ def main():
         print(f"[{norm}] {len(errs)} usable runs, {n_bad} dropped "
               f"(did not reach t={args.t_eval:g}, or NaN/inf/zero error)")
         plot_convergence(errs, norm, nlon, args.t_eval, figdir, args.formats)
-        plot_vs_gmls_order(errs, norm, nlon, args.nsteps, args.t_eval, figdir,
+        plot_vs_gmls_order(errs, norm, nlon, args.floor_rk, args.t_eval, figdir,
                            args.formats)
-        plot_vs_nlon(errs, norm, args.nsteps, args.t_eval, figdir, args.formats)
+        plot_vs_nlon(errs, norm, args.floor_rk, args.t_eval, figdir, args.formats)
 
     plot_conservation(runs, args.cons_rk, args.cons_g, nlon, args.nsteps, figdir,
                       args.formats)
