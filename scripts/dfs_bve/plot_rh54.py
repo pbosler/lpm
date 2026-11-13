@@ -144,17 +144,22 @@ def blowup_keys(tsv_path):
 
 def discover_runs(outdir, exclude=frozenset(), stale=None):
     """Find one .m file per run, skipping keys in exclude and stale runs;
-    returns (runs, n_failed, n_dupe, n_excluded)."""
+    returns (runs, n_failed, n_stale, n_dupe, n_excluded). n_stale counts
+    files of a --stale solver with no successful post-cutoff run (pre-cutoff
+    output, e.g. a different nthr in the name, so never overwritten)."""
     stale = stale or {}
     bad, good = run_status(outdir, stale)
     by_key = {}
-    n_failed = n_dupe = n_excluded = 0
+    n_failed = n_stale = n_dupe = n_excluded = 0
     for path in sorted(outdir.glob("dfs_bve_rh54_*.m")):
         m = RUN_RE.match(path.name)
         if not m:
             continue
-        if m.group(0) in bad or (m["rk"] in stale and m.group(0) not in good):
+        if m.group(0) in bad:
             n_failed += 1
+            continue
+        if m["rk"] in stale and m.group(0) not in good:
+            n_stale += 1
             continue
         run = Run(m, path)
         if run.key in exclude:
@@ -166,7 +171,7 @@ def discover_runs(outdir, exclude=frozenset(), stale=None):
             if old.mtime >= run.mtime:
                 continue
         by_key[run.key] = run
-    return list(by_key.values()), n_failed, n_dupe, n_excluded
+    return list(by_key.values()), n_failed, n_stale, n_dupe, n_excluded
 
 
 def error_at(run, norm, t_eval):
@@ -395,9 +400,11 @@ def relative_change(q):
 def plot_conservation(runs, rk, g, nlon, nsteps, figdir, ext):
     """Relative change of the conserved integrals, particles vs DFS grid.
 
-    Top row: (Q(t) - Q(0))/Q(0) vs t, color = tree depth, solid = particle
+    conservation: max_t |Q(t) - Q(0)|/Q(0) vs tree depth, solid = particle
     quadrature (panel areas), dashed = DFS grid quadrature (written with -gi).
-    Bottom row: max_t |Q(t) - Q(0)|/Q(0) vs tree depth.
+    conservation_timeseries (supplement): Q(t) vs t, color = tree depth; top
+    row (Q(t) - Q(0))/Q(0) for the particles in %, bottom row |Q(t) - Q(0)|/Q(0)
+    for the DFS grid on a log axis (it is too small to see on the % axis).
     """
     cands = [r for r in runs if r.rk == rk and r.nlon == nlon]
     if g is None and cands:
@@ -415,52 +422,70 @@ def plot_conservation(runs, rk, g, nlon, nsteps, figdir, ext):
     ds = [r.d for r in sel]
     dcol = {d: plt.get_cmap("viridis")(0.9 * i / max(len(ds) - 1, 1))
             for i, d in enumerate(ds)}
+    title = (f"RH54 conservation, {RK_LABEL[rk]}, GMLS order {g}, "
+             f"nlon = {nlon}, nsteps = {nsteps}")
 
-    fig, axes = plt.subplots(2, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 7.4),
-                             squeeze=False)
-    n_grid = 0
-    for j, (key, label) in enumerate(CONSERVED):
-        ax_t, ax_d = axes[0][j], axes[1][j]
-        peak = {"particles": [], "DFS grid": []}
-        for run in sel:
-            data = read_matlab_vectors(run.path)
-            t = data.get("time")
-            for src, suffix, ls in (("particles", "", "-"), ("DFS grid", "_grid", "--")):
+    # series[key][src] = [(depth, t, rel)], src in ("particles", "DFS grid")
+    series = {key: {"particles": [], "DFS grid": []} for key, _ in CONSERVED}
+    for run in sel:
+        data = read_matlab_vectors(run.path)
+        t = data.get("time")
+        for key, _ in CONSERVED:
+            for src, suffix in (("particles", ""), ("DFS grid", "_grid")):
                 rel = relative_change(data.get(key + suffix))
                 if rel is None or t is None or len(rel) != len(t):
                     continue
-                if suffix:
-                    n_grid += 1
-                ax_t.plot(t, 100 * rel, color=dcol[run.d], ls=ls, lw=1.4)
-                peak[src].append((run.d, float(np.max(np.abs(rel[1:])))))
-        ax_t.axhline(0, color="0.6", lw=0.8, zorder=0)
-        ax_t.set_title(f"{label}")
-        ax_t.set_xlabel("time $t$")
-        ax_t.set_ylabel(f"relative change in {label} (%)")
-        ax_t.grid(True, alpha=0.25)
-
-        for src, ls, mk in (("particles", "-", "o"), ("DFS grid", "--", "s")):
-            pts = [(d, v) for d, v in peak[src] if v > 0]
-            if pts:
-                ax_d.semilogy(*zip(*pts), color="k", ls=ls, marker=mk, ms=5, lw=1.2,
-                              label=src)
-        ax_d.set_xlabel("tree depth")
-        ax_d.set_xticks(ds)
-        ax_d.set_ylabel(f"max relative change in {label}")
-        ax_d.grid(True, which="both", alpha=0.25)
-
-    if n_grid == 0:
+                series[key][src].append((run.d, t, rel))
+    if not any(series[key]["DFS grid"] for key, _ in CONSERVED):
         print("[conservation] no *_grid integrals in these runs (rerun with -gi); "
               "plotting particle integrals only")
     from matplotlib.lines import Line2D
-    hs = [Line2D([], [], color=dcol[d], lw=2, label=f"depth {d}") for d in ds]
-    hs += [Line2D([], [], color="k", ls="-", lw=1.4, label="particles"),
-           Line2D([], [], color="k", ls="--", lw=1.4, label="DFS grid")]
+
+    # main figure: max relative change vs depth
+    fig, axes = plt.subplots(1, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 3.9),
+                             squeeze=False)
+    for j, (key, label) in enumerate(CONSERVED):
+        ax = axes[0][j]
+        for src, ls, mk in (("particles", "-", "o"), ("DFS grid", "--", "s")):
+            pts = [(d, float(np.max(np.abs(rel[1:])))) for d, _, rel in series[key][src]]
+            pts = [(d, v) for d, v in pts if v > 0]
+            if pts:
+                ax.semilogy(*zip(*pts), color="k", ls=ls, marker=mk, ms=5, lw=1.2)
+        ax.set_title(label)
+        ax.set_xlabel("tree depth")
+        ax.set_xticks(ds)
+        ax.set_ylabel(f"max relative change in {label}")
+        ax.grid(True, which="both", alpha=0.25)
+    hs = [Line2D([], [], color="k", ls="-", marker="o", ms=5, lw=1.2, label="particles"),
+          Line2D([], [], color="k", ls="--", marker="s", ms=5, lw=1.2, label="DFS grid")]
     fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
-    fig.suptitle(f"RH54 conservation, {RK_LABEL[rk]}, GMLS order {g}, "
-                 f"nlon = {nlon}, nsteps = {nsteps}", y=1.0)
-    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    fig.suptitle(title, y=1.0)
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
     save(fig, figdir / "conservation", ext)
+
+    # supplement: time series
+    fig, axes = plt.subplots(2, len(CONSERVED), figsize=(4.6 * len(CONSERVED), 7.4),
+                             squeeze=False)
+    for j, (key, label) in enumerate(CONSERVED):
+        ax_p, ax_g = axes[0][j], axes[1][j]
+        for d, t, rel in series[key]["particles"]:
+            ax_p.plot(t, 100 * rel, color=dcol[d], lw=1.4)
+        for d, t, rel in series[key]["DFS grid"]:
+            ok = np.abs(rel) > 0
+            ax_g.semilogy(t[ok], np.abs(rel[ok]), color=dcol[d], lw=1.2)
+        ax_p.axhline(0, color="0.6", lw=0.8, zorder=0)
+        ax_p.set_title(f"{label}, particles")
+        ax_p.set_ylabel(f"relative change in {label} (%)")
+        ax_g.set_title(f"{label}, DFS grid")
+        ax_g.set_ylabel(f"|relative change in {label}|")
+        for ax in (ax_p, ax_g):
+            ax.set_xlabel("time $t$")
+            ax.grid(True, which="both", alpha=0.25)
+    hs = [Line2D([], [], color=dcol[d], lw=2, label=f"depth {d}") for d in ds]
+    fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
+    fig.suptitle(title, y=1.0)
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    save(fig, figdir / "conservation_timeseries", ext)
 
 
 def save(fig, stem, exts):
@@ -505,12 +530,13 @@ def main():
     figdir.mkdir(parents=True, exist_ok=True)
 
     exclude = blowup_keys(args.exclude) if args.exclude else frozenset()
-    runs, n_failed, n_dupe, n_excluded = discover_runs(
+    runs, n_failed, n_stale, n_dupe, n_excluded = discover_runs(
         outdir, exclude, rh54_plan.parse_stale(args.stale))
     if not runs:
         sys.exit(f"no completed runs found in {outdir}")
     nlon = pick_nlon(runs, args.nlon)
     print(f"found {len(runs)} completed runs ({n_failed} failed runs skipped, "
+          f"{n_stale} stale pre-cutoff runs skipped, "
           f"{n_excluded} blow-ups excluded, "
           f"{n_dupe} duplicate runs resolved to newest); fixed nlon = {nlon}")
 

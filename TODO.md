@@ -24,7 +24,28 @@ The DFS code allocates `Kokkos::View`s inside functions that are called once
 per time step. These should be hoisted into longer-lived storage on the owning
 solver class so the allocator isn't hit every step.
 
-## 3. Resolve duplicate `liblpm.a` link warnings
+## 3. Use `SphereNormalize` for the DFS RK solvers' sphere projection
+
+`DFSRK2::standardize_particles`, `DFSRK4::standardize_particles` and
+`DFSRK3::std_crds` (`src/dfs/lpm_dfs_bve_solver.hpp`,
+`src/dfs/lpm_dfs_bve_solver_impl.hpp`) each hand-roll the projection of
+particle coordinates back to the unit sphere. Replace all three with one
+`normalize_coordinates(crd_view xyz)` per class that calls the
+`SphereNormalize` functor from `src/lpm_geometry.hpp`, as
+`DFSPolarVortexRK4::normalize_coordinates` does
+(`src/dfs/lpm_dfs_polar_vortex_solver.hpp`,
+`src/dfs/lpm_dfs_polar_vortex_solver_impl.hpp`):
+
+```c++
+Kokkos::parallel_for("normalize", xyz.extent(0), SphereNormalize(xyz));
+```
+
+This also fixes `DFSRK4::standardize_particles` capturing with `[=]`
+instead of `KOKKOS_LAMBDA`, which is not device-safe. `SphereGeometry::normalize`
+multiplies by `1/mag` rather than dividing by `mag`, so results will change at
+round-off level; don't expect bitwise-identical reruns of the RH54 sweep.
+
+## 4. Resolve duplicate `liblpm.a` link warnings
 
 The linker emits `ld: warning: ignoring duplicate libraries: '../src/liblpm.a'`
 for several targets. Harmless (the duplicate is ignored), but it points at
@@ -32,7 +53,7 @@ for several targets. Harmless (the duplicate is ignored), but it points at
 `${LPM_LIBRARIES}` both resolving to `liblpm.a`. Deduplicate the link
 dependencies in the relevant `target_link_libraries` calls to silence it.
 
-## 4. Fix `-Wwritable-strings` warnings in `lpm_input_test.cpp`
+## 5. Fix `-Wwritable-strings` warnings in `lpm_input_test.cpp`
 
 `tests/lpm_input_test.cpp:107` builds `char* argv[]` directly from string
 literals, which is ill-formed in C++11 (`-Wwritable-strings`). Change the array
@@ -40,7 +61,7 @@ to `const char*` (and adjust the `parse_args` call/signature as needed), or use
 modifiable `char` buffers, so the test stops relying on the non-conforming
 conversion.
 
-## 5. Finish the `Lpm*` → `lpm_*` migration
+## 6. Finish the `Lpm*` → `lpm_*` migration
 
 Each remaining `LpmFoo.{hpp,cpp}` file needs to be either refactored into the
 new snake_case style (with `lpm_foo.hpp` / `lpm_foo.cpp` / `lpm_foo_impl.hpp`
