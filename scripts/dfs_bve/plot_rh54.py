@@ -545,28 +545,30 @@ def plot_work_precision(errs, norm, nlon, t_eval, figdir, ext):
         save(fig, figdir / f"work_precision_{norm}", ext)
 
     # (2) one panel per depth, color = solver, marker = GMLS order: which RK
-    # order is cheapest at a given accuracy
+    # order is cheapest at a given accuracy; paper style, no title (nlon goes
+    # in the caption)
     rcol = {rk: plt.get_cmap("plasma")(0.8 * i / max(len(rks) - 1, 1))
             for i, rk in enumerate(rks)}
     gmark = {g: MARKERS[i % len(MARKERS)] for i, g in enumerate(gs)}
     gls = {g: LINESTYLES[i % len(LINESTYLES)] for i, g in enumerate(gs)}
-    fig, axes = plt.subplots(1, len(ds), figsize=(4.4 * len(ds), 4.2),
-                             sharex=True, sharey=True, squeeze=False)
-    for ax, d in zip(axes[0], ds):
-        sub = [p for p in items if p[0].d == d]
-        for (rk, g), xs, ys in curves(sub, lambda p: (p[0].rk, p[0].g)):
-            ax.loglog(xs, ys, color=rcol[rk], marker=gmark[g], ls=gls[g], ms=5, lw=1.2)
-        ax.set_title(f"depth {d} ({n_particles(d):,} particles)")
-        ax.set_xlabel(xlabel)
-        ax.grid(True, which="both", alpha=0.25)
-    axes[0][0].set_ylabel(ylabel)
-    hs = [Line2D([], [], color=rcol[rk], lw=2.4, label=RK_LABEL[rk]) for rk in rks]
-    hs += [Line2D([], [], color="k", marker=gmark[g], ls=gls[g], ms=5, lw=1.2,
-                  label=f"GMLS order {g}") for g in gs]
-    fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
-    fig.suptitle(f"RH54 error vs wall-clock time, nlon = {nlon}", y=1.0)
-    fig.tight_layout(rect=(0, 0.07, 1, 1))
-    save(fig, figdir / f"work_precision_{norm}_by_depth", ext)
+    with plt.rc_context(PAPER_RC):
+        fig, axes = plt.subplots(1, len(ds), figsize=(4.8 * len(ds), 4.8),
+                                 sharex=True, sharey=True, squeeze=False)
+        for ax, d in zip(axes[0], ds):
+            sub = [p for p in items if p[0].d == d]
+            for (rk, g), xs, ys in curves(sub, lambda p: (p[0].rk, p[0].g)):
+                ax.loglog(xs, ys, color=rcol[rk], marker=gmark[g], ls=gls[g],
+                          ms=7, lw=1.6)
+            ax.set_title(f"depth {d} ({n_particles(d):,} particles)")
+            ax.set_xlabel(xlabel)
+            ax.grid(True, which="both", alpha=0.25)
+        axes[0][0].set_ylabel(ylabel)
+        hs = [Line2D([], [], color=rcol[rk], lw=2.7, label=RK_LABEL[rk]) for rk in rks]
+        hs += [Line2D([], [], color="k", marker=gmark[g], ls=gls[g], ms=7, lw=1.6,
+                      label=f"GMLS order {g}") for g in gs]
+        fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
+        fig.tight_layout(rect=(0, 0.09, 1, 1))
+        save(fig, figdir / f"work_precision_{norm}_by_depth", ext)
 
 
 CONSERVED = [("total_kinetic_energy", "kinetic energy"),
