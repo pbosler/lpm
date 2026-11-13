@@ -35,6 +35,11 @@ Figures (one set per norm):
                                     error still changes between the two
                                     finest dt)
   error_vs_nlon_<norm>.png          same spatial error floor vs nlon
+  work_precision_<norm>.png         error vs wall-clock time (elapsed_seconds
+                                    in timing_summary*.csv) at fixed nlon, one
+                                    panel per solver, color = GMLS order,
+                                    marker = tree depth; points = nsteps
+  work_precision_<norm>_by_depth.png  same, one panel per depth, color = solver
   conservation.png                  relative change of kinetic energy and
                                     enstrophy, particle vs DFS grid quadrature
                                     (grid needs runs made with -gi), for one
@@ -81,7 +86,8 @@ VEC_RE = re.compile(r"^\s*(\w+)\s*=\s*\[(.*)\]\s*;\s*$")
 
 
 class Run:
-    __slots__ = ("rk", "g", "eps", "d", "nlon", "tf", "nsteps", "path", "mtime")
+    __slots__ = ("rk", "g", "eps", "d", "nlon", "tf", "nsteps", "path", "mtime",
+                 "wall")
 
     def __init__(self, m, path):
         self.rk = m["rk"]
@@ -93,6 +99,7 @@ class Run:
         self.nsteps = int(m["nsteps"])
         self.path = path
         self.mtime = path.stat().st_mtime
+        self.wall = None  # elapsed seconds from timing_summary*.csv, if recorded
 
     @property
     def key(self):
@@ -117,10 +124,12 @@ def read_matlab_vectors(path):
 
 
 def run_status(outdir, stale):
-    """(bad, good) run ids (basename of output_root): bad have a non-zero exit
-    status and no successful record, across every timing_summary*.csv (one per
-    machine). Stale rows are ignored."""
+    """(bad, good, wall) over every timing_summary*.csv (one per machine):
+    bad/good are run ids (basename of output_root); bad have a non-zero exit
+    status and no successful record. wall maps a good run id to the elapsed
+    wall-clock seconds of its newest successful row. Stale rows are ignored."""
     bad, good = set(), set()
+    wall = {}  # run id -> (timestamp, elapsed seconds)
     for csv_path in sorted(outdir.glob("timing_summary*.csv")):
         with open(csv_path, newline="") as f:
             for row in csv.DictReader(f):
@@ -133,7 +142,15 @@ def run_status(outdir, stale):
                 if m and rh54_plan.is_stale(stale, m["rk"], row.get("timestamp", "")):
                     continue
                 (good if status == 0 else bad).add(name)
-    return bad - good, good
+                if status == 0:
+                    ts = row.get("timestamp", "")
+                    try:
+                        sec = float(row["elapsed_seconds"])
+                    except (KeyError, ValueError):
+                        continue
+                    if name not in wall or ts >= wall[name][0]:
+                        wall[name] = (ts, sec)
+    return bad - good, good, {k: v[1] for k, v in wall.items()}
 
 
 def blowup_keys(tsv_path):
@@ -153,7 +170,7 @@ def discover_runs(outdir, exclude=frozenset(), stale=None):
     files of a --stale solver with no successful post-cutoff run (pre-cutoff
     output, e.g. a different nthr in the name, so never overwritten)."""
     stale = stale or {}
-    bad, good = run_status(outdir, stale)
+    bad, good, wall = run_status(outdir, stale)
     by_key = {}
     n_failed = n_stale = n_dupe = n_excluded = 0
     for path in sorted(outdir.glob("dfs_bve_rh54_*.m")):
@@ -167,6 +184,7 @@ def discover_runs(outdir, exclude=frozenset(), stale=None):
             n_stale += 1
             continue
         run = Run(m, path)
+        run.wall = wall.get(m.group(0))
         if run.key in exclude:
             n_excluded += 1
             continue
@@ -470,6 +488,87 @@ def plot_vs_nlon(errs, norm, rk, t_eval, figdir, ext):
     save(fig, figdir / f"error_vs_nlon_{norm}", ext)
 
 
+def n_particles(d):
+    """Lagrangian particles of the depth-d cubed sphere: 6*4^d faces plus
+    6*4^d + 2 vertices (both carry vorticity)."""
+    return 12 * 4**d + 2
+
+
+def plot_work_precision(errs, norm, nlon, t_eval, figdir, ext):
+    """Error vs wall-clock time (timing_summary*.csv elapsed_seconds) at fixed
+    nlon; each curve runs over nsteps. Wall time is for the whole run (setup,
+    time stepping, output) on a shared node, so treat it as indicative."""
+    items = [(r, e) for (r, e) in errs.values() if r.nlon == nlon]
+    n_untimed = sum(r.wall is None for r, _ in items)
+    items = [(r, e) for (r, e) in items if r.wall is not None and r.wall > 0]
+    if not items:
+        print(f"[work-precision] no timed runs for nlon={nlon}; skipped")
+        return
+    print(f"[work-precision] {len(items)} timed runs at nlon={nlon} "
+          f"({n_untimed} without a timing row skipped)")
+    rks = sorted({r.rk for r, _ in items})
+    gs = sorted({r.g for r, _ in items})
+    ds = sorted({r.d for r, _ in items})
+    gcol, dmark, dls = style_maps(gs, ds)
+    ylabel = f"{NORM_LABEL[norm]} relative vorticity error at $t={t_eval:g}$"
+    xlabel = "wall-clock time (s)"
+    from matplotlib.lines import Line2D
+
+    def depth_handles(ms, lw):
+        return [Line2D([], [], color="k", marker=dmark[d], ls=dls[d], ms=ms, lw=lw,
+                       label=f"depth {d} ({n_particles(d):,} particles)")
+                for d in ds]
+
+    def curves(sub, keyfn):
+        for k, pts in sorted(group(sub, keyfn).items()):
+            pts.sort(key=lambda p: p[0].nsteps)
+            yield k, [p[0].wall for p in pts], [p[1] for p in pts]
+
+    # (1) one panel per solver, color = GMLS order, marker/linestyle = depth;
+    # paper style like convergence_<norm>
+    with plt.rc_context(PAPER_RC):
+        fig, axes = plt.subplots(1, len(rks), figsize=(4.8 * len(rks), 4.8),
+                                 sharex=True, sharey=True, squeeze=False)
+        for ax, rk in zip(axes[0], rks):
+            sub = [p for p in items if p[0].rk == rk]
+            for (g, d), xs, ys in curves(sub, lambda p: (p[0].g, p[0].d)):
+                ax.loglog(xs, ys, color=gcol[g], marker=dmark[d], ls=dls[d],
+                          ms=7, lw=1.6)
+            ax.set_title(RK_LABEL[rk])
+            ax.set_xlabel(xlabel)
+            ax.grid(True, which="both", alpha=0.25)
+        axes[0][0].set_ylabel(ylabel)
+        hs = [Line2D([], [], color=gcol[g], lw=2.7, label=f"GMLS order {g}")
+              for g in gs] + depth_handles(7, 1.6)
+        fig.legend(handles=hs, loc="lower center", ncol=3, frameon=False)
+        fig.tight_layout(rect=(0, 0.16, 1, 1))
+        save(fig, figdir / f"work_precision_{norm}", ext)
+
+    # (2) one panel per depth, color = solver, marker = GMLS order: which RK
+    # order is cheapest at a given accuracy
+    rcol = {rk: plt.get_cmap("plasma")(0.8 * i / max(len(rks) - 1, 1))
+            for i, rk in enumerate(rks)}
+    gmark = {g: MARKERS[i % len(MARKERS)] for i, g in enumerate(gs)}
+    gls = {g: LINESTYLES[i % len(LINESTYLES)] for i, g in enumerate(gs)}
+    fig, axes = plt.subplots(1, len(ds), figsize=(4.4 * len(ds), 4.2),
+                             sharex=True, sharey=True, squeeze=False)
+    for ax, d in zip(axes[0], ds):
+        sub = [p for p in items if p[0].d == d]
+        for (rk, g), xs, ys in curves(sub, lambda p: (p[0].rk, p[0].g)):
+            ax.loglog(xs, ys, color=rcol[rk], marker=gmark[g], ls=gls[g], ms=5, lw=1.2)
+        ax.set_title(f"depth {d} ({n_particles(d):,} particles)")
+        ax.set_xlabel(xlabel)
+        ax.grid(True, which="both", alpha=0.25)
+    axes[0][0].set_ylabel(ylabel)
+    hs = [Line2D([], [], color=rcol[rk], lw=2.4, label=RK_LABEL[rk]) for rk in rks]
+    hs += [Line2D([], [], color="k", marker=gmark[g], ls=gls[g], ms=5, lw=1.2,
+                  label=f"GMLS order {g}") for g in gs]
+    fig.legend(handles=hs, loc="lower center", ncol=len(hs), frameon=False)
+    fig.suptitle(f"RH54 error vs wall-clock time, nlon = {nlon}", y=1.0)
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    save(fig, figdir / f"work_precision_{norm}_by_depth", ext)
+
+
 CONSERVED = [("total_kinetic_energy", "kinetic energy"),
              ("total_enstrophy", "enstrophy")]
 
@@ -636,6 +735,7 @@ def main():
         plot_vs_gmls_order(errs, norm, nlon, args.floor_rk, args.t_eval, figdir,
                            args.formats)
         plot_vs_nlon(errs, norm, args.floor_rk, args.t_eval, figdir, args.formats)
+        plot_work_precision(errs, norm, nlon, args.t_eval, figdir, args.formats)
 
     plot_conservation(runs, args.cons_rk, args.cons_g, nlon, args.nsteps, figdir,
                       args.formats)
