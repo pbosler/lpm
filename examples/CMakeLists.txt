@@ -223,6 +223,21 @@ else()
       sphere_transport_amr")
 endif()
 
+# Unlike CreateUnitTest tests, these plain add_test() tests would inherit
+# OMP_NUM_THREADS from the shell. When it is unset, Kokkos starts one thread per
+# hardware thread, and Kokkos::initialize aborted that way on cee-compute002, so
+# set it explicitly, as CreateUnitTest does.
+if (LPM_TEST_MAX_THREADS)
+  set(LPM_EXAMPLE_TEST_THREADS ${LPM_TEST_MAX_THREADS})
+else()
+  set(LPM_EXAMPLE_TEST_THREADS 4)
+endif()
+get_property(lpm_example_tests DIRECTORY PROPERTY TESTS)
+if (lpm_example_tests)
+  set_tests_properties(${lpm_example_tests} PROPERTIES
+    ENVIRONMENT OMP_NUM_THREADS=${LPM_EXAMPLE_TEST_THREADS})
+endif()
+
 
 
 
