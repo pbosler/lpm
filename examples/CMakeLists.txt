@@ -33,16 +33,17 @@ target_include_directories(sphere_transport PUBLIC
  ${lpmtest_INCLUDE_DIRS}
 )
 
-add_executable(plane_gravity_wave plane_gravity_wave.cpp)
-target_link_libraries(plane_gravity_wave PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(plane_gravity_wave PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}
-        ${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
- ${VTK_INCLUDE_DIRS}
- ${lpmtest_INCLUDE_DIRS}
-)
+# disabled: includes lpm_swe_kernels.hpp, which is incomplete and does not build
+#add_executable(plane_gravity_wave plane_gravity_wave.cpp)
+#target_link_libraries(plane_gravity_wave PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(plane_gravity_wave PUBLIC
+#${CMAKE_CURRENT_SOURCE_DIR}
+#        ${PROJECT_BINARY_DIR}
+#        ${PROJECT_SOURCE_DIR}/src
+#        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+# ${VTK_INCLUDE_DIRS}
+# ${lpmtest_INCLUDE_DIRS}
+#)
 
 add_executable(colliding_dipoles plane_colliding_dipoles.cpp)
 target_link_libraries(colliding_dipoles PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
@@ -65,28 +66,30 @@ ${CMAKE_CURRENT_SOURCE_DIR}
  ${lpmtest_INCLUDE_DIRS}
 )
 
-add_executable(sphere_rh54 sphere_rh54.cpp)
-target_link_libraries(sphere_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_rh54 PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}
-        ${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
- ${VTK_INCLUDE_DIRS}
- ${lpmtest_INCLUDE_DIRS}
-)
+# disabled: includes lpm_swe_kernels.hpp, which is incomplete and does not build
+#add_executable(sphere_rh54 sphere_rh54.cpp)
+#target_link_libraries(sphere_rh54 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(sphere_rh54 PUBLIC
+#${CMAKE_CURRENT_SOURCE_DIR}
+#        ${PROJECT_BINARY_DIR}
+#        ${PROJECT_SOURCE_DIR}/src
+#        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+# ${VTK_INCLUDE_DIRS}
+# ${lpmtest_INCLUDE_DIRS}
+#)
 
 
-add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
-target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(sphere_swe_test_case2 PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}
-        ${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
- ${VTK_INCLUDE_DIRS}
- ${lpmtest_INCLUDE_DIRS}
-)
+# disabled: includes lpm_swe_kernels.hpp, which is incomplete and does not build
+#add_executable(sphere_swe_test_case2 sphere_swe_tc2.cpp)
+#target_link_libraries(sphere_swe_test_case2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(sphere_swe_test_case2 PUBLIC
+#${CMAKE_CURRENT_SOURCE_DIR}
+#        ${PROJECT_BINARY_DIR}
+#        ${PROJECT_SOURCE_DIR}/src
+#        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+# ${VTK_INCLUDE_DIRS}
+# ${lpmtest_INCLUDE_DIRS}
+#)
 
 #add_executable(sphere_staggered_swe_tc2 sphere_staggered_swe_tc2.cpp)
 #target_link_libraries(sphere_staggered_swe_tc2 PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
@@ -99,17 +102,18 @@ ${CMAKE_CURRENT_SOURCE_DIR}
 # ${lpmtest_INCLUDE_DIRS}
 #)
 
-add_executable(plane_swe_gaussians plane_swe_gaussian_tests.cpp)
-target_link_libraries(plane_swe_gaussians PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
-target_include_directories(plane_swe_gaussians PUBLIC
-${CMAKE_CURRENT_SOURCE_DIR}
-        ${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
- ${VTK_INCLUDE_DIRS}
- ${CMAKE_CURRENT_SOURCE_DIR}
- ${lpmtest_INCLUDE_DIRS}
-)
+# disabled: includes lpm_swe_kernels.hpp, which is incomplete and does not build
+#add_executable(plane_swe_gaussians plane_swe_gaussian_tests.cpp)
+#target_link_libraries(plane_swe_gaussians PUBLIC lpm ${LPM_LIBRARIES} ${LPM_EXT_LIBRARIES} ${VTK_LIBRARIES} ${CMAKE_DL_LIBS})
+#target_include_directories(plane_swe_gaussians PUBLIC
+#${CMAKE_CURRENT_SOURCE_DIR}
+#        ${PROJECT_BINARY_DIR}
+#        ${PROJECT_SOURCE_DIR}/src
+#        ${CMAKE_CURRENT_SOURCE_DIR}/fortran
+# ${VTK_INCLUDE_DIRS}
+# ${CMAKE_CURRENT_SOURCE_DIR}
+# ${lpmtest_INCLUDE_DIRS}
+#)
 
 if (LPM_ENABLE_NETCDF)
 add_executable(sphere_from_data sphere_from_data.cpp)
