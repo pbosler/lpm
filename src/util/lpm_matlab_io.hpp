@@ -24,6 +24,10 @@ inline void write_vector_matlab(std::ostream& os, const std::string& name,
 template <>
 inline void write_vector_matlab<std::vector<Real>>(std::ostream& os,
   const std::string& name, const std::vector<Real>& v) {
+  if (v.empty()) {
+    os << name << " = [];\n";
+    return;
+  }
   const auto last_idx = v.size()-1;
   os << name << " = [";
   for (Index i=0; i<last_idx; ++i) {

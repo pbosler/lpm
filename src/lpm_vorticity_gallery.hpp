@@ -362,34 +362,73 @@ struct RossbyHaurwitz54 {
   bool is_stationary() const {return FloatingPoint<Real>::equiv(u0, constants::PI/7);}
 };
 
-//
+/** Rossby-Haurwitz wave of wavenumber R, built on the spherical harmonic
+  Y_{R+1}^R plus a solid-body background flow, so R = 4 is RH54 and R = 6 is
+  RH76.
+
+  The wave is stationary on a sphere rotating at rate Omega when
+  u0 = 2 Omega / (R (R+3)); see set_stationary_wave_speed.
+*/
 struct RossbyHaurwitzR {
   typedef SphereGeometry geo;
+  static constexpr bool IsVorticity = true;
   Real u0;
-  Real rh54_amplitude;
+  Real amplitude;
   Int R;
 
   KOKKOS_INLINE_FUNCTION
   RossbyHaurwitzR(const Real zonal_background_velocity = 0,
-                  const Real wave_amp = 1, Int R_ = 6)
-      : u0(zonal_background_velocity), rh54_amplitude(wave_amp), R(R_) {}
+                  const Real wave_amp = 1, const Int R_ = 6)
+      : u0(zonal_background_velocity), amplitude(wave_amp), R(R_) {}
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y) const { return 0; }
 
   std::string name() const { return "RossbyHaurwitzR"; }
 
+  /// background velocity that makes the wave stationary
+  static Real stationary_wave_speed(const Int R, const Real Omega) {
+    return 2 * Omega / (R * (R + 3));
+  }
+
+  void set_stationary_wave_speed(const Real Omega = 2 * constants::PI) {
+    u0 = stationary_wave_speed(R, Omega);
+  }
+
+  bool is_stationary(const Real Omega = 2 * constants::PI) const {
+    return FloatingPoint<Real>::equiv(u0, stationary_wave_speed(R, Omega));
+  }
+
+  /// eigenvalue of the Laplacian for the wave component, -n(n+1) with n = R+1
   KOKKOS_INLINE_FUNCTION
-  Real legendrePR(const Real z) const { return z * pow(1 - square(z), R / 2); }
+  Real wave_eigenvalue() const { return -(R + 1) * (R + 2); }
+
+  /// associated Legendre function P_{R+1}^R(z), up to normalization
+  KOKKOS_INLINE_FUNCTION
+  Real legendrePR(const Real z) const {
+    const Real coslat_sq = (1 - square(z) > 0 ? 1 - square(z) : 0);
+    return z * pow(coslat_sq, 0.5 * R);
+  }
 
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     const Real lon = atan4(y, x);
-    return 2 * u0 * z +
-           (R + 1) * (R + 2) * rh54_amplitude * cos(R * lon) * legendrePR(z);
+    return 2 * u0 * z - wave_eigenvalue() * amplitude * cos(R * lon) *
+                            legendrePR(z);
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION Real operator()(const PtType& xyz) const {
+    return (*this)(xyz[0], xyz[1], xyz[2]);
+  }
+
+  template <typename PtType>
+  KOKKOS_INLINE_FUNCTION Real laplacian(const PtType& xyz) const {
+    return -4 * u0 * xyz[2] - square(wave_eigenvalue()) * amplitude *
+                                  cos(R * SphereGeometry::longitude(xyz)) *
+                                  legendrePR(xyz[2]);
   }
 };
-//
 
 // #ifdef LPM_USE_BOOST
 // inline Real lamb_dipole_vorticity(const Real x, const Real y, const Real
