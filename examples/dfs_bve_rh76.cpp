@@ -348,6 +348,9 @@ void set_exact_vorticity(DFSBVE<SeedType>& sphere,
   const auto vert_exact_zeta = sphere.tracer_passive.at("exact_vorticity").view;
   const auto face_crds       = sphere.mesh.faces.phys_crds.view;
   const auto face_exact_zeta = sphere.tracer_active.at("exact_vorticity").view;
+  // non-leaf (divided) panels are not part of the solution; zero them so they
+  // do not enter the error norms
+  const auto face_mask = sphere.mesh.faces.mask;
 
   Kokkos::parallel_for(
       sphere.mesh.n_vertices_host(), KOKKOS_LAMBDA(const Index i) {
@@ -357,7 +360,7 @@ void set_exact_vorticity(DFSBVE<SeedType>& sphere,
   Kokkos::parallel_for(
       sphere.mesh.n_faces_host(), KOKKOS_LAMBDA(const Index i) {
         const auto mcrd    = Kokkos::subview(face_crds, i, Kokkos::ALL);
-        face_exact_zeta(i) = vorticity(mcrd);
+        face_exact_zeta(i) = (face_mask(i) ? 0 : vorticity(mcrd));
       });
 }
 
@@ -373,7 +376,8 @@ ErrNorms compute_vorticity_error(DFSBVE<SeedType>& sphere,
                 sphere.tracer_passive.at("exact_vorticity").view);
   compute_error(sphere.tracer_active.at("vorticity_error").view,
                 sphere.rel_vort_active.view,
-                sphere.tracer_active.at("exact_vorticity").view);
+                sphere.tracer_active.at("exact_vorticity").view,
+                sphere.mesh.faces.mask);
   const auto zeta_error_scalars =
       reduce_error(sphere.tracer_active.at("vorticity_error").view,
                    sphere.tracer_active.at("exact_vorticity").view,
