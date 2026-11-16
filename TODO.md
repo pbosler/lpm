@@ -68,3 +68,17 @@ new snake_case style (with `lpm_foo.hpp` / `lpm_foo.cpp` / `lpm_foo_impl.hpp`
 split) or deleted if obsolete. See CLAUDE.md's "Two file-naming generations"
 note for context. `src/CMakeLists.txt` is the source of truth for which legacy
 files are still built into `liblpm`.
+
+## 7. Remesh GMLS amplification diagnostic (sum of |alpha|)
+
+At remesh eps 2.0, the RH54 d6 g6 rm20 run amplified rough data by ~30x per
+remesh at a few targets near the equatorial stagnation points (g4 was worse,
+~290x); remesh eps 3.0 removed it (data in `scripts/dfs_bve/rh54_remesh_diag/`,
+2026-11-15). The drivers now take `-rmeps` so only the remesh uses the larger
+neighborhoods. To quantify how close eps 2.0 is to the threshold, log the
+Lebesgue function of the remesh operator: after `generateAlphas()` in
+`CompadreDfsRemesh::gmls_setup` (`src/dfs/lpm_compadre_dfs_remesh_impl.hpp`),
+compute `sum_j |alpha_ij|` for `ScalarPointEvaluation` per new-mesh target,
+log its max, mean and the location of the max, and optionally write it as a
+VTK field. Compare eps 2.0 / 2.5 / 3.0 at d5 and d6, and record the values
+for the paper's remeshing section.

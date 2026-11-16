@@ -99,6 +99,17 @@ int main(int argc, char* argv[]) {
     gmls::Params gmls_params(gmls_order);
     gmls_params.eps_multiplier =
         input.get_option("gmls_eps_multiplier").get_real();
+    // the remesh may use larger neighborhoods than the mesh-to-grid
+    // interpolation done at every RK stage
+    gmls::Params remesh_gmls_params(gmls_params);
+    remesh_gmls_params.eps_multiplier =
+        input.get_option("remesh_eps_multiplier").get_real();
+    LPM_REQUIRE_MSG(gmls_params.eps_multiplier > 0,
+                    "-eps (" << gmls_params.eps_multiplier
+                             << ") must be positive.");
+    LPM_REQUIRE_MSG(remesh_gmls_params.eps_multiplier > 0,
+                    "-rmeps (" << remesh_gmls_params.eps_multiplier
+                               << ") must be positive.");
 
     // DFS initialization
     auto sphere = std::make_unique<DFSBVE<SeedType>>(mesh_params, nlon,
@@ -194,6 +205,18 @@ int main(int argc, char* argv[]) {
                ? remesh_strategy + "rm" + std::to_string(remesh_interval)
                : "no_rm");
     }
+    if (remesh_str != "no_rm") {
+      LPM_REQUIRE_MSG(
+          remesh_gmls_params.eps_multiplier >= gmls_params.eps_multiplier,
+          "-rmeps (" << remesh_gmls_params.eps_multiplier
+                     << ") must be >= -eps (" << gmls_params.eps_multiplier
+                     << ").");
+    }
+    if (remesh_str != "no_rm" and
+        remesh_gmls_params.eps_multiplier != gmls_params.eps_multiplier) {
+      remesh_str +=
+          "_rmeps" + float_str(remesh_gmls_params.eps_multiplier, 3);
+    }
     const std::string ofile_root =
         input.get_option("output_file_root").get_str() + "_" +
         SeedType::id_string() + resolution_str + "_nlon" +
@@ -250,7 +273,8 @@ int main(int argc, char* argv[]) {
         }
         new_sphere->t = sphere->t;
 
-        auto remesh = compadre_dfs_remesh(*new_sphere, *sphere, gmls_params);
+        auto remesh =
+            compadre_dfs_remesh(*new_sphere, *sphere, remesh_gmls_params);
         remesh.uniform_direct_remesh();
         logger.debug(remesh.info_string());
 
@@ -258,6 +282,11 @@ int main(int argc, char* argv[]) {
         sphere = std::move(new_sphere);
 
         sphere->finalize_mesh_to_grid_coupling();
+        // the first RK stage reads the gathered velocity; solve it from the
+        // remeshed vorticity, as at the end of every step, instead of using
+        // the velocity interpolated from the old particles
+        sphere->interpolate_vorticity_from_mesh_to_grid();
+        sphere->init_velocity_from_vorticity();
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
         sphere->reset_ftle();
@@ -454,6 +483,11 @@ void init_input(user::Input& input) {
       "gmls_eps_multiplier", "-eps", "--gmls-eps-multiplier",
       "gmls neighborhood radius multiplier (default 2)", 2.0);
   input.add_option(gmls_eps_multiplier);
+
+  user::Option remesh_eps_multiplier(
+      "remesh_eps_multiplier", "-rmeps", "--remesh-eps-multiplier",
+      "gmls neighborhood radius multiplier for remeshing (default 2)", 2.0);
+  input.add_option(remesh_eps_multiplier);
 
   user::Option remesh_trigger_option(
       "remesh_trigger", "-rt", "--remesh-trigger",

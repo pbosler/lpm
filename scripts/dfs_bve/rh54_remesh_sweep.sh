@@ -14,6 +14,9 @@
 #   --rm N..           remesh intervals, in time steps   [20]
 #   --ftle T..         FTLE remesh tolerances            [1 2 4]
 #   --g G              GMLS order                        [6]
+#   --rmeps E          GMLS radius multiplier for the    [EPS_MULTIPLIER]
+#                      remesh only (-rmeps); RK stages
+#                      keep EPS_MULTIPLIER
 #   --nlon N           DFS grid longitudes               [80]
 #   --shard I/N        take every N-th run starting at I (1-based)
 #
@@ -25,6 +28,11 @@
 # first exceeds 1, 2, 4, 6 at t ~ 0.07, 0.21, 0.48, 0.75-1.0, so tolerances
 # 1, 2, 4 remesh very roughly every 0.07, 0.2, 0.5 time units. For comparison,
 # --rm 20 at nsteps 1000 remeshes every 0.04 time units (49 remeshes).
+#
+# Remesh neighborhoods: at eps 2.0, d6 g6 rm20 amplified rough error ~30x per
+# remesh near the equatorial saddles (g4 was worse); eps 3.0 for the remesh
+# removed it (rh54_remesh_diag, 2026-11-15), so pass --rmeps 3.0 for the
+# study. Remeshed run ids end in _rmeps<E> when it differs from EPS_MULTIPLIER.
 #
 # Output: ${OUTDIR}/<run_id>_<driver suffix>.m (with remesh_times), logs in
 # ${OUTDIR}/logs, timing in ${OUTDIR}/timing_summary.${TAG}.csv, failures in
@@ -50,6 +58,7 @@ MODES=(none interval ftle)
 RM_LIST=(20)
 FTLE_LIST=(1 2 4)
 G=6
+RMEPS=""
 NLON=80
 SHARD_I=""
 SHARD_N=""
@@ -78,6 +87,7 @@ while [[ $# -gt 0 ]]; do
     --ftle)   take_values FTLE_LIST "$@";   shift ${#FTLE_LIST[@]} ;;
     --g)      take_values vals "$@"; G="${vals[0]}";    shift ${#vals[@]} ;;
     --nlon)   take_values vals "$@"; NLON="${vals[0]}"; shift ${#vals[@]} ;;
+    --rmeps)  take_values vals "$@"; RMEPS="${vals[0]}"; shift ${#vals[@]} ;;
     --shard)
       take_values vals "$@"; shift ${#vals[@]}
       [[ "${vals[0]}" =~ ^([0-9]+)/([0-9]+)$ ]] || { echo "ERROR: --shard I/N" >&2; exit 1; }
@@ -94,6 +104,13 @@ for m in "${MODES[@]}"; do
   [[ "${m}" == none || "${m}" == interval || "${m}" == ftle ]] ||
     { echo "ERROR: unknown mode ${m} (none | interval | ftle)" >&2; exit 1; }
 done
+
+# the remesh uses the per-step neighborhoods unless --rmeps is given
+RMEPS="${RMEPS:-${EPS}}"
+RMEPS_TAG=""
+if awk -v a="${RMEPS}" -v b="${EPS}" 'BEGIN {exit !(a + 0 != b + 0)}'; then
+  RMEPS_TAG="_rmeps${RMEPS}"
+fi
 
 if [[ -z "${TAG:-}" ]]; then
   TAG="$(hostname -s)"
@@ -120,13 +137,14 @@ run_id_of() {  # d nsteps mode param
   local tag
   case "$3" in
     none)     tag="no_rm" ;;
-    interval) tag="rm$4" ;;
-    ftle)     tag="ftle$4" ;;
+    interval) tag="rm${4}${RMEPS_TAG}" ;;
+    ftle)     tag="ftle${4}${RMEPS_TAG}" ;;
   esac
   echo "dfs_bve_rh54_rk4_g${G}_eps${EPS}_d$1_nlon${NLON}_tf${TFINAL}_nsteps$2_${tag}"
 }
 
-is_done() { compgen -G "${OUTDIR}/$1_*.m" > /dev/null; }
+# match up to the driver suffix, so ..._rm20 does not match ..._rm20_rmeps3.0
+is_done() { compgen -G "${OUTDIR}/$1_cubed_sphere*.m" > /dev/null; }
 
 todo=()
 idx=0
@@ -208,7 +226,7 @@ append_line() { printf '%s\n' "$2" >> "$1"; }
 
 write_header() {
   [[ -s "${TIMING_FILE}" ]] ||
-    echo "timestamp,executable,gmls_order,eps_multiplier,tree_depth,nlon,tfinal,target_nsteps,dt,remesh_mode,remesh_param,omp_num_threads,output_root,logfile,exit_status,elapsed_seconds" > "${TIMING_FILE}"
+    echo "timestamp,executable,gmls_order,eps_multiplier,remesh_eps,tree_depth,nlon,tfinal,target_nsteps,dt,remesh_mode,remesh_param,omp_num_threads,output_root,logfile,exit_status,elapsed_seconds" > "${TIMING_FILE}"
 }
 locked "${TIMING_FILE}" write_header
 
@@ -223,8 +241,8 @@ for entry in "${todo[@]}"; do
   logfile="${LOGDIR}/${run_id}.log"
   case "${mode}" in
     none)     remesh_args=() ;;
-    interval) remesh_args=(-rm "${param}") ;;
-    ftle)     remesh_args=(-rt ftle -ftle "${param}") ;;
+    interval) remesh_args=(-rm "${param}" -rmeps "${RMEPS}") ;;
+    ftle)     remesh_args=(-rt ftle -ftle "${param}" -rmeps "${RMEPS}") ;;
   esac
 
   echo "[${n}/${n_total}] ${run_id} (timeout ${RUN_TIMEOUT})"
@@ -243,8 +261,9 @@ for entry in "${todo[@]}"; do
   set -e
 
   timestamp=$(date +"%Y-%m-%dT%H:%M:%S%z")
-  row=$(printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" \
-    "${timestamp}" "${EXE}" "${G}" "${EPS}" "${d}" "${NLON}" "${TFINAL}" \
+  [[ "${mode}" == none ]] && rmeps_col="-" || rmeps_col="${RMEPS}"
+  row=$(printf "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" \
+    "${timestamp}" "${EXE}" "${G}" "${EPS}" "${rmeps_col}" "${d}" "${NLON}" "${TFINAL}" \
     "${nsteps}" "${dt}" "${mode}" "${param}" "${OMP_NUM_THREADS}" \
     "${output_root}" "${logfile}" "${exit_status}" "${elapsed_seconds}")
   locked "${TIMING_FILE}" append_line "${TIMING_FILE}" "${row}"
