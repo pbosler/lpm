@@ -158,6 +158,7 @@ int main(int argc, char* argv[]) {
     std::vector<Real> total_enstrophy(nsteps + 1);
     std::vector<Real> ftle_max(nsteps + 1);
     std::vector<Real> time(nsteps + 1);
+    std::vector<Real> remesh_times;
     total_vorticity[0]      = sphere->total_vorticity();
     total_kinetic_energy[0] = sphere->total_kinetic_energy();
     total_enstrophy[0]      = sphere->total_enstrophy();
@@ -268,6 +269,7 @@ int main(int argc, char* argv[]) {
         sphere->finalize_mesh_to_grid_coupling();
         sphere->t_ref = tref;
         solver.reset(new SolverType(dt, *sphere, solver->t_idx));
+        remesh_times.push_back(tref);
       }
 
       sphere->advance_timestep(*solver);
@@ -328,6 +330,7 @@ int main(int argc, char* argv[]) {
       write_vector_matlab(ofile, "total_enstrophy_grid", total_enstrophy_grid);
     }
     write_vector_matlab(ofile, "max_ftle", ftle_max);
+    write_vector_matlab(ofile, "remesh_times", remesh_times);
     ofile.close();
     logger.info("output can be found in files beginning: {}", ofile_root);
   }  // Kokkos scope
