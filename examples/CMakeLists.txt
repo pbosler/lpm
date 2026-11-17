@@ -191,7 +191,7 @@ add_test(NAME dfs_bve_rh76 COMMAND dfs_bve_rh76 -d 2 -nlon 20 -dt 0.05 -tf 0.05 
 add_test(NAME dfs_bve_rh76_remesh COMMAND dfs_bve_rh76 -d 2 -nlon 20 -dt 0.05 -tf 0.15 -rm 1 -of 0 -rmeps 3)
 add_test(NAME dfs_bve_rh76_ftle COMMAND dfs_bve_rh76 -d 2 -nlon 20 -dt 0.05 -tf 0.15 -rt ftle -ftle 0.01 -of 0)
 add_test(NAME dfs_bve_gauss_vort_remesh COMMAND dfs_bve_gauss_vort -d 2 -nlon 20 -dt 0.05 -tf 0.15 -rm 1 -rmeps 3 -of 0 -gi -gf 1)
-add_test(NAME dfs_bve_gauss_vort_amr COMMAND dfs_bve_gauss_vort -d 2 -amr 1 -c 0.2 -zv 0.2 -fs 0.5 -nlon 20 -dt 0.05 -tf 0.15 -rm 1 -rmeps 3 -of 0)
+add_test(NAME dfs_bve_gauss_vort_amr COMMAND dfs_bve_gauss_vort -d 2 -amr 1 -c 0.2 -fs 0.5 -nlon 20 -dt 0.05 -tf 0.15 -rm 1 -rmeps 3 -of 0)
 
 add_test(NAME dfs_polar_vortex COMMAND dfs_polar_vortex -d 2 -nlon 20 -dt 0.05 -tf 0.15 -rm 2)
 

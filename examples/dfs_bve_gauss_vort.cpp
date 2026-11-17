@@ -41,11 +41,9 @@
   and adaptive vs. uniform remeshing. Adaptive refinement criteria, each off
   unless its tolerance is given:
     -c   circulation |zeta| * area, relative to the max on the initial mesh
-    -zv  vorticity variation within a panel, relative to the max on the
-         initial mesh
     -fs  FTLE (absolute), at remesh only
-  The absolute circulation and variation tolerances are fixed from the
-  initial uniform mesh and reused at every remesh.
+  The absolute circulation tolerance is fixed from the initial uniform mesh
+  and reused at every remesh.
 
   Time stepping is RK4.
 */
@@ -110,15 +108,12 @@ int main(int argc, char* argv[]) {
     constexpr Real no_tol = std::numeric_limits<Real>::max();
     const Real rel_circ_tol =
         input.get_option("max_circulation_tol").get_real();
-    const Real rel_zeta_var_tol =
-        input.get_option("vorticity_variation_tol").get_real();
     const Real ftle_space_tol = input.get_option("ftle_space_tol").get_real();
     const bool use_circ_flag  = (rel_circ_tol < no_tol);
-    const bool use_var_flag   = (rel_zeta_var_tol < no_tol);
     const bool use_ftle_flag  = (ftle_space_tol < no_tol);
     if (amr) {
-      LPM_REQUIRE_MSG(use_circ_flag or use_var_flag or use_ftle_flag,
-                      "amr needs at least one of -c, -zv, -fs.");
+      LPM_REQUIRE_MSG(use_circ_flag or use_ftle_flag,
+                      "amr needs at least one of -c, -fs.");
     }
     /**
       Build the Lagrangian particle/panel mesh and DFS grid
@@ -174,8 +169,7 @@ int main(int argc, char* argv[]) {
       Relative tolerances from the input become absolute tolerances on the
       initial uniform mesh; the remesh reuses those absolute values.
     */
-    Real circ_tol     = no_tol;
-    Real zeta_var_tol = no_tol;
+    Real circ_tol = no_tol;
     if (amr) {
       Refinement<SeedType> refiner(sphere->mesh);
 
@@ -191,25 +185,11 @@ int main(int argc, char* argv[]) {
       }
       circ_tol = circ_flag.tol;
 
-      ScalarVariationFlag var_flag(
-          refiner.flags, sphere->rel_vort_active.view,
-          sphere->rel_vort_passive.view, sphere->mesh.faces.verts,
-          sphere->mesh.faces.mask, sphere->mesh.n_faces_host(),
-          rel_zeta_var_tol);
-      if (use_var_flag) {
-        var_flag.set_tol_from_relative_value();
-        logger.info(
-            "relative vorticity variation tol {} converts to absolute "
-            "variation tol {}",
-            rel_zeta_var_tol, var_flag.tol);
-      }
-      zeta_var_tol = var_flag.tol;
-
       Index face_start_idx = 0;
       for (int i = 0; i < amr_limit; ++i) {
         const Index face_end_idx = sphere->mesh.n_faces_host();
 
-        refiner.iterate(face_start_idx, face_end_idx, circ_flag, var_flag);
+        refiner.iterate(face_start_idx, face_end_idx, circ_flag);
         logger.info("amr iteration {}: {}", i, refiner.info_string());
         if (refiner.total() == 0) {
           break;
@@ -422,20 +402,12 @@ int main(int argc, char* argv[]) {
               new_sphere->mesh.n_faces_host(), rel_circ_tol);
           circ_flag.tol = circ_tol;
 
-          ScalarVariationFlag var_flag(
-              refiner.flags, new_sphere->rel_vort_active.view,
-              new_sphere->rel_vort_passive.view, new_sphere->mesh.faces.verts,
-              new_sphere->mesh.faces.mask, new_sphere->mesh.n_faces_host(),
-              rel_zeta_var_tol);
-          var_flag.tol = zeta_var_tol;
-
           ScalarMaxFlag ftle_flag(
               refiner.flags, new_sphere->ftle_active.view,
               new_sphere->mesh.faces.mask, new_sphere->mesh.n_faces_host(),
               ftle_space_tol);
 
-          remesh.adaptive_direct_remesh(refiner, circ_flag, var_flag,
-                                        ftle_flag);
+          remesh.adaptive_direct_remesh(refiner, circ_flag, ftle_flag);
         } else {
           remesh.uniform_direct_remesh();
         }
@@ -595,13 +567,6 @@ void init_input(user::Input& input) {
       "off)",
       std::numeric_limits<Real>::max());
   input.add_option(max_circulation_option);
-
-  user::Option vorticity_variation_option(
-      "vorticity_variation_tol", "-zv", "--vorticity-variation",
-      "amr vorticity variation tolerance, relative to the initial mesh "
-      "(default: off)",
-      std::numeric_limits<Real>::max());
-  input.add_option(vorticity_variation_option);
 
   user::Option ftle_space_tolerance_option(
       "ftle_space_tol", "-fs", "--ftle-space-tol",
