@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
         auto remesh =
             compadre_dfs_remesh(*new_sphere, *sphere, remesh_gmls_params);
         remesh.uniform_direct_remesh();
-        logger.debug(remesh.info_string());
+        logger.info(remesh.info_string());
 
         tref   = sphere->t;
         sphere = std::move(new_sphere);

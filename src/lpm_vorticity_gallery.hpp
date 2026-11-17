@@ -84,6 +84,16 @@ struct GaussianVortexSphere {
     gauss_const += vorticity_sum / (4 * constants::PI);
   }
 
+  /** Sets gauss_const so that the exact total vorticity is zero:
+    the Gaussian integrates to 2 pi strength (1 - exp(-2 b^2)) / b^2 over the
+    unit sphere. Unlike set_gauss_const, this does not depend on the mesh.
+  */
+  KOKKOS_INLINE_FUNCTION
+  void set_exact_gauss_const() {
+    const Real bsq = square(shape_parameter);
+    gauss_const    = vortex_strength * (1 - exp(-2 * bsq)) / (2 * bsq);
+  }
+
   KOKKOS_INLINE_FUNCTION
   Real operator()(const Real& x, const Real& y, const Real& z) const {
     const Real distsq = 1.0 - x * xyz_ctr[0] - y * xyz_ctr[1] - z * xyz_ctr[2];

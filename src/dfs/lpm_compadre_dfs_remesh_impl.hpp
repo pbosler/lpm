@@ -313,6 +313,46 @@ void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& r
   }
 }
 
+template <typename SeedType> template <typename FlagType1, typename FlagType2, typename FlagType3>
+void CompadreDfsRemesh<SeedType>::adaptive_direct_remesh(Refinement<SeedType>& refiner,
+      const FlagType1& flag1, const FlagType2& flag2, const FlagType3& flag3) {
+
+  uniform_direct_remesh();
+  logger->debug("adaptive remesh ftle info: {}", new_face_scalars.at("ftle").info_string());
+  Index face_start_idx = 0;
+  for (int amr_i = 0; amr_i < new_mesh.params.amr_limit; ++amr_i) {
+    Index face_end_idx = new_mesh.n_faces_host();
+
+    refiner.iterate(face_start_idx, face_end_idx, flag1, flag2, flag3);
+    logger->debug("adaptive remesh : {}", refiner.info_string());
+    if (refiner.total() > 0) {
+
+      new_mesh.divide_flagged_faces(refiner.flags, *logger);
+
+      new_gather.reset(new GatherMeshData<SeedType>(new_mesh));
+      new_gather->init_scalar_fields(new_vert_scalars, new_face_scalars);
+      new_gather->init_vector_fields(new_vert_vectors, new_face_vectors);
+      new_gather->update_host();
+
+      mesh_neighborhoods = gmls::Neighborhoods(old_gather->h_phys_crds, new_gather->h_phys_crds,
+        gmls_params);
+
+      new_scatter.reset(new ScatterMeshData<SeedType>(*new_gather, new_mesh));
+
+      gmls_setup();
+
+      // TODO: Accelerate this by skipping previously interpolated particles from the base mesh
+      //   and prior iterations
+      uniform_direct_remesh();
+
+      face_start_idx = face_end_idx;
+    }
+    else {
+      break;
+    }
+  }
+}
+
 template <typename SeedType>
 void CompadreDfsRemesh<SeedType>::gmls_setup() {
   const auto scalar_data_functional = scalar_sampling_functional;

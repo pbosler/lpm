@@ -72,6 +72,10 @@ struct CompadreDfsRemesh {
   template <typename FlagType1, typename FlagType2>
   void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType1& flag1, const FlagType2& flag2);
 
+  template <typename FlagType1, typename FlagType2, typename FlagType3>
+  void adaptive_direct_remesh(Refinement<SeedType>& refiner, const FlagType1& flag1, const FlagType2& flag2,
+    const FlagType3& flag3);
+
   std::string info_string(const int tab_lev=0) const;
 
   private:
